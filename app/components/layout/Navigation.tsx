@@ -48,15 +48,23 @@ export function Navigation() {
     setIsOpen(false);
   };
 
-  const getButtonClass = (id: string) =>
+  const getButtonClass = (id: string) => {
+    const isActive = activeId === id;
+    const isHovered = hoveredId === id;
+    const showActive = !hoveredId;
+
+    return [
     [
       "relative pb-1 text-base font-semibold transition",
       "hover:-translate-y-0.5 hover:text-orange-600",
       "after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-full",
       "after:origin-left after:scale-x-0 after:bg-orange-500 after:transition",
       "hover:after:scale-x-100",
-      activeId === id ? "text-orange-500 after:scale-x-100" : "text-zinc-900",
+        showActive && isActive ? "text-orange-500 after:scale-x-100" : "text-zinc-900",
+        isHovered ? "text-orange-600 after:scale-x-100" : "",
+      ].join(" "),
     ].join(" ");
+  };
 
   const panelVisible = hoveredId !== null;
 
@@ -89,7 +97,7 @@ export function Navigation() {
           ))}
         </div>
         <button
-          className="flex h-11 w-11 items-center justify-center rounded-full bg-orange-500 text-white"
+          className="flex h-11 w-11 items-center justify-center rounded-full bg-orange-500 text-white md:hidden"
           aria-expanded={isOpen}
           aria-label="메뉴 열기"
           type="button"
@@ -122,8 +130,14 @@ export function Navigation() {
                   <li className="text-white/50">준비중</li>
                 ) : (
                   column.items.map((item) => (
-                    <li key={item} className="transition hover:text-white">
-                      {item}
+                    <li key={item}>
+                      <button
+                        type="button"
+                        className="flex w-full items-center gap-2 rounded px-2 py-1 text-left text-white/80 transition hover:bg-white/10 hover:text-white"
+                      >
+                        <span className="h-1.5 w-1.5 rounded-full bg-orange-400/80" />
+                        {item}
+                      </button>
                     </li>
                   ))
                 )}
@@ -134,7 +148,7 @@ export function Navigation() {
       </div>
 
       {isOpen && (
-        <div className="border-t border-black/5 bg-white">
+        <div className="border-t border-black/5 bg-white md:hidden">
           <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-6 py-6 text-base font-semibold text-zinc-900 md:flex-row md:gap-10">
             {menuItems.map((item) => (
               <button
