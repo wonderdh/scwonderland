@@ -1,8 +1,4 @@
-import { Contact } from "./components/sections/Contact";
-import { Features } from "./components/sections/Features";
-import { Gallery } from "./components/sections/Gallery";
 import { Hero } from "./components/sections/Hero";
-import { Programs } from "./components/sections/Programs";
 import { SideBar } from "./components/sections/SideBar";
 
 export default function Home() {
@@ -10,10 +6,6 @@ export default function Home() {
     <main className="min-h-screen bg-white">
       <SideBar />
       <Hero />
-      <Programs />
-      <Features />
-      <Gallery />
-      <Contact />
       <footer className="bg-gray-900 py-8 text-white">
         <div className="container mx-auto px-4 text-center">
           <p className="text-sm">

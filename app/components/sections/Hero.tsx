@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { ImageWithFallback } from "../common/ImageWithFallback";
 
 function ArrowRightIcon() {
@@ -22,12 +23,6 @@ function ArrowRightIcon() {
 }
 
 export function Hero() {
-  const scrollToContact = () => {
-    const element = document.getElementById("contact");
-    if (element) {
-      element.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
-  };
 
   return (
     <section id="about" className="scroll-mt-24 bg-gray-50 pt-20">
@@ -48,14 +43,13 @@ export function Hero() {
             <br />
             30년 전통의 영어 전문 교육기관입니다
           </p>
-          <button
-            onClick={scrollToContact}
+          <Link
+            href="/community/parent-consultation"
             className="inline-flex items-center gap-2 rounded bg-gray-900 px-10 py-4 text-white transition hover:bg-gray-800"
-            type="button"
           >
             상담 신청하기
             <ArrowRightIcon />
-          </button>
+          </Link>
         </div>
 
         <div className="mx-auto max-w-5xl">
