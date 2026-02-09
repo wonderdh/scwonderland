@@ -1,0 +1,205 @@
+/* 교육 과정 연계 프로그램 - 원 겹침 없이, 보기 좋게 정리 */
+
+.wrapper {
+  position: relative;
+  width: 100%;
+  max-width: 880px;
+  margin: 0 auto;
+  text-align: center;
+  min-height: 720px;
+  box-sizing: border-box;
+}
+
+/* 공통: 원형 카드 (중심 기준 배치로 겹침 방지) */
+.node {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  border-radius: 50%;
+  width: 200px;
+  height: 200px;
+  padding: 28px 16px;
+  box-sizing: border-box;
+  /* 위치는 %로 주고, transform으로 중심 정렬 */
+  transform: translate(-50%, -50%);
+}
+
+.nodeTitle {
+  font-size: 18px;
+  font-weight: bold;
+  margin-bottom: 12px;
+  display: block;
+  line-height: 1.3;
+}
+
+.nodeContent {
+  color: #202020;
+  font-size: 14px;
+  line-height: 1.5;
+  white-space: pre-line;
+}
+
+/* pr1 - 표현생활 (상단 중앙) */
+.pr1 {
+  left: 50%;
+  top: 12%;
+  border: solid 4px #e73357;
+}
+
+.pr1 .nodeTitle {
+  color: #e73357;
+}
+
+/* pr2 - 자연탐구생활 (우상) */
+.pr2 {
+  left: 78%;
+  top: 28%;
+  border: solid 4px #6cbfe0;
+}
+
+.pr2 .nodeTitle {
+  color: #2da9db;
+}
+
+/* pr3 - 사회생활 (좌상) */
+.pr3 {
+  left: 22%;
+  top: 28%;
+  border: solid 4px #44ba96;
+}
+
+.pr3 .nodeTitle {
+  color: #059467;
+}
+
+/* pr4 - 신체, 건강생활 (우하) */
+.pr4 {
+  left: 78%;
+  top: 72%;
+  border: solid 4px #ffa400;
+}
+
+.pr4 .nodeTitle {
+  color: #ffa400;
+}
+
+/* pr5 - 언어생활 (좌하) */
+.pr5 {
+  left: 22%;
+  top: 72%;
+  border: solid 4px #8c40b4;
+}
+
+.pr5 .nodeTitle {
+  color: #8c40b4;
+}
+
+.pr5 .nodeContent {
+  font-size: 13px;
+}
+
+/* 중앙 로고 */
+.center {
+  left: 50%;
+  top: 50%;
+  border: solid 4px #e5e7eb;
+  padding: 20px;
+}
+
+.centerLogoWrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.centerLogoWrap img {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 64px;
+  max-height: 72px;
+}
+
+/* 태블릿: 원 크기만 조금 줄이고 비율 유지 */
+@media all and (max-width: 1024px) {
+  .wrapper {
+    min-height: 640px;
+    max-width: 100%;
+  }
+
+  .node {
+    width: 180px;
+    height: 180px;
+    padding: 24px 12px;
+  }
+
+  .nodeTitle {
+    font-size: 16px;
+    margin-bottom: 10px;
+  }
+
+  .nodeContent {
+    font-size: 13px;
+  }
+
+  .pr5 .nodeContent {
+    font-size: 12px;
+  }
+
+  .centerLogoWrap img {
+    max-width: 56px;
+    max-height: 64px;
+  }
+}
+
+/* 모바일: 세로 쌓기, 카드형 */
+@media all and (max-width: 768px) {
+  .wrapper {
+    min-height: 0;
+    padding-bottom: 0;
+  }
+
+  .node {
+    position: relative;
+    left: 50% !important;
+    top: auto !important;
+    width: 100%;
+    max-width: 340px;
+    height: auto;
+    min-height: 0;
+    margin-left: auto;
+    margin-right: auto;
+    margin-bottom: 16px;
+    padding: 20px 24px;
+    border-radius: 16px;
+    transform: translateX(-50%);
+  }
+
+  .node:last-of-type {
+    margin-bottom: 0;
+  }
+
+  .nodeTitle {
+    font-size: 17px;
+    margin-bottom: 8px;
+  }
+
+  .nodeContent {
+    font-size: 14px;
+  }
+
+  .pr5 .nodeContent {
+    font-size: 13px;
+  }
+
+  .center {
+    padding: 28px;
+  }
+
+  .centerLogoWrap img {
+    max-width: 52px;
+  }
+}
