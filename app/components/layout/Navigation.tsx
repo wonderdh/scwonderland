@@ -4,7 +4,11 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { getDefaultMenuItemHref, getMenuItemHref } from "@/lib/menu-routes";
+import {
+  getDefaultMenuItemHref,
+  getMenuIdFromPathname,
+  getMenuItemHref,
+} from "@/lib/menu-routes";
 
 const menuItems = [
   { id: "about", label: "About Wonderland" },
@@ -25,8 +29,8 @@ const megaMenuItems: Record<string, string[]> = {
 export function Navigation() {
   const pathname = usePathname();
   const isHome = pathname === "/";
+  const activeMenuId = getMenuIdFromPathname(pathname) ?? "about";
   const [isOpen, setIsOpen] = useState(false);
-  const [activeId, setActiveId] = useState("about");
   const [hoveredId, setHoveredId] = useState<string | null>(null);
 
   const scrollToSection = (id: string) => {
@@ -34,12 +38,11 @@ export function Navigation() {
     if (element) {
       element.scrollIntoView({ behavior: "smooth", block: "start" });
     }
-    setActiveId(id);
     setIsOpen(false);
   };
 
   const getButtonClass = (id: string) => {
-    const isActive = activeId === id;
+    const isActive = activeMenuId === id;
     const isHovered = hoveredId === id;
     const showActive = !hoveredId;
 

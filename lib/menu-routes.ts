@@ -83,3 +83,15 @@ export function getCategoryItemLabels(menuId: string): string[] {
   if (!slugs) return [];
   return Object.keys(slugs);
 }
+
+/**
+ * 현재 pathname에 해당하는 메뉴 ID 반환 (네비게이션 하이라이트용)
+ * e.g. "/program/map" → "programs", "/" → "about"
+ */
+export function getMenuIdFromPathname(pathname: string): string | null {
+  if (pathname === "/") return "about";
+  const segment = pathname.split("/")[1];
+  if (!segment) return null;
+  const entry = Object.entries(menuIdToPath).find(([, path]) => path === segment);
+  return entry ? entry[0] : null;
+}
