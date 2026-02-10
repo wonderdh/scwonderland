@@ -1,0 +1,243 @@
+/* Quest Academy 페이지 - commonui.css / reset.css 참고 */
+
+.contents.type4 {
+  padding: 90px 0 0;
+}
+
+.program {
+  word-break: keep-all;
+}
+
+.program .layout {
+  position: relative;
+  margin: 0 auto;
+  max-width: 1280px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.program .txtBox span {
+  display: block;
+  font-size: 20px;
+  margin-bottom: 10px;
+}
+
+.program .txtBox h3 {
+  font-size: 46px;
+  font-weight: 800;
+  color: #202020;
+}
+
+.program .txtBox p {
+  margin-top: 50px;
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 1.7;
+  color: #202020;
+}
+
+.program .imgBox img {
+  display: block;
+  width: 100%;
+}
+
+.gyBox {
+  background: #f8f8fb;
+  margin-top: 50px;
+  margin-bottom: 0;
+  padding: 50px 0;
+}
+
+.gyBox .layout {
+  display: block;
+}
+
+.program h2 {
+  font-size: 30px;
+  margin-bottom: 30px;
+}
+
+.levelobx div {
+  margin-bottom: 30px;
+}
+
+.levelobx div div {
+  background: #fff;
+  display: inline-block;
+  width: 300px;
+  margin-right: 20px;
+  padding: 30px;
+  border-radius: 10px;
+  box-shadow: 0 3px 6px 0 rgba(0, 0, 0, 0.16);
+}
+
+.levelobx div div:last-child {
+  margin-right: 0;
+}
+
+.levelobx span {
+  display: block;
+  font-size: 21px;
+  font-weight: 600;
+  border-bottom: 1px solid #cccccc;
+  padding-bottom: 20px;
+  margin: 20px 0 20px;
+}
+
+.levelobx div div em {
+  display: block;
+  font-size: 16px;
+  font-weight: bold;
+  color: #aaa;
+  margin-bottom: 5px;
+}
+
+.levelobx div div strong {
+  display: block;
+  font-size: 26px;
+  color: #202020;
+  margin-bottom: 35px;
+}
+
+.levelobx ul li {
+  font-size: 17px;
+  line-height: 1.76;
+  padding-left: 15px;
+  position: relative;
+  font-weight: 600;
+}
+
+.levelobx ul li::before {
+  content: "-";
+  display: inline-block;
+  left: 0;
+  position: absolute;
+}
+
+.levelobx ul li b {
+  font-weight: 600;
+}
+
+.levelobx .no1obx span {
+  color: #f70;
+}
+
+.levelobx .no1obx ul li b {
+  color: #f70;
+}
+
+.levelobx .no2obx span {
+  color: #059467;
+}
+
+.levelobx .no2obx ul li b {
+  color: #059467;
+}
+
+.levelobx .no3obx span {
+  color: #3a75ff;
+}
+
+.levelobx .no3obx ul li b {
+  color: #3a75ff;
+}
+
+.levelobx .no4obx span {
+  color: #8c40b4;
+}
+
+.levelobx .no4obx ul li b {
+  color: #8c40b4;
+}
+
+/* tablet */
+@media (max-width: 1280px) {
+  .contents.type4 {
+    padding: 50px 0 0;
+  }
+
+  .program .layout {
+    display: block;
+    padding: 0 20px;
+  }
+
+  .program .txtBox {
+    margin-bottom: 40px;
+  }
+
+  .program .txtBox span {
+    font-size: 16px;
+    margin-bottom: 5px;
+  }
+
+  .program .txtBox h3 {
+    font-size: 30px;
+  }
+
+  .program .txtBox p {
+    font-size: 17px;
+    margin-top: 15px;
+  }
+
+  .program .txtBox p br {
+    display: none;
+  }
+
+  .program .imgBox {
+    width: 65%;
+    margin: auto;
+  }
+
+  .program h2 {
+    font-size: 21px;
+  }
+
+  .levelobx span {
+    font-size: 20px;
+  }
+
+  .levelobx div div em {
+    font-size: 15px;
+  }
+
+  .levelobx div div strong {
+    font-size: 19px;
+    margin-bottom: 20px;
+  }
+
+  .levelobx ul li {
+    font-size: 16px;
+  }
+}
+
+/* mobile */
+@media (max-width: 768px) {
+  .program .imgBox {
+    width: 100%;
+    max-width: 100%;
+    padding-bottom: 30px;
+  }
+
+  .levelobx div div {
+    width: 100%;
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+
+  .levelobx div div em {
+    font-size: 15px;
+  }
+
+  .levelobx div div strong {
+    font-size: 19px;
+    margin-bottom: 20px;
+  }
+
+  .levelobx ul li {
+    font-size: 16px;
+  }
+
+  .levelobx span {
+    font-size: 20px;
+  }
+}

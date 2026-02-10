@@ -81,7 +81,7 @@ export default function PrimoSchoolPage() {
                     <span>2. 중등 프로그램</span>
                     <div>
                       <em>Level</em>
-                      <strong>Ecilpse</strong>
+                      <strong>Eclipse</strong>
                       <ul>
                         <li>
                           미국교과과정 : <b>2.3 ~ 3.0</b>
