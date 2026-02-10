@@ -1,8 +1,21 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 
 const quickLinks = [
+  {
+    title: "학원 전용",
+    description: "로그인 · 숙제 · 리포트",
+    accentColor: "border-l-emerald-600 hover:bg-emerald-50",
+    icon: (
+      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+      </svg>
+    ),
+    href: "/academy/dashboard",
+    internal: true,
+  },
   {
     title: "리포트 카드",
     description: "학습 성과 확인",
@@ -13,6 +26,7 @@ const quickLinks = [
       </svg>
     ),
     href: "https://wonderland-reportcard.web.app",
+    internal: false,
   },
   {
     title: "레벨테스트",
@@ -24,6 +38,7 @@ const quickLinks = [
       </svg>
     ),
     href: "http://qawonderland.com/leveltest/",
+    internal: false,
   },
 ];
 
@@ -34,18 +49,13 @@ function QuickLinkCard({
   item: (typeof quickLinks)[0];
   onClick?: () => void;
 }) {
-  return (
-    <a
-      href={item.href}
-      target="_blank"
-      rel="noopener noreferrer"
-      onClick={onClick}
-      className={`
-        group flex w-48 min-w-0 items-center gap-3 rounded-r-xl border-l-4 border-solid
-        bg-white px-4 py-3.5 text-left shadow-sm ring-1 ring-gray-200/80
-        transition-all duration-200 ${item.accentColor}
-      `}
-    >
+  const cardClass = `
+    group flex w-48 min-w-0 items-center gap-3 rounded-r-xl border-l-4 border-solid
+    bg-white px-4 py-3.5 text-left shadow-sm ring-1 ring-gray-200/80
+    transition-all duration-200 ${item.accentColor}
+  `;
+  const content = (
+    <>
       <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gray-100 text-gray-600 transition-colors group-hover:bg-gray-200">
         {item.icon}
       </span>
@@ -66,6 +76,26 @@ function QuickLinkCard({
       >
         <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
       </svg>
+    </>
+  );
+
+  if (item.internal) {
+    return (
+      <Link href={item.href} onClick={onClick} className={cardClass}>
+        {content}
+      </Link>
+    );
+  }
+
+  return (
+    <a
+      href={item.href}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={onClick}
+      className={cardClass}
+    >
+      {content}
     </a>
   );
 }
