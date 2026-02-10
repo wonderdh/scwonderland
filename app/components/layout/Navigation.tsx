@@ -48,7 +48,7 @@ export function Navigation() {
 
     return [
     [
-      "relative pb-1 text-base font-semibold transition",
+      "relative pb-1 text-lg font-semibold transition",
       "hover:-translate-y-0.5 hover:text-orange-600",
       "after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-full",
       "after:origin-left after:scale-x-0 after:bg-orange-500 after:transition",
@@ -61,66 +61,73 @@ export function Navigation() {
 
   const panelVisible = hoveredId !== null;
 
+  /* 로고(140px) + 5등분 타이틀 + 햄버거(44px) - nav와 드롭다운 열 정확히 일치 */
+  const navGridCols =
+    "md:grid-cols-[140px_1fr_1fr_1fr_1fr_1fr_2.75rem]";
+  const dropdownGridClass = "grid grid-cols-[140px_1fr_1fr_1fr_1fr_1fr_2.75rem]";
+
   return (
     <nav
       className="fixed left-0 right-0 top-0 z-50 border-b border-black/5 bg-white"
       onMouseLeave={() => setHoveredId(null)}
     >
-      <div className="mx-auto flex h-20 w-full max-w-6xl items-center justify-between px-6">
-        <div className="flex items-center gap-3">
-          <Link href="/">
-            <Image
-              src="/sc-wonderland-logo.png"
-              alt="SC Wonderland logo"
-              width={140}
-              height={64}
-              priority
-            />
-          </Link>
-        </div>
-        <div className="hidden items-center gap-12 md:flex">
-          {menuItems.map((item) => {
-            const defaultHref = getDefaultMenuItemHref(item.id);
-            const isAbout = item.id === "about";
-            if (isAbout && isHome) {
-              return (
-                <button
-                  key={item.id}
-                  className={getButtonClass(item.id)}
-                  onClick={() => scrollToSection(item.id)}
-                  onMouseEnter={() => setHoveredId(item.id)}
-                  type="button"
-                >
-                  {item.label}
-                </button>
-              );
-            }
-            if (isAbout) {
-              return (
-                <Link
-                  key={item.id}
-                  href="/"
-                  className={getButtonClass(item.id)}
-                  onMouseEnter={() => setHoveredId(item.id)}
-                >
-                  {item.label}
-                </Link>
-              );
-            }
+      <div className={`relative mx-auto flex h-24 w-full max-w-6xl items-center justify-between px-6 md:grid md:justify-items-center md:gap-0 ${navGridCols}`}>
+        <Link
+          href="/"
+          className="flex shrink-0 items-center md:justify-self-start"
+        >
+          <Image
+            src="/sc-wonderland-logo.png"
+            alt="SC Wonderland logo"
+            width={140}
+            height={64}
+            priority
+          />
+        </Link>
+
+        {menuItems.map((item) => {
+          const defaultHref = getDefaultMenuItemHref(item.id);
+          const isAbout = item.id === "about";
+          const linkClass = `hidden md:flex justify-center w-full ${getButtonClass(item.id)}`;
+          if (isAbout && isHome) {
+            return (
+              <button
+                key={item.id}
+                className={linkClass}
+                onClick={() => scrollToSection(item.id)}
+                onMouseEnter={() => setHoveredId(item.id)}
+                type="button"
+              >
+                {item.label}
+              </button>
+            );
+          }
+          if (isAbout) {
             return (
               <Link
                 key={item.id}
-                href={defaultHref ?? "/"}
-                className={getButtonClass(item.id)}
+                href="/"
+                className={linkClass}
                 onMouseEnter={() => setHoveredId(item.id)}
               >
                 {item.label}
               </Link>
             );
-          })}
-        </div>
+          }
+          return (
+            <Link
+              key={item.id}
+              href={defaultHref ?? "/"}
+              className={linkClass}
+              onMouseEnter={() => setHoveredId(item.id)}
+            >
+              {item.label}
+            </Link>
+          );
+        })}
+
         <button
-          className="flex h-11 w-11 items-center justify-center rounded-full bg-orange-500 text-white md:hidden"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-orange-500 text-white md:justify-self-end"
           aria-expanded={isOpen}
           aria-label="메뉴 열기"
           type="button"
@@ -144,12 +151,18 @@ export function Navigation() {
         ].join(" ")}
         onMouseEnter={() => setHoveredId((prev) => prev ?? "about")}
       >
-        <div className="mx-auto flex w-full max-w-6xl justify-between gap-10 px-6 py-10 text-sm">
+        <div
+          className={`mx-auto max-w-6xl px-6 py-10 text-base ${dropdownGridClass}`}
+        >
+          <div className="w-[140px] shrink-0" aria-hidden />
           {menuItems.map((menu) => {
             const items = megaMenuItems[menu.id] ?? [];
             return (
-              <div key={menu.id} className="min-w-[140px] space-y-3">
-                <ul className="space-y-2 text-white/85">
+              <div
+                key={menu.id}
+                className="flex min-w-0 flex-col items-center justify-start"
+              >
+                <ul className="w-full space-y-2 text-center text-white/85">
                   {items.length === 0 ? (
                     <li className="px-2 py-1 text-white/50">준비중</li>
                   ) : (
@@ -157,9 +170,8 @@ export function Navigation() {
                       <li key={item}>
                         <Link
                           href={getMenuItemHref(menu.id, item)}
-                          className="flex w-full items-center gap-2 rounded px-2 py-1 text-left text-white/80 transition hover:bg-white/10 hover:text-white"
+                          className="flex w-full justify-center rounded px-2 py-1 text-center text-white/80 transition hover:bg-white/10 hover:text-white"
                         >
-                          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-orange-400/80" />
                           {item}
                         </Link>
                       </li>
@@ -169,6 +181,7 @@ export function Navigation() {
               </div>
             );
           })}
+          <div className="w-11 shrink-0" aria-hidden />
         </div>
       </div>
 
