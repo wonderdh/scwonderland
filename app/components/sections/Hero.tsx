@@ -25,7 +25,7 @@ function ArrowRightIcon() {
 export function Hero() {
 
   return (
-    <section id="about" className="scroll-mt-24 bg-gray-50 pt-20">
+    <section id="about" className="scroll-mt-24 bg-gray-50 pt-24">
       <div className="container mx-auto px-4 py-20">
         <div className="mx-auto mb-16 max-w-4xl text-center">
           <p className="mb-4 text-sm text-gray-500">Since 1992</p>

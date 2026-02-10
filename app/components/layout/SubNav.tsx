@@ -29,11 +29,11 @@ export function SubNav({
         aria-hidden
       />
       <div className="container relative mx-auto px-4 py-8">
-        <h1 className="mb-6 text-center text-3xl font-bold text-gray-900 md:text-4xl">
+        <h1 className="mb-8 text-center text-4xl font-bold text-gray-900 md:text-5xl">
           {categoryTitle}
         </h1>
         <nav
-          className="flex flex-wrap items-center justify-center gap-6 md:gap-10"
+          className="flex flex-wrap items-center justify-center gap-8 md:gap-14"
           aria-label="하위 메뉴"
         >
           {items.map((label) => {
@@ -44,7 +44,7 @@ export function SubNav({
               <Link
                 key={label}
                 href={href}
-                className={`relative pb-2 text-base font-medium transition ${
+                className={`relative pb-2 text-lg font-medium transition ${
                   isActive
                     ? "text-green-600"
                     : "text-gray-600 hover:text-gray-900"

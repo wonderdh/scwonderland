@@ -3,5 +3,9 @@ type CategoryPageWrapperProps = {
 };
 
 export function CategoryPageWrapper({ children }: CategoryPageWrapperProps) {
-  return <main className="min-h-screen bg-white">{children}</main>;
+  return (
+    <main className="min-h-screen bg-white pt-24">
+      {children}
+    </main>
+  );
 }
