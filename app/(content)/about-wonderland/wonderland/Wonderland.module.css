@@ -1,0 +1,299 @@
+/* About Wonderland - Wonderland 페이지, commonui.css 참고 */
+
+.wonderland {
+  margin-top: -60px;
+  word-break: keep-all;
+}
+
+/* .top */
+.top {
+  background: #f5f6f8;
+  padding: 90px 0;
+}
+
+.top .layout {
+  position: relative;
+  margin: 0 auto;
+  max-width: 1280px;
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.top .titleGroup {
+  text-align: center;
+}
+
+.top .titleGroup p {
+  font-size: 22px;
+  font-weight: normal;
+  color: #202020;
+}
+
+.top .titleGroup h1 {
+  margin-top: 10px;
+  font-size: 50px;
+  font-weight: 800;
+  line-height: 1.4;
+  color: #202020;
+}
+
+.top .txtBox {
+  position: relative;
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 1.7;
+  color: #202020;
+  padding-bottom: 26px;
+}
+
+.top .txtBox::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  display: inline-block;
+  width: 50px;
+  height: 6px;
+  background: #52b978;
+}
+
+.colorGreen {
+  color: #52b978 !important;
+}
+
+.colorOrange {
+  color: #f87100 !important;
+}
+
+.colorBlue {
+  color: #3a75ff !important;
+}
+
+/* .list */
+.list {
+  padding: 100px 0;
+}
+
+.list .layout {
+  position: relative;
+  margin: 0 auto;
+  max-width: 1280px;
+  padding: 0 20px;
+}
+
+.list .box {
+  display: flex;
+  justify-content: space-between;
+}
+
+.list .box .txtBox em {
+  display: inline-block;
+  font-size: 25px;
+  font-weight: 800;
+  color: #ccc;
+}
+
+.list .box .txtBox h3 {
+  margin-top: 20px;
+  font-size: 32px;
+  font-weight: bold;
+  line-height: 1.56;
+  color: #202020;
+}
+
+.list .box .txtBox p {
+  margin-top: 60px;
+  font-size: 18px;
+  font-weight: normal;
+  line-height: 1.67;
+  color: #202020;
+}
+
+.list .box .imgBox img {
+  display: block;
+  width: 100%;
+}
+
+.list .box:nth-child(2),
+.list .box:nth-child(3) {
+  align-items: center;
+}
+
+.list .box:nth-child(3) {
+  margin-top: 50px;
+}
+
+/* .banner */
+.banner {
+  position: relative;
+  height: 400px;
+  background: #1f8963 url(/images/about-wonderland/wonderland/wonderland_bnr.png) top center no-repeat;
+  background-size: cover;
+}
+
+.banner .txtBox {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  text-align: center;
+  width: 100%;
+}
+
+.banner .txtBox h3 {
+  font-size: 40px;
+  font-weight: 800;
+  text-align: center;
+  color: #fff;
+}
+
+.banner .txtBox h3 span {
+  color: #67de93;
+}
+
+.banner .txtBox p {
+  margin-top: 30px;
+  font-size: 24px;
+  font-weight: 300;
+  line-height: 1.46;
+  color: #fff;
+}
+
+/* .txt */
+.txt {
+  margin-top: 129px;
+  margin-bottom: 0;
+  padding-bottom: 80px;
+  text-align: center;
+}
+
+.txt h3 {
+  font-size: 30px;
+  font-weight: 800;
+  color: #202020;
+}
+
+.txt h2 {
+  margin-top: 20px;
+  font-size: 40px;
+  font-weight: 600;
+  line-height: 1.5;
+  color: #202020;
+}
+
+.txt h2 strong {
+  font-weight: 800;
+}
+
+/* tablet */
+@media (max-width: 1280px) {
+  .wonderland {
+    margin-top: -50px;
+  }
+
+  .top {
+    padding: 50px 0;
+  }
+
+  .top .layout {
+    display: block;
+  }
+
+  .top .titleGroup p {
+    font-size: 16px;
+  }
+
+  .top .titleGroup h1 {
+    font-size: 34px;
+  }
+
+  .top .txtBox {
+    font-size: 17px;
+    text-align: center;
+    padding: 20px 20px 0;
+  }
+
+  .top .txtBox br {
+    display: none;
+  }
+
+  .top .txtBox::after {
+    position: relative;
+    left: 0;
+    bottom: 0;
+    display: block;
+    width: 50px;
+    height: 6px;
+    background: #52b978;
+    margin: 0 auto;
+    margin-top: 20px;
+  }
+
+  .list {
+    padding: 60px 0;
+  }
+
+  .list .box {
+    display: block;
+    padding: 0 20px;
+  }
+
+  .list .box .txtBox em {
+    font-size: 18px;
+  }
+
+  .list .box .txtBox h3 {
+    font-size: 22px;
+    line-height: 1.4;
+    margin-top: 3px;
+  }
+
+  .list .box .txtBox p {
+    margin-top: 35px;
+    margin-bottom: 35px;
+    font-size: 16px;
+  }
+
+  .list .box .imgBox {
+    width: 70%;
+    margin: 0 auto;
+  }
+
+  .list .box:nth-child(2) {
+    margin-top: 30px;
+    display: flex;
+    flex-direction: column-reverse;
+  }
+
+  .banner {
+    height: 260px;
+  }
+
+  .banner .txtBox {
+    padding: 0 30px;
+  }
+
+  .banner .txtBox h3 {
+    font-size: 26px;
+  }
+
+  .banner .txtBox p {
+    font-size: 17px;
+  }
+
+  .txt {
+    margin-top: 100px;
+    padding-bottom: 60px;
+  }
+
+  .txt h3 {
+    font-size: 20px;
+  }
+
+  .txt h2 {
+    margin-top: 15px;
+    font-size: 26px;
+  }
+}
