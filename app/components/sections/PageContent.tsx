@@ -1,5 +1,3 @@
-import Link from "next/link";
-
 type PageContentProps = {
   title: string;
   children: React.ReactNode;
@@ -15,14 +13,6 @@ export function PageContent({ title, children }: PageContentProps) {
           </h1>
           <div className="prose prose-lg max-w-none text-gray-600">
             {children}
-          </div>
-          <div className="mt-12">
-            <Link
-              href="/"
-              className="inline-flex items-center gap-2 rounded bg-gray-900 px-6 py-3 text-white transition hover:bg-gray-800"
-            >
-              ← 왜 원드랜드 일까요?
-            </Link>
           </div>
         </div>
       </div>

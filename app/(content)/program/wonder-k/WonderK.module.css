@@ -1,0 +1,212 @@
+/* Wonder K 페이지 - commonui.css / reset.css 참고 */
+
+/* #pages .contents.type4 */
+.contents.type4 {
+  padding: 90px 0 0;
+}
+
+/* .program */
+.program {
+  word-break: keep-all;
+}
+
+.wonderlandk {
+}
+
+.program .layout {
+  display: flex;
+  justify-content: space-between;
+}
+
+.program .txtBox span {
+  display: block;
+  font-size: 20px;
+  margin-bottom: 10px;
+}
+
+.program .txtBox h3 {
+  font-size: 46px;
+  font-weight: 800;
+  color: #202020;
+}
+
+.program .txtBox p {
+  margin-top: 50px;
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 1.7;
+  color: #202020;
+}
+
+.program .imgBox {
+}
+
+.program .imgBox img {
+  display: block;
+  width: 100%;
+}
+
+/* .program .gy-box */
+.gyBox {
+  background: #f8f8fb;
+  margin-top: 50px;
+  margin-bottom: 0;
+  padding: 50px 0;
+}
+
+.gyBox .layout {
+  display: block;
+}
+
+/* .program .yrdbox .ykrd */
+.yrdbox span {
+  display: block;
+  font-size: 21px;
+  font-weight: 600;
+  border-bottom: 1px solid #cccccc;
+  padding-bottom: 20px;
+  margin: 20px 0 15px;
+}
+
+.yrdbox ul {
+  margin-bottom: 50px;
+}
+
+.yrdbox ul li {
+  font-size: 17px;
+  line-height: 1.76;
+  padding-left: 15px;
+  position: relative;
+  font-weight: 500;
+}
+
+.yrdbox ul li::before {
+  content: "-";
+  display: inline-block;
+  left: 0;
+  position: absolute;
+}
+
+.yrdbox .ykrd span {
+  color: #001976;
+}
+
+.yrdbox .ykrd div {
+  display: flex;
+  margin-bottom: 30px;
+}
+
+.yrdbox .ykrd div p {
+  font-size: 17px;
+  background: #fff;
+  padding: 20px;
+  border-radius: 10px;
+  border: 1px solid #e6e6eb;
+  line-height: 30px;
+}
+
+.yrdbox .ykrd div p:first-child {
+  margin-right: 2%;
+}
+
+.yrdbox .ykrd div p em {
+  color: #3f51b5;
+  padding-left: 10px;
+  font-weight: 500;
+}
+
+.yrdbox .ykrd div p strong {
+  display: block;
+}
+
+/* layout 공통 - .layout은 program 내에서 max-width 등 */
+.program .layout {
+  position: relative;
+  margin: 0 auto;
+  max-width: 1280px;
+}
+
+/* tablet - commonui @media (max-width: 1280px) */
+@media (max-width: 1280px) {
+  .contents.type4 {
+    padding: 50px 0 0;
+  }
+
+  .program .layout {
+    display: block;
+    padding: 0 20px;
+  }
+
+  .program .txtBox {
+    margin-bottom: 40px;
+  }
+
+  .program .txtBox span {
+    font-size: 16px;
+    margin-bottom: 5px;
+  }
+
+  .program .txtBox h3 {
+    font-size: 30px;
+  }
+
+  .program .txtBox p {
+    font-size: 17px;
+    margin-top: 15px;
+  }
+
+  .program .txtBox p br {
+    display: none;
+  }
+
+  .program .imgBox {
+    width: 65%;
+    margin: auto;
+  }
+
+  .program .yrdbox span {
+    font-size: 18px;
+  }
+
+  .program .yrdbox ul li {
+    font-size: 16px;
+    font-weight: 500;
+  }
+
+  .yrdbox .ykrd div {
+    display: block;
+    margin-bottom: 20px;
+  }
+
+  .yrdbox .ykrd div p {
+    font-size: 16px;
+  }
+
+  .yrdbox .ykrd div p:first-child {
+    margin-right: 0;
+    margin-bottom: 10px;
+  }
+}
+
+/* mobile - commonui @media (max-width: 768px) */
+@media (max-width: 768px) {
+  .program .imgBox {
+    width: 100%;
+    max-width: 100%;
+    padding-bottom: 30px;
+  }
+
+  .yrdbox .ykrd div {
+    display: block;
+    margin-bottom: 20px;
+  }
+
+  .yrdbox .ykrd div p {
+    font-size: 16px;
+  }
+
+  .yrdbox .ykrd div p:first-child {
+    margin-right: 0;
+    margin-bottom: 10px;
+  }
+}
