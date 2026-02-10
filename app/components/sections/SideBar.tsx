@@ -1,38 +1,75 @@
+"use client";
+
 const quickLinks = [
   {
     title: "리포트 카드",
     description: "학습 성과 확인",
-    color: "bg-red-500",
+    accentColor: "border-l-[#e73357] hover:bg-red-50",
+    icon: (
+      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+      </svg>
+    ),
     href: "https://wonderland-reportcard.web.app",
   },
   {
     title: "레벨테스트",
     description: "실력 평가",
-    color: "bg-blue-500",
+    accentColor: "border-l-[#3a75ff] hover:bg-blue-50",
+    icon: (
+      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+      </svg>
+    ),
     href: "http://qawonderland.com/leveltest/",
   },
 ];
 
 export function SideBar() {
   return (
-    <aside className="fixed right-8 top-1/2 z-40 hidden -translate-y-1/2 space-y-4 lg:block">
-      {quickLinks.map((item) => (
-        <a
-          key={item.title}
-          className={`group block w-48 rounded-lg p-6 text-white shadow-lg transition-all duration-300 hover:shadow-xl ${item.color}`}
-          href={item.href}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <div className="flex flex-col items-center text-center">
-            <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-white/20 text-sm font-semibold">
-              {item.title.slice(0, 1)}
+    <aside
+      className="fixed right-6 top-1/2 z-40 hidden -translate-y-1/2 lg:block"
+      aria-label="바로가기"
+    >
+      <div className="flex flex-col gap-3">
+        <span className="mb-1 px-3 text-xs font-semibold uppercase tracking-wider text-gray-400">
+          바로가기
+        </span>
+        {quickLinks.map((item) => (
+          <a
+            key={item.title}
+            href={item.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`
+              group flex w-48 min-w-0 items-center gap-3 rounded-r-xl border-l-4 border-solid
+              bg-white px-4 py-3.5 text-left shadow-sm ring-1 ring-gray-200/80
+              transition-all duration-200 ${item.accentColor}
+            `}
+          >
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gray-100 text-gray-600 transition-colors group-hover:bg-gray-200">
+              {item.icon}
+            </span>
+            <div className="min-w-0 flex-1">
+              <span className="block break-keep text-sm font-semibold leading-snug text-gray-900">
+                {item.title}
+              </span>
+              <span className="block break-keep text-xs leading-snug text-gray-500">
+                {item.description}
+              </span>
             </div>
-            <h3 className="mb-1 text-lg font-bold">{item.title}</h3>
-            <p className="text-sm opacity-90">{item.description}</p>
-          </div>
-        </a>
-      ))}
+            <svg
+              className="h-4 w-4 shrink-0 text-gray-400 transition-transform group-hover:translate-x-0.5 group-hover:text-gray-600"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+          </a>
+        ))}
+      </div>
     </aside>
   );
 }

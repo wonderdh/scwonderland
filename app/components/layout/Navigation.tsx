@@ -61,10 +61,10 @@ export function Navigation() {
 
   const panelVisible = hoveredId !== null;
 
-  /* 로고(140px) + 5등분 타이틀 + 햄버거(44px) - nav와 드롭다운 열 정확히 일치 */
+  /* 데스크톱: 로고(140px) + 5등분 타이틀. 모바일: 로고 + 햄버거만 */
   const navGridCols =
-    "md:grid-cols-[140px_1fr_1fr_1fr_1fr_1fr_2.75rem]";
-  const dropdownGridClass = "grid grid-cols-[140px_1fr_1fr_1fr_1fr_1fr_2.75rem]";
+    "md:grid-cols-[140px_1fr_1fr_1fr_1fr_1fr]";
+  const dropdownGridClass = "grid grid-cols-[140px_1fr_1fr_1fr_1fr_1fr]";
 
   return (
     <nav
@@ -127,7 +127,7 @@ export function Navigation() {
         })}
 
         <button
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-orange-500 text-white md:justify-self-end"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-orange-500 text-white md:hidden"
           aria-expanded={isOpen}
           aria-label="메뉴 열기"
           type="button"
@@ -181,7 +181,6 @@ export function Navigation() {
               </div>
             );
           })}
-          <div className="w-11 shrink-0" aria-hidden />
         </div>
       </div>
 
