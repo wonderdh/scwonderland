@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 const quickLinks = [
   {
     title: "리포트 카드",
@@ -25,51 +27,110 @@ const quickLinks = [
   },
 ];
 
-export function SideBar() {
+function QuickLinkCard({
+  item,
+  onClick,
+}: {
+  item: (typeof quickLinks)[0];
+  onClick?: () => void;
+}) {
   return (
-    <aside
-      className="fixed right-6 top-1/2 z-40 hidden -translate-y-1/2 lg:block"
-      aria-label="바로가기"
+    <a
+      href={item.href}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={onClick}
+      className={`
+        group flex w-48 min-w-0 items-center gap-3 rounded-r-xl border-l-4 border-solid
+        bg-white px-4 py-3.5 text-left shadow-sm ring-1 ring-gray-200/80
+        transition-all duration-200 ${item.accentColor}
+      `}
     >
-      <div className="flex flex-col gap-3">
-        <span className="mb-1 px-3 text-xs font-semibold uppercase tracking-wider text-gray-400">
-          바로가기
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gray-100 text-gray-600 transition-colors group-hover:bg-gray-200">
+        {item.icon}
+      </span>
+      <div className="min-w-0 flex-1">
+        <span className="block break-keep text-sm font-semibold leading-snug text-gray-900">
+          {item.title}
         </span>
-        {quickLinks.map((item) => (
-          <a
-            key={item.title}
-            href={item.href}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={`
-              group flex w-48 min-w-0 items-center gap-3 rounded-r-xl border-l-4 border-solid
-              bg-white px-4 py-3.5 text-left shadow-sm ring-1 ring-gray-200/80
-              transition-all duration-200 ${item.accentColor}
-            `}
-          >
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gray-100 text-gray-600 transition-colors group-hover:bg-gray-200">
-              {item.icon}
-            </span>
-            <div className="min-w-0 flex-1">
-              <span className="block break-keep text-sm font-semibold leading-snug text-gray-900">
-                {item.title}
-              </span>
-              <span className="block break-keep text-xs leading-snug text-gray-500">
-                {item.description}
-              </span>
-            </div>
-            <svg
-              className="h-4 w-4 shrink-0 text-gray-400 transition-transform group-hover:translate-x-0.5 group-hover:text-gray-600"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-            </svg>
-          </a>
-        ))}
+        <span className="block break-keep text-xs leading-snug text-gray-500">
+          {item.description}
+        </span>
       </div>
-    </aside>
+      <svg
+        className="h-4 w-4 shrink-0 text-gray-400 transition-transform group-hover:translate-x-0.5 group-hover:text-gray-600"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        strokeWidth={2}
+      >
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+      </svg>
+    </a>
+  );
+}
+
+export function SideBar() {
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  return (
+    <>
+      {/* PC: 기존 우측 고정 사이드바 */}
+      <aside
+        className="fixed right-6 top-1/2 z-40 hidden -translate-y-1/2 lg:block"
+        aria-label="바로가기"
+      >
+        <div className="flex flex-col gap-3">
+          <span className="mb-1 px-3 text-xs font-semibold uppercase tracking-wider text-gray-400">
+            바로가기
+          </span>
+          {quickLinks.map((item) => (
+            <QuickLinkCard key={item.title} item={item} />
+          ))}
+        </div>
+      </aside>
+
+      {/* 모바일: 플로팅 버튼 + 열면 퀵링크 패널 */}
+      <div className="fixed bottom-6 right-6 z-40 lg:hidden" aria-label="바로가기">
+        {mobileOpen && (
+          <>
+            <div
+              className="fixed inset-0 bg-black/20"
+              aria-hidden
+              onClick={() => setMobileOpen(false)}
+            />
+            <div className="absolute bottom-14 right-0 flex flex-col gap-2 rounded-xl bg-white p-3 shadow-lg ring-1 ring-gray-200/80">
+              <span className="mb-1 px-2 text-xs font-semibold uppercase tracking-wider text-gray-400">
+                바로가기
+              </span>
+              {quickLinks.map((item) => (
+                <QuickLinkCard
+                  key={item.title}
+                  item={item}
+                  onClick={() => setMobileOpen(false)}
+                />
+              ))}
+            </div>
+          </>
+        )}
+        <button
+          type="button"
+          onClick={() => setMobileOpen((prev) => !prev)}
+          className="flex h-14 w-14 items-center justify-center rounded-full bg-orange-500 text-white shadow-lg transition hover:bg-orange-600"
+          aria-expanded={mobileOpen}
+          aria-label={mobileOpen ? "바로가기 닫기" : "바로가기 열기"}
+        >
+          {mobileOpen ? (
+            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          ) : (
+            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+          )}
+        </button>
+      </div>
+    </>
   );
 }

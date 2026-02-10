@@ -18,6 +18,8 @@ const menuItems = [
   { id: "contact", label: "Experience" },
 ];
 
+const aboutGreetingHref = "/about-wonderland/greeting";
+
 const megaMenuItems: Record<string, string[]> = {
   about: ["인사말", "회사연혁", "대외기관 인증", "Wonderland"],
   programs: ["MAP", "Wonderland", "Wonder K", "Primo School", "Quest Academy"],
@@ -32,14 +34,6 @@ export function Navigation() {
   const activeMenuId = getMenuIdFromPathname(pathname) ?? "about";
   const [isOpen, setIsOpen] = useState(false);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
-
-  const scrollToSection = (id: string) => {
-    const element = document.getElementById(id);
-    if (element) {
-      element.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
-    setIsOpen(false);
-  };
 
   const getButtonClass = (id: string) => {
     const isActive = activeMenuId === id;
@@ -89,24 +83,11 @@ export function Navigation() {
           const defaultHref = getDefaultMenuItemHref(item.id);
           const isAbout = item.id === "about";
           const linkClass = `hidden md:flex justify-center w-full ${getButtonClass(item.id)}`;
-          if (isAbout && isHome) {
-            return (
-              <button
-                key={item.id}
-                className={linkClass}
-                onClick={() => scrollToSection(item.id)}
-                onMouseEnter={() => setHoveredId(item.id)}
-                type="button"
-              >
-                {item.label}
-              </button>
-            );
-          }
           if (isAbout) {
             return (
               <Link
                 key={item.id}
-                href="/"
+                href={aboutGreetingHref}
                 className={linkClass}
                 onMouseEnter={() => setHoveredId(item.id)}
               >
@@ -193,7 +174,7 @@ export function Navigation() {
                 return (
                   <Link
                     key={item.id}
-                    href="/"
+                    href={aboutGreetingHref}
                     className={getButtonClass(item.id)}
                     onClick={() => setIsOpen(false)}
                   >
