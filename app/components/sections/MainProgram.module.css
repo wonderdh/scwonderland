@@ -1,0 +1,249 @@
+/* 랜딩 하단 PROGRAM 섹션 - commonui.css 참고 */
+
+.mainProgram {
+  padding: 120px 0 65px;
+}
+
+.layout {
+  position: relative;
+  margin: 0 auto;
+  max-width: 1440px;
+  padding: 0 20px;
+}
+
+.mainHgroup {
+  position: relative;
+  font-size: 0;
+  display: flex;
+  align-items: flex-end;
+}
+
+.mainHgroup .mainTitle {
+  position: relative;
+  display: inline-block;
+  padding-left: 40px;
+  padding-right: 10px;
+  font-size: 60px;
+  font-weight: 800;
+  color: #222;
+  z-index: 1;
+}
+
+.mainHgroup .mainTitle::before {
+  content: "";
+  display: inline-block;
+  width: 110px;
+  height: 110px;
+  border-radius: 100%;
+  border: 3px dashed #e1e1e1;
+  position: absolute;
+  left: 0;
+  top: -36px;
+  z-index: -1;
+}
+
+.mainHgroup .mainTitle::after {
+  content: "";
+  position: absolute;
+  top: 13px;
+  right: 0;
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 100%;
+  background: #3a75ff;
+}
+
+.mainHgroup p {
+  display: inline-block;
+  margin-left: 17px;
+  font-size: 18px;
+  font-weight: normal;
+  color: #787878;
+  position: relative;
+  top: -17px;
+}
+
+.colorBlue {
+  color: #3a75ff !important;
+}
+
+.list {
+  display: flex;
+  margin-top: 60px;
+  gap: 23px;
+}
+
+.list > div {
+  position: relative;
+  flex: 1;
+  border-radius: 10px;
+  overflow: hidden;
+  padding-top: 26%;
+}
+
+.list .item01 {
+  background: #5781ec url(/images/main/program01.png) top center no-repeat;
+  background-size: cover;
+}
+
+.list .item02 {
+  background: #5781ec url(/images/main/program02.png) top center no-repeat;
+  background-size: cover;
+}
+
+.list .item03 {
+  background: #5781ec url(/images/main/program03.png) top center no-repeat;
+  background-size: cover;
+}
+
+.list .item04 {
+  background: #5781ec url(/images/main/program04.png) top center no-repeat;
+  background-size: cover;
+}
+
+.list .item05 {
+  background: #5781ec url(/images/main/program05.png) top center no-repeat;
+  background-size: cover;
+}
+
+.list > div a {
+  position: absolute;
+  bottom: -56%;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  text-align: center;
+  transition: all 0.3s;
+}
+
+.list > div .txtBox {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.list > div a .txtBox h3 {
+  color: #fff;
+  font-size: 25px;
+  font-weight: bold;
+}
+
+.list > div a .txtBox p {
+  margin-top: 30px;
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 1.39;
+  color: #fff;
+  word-break: keep-all;
+  padding: 0 25px;
+}
+
+.list > div a .txtBox span {
+  position: relative;
+  display: inline-block;
+  margin-top: 30px;
+  font-size: 20px;
+  font-weight: 500;
+  color: #fff;
+  padding-right: 20px;
+}
+
+.list > div a .txtBox span::after {
+  content: "";
+  position: absolute;
+  top: 8px;
+  right: 0;
+  display: inline-block;
+  width: 15px;
+  height: 13px;
+  background: url(/images/icon/link.svg) no-repeat;
+  background-size: cover;
+}
+
+.list > div:hover a {
+  bottom: 0;
+  background: #5781ec;
+}
+
+.list > div a {
+  text-decoration: none;
+}
+
+/* tablet */
+@media (max-width: 1280px) {
+  .mainProgram {
+    padding: 74px 0 45px;
+  }
+
+  .mainHgroup p br {
+    display: none;
+  }
+
+  .list > div .txtBox {
+    top: 35%;
+  }
+
+  .list > div a .txtBox p {
+    display: none;
+  }
+
+  .list > div a .txtBox span {
+    display: none;
+  }
+}
+
+/* mobile */
+@media (max-width: 768px) {
+  .mainHgroup {
+    display: block;
+    text-align: center;
+  }
+
+  .mainHgroup .mainTitle {
+    font-size: 48px;
+    text-align: center;
+    display: block;
+  }
+
+  .mainHgroup .mainTitle::before {
+    width: 80px;
+    height: 80px;
+    top: -20px;
+    box-sizing: border-box;
+    left: inherit;
+    margin-left: -40px;
+  }
+
+  .mainHgroup .mainTitle::after {
+    top: 10px;
+    right: inherit;
+  }
+
+  .mainHgroup p {
+    text-align: left;
+    font-size: 17px;
+    line-height: 1.47;
+    top: 0;
+    margin-left: 0;
+    margin-top: 5px;
+  }
+
+  .list {
+    flex-direction: column;
+    margin-top: 40px;
+    gap: 16px;
+  }
+
+  .list > div {
+    padding-top: 40%;
+    min-height: 200px;
+  }
+
+  .list > div a .txtBox p,
+  .list > div a .txtBox span {
+    display: block;
+  }
+}

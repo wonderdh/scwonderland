@@ -57,22 +57,22 @@ export function Hero() {
             <div className="grid gap-6 md:grid-cols-3">
               <div className="overflow-hidden rounded-lg">
                 <ImageWithFallback
-                  src="https://images.unsplash.com/photo-1574132190990-cfd62178bb1c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjaGlsZHJlbiUyMGxlYXJuaW5nJTIwY2xhc3Nyb29tfGVufDF8fHx8MTc2OTE0MTg0OXww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral"
-                  alt="즐거운 수업"
+                  src="/images/landing/hero_study_1.png"
+                  alt="영어 학원에서 즐거운 수업"
                   className="h-64 w-full object-cover"
                 />
               </div>
               <div className="overflow-hidden rounded-lg">
                 <ImageWithFallback
-                  src="https://images.unsplash.com/photo-1549737221-bef65e2604a6?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxraWRzJTIwcmVhZGluZyUyMGJvb2tzfGVufDF8fHx8MTc2OTAzMzUwN3ww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral"
-                  alt="집중하는 학습"
+                  src="/images/landing/hero_study_2.png"
+                  alt="집중해서 영어 책 읽는 아이"
                   className="h-64 w-full object-cover"
                 />
               </div>
               <div className="overflow-hidden rounded-lg">
                 <ImageWithFallback
-                  src="https://images.unsplash.com/photo-1574758324765-a29c77fb9c91?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxoYXBweSUyMGNoaWxkcmVuJTIwc3R1ZHlpbmd8ZW58MXx8fHwxNzY5MDkxMzEzfDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral"
-                  alt="행복한 아이들"
+                  src="/images/landing/hero_study_3.png"
+                  alt="영어 수업에 참여하며 웃는 아이들"
                   className="h-64 w-full object-cover"
                 />
               </div>
