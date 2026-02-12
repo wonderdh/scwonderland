@@ -28,6 +28,13 @@ export function UserRow({ user, variant, onUpdate, onDelete }: UserRowProps) {
     setEditing(false);
   }
 
+  async function handleDelete(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!confirm("정말 삭제할까요?")) return;
+    const formData = new FormData(e.currentTarget);
+    await onDelete(formData);
+  }
+
   const displayName =
     variant === "student"
       ? [user.korean_name, user.english_name].filter(Boolean).join(" / ") || user.first_name || "—"
@@ -113,13 +120,7 @@ export function UserRow({ user, variant, onUpdate, onDelete }: UserRowProps) {
             >
               수정
             </button>
-            <form
-              action={onDelete}
-              className="inline"
-              onSubmit={(e) => {
-                if (!confirm("정말 삭제할까요?")) e.preventDefault();
-              }}
-            >
+            <form className="inline" onSubmit={handleDelete}>
               <input type="hidden" name="id" value={user.id} />
               <button
                 type="submit"
