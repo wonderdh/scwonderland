@@ -37,6 +37,14 @@ NEXT_PUBLIC_SUPABASE_URL=https://xxxxx.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
 ```
 
+**Admin(/admin)에서 학생·선생 추가를 쓰려면** 서버 전용 키도 추가하세요 (절대 클라이언트에 노출 금지):
+
+```env
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key-here
+```
+
+- Supabase 대시보드 → Project Settings → API → **service_role** (secret) 복사.
+
 `npm run dev` 하면 이 값이 로드됩니다.
 
 ---

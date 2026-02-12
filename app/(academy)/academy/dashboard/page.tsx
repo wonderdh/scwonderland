@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { LogoutButton } from "../components/LogoutButton";
 
 export default async function AcademyDashboardPage() {
@@ -51,6 +52,10 @@ export default async function AcademyDashboardPage() {
     .select("role")
     .eq("id", user.id)
     .single();
+
+  if (profile?.role === "admin") {
+    redirect("/admin");
+  }
 
   const role = profile?.role ?? null;
   const roleLabel =
