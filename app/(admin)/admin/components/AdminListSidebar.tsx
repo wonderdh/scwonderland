@@ -50,6 +50,14 @@ export function AdminListSidebar({
             학생 추가
           </Link>
         )}
+        {variant === "teachers" && (
+          <Link
+            href="/admin/teachers?section=add"
+            className="shrink-0 px-2 py-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium rounded"
+          >
+            선생 추가
+          </Link>
+        )}
       </div>
       <div className="p-2 border-b border-slate-700/60">
         <input

@@ -28,6 +28,15 @@ export default function AdminDashboardPage() {
             선생 목록 · 추가 · 수정 · 삭제
           </p>
         </Link>
+        <Link
+          href="/admin/classes"
+          className="block p-5 bg-white rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-md transition"
+        >
+          <span className="text-lg font-medium text-slate-800">반 관리</span>
+          <p className="mt-1 text-sm text-slate-500">
+            반 생성 · 담당 선생 지정 · 소속 학생 관리
+          </p>
+        </Link>
       </div>
     </div>
   );

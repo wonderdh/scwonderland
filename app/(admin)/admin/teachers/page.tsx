@@ -6,33 +6,32 @@ import {
 import { AddTeacherForm } from "../components/AddTeacherForm";
 import { AdminListSidebar } from "../components/AdminListSidebar";
 import { ScrollToSection } from "../components/ScrollToSection";
-import { TeacherDetailCard } from "../components/TeacherDetailCard";
+import { TeacherInfoCard } from "../components/TeacherInfoCard";
+import { TeacherTabNav, type TeacherTabId } from "../components/TeacherTabNav";
 import { UserList } from "../components/UserList";
-import Link from "next/link";
+import { TeacherClassesTab } from "./components/TeacherClassesTab";
+
+const VALID_TABS: TeacherTabId[] = ["info", "classes"];
+
+function parseTab(tab: string | undefined): TeacherTabId {
+  if (tab && VALID_TABS.includes(tab as TeacherTabId)) return tab as TeacherTabId;
+  return "info";
+}
 
 export default async function AdminTeachersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ section?: string; selected?: string }>;
+  searchParams: Promise<{ section?: string; selected?: string; tab?: string }>;
 }) {
   const users = await listUsersByRole("teacher");
-  const { section, selected } = await searchParams;
+  const { section, selected, tab } = await searchParams;
   const selectedUser = selected ? users.find((u) => u.id === selected) : null;
+  const currentTab = parseTab(tab);
 
   return (
     <div className="flex flex-1 min-w-0 -m-6 md:-m-8">
       <AdminListSidebar users={users} variant="teachers" />
-      <div className="flex-1 min-w-0 p-6 md:p-8">
-        <div className="flex items-center justify-between gap-4 mb-6">
-          <h1 className="text-2xl font-semibold text-slate-800">선생 관리</h1>
-          <Link
-            href="/admin/teachers?section=add"
-            className="shrink-0 px-4 py-2 bg-slate-800 text-white text-sm font-medium rounded-lg hover:bg-slate-700"
-          >
-            선생 추가
-          </Link>
-        </div>
-
+      <div className="flex-1 min-w-0 p-6 md:p-8 flex flex-col">
         {section === "add" ? (
           <>
             <ScrollToSection section="add" />
@@ -51,9 +50,19 @@ export default async function AdminTeachersPage({
             </section>
           </>
         ) : selectedUser ? (
-          <TeacherDetailCard user={selectedUser} />
+          <>
+            <TeacherTabNav selectedId={selectedUser.id} currentTab={currentTab} />
+            <div className="rounded-b-xl border border-t-0 border-slate-200 bg-white p-6 flex-1">
+              {currentTab === "info" && (
+                <TeacherInfoCard user={selectedUser} onUpdate={updateTeacherProfile} />
+              )}
+              {currentTab === "classes" && (
+                <TeacherClassesTab teacherProfileId={selectedUser.id} />
+              )}
+            </div>
+          </>
         ) : (
-          <div className="py-12 rounded-xl border border-slate-200 border-dashed bg-slate-50/50 flex items-center justify-center">
+          <div className="py-12 rounded-xl border border-slate-200 border-dashed bg-slate-50/50 flex items-center justify-center flex-1">
             <p className="text-slate-400 text-sm">왼쪽 목록에서 선생을 선택하세요.</p>
           </div>
         )}

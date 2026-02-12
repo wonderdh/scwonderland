@@ -5,16 +5,7 @@ import type { updateStudentProfile } from "../actions";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-type TabId = "info" | "learning" | "report" | "coming";
-
-const TABS: { id: TabId; label: string }[] = [
-  { id: "info", label: "학생정보" },
-  { id: "learning", label: "학습관리" },
-  { id: "report", label: "리포트카드" },
-  { id: "coming", label: "준비중" },
-];
-
-export function StudentSelectedView({
+export function StudentInfoCard({
   user,
   onUpdate,
 }: {
@@ -22,47 +13,6 @@ export function StudentSelectedView({
   onUpdate: typeof updateStudentProfile;
 }) {
   const router = useRouter();
-  const [tab, setTab] = useState<TabId>("info");
-
-  return (
-    <div className="space-y-0">
-      <nav className="flex border-b border-slate-200 bg-white rounded-t-xl overflow-hidden">
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            onClick={() => setTab(t.id)}
-            className={`px-4 py-3 text-sm font-medium transition-colors ${
-              tab === t.id
-                ? "text-slate-800 border-b-2 border-slate-800 bg-slate-50/80"
-                : "text-slate-500 hover:text-slate-700 hover:bg-slate-50/50"
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
-      </nav>
-      <div className="rounded-b-xl border border-t-0 border-slate-200 bg-white p-6">
-        {tab === "info" && (
-          <StudentInfoCard user={user} onUpdate={onUpdate} onUpdated={() => router.refresh()} />
-        )}
-        {tab !== "info" && (
-          <div className="py-12 text-center text-slate-400 text-sm">준비 중입니다.</div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function StudentInfoCard({
-  user,
-  onUpdate,
-  onUpdated,
-}: {
-  user: UserWithProfile;
-  onUpdate: typeof updateStudentProfile;
-  onUpdated: () => void;
-}) {
   const [editing, setEditing] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -101,7 +51,7 @@ function StudentInfoCard({
       return;
     }
     setEditing(false);
-    onUpdated();
+    router.refresh();
   };
 
   return (
