@@ -1,10 +1,17 @@
+import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
+import { LogoutButton } from "./components/LogoutButton";
 
-export default function AcademyLayout({
+export default async function AcademyLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
       <header className="bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between">
@@ -28,6 +35,12 @@ export default function AcademyLayout({
           >
             학원 소개 사이트
           </Link>
+          {user && (
+            <>
+              <span className="text-slate-400">|</span>
+              <LogoutButton className="text-slate-600 hover:text-slate-900 font-medium px-0 py-0 bg-transparent hover:bg-transparent" />
+            </>
+          )}
         </nav>
       </header>
       <main className="flex-1 p-4 md:p-6">{children}</main>

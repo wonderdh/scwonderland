@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls:*)"
+    ]
+  },
+  "env": {
+    "Enable_TOOL_SEARCH": "auto:5"
+  }
+}
