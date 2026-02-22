@@ -41,6 +41,18 @@ const quickLinks = [
     internal: false,
   },
   {
+    title: "Circle Time",
+    description: "연간 커리큘럼",
+    accentColor: "border-l-violet-500 hover:bg-violet-50",
+    icon: (
+      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
+      </svg>
+    ),
+    href: "/circle-time-curriculum.html",
+    internal: false,
+  },
+  {
     title: "Children's Music",
     description: "YouTube 채널",
     accentColor: "border-l-red-500 hover:bg-red-50",

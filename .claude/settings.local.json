@@ -5,7 +5,15 @@
   "permissions": {
     "allow": [
       "Bash(ls:*)",
-      "Bash(git remote set-head:*)"
+      "Bash(git remote set-head:*)",
+      "Bash(pip install python-docx -q 2>&1 && python -c \"\nfrom docx import Document\ndoc = Document\\('C:/Wonderland/circle_time_KO.docx'\\)\nfor i, para in enumerate\\(doc.paragraphs\\):\n    if para.text.strip\\(\\):\n        print\\(f'[{i}] Style={para.style.name!r} | {para.text}'\\)\n\" 2>&1)",
+      "Bash(tail:*)",
+      "Bash(python:*)",
+      "Bash(del:*)",
+      "Bash(python3:*)",
+      "Bash(python --version 2>&1 || python3 --version 2>&1 || py --version 2>&1)",
+      "Bash(cd:*)",
+      "Bash(head:*)"
     ]
   }
 }

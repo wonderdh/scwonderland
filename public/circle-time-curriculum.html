@@ -1,0 +1,1027 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Circle Time 연간 커리큘럼 · SC Wonderland</title>
+  <style>
+    :root {
+      --orange: #f97316;
+      --violet: #7c3aed;
+      --green: #16a34a;
+      --blue: #2563eb;
+      --purple: #9333ea;
+      --gray-50: #f9fafb;
+      --gray-100: #f3f4f6;
+      --gray-200: #e5e7eb;
+      --gray-400: #9ca3af;
+      --gray-500: #6b7280;
+      --gray-700: #374151;
+      --gray-900: #111827;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Apple SD Gothic Neo',
+        'Noto Sans KR', sans-serif;
+      background: var(--gray-50);
+      color: var(--gray-900);
+      line-height: 1.6;
+    }
+
+    /* ── HEADER ─────────────────────────────────────────── */
+    .site-header {
+      background: white;
+      border-bottom: 1px solid var(--gray-200);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      padding: 0 1.5rem;
+    }
+    .header-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 60px;
+      gap: 1rem;
+    }
+    .site-logo {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--orange);
+      text-decoration: none;
+      white-space: nowrap;
+    }
+    .lang-toggle {
+      display: flex;
+      background: var(--gray-100);
+      border-radius: 9999px;
+      padding: 3px;
+      gap: 2px;
+    }
+    .lang-btn {
+      border: none;
+      cursor: pointer;
+      padding: 0.35rem 1rem;
+      border-radius: 9999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--gray-500);
+      background: transparent;
+      transition: all 0.18s;
+    }
+    .lang-btn.active {
+      background: white;
+      color: var(--gray-900);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+    }
+
+    /* ── HERO ────────────────────────────────────────────── */
+    .hero {
+      background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 50%, #5b21b6 100%);
+      color: white;
+      padding: 3rem 1.5rem;
+      text-align: center;
+    }
+    .hero-badge {
+      display: inline-block;
+      background: rgba(255,255,255,0.2);
+      border: 1px solid rgba(255,255,255,0.3);
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 0.25rem 0.85rem;
+      margin-bottom: 1rem;
+      letter-spacing: 0.05em;
+    }
+    .hero h1 { font-size: clamp(1.5rem, 4vw, 2.2rem); font-weight: 800; margin-bottom: 0.5rem; }
+    .hero p  { font-size: 0.95rem; opacity: 0.85; }
+
+    /* ── MAIN CONTENT ────────────────────────────────────── */
+    .main { max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+
+    /* ── SECTION CARD ────────────────────────────────────── */
+    .card {
+      background: white;
+      border-radius: 1rem;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+      padding: 1.75rem;
+      margin-bottom: 1.75rem;
+    }
+    .card-title {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      font-size: 1.05rem;
+      font-weight: 700;
+      margin-bottom: 1.25rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 2px solid var(--gray-100);
+    }
+    .card-title .dot {
+      width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+    }
+    .dot-violet { background: var(--violet); }
+    .dot-orange { background: var(--orange); }
+    .dot-green  { background: var(--green); }
+    .dot-blue   { background: var(--blue); }
+    .dot-purple { background: var(--purple); }
+
+    /* ── TABLE ───────────────────────────────────────────── */
+    .tbl-wrap { overflow-x: auto; margin: -0.25rem; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.86rem;
+    }
+    thead tr { background: var(--gray-50); }
+    th {
+      text-align: left;
+      padding: 0.7rem 0.9rem;
+      font-weight: 600;
+      color: var(--gray-500);
+      border-bottom: 1px solid var(--gray-200);
+      white-space: nowrap;
+    }
+    td {
+      padding: 0.75rem 0.9rem;
+      border-bottom: 1px solid var(--gray-100);
+      vertical-align: top;
+      color: var(--gray-700);
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--gray-50); }
+
+    .period-cell {
+      font-weight: 600;
+      color: var(--gray-900);
+      white-space: nowrap;
+    }
+    .activity-name {
+      font-weight: 700;
+      color: var(--gray-900);
+    }
+
+    /* ── TIPS ────────────────────────────────────────────── */
+    .tips-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 0.75rem;
+    }
+    .tip-item {
+      display: flex;
+      gap: 0.65rem;
+      background: #fefce8;
+      border: 1px solid #fef08a;
+      border-radius: 0.65rem;
+      padding: 0.75rem 0.9rem;
+      font-size: 0.85rem;
+      color: #713f12;
+      align-items: flex-start;
+    }
+    .tip-icon { flex-shrink: 0; font-size: 1rem; margin-top: 0.05rem; }
+
+    /* ── AGE CARDS ───────────────────────────────────────── */
+    .age-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 0.85rem;
+    }
+    .age-card {
+      border-radius: 0.75rem;
+      padding: 1rem 1.1rem;
+      border: 1px solid var(--gray-200);
+    }
+    .age-card .age-label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      margin-bottom: 0.3rem;
+    }
+    .age-card .age-name {
+      font-size: 1.05rem;
+      font-weight: 800;
+      margin-bottom: 0.15rem;
+    }
+    .age-card .age-range {
+      font-size: 0.78rem;
+      color: var(--gray-500);
+      margin-bottom: 0.6rem;
+    }
+    .age-card .age-desc {
+      font-size: 0.82rem;
+      color: var(--gray-700);
+      line-height: 1.55;
+    }
+    .age-card.green  { background: #f0fdf4; border-color: #bbf7d0; }
+    .age-card.blue   { background: #eff6ff; border-color: #bfdbfe; }
+    .age-card.purple { background: #faf5ff; border-color: #e9d5ff; }
+    .age-card.green  .age-label { color: var(--green); }
+    .age-card.blue   .age-label { color: var(--blue); }
+    .age-card.purple .age-label { color: var(--purple); }
+
+    /* ── SONG TABLE ──────────────────────────────────────── */
+    .month-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 2rem; height: 2rem;
+      border-radius: 50%;
+      background: var(--violet);
+      color: white;
+      font-size: 0.72rem;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+    .song-row { display: flex; align-items: center; gap: 0.5rem; }
+
+    /* ── ACTIVITY TABLE COLORS ───────────────────────────── */
+    .age5-header { background: #f0fdf4; }
+    .age6-header { background: #eff6ff; }
+    .age7-header { background: #faf5ff; }
+
+    .tag {
+      display: inline-block;
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 0.15rem 0.55rem;
+      border-radius: 9999px;
+      margin-right: 0.25rem;
+      margin-bottom: 0.2rem;
+    }
+    .tag-green  { background: #dcfce7; color: #15803d; }
+    .tag-blue   { background: #dbeafe; color: #1d4ed8; }
+    .tag-purple { background: #f3e8ff; color: #7e22ce; }
+
+    /* ── STRUCTURE TABLE ─────────────────────────────────── */
+    .struct-table td:first-child { font-weight: 700; white-space: nowrap; }
+    .time-badge {
+      display: inline-block;
+      background: #ede9fe;
+      color: #6d28d9;
+      border-radius: 9999px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 0.15rem 0.6rem;
+    }
+
+    /* ── LANG SHOW/HIDE ──────────────────────────────────── */
+    [data-lang] { display: none; }
+    body.lang-ko [data-lang="ko"] { display: block; }
+    body.lang-en [data-lang="en"] { display: block; }
+    body.lang-ko [data-lang-inline="ko"] { display: inline; }
+    body.lang-en [data-lang-inline="en"] { display: inline; }
+    [data-lang-inline] { display: none; }
+
+    /* for table rows */
+    body.lang-ko tr[data-lang="ko"] { display: table-row; }
+    body.lang-en tr[data-lang="en"] { display: table-row; }
+
+    /* ── RESPONSIVE ──────────────────────────────────────── */
+    @media (max-width: 640px) {
+      .card { padding: 1.25rem; }
+      th, td { padding: 0.6rem 0.65rem; }
+      .hero { padding: 2rem 1rem; }
+    }
+
+    /* -- YOUTUBE LINK ----------------------------------- */
+    .yt-cell { text-align: center; width: 76px; }
+    .yt-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: #ff0000;
+      color: white;
+      border-radius: 4px;
+      padding: 0.2rem 0.55rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-decoration: none;
+      transition: opacity 0.15s;
+    }
+    .yt-btn:hover { opacity: 0.8; }
+    .yt-btn[href=""] { background: var(--gray-200); color: var(--gray-400); pointer-events: none; }
+  </style>
+</head>
+<body class="lang-ko">
+
+<!-- ── HEADER ─────────────────────────────────────────────── -->
+<header class="site-header">
+  <div class="header-inner">
+    <a href="/" class="site-logo">✦ SC Wonderland</a>
+    <div class="lang-toggle">
+      <button class="lang-btn active" id="btn-ko" onclick="setLang('ko')">한국어</button>
+      <button class="lang-btn"        id="btn-en" onclick="setLang('en')">English</button>
+    </div>
+  </div>
+</header>
+
+<!-- ── HERO ───────────────────────────────────────────────── -->
+<section class="hero">
+  <div class="hero-badge">
+    <span data-lang-inline="ko">연간 커리큘럼</span>
+    <span data-lang-inline="en">Annual Curriculum</span>
+  </div>
+  <h1>
+    <span data-lang-inline="ko">영어유치원 Circle Time</span>
+    <span data-lang-inline="en">English Kindergarten Circle Time</span>
+  </h1>
+  <p>
+    <span data-lang-inline="ko">5세반 · 6세반 · 7세반 &nbsp;|&nbsp; 주 1회 40분</span>
+    <span data-lang-inline="en">Age 5 · Age 6 · Age 7 Classes &nbsp;|&nbsp; 40 min · Once a Week</span>
+  </p>
+</section>
+
+<!-- ── MAIN ───────────────────────────────────────────────── -->
+<main class="main">
+
+  <!-- ① 기본 구조 -->
+  <div class="card">
+    <div class="card-title">
+      <span class="dot dot-violet"></span>
+      <span data-lang-inline="ko">Circle Time 기본 구조</span>
+      <span data-lang-inline="en">Circle Time Basic Structure</span>
+    </div>
+    <div class="tbl-wrap">
+      <table class="struct-table">
+        <thead>
+          <tr>
+            <th><span data-lang-inline="ko">파트</span><span data-lang-inline="en">Part</span></th>
+            <th><span data-lang-inline="ko">시간</span><span data-lang-inline="en">Time</span></th>
+            <th><span data-lang-inline="ko">내용</span><span data-lang-inline="en">Content</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr data-lang="ko">
+            <td>오프닝 루틴</td>
+            <td><span class="time-badge">5분</span></td>
+            <td>인사 노래 + 이달의 노래</td>
+          </tr>
+          <tr data-lang="ko">
+            <td>메인 활동</td>
+            <td><span class="time-badge">25~30분</span></td>
+            <td>테마 활동 (아래 커리큘럼 참고)</td>
+          </tr>
+          <tr data-lang="ko">
+            <td>클로징 루틴</td>
+            <td><span class="time-badge">5분</span></td>
+            <td>Goodbye Song + 한 줄 복습</td>
+          </tr>
+          <tr data-lang="en">
+            <td>Opening Routine</td>
+            <td><span class="time-badge">5 min</span></td>
+            <td>Greeting Song + Song of the Month</td>
+          </tr>
+          <tr data-lang="en">
+            <td>Main Activity</td>
+            <td><span class="time-badge">25–30 min</span></td>
+            <td>Theme activity (see curriculum below)</td>
+          </tr>
+          <tr data-lang="en">
+            <td>Closing Routine</td>
+            <td><span class="time-badge">5 min</span></td>
+            <td>Goodbye Song + One-line review</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ② 연간 노래 12곡 -->
+  <div class="card">
+    <div class="card-title">
+      <span class="dot dot-orange"></span>
+      <span data-lang-inline="ko">연간 노래 12곡 (월별 고정)</span>
+      <span data-lang-inline="en">12 Annual Songs (Fixed by Month)</span>
+    </div>
+    <p style="font-size:0.82rem;color:var(--gray-500);margin-bottom:1rem;">
+      <span data-lang-inline="ko">※ 각 노래는 해당 월 4주 동안 매 수업 오프닝 5분에 반복합니다. 이전 달 노래도 가끔 리뷰.</span>
+      <span data-lang-inline="en">※ Each song is repeated in the opening 5 minutes every class for 4 weeks. Previous months' songs are occasionally reviewed.</span>
+    </p>
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th><span data-lang-inline="ko">월</span><span data-lang-inline="en">Month</span></th>
+            <th><span data-lang-inline="ko">노래</span><span data-lang-inline="en">Song</span></th>
+            <th><span data-lang-inline="ko">테마</span><span data-lang-inline="en">Theme</span></th>
+            <th class="yt-cell">YouTube</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr data-lang="ko" data-month="3">
+            <td class="period-cell"><div class="song-row"><span class="month-badge">3</span>3월</div></td>
+            <td>Hello Song – Bounce Patrol</td><td>인사 / 자기소개</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td>
+          </tr>
+          <tr data-lang="ko" data-month="4">
+            <td class="period-cell"><div class="song-row"><span class="month-badge">4</span>4월</div></td>
+            <td>Head Shoulders Knees and Toes</td><td>신체</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td>
+          </tr>
+          <tr data-lang="ko" data-month="5">
+            <td class="period-cell"><div class="song-row"><span class="month-badge">5</span>5월</div></td>
+            <td>If You're Happy and You Know It</td><td>감정</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td>
+          </tr>
+          <tr data-lang="ko" data-month="6">
+            <td class="period-cell"><div class="song-row"><span class="month-badge">6</span>6월</div></td>
+            <td>The Wheels on the Bus</td><td>탈것</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td>
+          </tr>
+          <tr data-lang="ko" data-month="7">
+            <td class="period-cell"><div class="song-row"><span class="month-badge">7</span>7월</div></td>
+            <td>Baby Shark – Pinkfong</td><td>바다 동물</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td>
+          </tr>
+          <tr data-lang="ko" data-month="8">
+            <td class="period-cell"><div class="song-row"><span class="month-badge">8</span>8월</div></td>
+            <td>Old MacDonald Had a Farm</td><td>농장 동물</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td>
+          </tr>
+          <tr data-lang="ko" data-month="9">
+            <td class="period-cell"><div class="song-row"><span class="month-badge">9</span>9월</div></td>
+            <td>Five Little Monkeys</td><td>숫자</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td>
+          </tr>
+          <tr data-lang="ko" data-month="10">
+            <td class="period-cell"><div class="song-row"><span class="month-badge">10</span>10월</div></td>
+            <td>This Is Halloween</td><td>핼러윈</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td>
+          </tr>
+          <tr data-lang="ko" data-month="11">
+            <td class="period-cell"><div class="song-row"><span class="month-badge">11</span>11월</div></td>
+            <td>Leaves Are Falling – Autumn Song</td><td>계절 / 자연</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td>
+          </tr>
+          <tr data-lang="ko" data-month="12">
+            <td class="period-cell"><div class="song-row"><span class="month-badge">12</span>12월</div></td>
+            <td>Jingle Bells – Kids Version</td><td>크리스마스</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td>
+          </tr>
+          <tr data-lang="ko" data-month="1">
+            <td class="period-cell"><div class="song-row"><span class="month-badge">1</span>1월</div></td>
+            <td>ABC Song – Bounce Patrol</td><td>알파벳</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td>
+          </tr>
+          <tr data-lang="ko" data-month="2">
+            <td class="period-cell"><div class="song-row"><span class="month-badge">2</span>2월</div></td>
+            <td>You've Got a Friend in Me</td><td>우정 / 마무리</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td>
+          </tr>
+          <!-- EN -->
+          <tr data-lang="en" data-month="3">
+            <td class="period-cell"><div class="song-row"><span class="month-badge">3</span>Mar</div></td>
+            <td>Hello Song – Bounce Patrol</td><td>Greetings / Self-Introduction</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td>
+          </tr>
+          <tr data-lang="en" data-month="4">
+            <td class="period-cell"><div class="song-row"><span class="month-badge">4</span>Apr</div></td>
+            <td>Head Shoulders Knees and Toes</td><td>Body Parts</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td>
+          </tr>
+          <tr data-lang="en" data-month="5">
+            <td class="period-cell"><div class="song-row"><span class="month-badge">5</span>May</div></td>
+            <td>If You're Happy and You Know It</td><td>Emotions</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td>
+          </tr>
+          <tr data-lang="en" data-month="6">
+            <td class="period-cell"><div class="song-row"><span class="month-badge">6</span>Jun</div></td>
+            <td>The Wheels on the Bus</td><td>Transportation</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td>
+          </tr>
+          <tr data-lang="en" data-month="7">
+            <td class="period-cell"><div class="song-row"><span class="month-badge">7</span>Jul</div></td>
+            <td>Baby Shark – Pinkfong</td><td>Ocean Animals</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td>
+          </tr>
+          <tr data-lang="en" data-month="8">
+            <td class="period-cell"><div class="song-row"><span class="month-badge">8</span>Aug</div></td>
+            <td>Old MacDonald Had a Farm</td><td>Farm Animals</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td>
+          </tr>
+          <tr data-lang="en" data-month="9">
+            <td class="period-cell"><div class="song-row"><span class="month-badge">9</span>Sep</div></td>
+            <td>Five Little Monkeys</td><td>Numbers</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td>
+          </tr>
+          <tr data-lang="en" data-month="10">
+            <td class="period-cell"><div class="song-row"><span class="month-badge">10</span>Oct</div></td>
+            <td>This Is Halloween</td><td>Halloween</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td>
+          </tr>
+          <tr data-lang="en" data-month="11">
+            <td class="period-cell"><div class="song-row"><span class="month-badge">11</span>Nov</div></td>
+            <td>Leaves Are Falling – Autumn Song</td><td>Seasons / Nature</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td>
+          </tr>
+          <tr data-lang="en" data-month="12">
+            <td class="period-cell"><div class="song-row"><span class="month-badge">12</span>Dec</div></td>
+            <td>Jingle Bells – Kids Version</td><td>Christmas</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td>
+          </tr>
+          <tr data-lang="en" data-month="1">
+            <td class="period-cell"><div class="song-row"><span class="month-badge">1</span>Jan</div></td>
+            <td>ABC Song – Bounce Patrol</td><td>Alphabet</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td>
+          </tr>
+          <tr data-lang="en" data-month="2">
+            <td class="period-cell"><div class="song-row"><span class="month-badge">2</span>Feb</div></td>
+            <td>You've Got a Friend in Me</td><td>Friendship / Year-End</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ③ 연령 기준 -->
+  <div class="card">
+    <div class="card-title">
+      <span class="dot dot-green"></span>
+      <span data-lang-inline="ko">연령 기준</span>
+      <span data-lang-inline="en">Age Groups</span>
+    </div>
+    <div class="age-cards">
+      <div class="age-card green">
+        <div class="age-label">
+          <span data-lang-inline="ko">5세반</span>
+          <span data-lang-inline="en">Age 5 Class</span>
+        </div>
+        <div class="age-name">
+          <span data-lang-inline="ko">5세반</span>
+          <span data-lang-inline="en">Age 5 Class</span>
+        </div>
+        <div class="age-range">
+          <span data-lang-inline="ko">만 3~4세</span>
+          <span data-lang-inline="en">3–4 years old</span>
+        </div>
+        <div class="age-desc">
+          <span data-lang-inline="ko">짧은 집중력(10~15분), 모방 중심, 단어·짧은 구문 수준, 신체 활동 선호</span>
+          <span data-lang-inline="en">Short attention span (10–15 min), imitation-based, word/short phrase level, prefers physical activity</span>
+        </div>
+      </div>
+      <div class="age-card blue">
+        <div class="age-label">
+          <span data-lang-inline="ko">6세반</span>
+          <span data-lang-inline="en">Age 6 Class</span>
+        </div>
+        <div class="age-name">
+          <span data-lang-inline="ko">6세반</span>
+          <span data-lang-inline="en">Age 6 Class</span>
+        </div>
+        <div class="age-range">
+          <span data-lang-inline="ko">만 4~5세</span>
+          <span data-lang-inline="en">4–5 years old</span>
+        </div>
+        <div class="age-desc">
+          <span data-lang-inline="ko">집중력 향상(15~25분), 간단한 문장 말하기 가능, 규칙 있는 게임 가능, 역할극 가능</span>
+          <span data-lang-inline="en">Improved attention span (15–25 min), can speak simple sentences, can play games with rules, role-play possible</span>
+        </div>
+      </div>
+      <div class="age-card purple">
+        <div class="age-label">
+          <span data-lang-inline="ko">7세반</span>
+          <span data-lang-inline="en">Age 7 Class</span>
+        </div>
+        <div class="age-name">
+          <span data-lang-inline="ko">7세반</span>
+          <span data-lang-inline="en">Age 7 Class</span>
+        </div>
+        <div class="age-range">
+          <span data-lang-inline="ko">만 5~6세</span>
+          <span data-lang-inline="en">5–6 years old</span>
+        </div>
+        <div class="age-desc">
+          <span data-lang-inline="ko">집중력 25분 이상, 문장 말하기·쓰기 가능, 논리적 사고 발달, 토론·발표 가능</span>
+          <span data-lang-inline="en">Attention span 25+ min, can speak/write sentences, developing logical thinking, can debate and present</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ④ 전체 운영 팁 -->
+  <div class="card">
+    <div class="card-title">
+      <span class="dot dot-orange"></span>
+      <span data-lang-inline="ko">전체 운영 팁</span>
+      <span data-lang-inline="en">General Teaching Tips</span>
+    </div>
+    <div class="tips-grid">
+      <div class="tip-item" data-lang="ko"><span class="tip-icon">💡</span><span>오프닝은 항상 같은 인사 노래로 시작 → 아이들이 심리적으로 안정됩니다.</span></div>
+      <div class="tip-item" data-lang="ko"><span class="tip-icon">💡</span><span>이달의 노래는 4주 동안 매 수업 반복. 이전 달 노래도 가끔 리뷰.</span></div>
+      <div class="tip-item" data-lang="ko"><span class="tip-icon">💡</span><span>5세반: 틀려도 박수 먼저! 단어 하나만 말해도 성공으로 인정.</span></div>
+      <div class="tip-item" data-lang="ko"><span class="tip-icon">💡</span><span>6세반: 문장 말하기 목표. 발표 기회 골고루, 게임엔 규칙 설명 필수.</span></div>
+      <div class="tip-item" data-lang="ko"><span class="tip-icon">💡</span><span>7세반: 이유 말하기(because), 비교(more/less), 의견 표현(I think) 집중 연습.</span></div>
+      <div class="tip-item" data-lang="ko"><span class="tip-icon">💡</span><span>포트폴리오(만든 작품 모음)를 학기 말에 학부모 공유 → 성장 실감.</span></div>
+      <div class="tip-item" data-lang="ko"><span class="tip-icon">💡</span><span>월 1회 'Star of the Week' → 잘한 친구 칭찬 &amp; 동기 부여.</span></div>
+      <div class="tip-item" data-lang="en"><span class="tip-icon">💡</span><span>Opening always starts with the same greeting song → Children feel psychologically settled.</span></div>
+      <div class="tip-item" data-lang="en"><span class="tip-icon">💡</span><span>Song of the Month is repeated every class for 4 weeks. Previous month's song occasionally reviewed.</span></div>
+      <div class="tip-item" data-lang="en"><span class="tip-icon">💡</span><span>Age 5: Applause first even if wrong! Even one word counts as success.</span></div>
+      <div class="tip-item" data-lang="en"><span class="tip-icon">💡</span><span>Age 6: Aim for full sentences. Equal speaking opportunities; game rules must be explained.</span></div>
+      <div class="tip-item" data-lang="en"><span class="tip-icon">💡</span><span>Age 7: Focus on giving reasons (because), comparing (more/less), expressing opinions (I think).</span></div>
+      <div class="tip-item" data-lang="en"><span class="tip-icon">💡</span><span>Share portfolios with parents at semester end → Students feel real growth.</span></div>
+      <div class="tip-item" data-lang="en"><span class="tip-icon">💡</span><span>Monthly 'Star of the Week' → Praise standout students &amp; motivate the class.</span></div>
+    </div>
+  </div>
+
+  <!-- ⑤ 5세반 활동 -->
+  <div class="card">
+    <div class="card-title">
+      <span class="dot dot-green"></span>
+      <span data-lang-inline="ko">5세반 Circle Time 활동 (만 3~4세 / 24개)</span>
+      <span data-lang-inline="en">Age 5 Circle Time Activities (3–4 years / 24 activities)</span>
+    </div>
+    <div style="margin-bottom:0.85rem;">
+      <span class="tag tag-green" data-lang-inline="ko">모방</span>
+      <span class="tag tag-green" data-lang-inline="ko">신체</span>
+      <span class="tag tag-green" data-lang-inline="ko">반복</span>
+      <span class="tag tag-green" data-lang-inline="ko">단어 중심</span>
+      <span class="tag tag-green" data-lang-inline="ko">짧고 즐겁게</span>
+      <span class="tag tag-green" data-lang-inline="en">Imitation</span>
+      <span class="tag tag-green" data-lang-inline="en">Physical</span>
+      <span class="tag tag-green" data-lang-inline="en">Repetition</span>
+      <span class="tag tag-green" data-lang-inline="en">Word-Centered</span>
+      <span class="tag tag-green" data-lang-inline="en">Short &amp; Fun</span>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr class="age5-header">
+            <th><span data-lang-inline="ko">시기</span><span data-lang-inline="en">Period</span></th>
+            <th><span data-lang-inline="ko">활동명</span><span data-lang-inline="en">Activity</span></th>
+            <th><span data-lang-inline="ko">내용</span><span data-lang-inline="en">Content</span></th>
+            <th><span data-lang-inline="ko">소품</span><span data-lang-inline="en">Props</span></th>
+            <th><span data-lang-inline="ko">진행 팁</span><span data-lang-inline="en">Teaching Tips</span></th>
+            <th class="yt-cell">YouTube</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- KO rows -->
+          <tr data-lang="ko"><td class="period-cell">3월 1-2주</td><td class="activity-name">Name Ball Toss</td><td>공을 굴리며 "My name is ___!" 말하기. 받은 친구가 다음 사람에게 넘기기.</td><td>비치볼</td><td>처음엔 선생님이 먼저 시범. 이름을 크게 말한 뒤 천천히 굴리기. 틀려도 OK, 박수 먼저!</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="ko"><td class="period-cell">3월 3-4주</td><td class="activity-name">Who's Missing?</td><td>한 명 숨기고 "Who is missing?" 맞히기. "Where is ___?" 연습.</td><td>없음</td><td>눈을 가리는 동안 노래 불러 집중 유도. 찾으면 함께 환호!</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="ko"><td class="period-cell">4월 1-2주</td><td class="activity-name">Simon Says</td><td>"Simon says touch your nose!" 신체 반응 게임.</td><td>없음</td><td>처음엔 탈락 없이 즐기기. 속도를 점점 빠르게 하면 웃음 폭발!</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="ko"><td class="period-cell">4월 3-4주</td><td class="activity-name">Body Stamp &amp; Label</td><td>전신 종이에 도장 찍고 신체 단어 스티커 붙이기.</td><td>전신 종이, 스탬프, 단어 스티커</td><td>아이가 종이에 누워 선생님이 외곽선 그려주기. 완성 후 "This is my nose!" 발표.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="ko"><td class="period-cell">5월 1-2주</td><td class="activity-name">Emotion Freeze Dance</td><td>음악 멈추면 감정 카드 보고 표정 짓기.</td><td>감정 카드, 음악</td><td>카드 없이 선생님 표정만 보고 따라 해도 OK. 과장된 표정이 핵심!</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="ko"><td class="period-cell">5월 3-4주</td><td class="activity-name">Feeling Faces Craft</td><td>오늘 기분 얼굴 그리기 + "I feel happy/sad!" 말하기.</td><td>종이 접시, 색연필</td><td>"How do you feel today?" 루틴화. 매주 차트에 스티커 붙이기.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="ko"><td class="period-cell">6월 1-2주</td><td class="activity-name">Vehicle Parade</td><td>버스/자동차/기차 흉내내며 교실 한 바퀴 행진.</td><td>없음</td><td>각 탈것 소리도 함께! "Beep beep!" "Choo choo!" 과장해서 유도.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="ko"><td class="period-cell">6월 3-4주</td><td class="activity-name">Transportation Sort</td><td>땅/바다/하늘 탈것 그림 카드를 매트에 분류하기.</td><td>그림 카드 3세트, 분류 매트</td><td>"Does it fly? Does it swim?" 질문으로 사고 유도. 오답도 함께 생각하기.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="ko"><td class="period-cell">7월 1-2주</td><td class="activity-name">Ocean Movement Game</td><td>물고기/게/해파리처럼 몸으로 표현하며 움직이기.</td><td>없음</td><td>선생님이 먼저 과장해서 시범. 배경 음악으로 파도 소리 틀어주기.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="ko"><td class="period-cell">7월 3-4주</td><td class="activity-name">Sea Animal Bag</td><td>촉감 백에서 바다 동물 피규어 꺼내며 이름 말하기.</td><td>천 가방, 피규어 5~8종</td><td>꺼내기 전 "Is it big? Is it soft?" 힌트 주기. 꺼낸 후 다 같이 이름 외치기.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="ko"><td class="period-cell">8월 1-2주</td><td class="activity-name">Animal Sound Guessing</td><td>소리 듣고 동물 맞히기 "It's a ___!"</td><td>음원, 동물 그림 카드</td><td>틀려도 웃으며 넘기기. 맞히면 그 동물 소리 다 같이 내보기.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="ko"><td class="period-cell">8월 3-4주</td><td class="activity-name">Farm Animal Headbands</td><td>동물 머리띠 쓰고 소리+움직임 함께 표현.</td><td>동물 머리띠 세트</td><td>친구 머리띠 보고 이름 맞히기. "You are a cow! Moo!"</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="ko"><td class="period-cell">9월 1-2주</td><td class="activity-name">Number Hopscotch</td><td>숫자 바닥 판 위로 점프하며 1~10 세기.</td><td>숫자 바닥 매트 or 테이프</td><td>거꾸로(10→1) 도전도 추가. 팀으로 릴레이 하면 더 신남!</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="ko"><td class="period-cell">9월 3-4주</td><td class="activity-name">Count &amp; Drop</td><td>컵에 블록 넣으며 1~10 세기.</td><td>컵, 블록 또는 콩</td><td>"One, two, three..." 함께 세기. 다 넣으면 컵을 흔들며 "Ten!"</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="ko"><td class="period-cell">10월 1-2주</td><td class="activity-name">Halloween Dress-Up</td><td>마녀/유령/호박 소품 입어보며 단어 익히기.</td><td>소품 박스 (모자, 망토 등)</td><td>거울 앞에서 "I am a witch!" 크게 말하기. 친구가 맞히는 게임도 추가.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="ko"><td class="period-cell">10월 3-4주</td><td class="activity-name">Spooky Color Mix</td><td>주황+검정 물감 섞기 + "orange! black!" 색깔 말하기.</td><td>물감, 종이</td><td>손가락으로 섞어도 OK. "Spooky! Scary!" 표현 추가로 분위기 up.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="ko"><td class="period-cell">11월 1-2주</td><td class="activity-name">Leaf Sorting</td><td>낙엽을 색깔/크기별로 분류 + "big/small, red/yellow" 말하기.</td><td>낙엽(실제 또는 종이)</td><td>실제 낙엽이면 질감도 말하기 "It's rough!" 감각 어휘 확장.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="ko"><td class="period-cell">11월 3-4주</td><td class="activity-name">Nature Walk Words</td><td>교실 밖 짧은 산책 + 보이는 것 영어로 말하기.</td><td>없음</td><td>포인트 앤 세이! "I see a tree!" 선생님이 먼저, 아이가 따라. 돌아와서 그림으로 기록.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="ko"><td class="period-cell">12월 1-2주</td><td class="activity-name">Wrap the Gift</td><td>선물 포장 흉내내며 색깔/크기 말하기.</td><td>상자, 포장지</td><td>"Big or small? What color?" 말하게 하기. 리본 붙이며 "Ta-da!" 마무리.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="ko"><td class="period-cell">12월 3-4주</td><td class="activity-name">Holiday Crafts &amp; Sing</td><td>크리스마스 장식 만들며 노래 부르기.</td><td>공작 재료</td><td>만들기 중 노래 반복 재생. 완성 후 "This is my star!" 들고 발표.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="ko"><td class="period-cell">1월 1-2주</td><td class="activity-name">Letter Sound Parade</td><td>A~Z 카드 들고 행진하며 소리 외치기.</td><td>알파벳 카드</td><td>"A says /a/!" 구호처럼 크게. 사진 찍어 교실에 붙이면 복습 효과.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="ko"><td class="period-cell">1월 3-4주</td><td class="activity-name">Sound Basket</td><td>바구니에서 물건 꺼내며 첫 글자 소리 말하기.</td><td>실물 소품 바구니</td><td>"What sound does it start with?" 기다리기. 틀리면 다 같이 힌트!</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="ko"><td class="period-cell">2월 1-2주</td><td class="activity-name">My Favorite Color Book</td><td>좋아하는 색 골라 미니북 완성 + "My favorite color is ___" 발표.</td><td>미니북 양식, 색연필</td><td>발표 전 연습 시간 1분. 친구 책 보며 "Me too!" 반응 유도.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="ko"><td class="period-cell">2월 3-4주</td><td class="activity-name">Friends Circle Celebration</td><td>친구 이름 부르며 칭찬 스티커 붙여주기 + 노래.</td><td>스티커, 왕관</td><td>"You are amazing!" 등 칭찬 문장 미리 연습. 왕관 쓰고 찍은 사진 학부모 공유.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <!-- EN rows -->
+          <tr data-lang="en"><td class="period-cell">Mar Wk 1-2</td><td class="activity-name">Name Ball Toss</td><td>Roll a ball and say "My name is ___!" The friend who catches it passes it to the next person.</td><td>Beach ball</td><td>Teacher demonstrates first. Say name loudly then roll slowly. It's OK to be wrong — applause first!</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="en"><td class="period-cell">Mar Wk 3-4</td><td class="activity-name">Who's Missing?</td><td>Hide one child and guess "Who is missing?" Practice "Where is ___?"</td><td>None</td><td>Sing a song while eyes are covered to maintain focus. Cheer together when found!</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="en"><td class="period-cell">Apr Wk 1-2</td><td class="activity-name">Simon Says</td><td>"Simon says touch your nose!" Physical response game.</td><td>None</td><td>Start without elimination. Gradually speed up for big laughs!</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="en"><td class="period-cell">Apr Wk 3-4</td><td class="activity-name">Body Stamp &amp; Label</td><td>Stamp on full-body paper and attach body word stickers.</td><td>Full-body paper, stamps, word stickers</td><td>Child lies on paper while teacher traces outline. After completing, present "This is my nose!"</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="en"><td class="period-cell">May Wk 1-2</td><td class="activity-name">Emotion Freeze Dance</td><td>When music stops, look at emotion card and make that expression.</td><td>Emotion cards, music</td><td>Teacher's expressions alone work too. Exaggerated expressions are key!</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="en"><td class="period-cell">May Wk 3-4</td><td class="activity-name">Feeling Faces Craft</td><td>Draw today's mood face + say "I feel happy/sad!"</td><td>Paper plate, colored pencils</td><td>Routine "How do you feel today?" Add stickers to chart each week.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="en"><td class="period-cell">Jun Wk 1-2</td><td class="activity-name">Vehicle Parade</td><td>March around the classroom imitating a bus/car/train.</td><td>None</td><td>Include vehicle sounds! "Beep beep!" "Choo choo!" Encourage exaggeration.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="en"><td class="period-cell">Jun Wk 3-4</td><td class="activity-name">Transportation Sort</td><td>Sort picture cards of land/sea/sky vehicles onto a mat.</td><td>3 sets of picture cards, sorting mat</td><td>Guide thinking with "Does it fly? Does it swim?" Think through wrong answers together.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="en"><td class="period-cell">Jul Wk 1-2</td><td class="activity-name">Ocean Movement Game</td><td>Move and express like a fish/crab/jellyfish.</td><td>None</td><td>Teacher exaggerates to demonstrate first. Play wave sounds in the background.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="en"><td class="period-cell">Jul Wk 3-4</td><td class="activity-name">Sea Animal Bag</td><td>Pull sea animal figures from a tactile bag and say their names.</td><td>Cloth bag, 5–8 figure types</td><td>Before pulling out: "Is it big? Is it soft?" Hint first. Then everyone shouts the name together.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="en"><td class="period-cell">Aug Wk 1-2</td><td class="activity-name">Animal Sound Guessing</td><td>Listen to sounds and guess the animal "It's a ___!"</td><td>Audio clips, animal picture cards</td><td>Laugh off wrong answers. If correct, everyone makes that animal sound together.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="en"><td class="period-cell">Aug Wk 3-4</td><td class="activity-name">Farm Animal Headbands</td><td>Wear animal headbands and express sounds + movements.</td><td>Animal headband set</td><td>Look at a friend's headband and guess. "You are a cow! Moo!"</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="en"><td class="period-cell">Sep Wk 1-2</td><td class="activity-name">Number Hopscotch</td><td>Jump on numbered floor tiles while counting 1–10.</td><td>Numbered floor mat or tape</td><td>Add reverse (10→1) challenge. Relay race format makes it even more exciting!</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="en"><td class="period-cell">Sep Wk 3-4</td><td class="activity-name">Count &amp; Drop</td><td>Count 1–10 while placing blocks in a cup.</td><td>Cup, blocks or beans</td><td>Count together "One, two, three..." Shake the cup and say "Ten!" when done.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="en"><td class="period-cell">Oct Wk 1-2</td><td class="activity-name">Halloween Dress-Up</td><td>Try on witch/ghost/pumpkin props to learn vocabulary.</td><td>Prop box (hats, capes, etc.)</td><td>In front of mirror: "I am a witch!" say it loudly. Add a guessing game with friends.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="en"><td class="period-cell">Oct Wk 3-4</td><td class="activity-name">Spooky Color Mix</td><td>Mix orange + black paint + say "orange! black!"</td><td>Paint, paper</td><td>Finger mixing is OK. Add "Spooky! Scary!" expressions for atmosphere.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="en"><td class="period-cell">Nov Wk 1-2</td><td class="activity-name">Leaf Sorting</td><td>Sort fallen leaves by color/size + say "big/small, red/yellow"</td><td>Real or paper leaves</td><td>With real leaves, describe texture too "It's rough!" Expand sensory vocabulary.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="en"><td class="period-cell">Nov Wk 3-4</td><td class="activity-name">Nature Walk Words</td><td>Short walk outside + name what you see in English.</td><td>None</td><td>Point and say! "I see a tree!" Teacher first, then students repeat. Draw pictures when back inside.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="en"><td class="period-cell">Dec Wk 1-2</td><td class="activity-name">Wrap the Gift</td><td>Pretend to wrap gifts while saying color/size.</td><td>Box, wrapping paper</td><td>"Big or small? What color?" Let them speak. Finish with "Ta-da!" when attaching ribbon.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="en"><td class="period-cell">Dec Wk 3-4</td><td class="activity-name">Holiday Crafts &amp; Sing</td><td>Make Christmas decorations while singing.</td><td>Craft materials</td><td>Repeat song during crafting. After completing: "This is my star!" hold and present.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="en"><td class="period-cell">Jan Wk 1-2</td><td class="activity-name">Letter Sound Parade</td><td>March holding A–Z cards while shouting sounds.</td><td>Alphabet cards</td><td>"A says /a/!" like a chant, say it loudly. Post photos in classroom for ongoing review.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="en"><td class="period-cell">Jan Wk 3-4</td><td class="activity-name">Sound Basket</td><td>Pull items from a basket and say the first letter sound.</td><td>Real props basket</td><td>"What sound does it start with?" Wait patiently. If wrong, everyone gives a hint!</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="en"><td class="period-cell">Feb Wk 1-2</td><td class="activity-name">My Favorite Color Book</td><td>Choose a favorite color and complete a mini-book + present "My favorite color is ___"</td><td>Mini-book template, colored pencils</td><td>1 minute practice before presenting. Encourage "Me too!" responses to classmates' books.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="en"><td class="period-cell">Feb Wk 3-4</td><td class="activity-name">Friends Circle Celebration</td><td>Call out friends' names, attach praise stickers + sing.</td><td>Stickers, crown</td><td>Pre-practice praise sentences like "You are amazing!" Share crown photos with parents.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ⑥ 6세반 활동 -->
+  <div class="card">
+    <div class="card-title">
+      <span class="dot dot-blue"></span>
+      <span data-lang-inline="ko">6세반 Circle Time 활동 (만 4~5세 / 24개)</span>
+      <span data-lang-inline="en">Age 6 Circle Time Activities (4–5 years / 24 activities)</span>
+    </div>
+    <div style="margin-bottom:0.85rem;">
+      <span class="tag tag-blue" data-lang-inline="ko">문장 말하기</span>
+      <span class="tag tag-blue" data-lang-inline="ko">역할극</span>
+      <span class="tag tag-blue" data-lang-inline="ko">규칙 게임</span>
+      <span class="tag tag-blue" data-lang-inline="ko">발표</span>
+      <span class="tag tag-blue" data-lang-inline="ko">사고력</span>
+      <span class="tag tag-blue" data-lang-inline="en">Sentence Speaking</span>
+      <span class="tag tag-blue" data-lang-inline="en">Role Play</span>
+      <span class="tag tag-blue" data-lang-inline="en">Rule-based Games</span>
+      <span class="tag tag-blue" data-lang-inline="en">Presentation</span>
+      <span class="tag tag-blue" data-lang-inline="en">Critical Thinking</span>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr class="age6-header">
+            <th><span data-lang-inline="ko">시기</span><span data-lang-inline="en">Period</span></th>
+            <th><span data-lang-inline="ko">활동명</span><span data-lang-inline="en">Activity</span></th>
+            <th><span data-lang-inline="ko">내용</span><span data-lang-inline="en">Content</span></th>
+            <th><span data-lang-inline="ko">소품</span><span data-lang-inline="en">Props</span></th>
+            <th><span data-lang-inline="ko">진행 팁</span><span data-lang-inline="en">Teaching Tips</span></th>
+            <th class="yt-cell">YouTube</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- KO -->
+          <tr data-lang="ko"><td class="period-cell">3월 1-2주</td><td class="activity-name">All About Me Poster</td><td>자기 소개 포스터 만들고 "My name is ___, I am ___ years old, I like ___" 발표.</td><td>포스터 양식</td><td>발표 전 파트너와 연습 1번. 발표 후 교실에 전시.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="ko"><td class="period-cell">3월 3-4주</td><td class="activity-name">Class Interview</td><td>짝꿍 인터뷰 후 친구 소개 "This is ___, she/he likes ___".</td><td>마이크 소품</td><td>"Can I ask you a question?" 질문 공식 먼저 연습. 마이크 소품이 자신감 UP.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="ko"><td class="period-cell">4월 1-2주</td><td class="activity-name">Shape Bingo</td><td>도형 빙고 + "I have a circle! Bingo!"</td><td>빙고 카드, 마커</td><td>빙고 전 모든 도형 한 번씩 복습. 줄 완성 시 "Bingo!" 외치게 하기.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="ko"><td class="period-cell">4월 3-4주</td><td class="activity-name">Shape Robot Build</td><td>도형 스티커로 로봇 만들고 "My robot has 3 squares" 발표.</td><td>도형 스티커, 도화지</td><td>발표 시 "How many?" 물어보기. 짝꿍 로봇과 비교 "Mine is bigger!"</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="ko"><td class="period-cell">5월 1-2주</td><td class="activity-name">Family Puppet Show</td><td>손가락 인형으로 가족 소개 + 짧은 대화.</td><td>손가락 인형</td><td>대화 스크립트 간단히 제공. 연습 2회 후 친구에게 발표.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="ko"><td class="period-cell">5월 3-4주</td><td class="activity-name">Family Survey</td><td>"How many people are in your family?" 조사 후 그래프 완성.</td><td>그래프 양식</td><td>결과 보며 "Most friends have 4 people!" 문장 함께 만들기.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="ko"><td class="period-cell">6월 1-2주</td><td class="activity-name">Weather Wheel &amp; Reporter</td><td>날씨 휠 돌리고 "Today it is sunny and warm!" 날씨 리포터 역할.</td><td>날씨 휠</td><td>마이크 소품 추가. 매주 담당자 바꾸어 리포터 경험 골고루.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="ko"><td class="period-cell">6월 3-4주</td><td class="activity-name">Dress the Bear</td><td>날씨 카드 뽑고 곰 인형에 맞는 옷 입히기 + 이유 말하기.</td><td>곰 인형, 옷 카드</td><td>"Why?"를 항상 물어보기. "Because it's cold!" 이유 문장 연습.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="ko"><td class="period-cell">7월 1-2주</td><td class="activity-name">Mystery Bag (Food)</td><td>만지고 "It is soft / round / bumpy" 묘사 후 맞히기.</td><td>천 가방, 식품 모형</td><td>3개 이상 묘사 단어 말한 후 공개. 틀려도 묘사 잘 했으면 칭찬.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="ko"><td class="period-cell">7월 3-4주</td><td class="activity-name">I Like / I Don't Like Graph</td><td>음식 그림 보고 투표 + "Most friends like ___" 결과 말하기.</td><td>그래프 보드, 스티커</td><td>결과 분석 시 "Why do you like it?" 질문으로 이유 말하기 연습.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="ko"><td class="period-cell">8월 1-2주</td><td class="activity-name">Action Verb Charades</td><td>동사 카드 뽑아 행동하고 팀이 맞히기.</td><td>동사 카드</td><td>팀 나눠 점수제로 운영. 맞힌 팀은 동사로 문장 만들기 추가.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="ko"><td class="period-cell">8월 3-4주</td><td class="activity-name">"I Can!" Book</td><td>"I can jump / swim / sing" 문장 완성 + 미니북 발표.</td><td>미니북 양식</td><td>완성 후 친구와 교환해서 읽어보기. "Can you ___?" 질문 연습.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="ko"><td class="period-cell">9월 1-2주</td><td class="activity-name">Where Is It? Game</td><td>물건 숨기고 "It's under the chair / in the box!" 전치사 말하기.</td><td>장난감, 상자, 의자</td><td>선생님이 먼저 숨기고 아이들이 묻기. 역할 바꿔 아이가 숨기기.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="ko"><td class="period-cell">9월 3-4주</td><td class="activity-name">Classroom Map</td><td>교실 지도 그리고 물건 위치 영어로 라벨 붙이기.</td><td>지도 양식, 스티커</td><td>완성 후 "The book is on the shelf" 문장으로 설명하게 하기.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="ko"><td class="period-cell">10월 1-2주</td><td class="activity-name">Halloween Role Play</td><td>Trick or Treat 상황극 "What do you want?" "I want candy!"</td><td>소품 박스, 사탕 바구니</td><td>스크립트 2-3회 연습 후 자유롭게. 의상 있으면 더욱 효과적.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="ko"><td class="period-cell">10월 3-4주</td><td class="activity-name">Opposites Tug of War</td><td>big/small, fast/slow 팀 나눠 개념 몸으로 표현 + 플래시카드 매칭.</td><td>반대말 카드</td><td>카드 보여주며 "What's the opposite?" 빠르게 답하기. 박자감 있게 진행.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="ko"><td class="period-cell">11월 1-2주</td><td class="activity-name">Community Helpers Role Play</td><td>직업 의상 입고 역할극 "I am a doctor. Are you sick?"</td><td>의상 소품 박스</td><td>2인 1조 대화. 관객이 "What is your job?" 질문하기.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="ko"><td class="period-cell">11월 3-4주</td><td class="activity-name">Thankful Tree</td><td>"I am thankful for my ___" 문장 나뭇잎에 쓰고 트리 완성.</td><td>나뭇잎 종이, 트리 보드</td><td>쓰기 어려운 아이는 그림으로 OK. 발표 후 박수. 학부모 사진 공유.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="ko"><td class="period-cell">12월 1-2주</td><td class="activity-name">Christmas Wish List Letter</td><td>산타에게 "I want a ___ because ___" 편지 쓰기.</td><td>편지지</td><td>because 이유 말하기 필수. 완성 후 크게 읽어보기.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="ko"><td class="period-cell">12월 3-4주</td><td class="activity-name">Mini Performance</td><td>1년 배운 노래+챈트+역할극 미니 발표회.</td><td>없음 (의상 선택)</td><td>2주 전부터 파트 나누기. 학부모 초대 또는 영상 촬영 공유.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="ko"><td class="period-cell">1월 1-2주</td><td class="activity-name">Show &amp; Tell</td><td>집에서 좋아하는 물건 가져와 3문장 이상 소개.</td><td>개인 소품</td><td>발표 전날 문장 연습 숙제 내주기. 청중은 질문 1개씩 하기.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="ko"><td class="period-cell">1월 3-4주</td><td class="activity-name">Alphabet Phonics Bingo</td><td>알파벳 소리 듣고 빙고 + "B says /b/! Bingo!"</td><td>빙고 카드</td><td>소리만 듣고 맞히기 → 단어 듣고 맞히기 순서로 난이도 높이기.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="ko"><td class="period-cell">2월 1-2주</td><td class="activity-name">Story Retelling</td><td>그림책 읽고 순서 카드 배열 + 한 문장씩 말하기.</td><td>그림책, 순서 카드</td><td>추천: Brown Bear / Very Hungry Caterpillar. 순서 배열 후 역할 나눠 발표.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="ko"><td class="period-cell">2월 3-4주</td><td class="activity-name">"I Can Now!" Presentation</td><td>1년간 배운 것 발표 + 친구에게 메시지 카드.</td><td>발표 카드, 메시지 카드</td><td>포트폴리오 함께 넘기며 성장 확인. "I'm proud of you!" 선생님이 한 명씩 안아주기.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <!-- EN -->
+          <tr data-lang="en"><td class="period-cell">Mar Wk 1-2</td><td class="activity-name">All About Me Poster</td><td>Make a self-introduction poster and present "My name is ___, I am ___ years old, I like ___"</td><td>Poster template</td><td>Practice with a partner once before presenting. Display in classroom afterwards.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="en"><td class="period-cell">Mar Wk 3-4</td><td class="activity-name">Class Interview</td><td>Interview a partner then introduce them "This is ___, she/he likes ___".</td><td>Microphone prop</td><td>First practice "Can I ask you a question?" formula. Microphone prop boosts confidence.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="en"><td class="period-cell">Apr Wk 1-2</td><td class="activity-name">Shape Bingo</td><td>Shape bingo + "I have a circle! Bingo!"</td><td>Bingo cards, markers</td><td>Review all shapes once before bingo. Shout "Bingo!" when a line is complete.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="en"><td class="period-cell">Apr Wk 3-4</td><td class="activity-name">Shape Robot Build</td><td>Build a robot with shape stickers and present "My robot has 3 squares"</td><td>Shape stickers, drawing paper</td><td>Ask "How many?" during presentation. Compare with partner's robot "Mine is bigger!"</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="en"><td class="period-cell">May Wk 1-2</td><td class="activity-name">Family Puppet Show</td><td>Introduce family with finger puppets + short dialogue.</td><td>Finger puppets</td><td>Provide simple dialogue script. Practice twice then present to classmates.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="en"><td class="period-cell">May Wk 3-4</td><td class="activity-name">Family Survey</td><td>"How many people are in your family?" survey then complete a graph.</td><td>Graph template</td><td>Looking at results, create a sentence together "Most friends have 4 people!"</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="en"><td class="period-cell">Jun Wk 1-2</td><td class="activity-name">Weather Wheel &amp; Reporter</td><td>Spin weather wheel and report "Today it is sunny and warm!" as weather reporter.</td><td>Weather wheel</td><td>Add microphone prop. Rotate reporter role each week for equal experience.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="en"><td class="period-cell">Jun Wk 3-4</td><td class="activity-name">Dress the Bear</td><td>Draw a weather card and dress the bear correctly + explain why.</td><td>Bear doll, clothing cards</td><td>Always ask "Why?" Practice reason sentences "Because it's cold!"</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="en"><td class="period-cell">Jul Wk 1-2</td><td class="activity-name">Mystery Bag (Food)</td><td>Feel and describe "It is soft / round / bumpy" then guess what it is.</td><td>Cloth bag, food models</td><td>Say 3+ descriptive words before revealing. Praise good description even if guess is wrong.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="en"><td class="period-cell">Jul Wk 3-4</td><td class="activity-name">I Like / I Don't Like Graph</td><td>Vote on food pictures + say "Most friends like ___" for results.</td><td>Graph board, stickers</td><td>During results analysis, ask "Why do you like it?" to practice giving reasons.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="en"><td class="period-cell">Aug Wk 1-2</td><td class="activity-name">Action Verb Charades</td><td>Draw a verb card, act it out, team guesses.</td><td>Verb cards</td><td>Run as teams with points. Winning team makes sentences with the verb as a bonus.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="en"><td class="period-cell">Aug Wk 3-4</td><td class="activity-name">"I Can!" Book</td><td>Complete "I can jump / swim / sing" sentences + mini-book presentation.</td><td>Mini-book template</td><td>After completing, exchange and read each other's books. Practice "Can you ___?"</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="en"><td class="period-cell">Sep Wk 1-2</td><td class="activity-name">Where Is It? Game</td><td>Hide an object and say "It's under the chair / in the box!" preposition practice.</td><td>Toy, box, chair</td><td>Teacher hides first, children ask. Then switch roles — children hide.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="en"><td class="period-cell">Sep Wk 3-4</td><td class="activity-name">Classroom Map</td><td>Draw a classroom map and label object locations in English.</td><td>Map template, stickers</td><td>After completing, explain with "The book is on the shelf" sentences.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="en"><td class="period-cell">Oct Wk 1-2</td><td class="activity-name">Halloween Role Play</td><td>Trick or Treat skit "What do you want?" "I want candy!"</td><td>Prop box, candy basket</td><td>Practice script 2–3 times then freestyle. Costumes make it even more effective.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="en"><td class="period-cell">Oct Wk 3-4</td><td class="activity-name">Opposites Tug of War</td><td>Teams for big/small, fast/slow express concepts physically + flashcard matching.</td><td>Opposite word cards</td><td>Show card and quickly answer "What's the opposite?" Keep it rhythmic.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="en"><td class="period-cell">Nov Wk 1-2</td><td class="activity-name">Community Helpers Role Play</td><td>Wear job costumes and role-play "I am a doctor. Are you sick?"</td><td>Costume prop box</td><td>Pairs dialogue. Audience asks "What is your job?"</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="en"><td class="period-cell">Nov Wk 3-4</td><td class="activity-name">Thankful Tree</td><td>Write "I am thankful for my ___" on leaf paper and complete the tree.</td><td>Leaf paper, tree board</td><td>Drawing is OK for those who can't write yet. Applause after presenting. Share photos with parents.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="en"><td class="period-cell">Dec Wk 1-2</td><td class="activity-name">Christmas Wish List Letter</td><td>Write to Santa "I want a ___ because ___"</td><td>Letter paper</td><td>Must include because + reason. Read aloud after completing.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="en"><td class="period-cell">Dec Wk 3-4</td><td class="activity-name">Mini Performance</td><td>Mini showcase of songs + chants + role-plays learned throughout the year.</td><td>None (costume optional)</td><td>Divide parts 2 weeks in advance. Invite parents or record and share video.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="en"><td class="period-cell">Jan Wk 1-2</td><td class="activity-name">Show &amp; Tell</td><td>Bring a favorite item from home and introduce it in 3+ sentences.</td><td>Personal props</td><td>Give homework to practice sentences the night before. Audience asks one question each.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="en"><td class="period-cell">Jan Wk 3-4</td><td class="activity-name">Alphabet Phonics Bingo</td><td>Listen to letter sounds and play bingo + "B says /b/! Bingo!"</td><td>Bingo cards</td><td>First match by sound only → then match by word. Gradually increase difficulty.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="en"><td class="period-cell">Feb Wk 1-2</td><td class="activity-name">Story Retelling</td><td>Read a picture book, arrange sequence cards + say one sentence each.</td><td>Picture book, sequence cards</td><td>Recommended: Brown Bear / Very Hungry Caterpillar. Divide roles after arranging sequence.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="en"><td class="period-cell">Feb Wk 3-4</td><td class="activity-name">"I Can Now!" Presentation</td><td>Present what was learned during the year + message cards to friends.</td><td>Presentation cards, message cards</td><td>Browse portfolio together to confirm growth. "I'm proud of you!" Teacher hugs each child individually.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ⑦ 7세반 활동 -->
+  <div class="card">
+    <div class="card-title">
+      <span class="dot dot-purple"></span>
+      <span data-lang-inline="ko">7세반 Circle Time 활동 (만 5~6세 / 24개)</span>
+      <span data-lang-inline="en">Age 7 Circle Time Activities (5–6 years / 24 activities)</span>
+    </div>
+    <div style="margin-bottom:0.85rem;">
+      <span class="tag tag-purple" data-lang-inline="ko">이유 말하기</span>
+      <span class="tag tag-purple" data-lang-inline="ko">토론</span>
+      <span class="tag tag-purple" data-lang-inline="ko">스토리텔링</span>
+      <span class="tag tag-purple" data-lang-inline="ko">발표</span>
+      <span class="tag tag-purple" data-lang-inline="ko">비판적 사고</span>
+      <span class="tag tag-purple" data-lang-inline="en">Giving Reasons</span>
+      <span class="tag tag-purple" data-lang-inline="en">Discussion</span>
+      <span class="tag tag-purple" data-lang-inline="en">Storytelling</span>
+      <span class="tag tag-purple" data-lang-inline="en">Presentation</span>
+      <span class="tag tag-purple" data-lang-inline="en">Critical Thinking</span>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr class="age7-header">
+            <th><span data-lang-inline="ko">시기</span><span data-lang-inline="en">Period</span></th>
+            <th><span data-lang-inline="ko">활동명</span><span data-lang-inline="en">Activity</span></th>
+            <th><span data-lang-inline="ko">내용</span><span data-lang-inline="en">Content</span></th>
+            <th><span data-lang-inline="ko">소품</span><span data-lang-inline="en">Props</span></th>
+            <th><span data-lang-inline="ko">진행 팁</span><span data-lang-inline="en">Teaching Tips</span></th>
+            <th class="yt-cell">YouTube</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- KO -->
+          <tr data-lang="ko"><td class="period-cell">3월 1-2주</td><td class="activity-name">Me in a Bag</td><td>종이봉투에 자신을 나타내는 물건 3개 넣어 "This represents me because..." 발표.</td><td>종이봉투, 개인 소품</td><td>발표 후 "What do you have in common?" 친구와 비교. 공동점 찾기.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="ko"><td class="period-cell">3월 3-4주</td><td class="activity-name">Question of the Day</td><td>칠판 질문("What is your favorite season?")에 답하고 이유 2문장 말하기.</td><td>칠판, 마커</td><td>답 먼저 쓰고 발표. "I like ___ because ___ and ___." 구조 안내.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="ko"><td class="period-cell">4월 1-2주</td><td class="activity-name">Compound Word Builder</td><td>단어 카드 2장 합쳐 합성어 만들기 (sun+flower=sunflower).</td><td>단어 카드 세트</td><td>칠판에 붙이며 다 같이 소리내어 읽기. 새 합성어 발견하면 보너스 점수.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="ko"><td class="period-cell">4월 3-4주</td><td class="activity-name">Adjective Describing Game</td><td>물건 보여주며 형용사 3개 이상 말하기. "It is big, round, and red!"</td><td>다양한 물건</td><td>"Can you think of more?" 도전. 형용사 많이 말한 사람이 다음 물건 선택.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="ko"><td class="period-cell">5월 1-2주</td><td class="activity-name">Rhyming Word Chain</td><td>공 굴리며 라임 단어 연결하기 (cat-bat-hat-mat).</td><td>비치볼</td><td>막히면 힌트 카드 활용. 체인 길이 기록 도전 "Can we beat our record?"</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="ko"><td class="period-cell">5월 3-4주</td><td class="activity-name">Emotion Scenario Cards</td><td>상황 카드 뽑아 감정 말하기 "If I lose my toy, I feel ___. I can ___".</td><td>상황 카드</td><td>해결책도 함께 말하기. "What can you do?" 공감+해결 사고력 키우기.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="ko"><td class="period-cell">6월 1-2주</td><td class="activity-name">Weather + Temperature Chart</td><td>날씨와 온도 기록 + "It's hotter than yesterday!" 비교 문장 말하기.</td><td>날씨 차트, 온도계</td><td>한 달치 기록 후 "Which week was the coldest?" 분석하기.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="ko"><td class="period-cell">6월 3-4주</td><td class="activity-name">Preposition Map Challenge</td><td>교실 약도에 물건 위치 표시 + "The ___ is between ___ and ___" 설명.</td><td>교실 약도, 스티커</td><td>파트너와 서로 설명하며 맞추기. between / next to / across from 집중.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="ko"><td class="period-cell">7월 1-2주</td><td class="activity-name">Food Chain Sequencing</td><td>먹이사슬 카드 순서대로 배열 + "The ___ eats the ___." 문장 말하기.</td><td>먹이사슬 카드</td><td>"What would happen if...?" 가정 질문으로 사고 확장.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="ko"><td class="period-cell">7월 3-4주</td><td class="activity-name">Opinion Poll &amp; Graph</td><td>"What is your favorite summer activity?" 설문 + 그래프 완성 + 발표.</td><td>설문지, 그래프 양식</td><td>결과 발표 시 "Most of us like..." "Fewer friends like..." 비교 문장 연습.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="ko"><td class="period-cell">8월 1-2주</td><td class="activity-name">Story Spine</td><td>"Once upon a time... Every day... Until one day... Finally..." 구조로 이야기 만들기.</td><td>스토리 카드</td><td>그룹당 1편. 완성 후 발표. 가장 창의적인 팀에게 박수.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="ko"><td class="period-cell">8월 3-4주</td><td class="activity-name">Debate Circle (Simple)</td><td>"Dogs or cats? Summer or winter?" 팀 나눠 이유 말하기.</td><td>토론 주제 카드</td><td>"I think ___ because ___." 구조 사용. 상대방 의견 "I understand, but..." 반박 연습.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="ko"><td class="period-cell">9월 1-2주</td><td class="activity-name">Synonym Swap</td><td>단어 카드 뽑아 동의어 말하기 (big→large→huge).</td><td>단어 카드</td><td>난이도: 쉬운 단어 → 감정 단어 → 동작 단어. 사전 보여주며 흥미 유도.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="ko"><td class="period-cell">9월 3-4주</td><td class="activity-name">News Reporter</td><td>학교 소식이나 간단한 사건 영어로 리포팅. "Today at our school..."</td><td>마이크 소품, 메모지</td><td>전날 주제 미리 알려주기. 카메라 앞에서 찍으면 동기 부여 UP.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="ko"><td class="period-cell">10월 1-2주</td><td class="activity-name">Spooky Story Circle</td><td>공 전달하며 이야기 이어가기 "One dark night..." 협동 스토리텔링.</td><td>비치볼</td><td>"Then suddenly..." "All of a sudden..." 전환 표현 가르쳐 주기.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="ko"><td class="period-cell">10월 3-4주</td><td class="activity-name">Would You Rather?</td><td>"Would you rather fly or be invisible?" 골라 이유 말하기.</td><td>질문 카드</td><td>"I would rather ___ because ___." 구조 사용. 두 번 이상 이유 말하기 도전.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="ko"><td class="period-cell">11월 1-2주</td><td class="activity-name">Problem Solving Scenarios</td><td>상황 카드(친구와 싸움, 물건 잃어버림) 뽑아 해결책 토론.</td><td>상황 카드</td><td>"First I would... Then I would..." 순서 있는 해결책 말하기.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="ko"><td class="period-cell">11월 3-4주</td><td class="activity-name">Gratitude Letter Reading</td><td>감사 편지 써서 친구 앞에서 낭독 "Dear ___, I am thankful for you because..."</td><td>편지지</td><td>낭독 전 연습 1회. 낭독 후 받는 친구 반응 "Thank you! I feel ___" 유도.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="ko"><td class="period-cell">12월 1-2주</td><td class="activity-name">My Dream Job Presentation</td><td>"I want to be a ___ because ___. I will ___" 3문장 발표.</td><td>발표 양식 or 포스터</td><td>그림+문장 미니 포스터로 발표. 질문 1개씩 받기.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="ko"><td class="period-cell">12월 3-4주</td><td class="activity-name">Year-End Talk Show</td><td>사회자+게스트 역할로 1년 인터뷰. "What was your favorite activity?"</td><td>마이크 소품</td><td>사회자 역할 돌아가며. 과장된 리액션 유도. 영상 촬영 후 공유.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="ko"><td class="period-cell">1월 1-2주</td><td class="activity-name">Book Talk</td><td>좋아하는 책 30초 소개 "This book is about... I liked it because..."</td><td>개인 책</td><td>완벽하지 않아도 OK. "Any questions?" 청중 질문 1개 연습.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="ko"><td class="period-cell">1월 3-4주</td><td class="activity-name">Rhyme &amp; Riddle Time</td><td>수수께끼 내고 맞히기 "I am round. I am orange. You eat me. What am I?"</td><td>수수께끼 카드</td><td>아이가 직접 수수께끼 만들기 도전. 힌트 3개 구조 가르쳐 주기.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="ko"><td class="period-cell">2월 1-2주</td><td class="activity-name">Collaborative Story Book</td><td>그룹별 이야기 한 페이지씩 써서 클래스 책 완성.</td><td>빈 책 양식, 색연필</td><td>그림+문장 함께. 완성 후 전체 낭독. 학교 도서관에 비치.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="ko"><td class="period-cell">2월 3-4주</td><td class="activity-name">My Growth Portfolio Share</td><td>1년 작품 포트폴리오 발표 "I improved in... I am proud of..."</td><td>포트폴리오 파일</td><td>"Before and after" 비교. 성장에 집중한 칭찬. 학부모 초대 공유 가능.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <!-- EN -->
+          <tr data-lang="en"><td class="period-cell">Mar Wk 1-2</td><td class="activity-name">Me in a Bag</td><td>Put 3 objects that represent you in a paper bag and present "This represents me because..."</td><td>Paper bag, personal props</td><td>After presenting, find commonalities "What do you have in common?" with friends.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="en"><td class="period-cell">Mar Wk 3-4</td><td class="activity-name">Question of the Day</td><td>Answer a board question ("What is your favorite season?") and give 2 reasons.</td><td>Chalkboard, markers</td><td>Write answer first then present. Guide "I like ___ because ___ and ___." structure.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="en"><td class="period-cell">Apr Wk 1-2</td><td class="activity-name">Compound Word Builder</td><td>Combine 2 word cards to make compound words (sun+flower=sunflower).</td><td>Word card sets</td><td>Post on board and read aloud together. Bonus points for discovering new compound words.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="en"><td class="period-cell">Apr Wk 3-4</td><td class="activity-name">Adjective Describing Game</td><td>Show an object and say 3+ adjectives. "It is big, round, and red!"</td><td>Various objects</td><td>Challenge "Can you think of more?" Most adjectives gets to pick the next object.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="en"><td class="period-cell">May Wk 1-2</td><td class="activity-name">Rhyming Word Chain</td><td>Roll a ball and connect rhyming words (cat-bat-hat-mat).</td><td>Beach ball</td><td>Use hint cards if stuck. Record chain length "Can we beat our record?"</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="en"><td class="period-cell">May Wk 3-4</td><td class="activity-name">Emotion Scenario Cards</td><td>Draw a situation card and express emotion "If I lose my toy, I feel ___. I can ___".</td><td>Situation cards</td><td>Also say solutions "What can you do?" Build empathy + problem-solving thinking.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="en"><td class="period-cell">Jun Wk 1-2</td><td class="activity-name">Weather + Temperature Chart</td><td>Record weather and temperature + say comparison sentences "It's hotter than yesterday!"</td><td>Weather chart, thermometer</td><td>After a month of records, analyze "Which week was the coldest?"</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="en"><td class="period-cell">Jun Wk 3-4</td><td class="activity-name">Preposition Map Challenge</td><td>Mark object locations on a classroom map + explain "The ___ is between ___ and ___"</td><td>Classroom map, stickers</td><td>Partners explain and verify each other. Focus on between / next to / across from.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="en"><td class="period-cell">Jul Wk 1-2</td><td class="activity-name">Food Chain Sequencing</td><td>Arrange food chain cards in order + say "The ___ eats the ___."</td><td>Food chain cards</td><td>Expand thinking with "What would happen if...?" hypothetical questions.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="en"><td class="period-cell">Jul Wk 3-4</td><td class="activity-name">Opinion Poll &amp; Graph</td><td>"What is your favorite summer activity?" survey + complete graph + present.</td><td>Survey form, graph template</td><td>Practice "Most of us like..." "Fewer friends like..." comparison sentences during results.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="en"><td class="period-cell">Aug Wk 1-2</td><td class="activity-name">Story Spine</td><td>Create a story using "Once upon a time... Every day... Until one day... Finally..." structure.</td><td>Story cards</td><td>One story per group. Present after completing. Applause for most creative team.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="en"><td class="period-cell">Aug Wk 3-4</td><td class="activity-name">Debate Circle (Simple)</td><td>"Dogs or cats? Summer or winter?" Teams give reasons.</td><td>Debate topic cards</td><td>Use "I think ___ because ___." structure. Practice rebuttal "I understand, but..."</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="en"><td class="period-cell">Sep Wk 1-2</td><td class="activity-name">Synonym Swap</td><td>Draw word card and say synonyms (big→large→huge).</td><td>Word cards</td><td>Difficulty levels: easy words → emotion words → action words. Show dictionary to spark interest.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="en"><td class="period-cell">Sep Wk 3-4</td><td class="activity-name">News Reporter</td><td>Report school news or simple events in English. "Today at our school..."</td><td>Microphone prop, notepad</td><td>Share topic the day before. Filming on camera boosts motivation significantly.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="en"><td class="period-cell">Oct Wk 1-2</td><td class="activity-name">Spooky Story Circle</td><td>Pass a ball and continue a story "One dark night..." Collaborative storytelling.</td><td>Beach ball</td><td>Teach transition expressions "Then suddenly..." "All of a sudden..."</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="en"><td class="period-cell">Oct Wk 3-4</td><td class="activity-name">Would You Rather?</td><td>"Would you rather fly or be invisible?" Choose and explain why.</td><td>Question cards</td><td>Use "I would rather ___ because ___." structure. Challenge to give 2+ reasons.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="en"><td class="period-cell">Nov Wk 1-2</td><td class="activity-name">Problem Solving Scenarios</td><td>Draw situation cards (fight with friend, lost belongings) and discuss solutions.</td><td>Situation cards</td><td>Use "First I would... Then I would..." structured solution format.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="en"><td class="period-cell">Nov Wk 3-4</td><td class="activity-name">Gratitude Letter Reading</td><td>Write a thank-you letter and read aloud "Dear ___, I am thankful for you because..."</td><td>Letter paper</td><td>Practice once before reading aloud. After reading, prompt recipient "Thank you! I feel ___"</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="en"><td class="period-cell">Dec Wk 1-2</td><td class="activity-name">My Dream Job Presentation</td><td>"I want to be a ___ because ___. I will ___" 3-sentence presentation.</td><td>Presentation template or poster</td><td>Mini poster with drawing + sentences. Receive one question from audience each.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="en"><td class="period-cell">Dec Wk 3-4</td><td class="activity-name">Year-End Talk Show</td><td>Host + guest roles for year-end interview. "What was your favorite activity?"</td><td>Microphone prop</td><td>Rotate host role. Encourage exaggerated reactions. Record video and share.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="en"><td class="period-cell">Jan Wk 1-2</td><td class="activity-name">Book Talk</td><td>30-second introduction of a favorite book "This book is about... I liked it because..."</td><td>Personal book</td><td>Imperfection is OK. Practice "Any questions?" Audience asks one question each.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="en"><td class="period-cell">Jan Wk 3-4</td><td class="activity-name">Rhyme &amp; Riddle Time</td><td>Give and guess riddles "I am round. I am orange. You eat me. What am I?"</td><td>Riddle cards</td><td>Challenge children to create their own riddles. Teach the 3-hint structure.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="en"><td class="period-cell">Feb Wk 1-2</td><td class="activity-name">Collaborative Story Book</td><td>Each group writes one page to complete a class book.</td><td>Blank book template, colored pencils</td><td>Drawing + sentences together. Read aloud when complete. Display in school library.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+          <tr data-lang="en"><td class="period-cell">Feb Wk 3-4</td><td class="activity-name">My Growth Portfolio Share</td><td>Present 1-year portfolio "I improved in... I am proud of..."</td><td>Portfolio file</td><td>Compare "Before and after". Praise focused on growth. Parents can be invited to share.</td><td class="yt-cell"><a href="" class="yt-btn" target="_blank">&#9654;</a></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</main>
+
+<!-- ── FOOTER ──────────────────────────────────────────────── -->
+<footer style="text-align:center;padding:2rem 1rem;font-size:0.78rem;color:var(--gray-400);border-top:1px solid var(--gray-200);background:white;">
+  © SC Wonderland English Academy &nbsp;·&nbsp;
+  <span data-lang-inline="ko">Circle Time 연간 커리큘럼</span>
+  <span data-lang-inline="en">Circle Time Annual Curriculum</span>
+</footer>
+
+<script>
+  // ═══════════════════════════════════════════════════════════════════
+  // ★ YouTube 링크 관리 - 여기만 수정하세요!
+  //   키: 월 숫자, 값: YouTube URL 문자열
+  //   URL을 추가할 때: 빈 따옴표("") 안에 링크를 붙여넣으면 됩니다.
+  //   한국어/영어 버튼 모두 자동으로 같은 링크가 적용됩니다.
+  // ═══════════════════════════════════════════════════════════════════
+  const SONG_YOUTUBE = {
+    3:  "",  // 3월  – Hello Song (Bounce Patrol)
+    4:  "",  // 4월  – Head Shoulders Knees and Toes
+    5:  "",  // 5월  – If You're Happy and You Know It
+    6:  "",  // 6월  – The Wheels on the Bus
+    7:  "",  // 7월  – Baby Shark (Pinkfong)
+    8:  "",  // 8월  – Old MacDonald Had a Farm
+    9:  "",  // 9월  – Five Little Monkeys
+    10: "",  // 10월 – This Is Halloween
+    11: "",  // 11월 – Leaves Are Falling (Autumn Song)
+    12: "",  // 12월 – Jingle Bells Kids Version
+    1:  "",  // 1월  – ABC Song (Bounce Patrol)
+    2:  "",  // 2월  – You've Got a Friend in Me
+  };
+  // 위 객체를 읽어 KO/EN 모든 행의 링크를 자동으로 채웁니다 (수정 불필요).
+  document.querySelectorAll('tr[data-month]').forEach(function(tr) {
+    var month = parseInt(tr.dataset.month, 10);
+    var url = SONG_YOUTUBE[month];
+    var btn = tr.querySelector('.yt-btn');
+    if (btn && url) btn.href = url;
+  });
+  // ═══════════════════════════════════════════════════════════════════
+
+  // ═══════════════════════════════════════════════════════════════════
+  // ★ 활동 YouTube 링크 관리 - 여기만 수정하세요!
+  //   순서: 각 세반의 활동을 3월 1-2주부터 2월 3-4주까지 1~24번 순서로
+  //   URL을 추가할 때: 빈 따옴표("") 안에 링크를 붙여넣으면 됩니다.
+  //   한국어/영어 버튼 모두 자동으로 같은 링크가 적용됩니다.
+  // ═══════════════════════════════════════════════════════════════════
+  const ACTIVITY_YOUTUBE = {
+
+    // ── 5세반 (만 3~4세) ───────────────────────────────────────────
+    age5: {
+      1:  "",  //  3월 1-2주  Name Ball Toss
+      2:  "",  //  3월 3-4주  Who's Missing?
+      3:  "",  //  4월 1-2주  Simon Says
+      4:  "",  //  4월 3-4주  Body Stamp & Label
+      5:  "",  //  5월 1-2주  Emotion Freeze Dance
+      6:  "",  //  5월 3-4주  Feeling Faces Craft
+      7:  "",  //  6월 1-2주  Vehicle Parade
+      8:  "",  //  6월 3-4주  Transportation Sort
+      9:  "",  //  7월 1-2주  Ocean Movement Game
+      10: "",  //  7월 3-4주  Sea Animal Bag
+      11: "",  //  8월 1-2주  Animal Sound Guessing
+      12: "",  //  8월 3-4주  Farm Animal Headbands
+      13: "",  //  9월 1-2주  Number Hopscotch
+      14: "",  //  9월 3-4주  Count & Drop
+      15: "",  // 10월 1-2주  Halloween Dress-Up
+      16: "",  // 10월 3-4주  Spooky Color Mix
+      17: "",  // 11월 1-2주  Leaf Sorting
+      18: "",  // 11월 3-4주  Nature Walk Words
+      19: "",  // 12월 1-2주  Wrap the Gift
+      20: "",  // 12월 3-4주  Holiday Crafts & Sing
+      21: "",  //  1월 1-2주  Letter Sound Parade
+      22: "",  //  1월 3-4주  Sound Basket
+      23: "",  //  2월 1-2주  My Favorite Color Book
+      24: "",  //  2월 3-4주  Friends Circle Celebration
+    },
+
+    // ── 6세반 (만 4~5세) ───────────────────────────────────────────
+    age6: {
+      1:  "",  //  3월 1-2주  All About Me Poster
+      2:  "",  //  3월 3-4주  Class Interview
+      3:  "",  //  4월 1-2주  Shape Bingo
+      4:  "",  //  4월 3-4주  Shape Robot Build
+      5:  "",  //  5월 1-2주  Family Puppet Show
+      6:  "",  //  5월 3-4주  Family Survey
+      7:  "",  //  6월 1-2주  Weather Wheel & Reporter
+      8:  "",  //  6월 3-4주  Dress the Bear
+      9:  "",  //  7월 1-2주  Mystery Bag (Food)
+      10: "",  //  7월 3-4주  I Like / I Don't Like Graph
+      11: "",  //  8월 1-2주  Action Verb Charades
+      12: "",  //  8월 3-4주  "I Can!" Book
+      13: "",  //  9월 1-2주  Where Is It? Game
+      14: "",  //  9월 3-4주  Classroom Map
+      15: "",  // 10월 1-2주  Halloween Role Play
+      16: "",  // 10월 3-4주  Opposites Tug of War
+      17: "",  // 11월 1-2주  Community Helpers Role Play
+      18: "",  // 11월 3-4주  Thankful Tree
+      19: "",  // 12월 1-2주  Christmas Wish List Letter
+      20: "",  // 12월 3-4주  Mini Performance
+      21: "",  //  1월 1-2주  Show & Tell
+      22: "",  //  1월 3-4주  Alphabet Phonics Bingo
+      23: "",  //  2월 1-2주  Story Retelling
+      24: "",  //  2월 3-4주  "I Can Now!" Presentation
+    },
+
+    // ── 7세반 (만 5~6세) ───────────────────────────────────────────
+    age7: {
+      1:  "",  //  3월 1-2주  Me in a Bag
+      2:  "",  //  3월 3-4주  Question of the Day
+      3:  "",  //  4월 1-2주  Compound Word Builder
+      4:  "",  //  4월 3-4주  Adjective Describing Game
+      5:  "",  //  5월 1-2주  Rhyming Word Chain
+      6:  "",  //  5월 3-4주  Emotion Scenario Cards
+      7:  "",  //  6월 1-2주  Weather + Temperature Chart
+      8:  "",  //  6월 3-4주  Preposition Map Challenge
+      9:  "",  //  7월 1-2주  Food Chain Sequencing
+      10: "",  //  7월 3-4주  Opinion Poll & Graph
+      11: "",  //  8월 1-2주  Story Spine
+      12: "",  //  8월 3-4주  Debate Circle (Simple)
+      13: "",  //  9월 1-2주  Synonym Swap
+      14: "",  //  9월 3-4주  News Reporter
+      15: "",  // 10월 1-2주  Spooky Story Circle
+      16: "",  // 10월 3-4주  Would You Rather?
+      17: "",  // 11월 1-2주  Problem Solving Scenarios
+      18: "",  // 11월 3-4주  Gratitude Letter Reading
+      19: "",  // 12월 1-2주  My Dream Job Presentation
+      20: "",  // 12월 3-4주  Year-End Talk Show
+      21: "",  //  1월 1-2주  Book Talk
+      22: "",  //  1월 3-4주  Rhyme & Riddle Time
+      23: "",  //  2월 1-2주  Collaborative Story Book
+      24: "",  //  2월 3-4주  My Growth Portfolio Share
+    },
+  };
+  // 위 객체를 읽어 모든 활동 행의 링크를 자동으로 채웁니다 (수정 불필요).
+  ['5', '6', '7'].forEach(function(n) {
+    var header = document.querySelector('.age' + n + '-header');
+    if (!header) return;
+    var tbody = header.closest('table').querySelector('tbody');
+    var urls = ACTIVITY_YOUTUBE['age' + n] || {};
+    ['ko', 'en'].forEach(function(lang) {
+      tbody.querySelectorAll('tr[data-lang="' + lang + '"]').forEach(function(tr, i) {
+        var url = urls[i + 1];
+        var btn = tr.querySelector('.yt-btn');
+        if (btn && url) btn.href = url;
+      });
+    });
+  });
+  // ═══════════════════════════════════════════════════════════════════
+
+  function setLang(lang) {
+    document.body.className = 'lang-' + lang;
+    document.getElementById('btn-ko').classList.toggle('active', lang === 'ko');
+    document.getElementById('btn-en').classList.toggle('active', lang === 'en');
+    document.documentElement.lang = lang === 'ko' ? 'ko' : 'en';
+    localStorage.setItem('ct-lang', lang);
+  }
+  // Restore last selected language
+  const saved = localStorage.getItem('ct-lang');
+  if (saved === 'en') setLang('en');
+</script>
+</body>
+</html>

@@ -1,0 +1,131 @@
+[0] None | 영어유치원 Circle Time 연간 커리큘럼
+[1] None | 5세반 · 6세반 · 7세반  |  주 1회 40분
+[2] Heading 1 | Circle Time 기본 구조
+[4] Heading 1 | 연간 노래 12곡 (월별 고정)
+[6] None | ※ 각 노래는 해당 월 4주 동안 매 수업 오프닝 5분에 반복합니다. 이전 달 노래도 가끔 리뷰.
+[9] Heading 1 | 연령 기준
+[11] Heading 2 | 전체 운영 팁
+[12] None | 💡 오프닝은 항상 같은 인사 노래로 시작 → 아이들이 심리적으로 안정됩니다.
+[13] None | 💡 이달의 노래는 4주 동안 매 수업 반복. 이전 달 노래도 가끔 리뷰.
+[14] None | 💡 5세반: 틀려도 박수 먼저! 단어 하나만 말해도 성공으로 인정.
+[15] None | 💡 6세반: 문장 말하기 목표. 발표 기회 골고루, 게임엔 규칙 설명 필수.
+[16] None | 💡 7세반: 이유 말하기(because), 비교(more/less), 의견 표현(I think) 집중 연습.
+[17] None | 💡 포트폴리오(만든 작품 모음)를 학기 말에 학부모 공유 → 성장 실감.
+[18] None | 💡 월 1회 'Star of the Week' → 잘한 친구 칭찬 & 동기 부여.
+[21] Heading 1 | 5세반 Circle Time 활동 (만 3~4세 / 24개)
+[22] None | 키워드: 모방 · 신체 · 반복 · 단어 중심 · 짧고 즐겁게
+[26] Heading 1 | 6세반 Circle Time 활동 (만 4~5세 / 24개)
+[27] None | 키워드: 문장 말하기 · 역할극 · 규칙 게임 · 발표 · 사고력
+[31] Heading 1 | 7세반 Circle Time 활동 (만 5~6세 / 24개)
+[32] None | 키워드: 이유 말하기 · 토론 · 스토리텔링 · 발표 · 비판적 사고
+
+
+=== TABLES ===
+
+--- Table 0 ---
+파트 | 시간 | 내용
+오프닝 루틴 | 5분 | 인사 노래 + 이달의 노래
+메인 활동 | 25~30분 | 테마 활동 (아래 커리큘럼 참고)
+클로징 루틴 | 5분 | Goodbye Song + 한 줄 복습
+
+--- Table 1 ---
+월 | 노래 | 테마 | 유튜브 링크
+3월 | Hello Song – Bounce Patrol | 인사 / 자기소개 | ▶ 유튜브
+4월 | Head Shoulders Knees and Toes | 신체 | ▶ 유튜브
+5월 | If You're Happy and You Know It | 감정 | ▶ 유튜브
+6월 | The Wheels on the Bus | 탈것 | ▶ 유튜브
+7월 | Baby Shark – Pinkfong | 바다 동물 | ▶ 유튜브
+8월 | Old MacDonald Had a Farm | 농장 동물 | ▶ 유튜브
+9월 | Five Little Monkeys | 숫자 | ▶ 유튜브
+10월 | This Is Halloween | 핼러윈 | ▶ 유튜브
+11월 | Leaves Are Falling – Autumn Song | 계절 / 자연 | ▶ 유튜브
+12월 | Jingle Bells – Kids Version | 크리스마스 | ▶ 유튜브
+1월 | ABC Song – Bounce Patrol | 알파벳 | ▶ 유튜브
+2월 | You've Got a Friend in Me | 우정 / 마무리 | ▶ 유튜브
+
+--- Table 2 ---
+반 | 만 나이 | 발달 특징
+5세반 | 만 3~4세 | 짧은 집중력(10~15분), 모방 중심, 단어·짧은 구문 수준, 신체 활동 선호
+6세반 | 만 4~5세 | 집중력 향상(15~25분), 간단한 문장 말하기 가능, 규칙 있는 게임 가능, 역할극 가능
+7세반 | 만 5~6세 | 집중력 25분 이상, 문장 말하기·쓰기 가능, 논리적 사고 발달, 토론·발표 가능
+
+--- Table 3 ---
+시기 | 활동명 | 내용 | 소품 | 진행 팁 | 참고 영상
+3월 1-2주 | Name Ball Toss | 공을 굴리며 "My name is ___!" 말하기. 받은 친구가 다음 사람에게 넘기기. | 비치볼 | 처음엔 선생님이 먼저 시범. 이름을 크게 말한 뒤 천천히 굴리기. 틀려도 OK, 박수 먼저! | ▶ 유튜브
+3월 3-4주 | Who's Missing? | 한 명 숨기고 "Who is missing?" 맞히기. "Where is ___?" 연습. | 없음 | 눈을 가리는 동안 노래 불러 집중 유도. 찾으면 함께 환호! | ▶ 유튜브
+4월 1-2주 | Simon Says | "Simon says touch your nose!" 신체 반응 게임. | 없음 | 처음엔 탈락 없이 즐기기. 속도를 점점 빠르게 하면 웃음 폭발! | ▶ 유튜브
+4월 3-4주 | Body Stamp & Label | 전신 종이에 도장 찍고 신체 단어 스티커 붙이기. | 전신 종이, 스탬프, 단어 스티커 | 아이가 종이에 누워 선생님이 외곽선 그려주기. 완성 후 "This is my nose!" 발표. | ▶ 유튜브
+5월 1-2주 | Emotion Freeze Dance | 음악 멈추면 감정 카드 보고 표정 짓기. | 감정 카드, 음악 | 카드 없이 선생님 표정만 보고 따라 해도 OK. 과장된 표정이 핵심! | ▶ 유튜브
+5월 3-4주 | Feeling Faces Craft | 오늘 기분 얼굴 그리기 + "I feel happy/sad!" 말하기. | 종이 접시, 색연필 | "How do you feel today?" 루틴화. 매주 차트에 스티커 붙이기. | ▶ 유튜브
+6월 1-2주 | Vehicle Parade | 버스/자동차/기차 흉내내며 교실 한 바퀴 행진. | 없음 | 각 탈것 소리도 함께! "Beep beep!" "Choo choo!" 과장해서 유도. | ▶ 유튜브
+6월 3-4주 | Transportation Sort | 땅/바다/하늘 탈것 그림 카드를 매트에 분류하기. | 그림 카드 3세트, 분류 매트 | "Does it fly? Does it swim?" 질문으로 사고 유도. 오답도 함께 생각하기. | ▶ 유튜브
+7월 1-2주 | Ocean Movement Game | 물고기/게/해파리처럼 몸으로 표현하며 움직이기. | 없음 | 선생님이 먼저 과장해서 시범. 배경 음악으로 파도 소리 틀어주기. | ▶ 유튜브
+7월 3-4주 | Sea Animal Bag | 촉감 백에서 바다 동물 피규어 꺼내며 이름 말하기. | 천 가방, 피규어 5~8종 | 꺼내기 전 "Is it big? Is it soft?" 힌트 주기. 꺼낸 후 다 같이 이름 외치기. | ▶ 유튜브
+8월 1-2주 | Animal Sound Guessing | 소리 듣고 동물 맞히기 "It's a ___!" | 음원, 동물 그림 카드 | 틀려도 웃으며 넘기기. 맞히면 그 동물 소리 다 같이 내보기. | ▶ 유튜브
+8월 3-4주 | Farm Animal Headbands | 동물 머리띠 쓰고 소리+움직임 함께 표현. | 동물 머리띠 세트 | 친구 머리띠 보고 이름 맞히기. "You are a cow! Moo!" | ▶ 유튜브
+9월 1-2주 | Number Hopscotch | 숫자 바닥 판 위로 점프하며 1~10 세기. | 숫자 바닥 매트 or 테이프 | 거꾸로(10→1) 도전도 추가. 팀으로 릴레이 하면 더 신남! | ▶ 유튜브
+9월 3-4주 | Count & Drop | 컵에 블록 넣으며 1~10 세기. | 컵, 블록 또는 콩 | "One, two, three..." 함께 세기. 다 넣으면 컵을 흔들며 "Ten!" | ▶ 유튜브
+10월 1-2주 | Halloween Dress-Up | 마녀/유령/호박 소품 입어보며 단어 익히기. | 소품 박스 (모자, 망토 등) | 거울 앞에서 "I am a witch!" 크게 말하기. 친구가 맞히는 게임도 추가. | ▶ 유튜브
+10월 3-4주 | Spooky Color Mix | 주황+검정 물감 섞기 + "orange! black!" 색깔 말하기. | 물감, 종이 | 손가락으로 섞어도 OK. "Spooky! Scary!" 표현 추가로 분위기 up. | ▶ 유튜브
+11월 1-2주 | Leaf Sorting | 낙엽을 색깔/크기별로 분류 + "big/small, red/yellow" 말하기. | 낙엽(실제 또는 종이) | 실제 낙엽이면 질감도 말하기 "It's rough!" 감각 어휘 확장. | ▶ 유튜브
+11월 3-4주 | Nature Walk Words | 교실 밖 짧은 산책 + 보이는 것 영어로 말하기. | 없음 | 포인트 앤 세이! "I see a tree!" 선생님이 먼저, 아이가 따라. 돌아와서 그림으로 기록. | ▶ 유튜브
+12월 1-2주 | Wrap the Gift | 선물 포장 흉내내며 색깔/크기 말하기. | 상자, 포장지 | "Big or small? What color?" 말하게 하기. 리본 붙이며 "Ta-da!" 마무리. | ▶ 유튜브
+12월 3-4주 | Holiday Crafts & Sing | 크리스마스 장식 만들며 노래 부르기. | 공작 재료 | 만들기 중 노래 반복 재생. 완성 후 "This is my star!" 들고 발표. | ▶ 유튜브
+1월 1-2주 | Letter Sound Parade | A~Z 카드 들고 행진하며 소리 외치기. | 알파벳 카드 | "A says /a/!" 구호처럼 크게. 사진 찍어 교실에 붙이면 복습 효과. | ▶ 유튜브
+1월 3-4주 | Sound Basket | 바구니에서 물건 꺼내며 첫 글자 소리 말하기. | 실물 소품 바구니 | "What sound does it start with?" 기다리기. 틀리면 다 같이 힌트! | ▶ 유튜브
+2월 1-2주 | My Favorite Color Book | 좋아하는 색 골라 미니북 완성 + "My favorite color is ___" 발표. | 미니북 양식, 색연필 | 발표 전 연습 시간 1분. 친구 책 보며 "Me too!" 반응 유도. | ▶ 유튜브
+2월 3-4주 | Friends Circle Celebration | 친구 이름 부르며 칭찬 스티커 붙여주기 + 노래. | 스티커, 왕관 | "You are amazing!" 등 칭찬 문장 미리 연습. 왕관 쓰고 찍은 사진 학부모 공유. | ▶ 유튜브
+
+--- Table 4 ---
+시기 | 활동명 | 내용 | 소품 | 진행 팁 | 참고 영상
+3월 1-2주 | All About Me Poster | 자기 소개 포스터 만들고 "My name is ___, I am ___ years old, I like ___" 발표. | 포스터 양식 | 발표 전 파트너와 연습 1번. 발표 후 교실에 전시. | ▶ 유튜브
+3월 3-4주 | Class Interview | 짝꿍 인터뷰 후 친구 소개 "This is ___, she/he likes ___". | 마이크 소품 | "Can I ask you a question?" 질문 공식 먼저 연습. 마이크 소품이 자신감 UP. | ▶ 유튜브
+4월 1-2주 | Shape Bingo | 도형 빙고 + "I have a circle! Bingo!" | 빙고 카드, 마커 | 빙고 전 모든 도형 한 번씩 복습. 줄 완성 시 "Bingo!" 외치게 하기. | ▶ 유튜브
+4월 3-4주 | Shape Robot Build | 도형 스티커로 로봇 만들고 "My robot has 3 squares" 발표. | 도형 스티커, 도화지 | 발표 시 "How many?" 물어보기. 짝꿍 로봇과 비교 "Mine is bigger!" | ▶ 유튜브
+5월 1-2주 | Family Puppet Show | 손가락 인형으로 가족 소개 + 짧은 대화. | 손가락 인형 | 대화 스크립트 간단히 제공. 연습 2회 후 친구에게 발표. | ▶ 유튜브
+5월 3-4주 | Family Survey | "How many people are in your family?" 조사 후 그래프 완성. | 그래프 양식 | 결과 보며 "Most friends have 4 people!" 문장 함께 만들기. | ▶ 유튜브
+6월 1-2주 | Weather Wheel & Reporter | 날씨 휠 돌리고 "Today it is sunny and warm!" 날씨 리포터 역할. | 날씨 휠 | 마이크 소품 추가. 매주 담당자 바꾸어 리포터 경험 골고루. | ▶ 유튜브
+6월 3-4주 | Dress the Bear | 날씨 카드 뽑고 곰 인형에 맞는 옷 입히기 + 이유 말하기. | 곰 인형, 옷 카드 | "Why?"를 항상 물어보기. "Because it's cold!" 이유 문장 연습. | ▶ 유튜브
+7월 1-2주 | Mystery Bag (Food) | 만지고 "It is soft / round / bumpy" 묘사 후 맞히기. | 천 가방, 식품 모형 | 3개 이상 묘사 단어 말한 후 공개. 틀려도 묘사 잘 했으면 칭찬. | ▶ 유튜브
+7월 3-4주 | I Like / I Don't Like Graph | 음식 그림 보고 투표 + "Most friends like ___" 결과 말하기. | 그래프 보드, 스티커 | 결과 분석 시 "Why do you like it?" 질문으로 이유 말하기 연습. | ▶ 유튜브
+8월 1-2주 | Action Verb Charades | 동사 카드 뽑아 행동하고 팀이 맞히기. | 동사 카드 | 팀 나눠 점수제로 운영. 맞힌 팀은 동사로 문장 만들기 추가. | ▶ 유튜브
+8월 3-4주 | "I Can!" Book | "I can jump / swim / sing" 문장 완성 + 미니북 발표. | 미니북 양식 | 완성 후 친구와 교환해서 읽어보기. "Can you ___?" 질문 연습. | ▶ 유튜브
+9월 1-2주 | Where Is It? Game | 물건 숨기고 "It's under the chair / in the box!" 전치사 말하기. | 장난감, 상자, 의자 | 선생님이 먼저 숨기고 아이들이 묻기. 역할 바꿔 아이가 숨기기. | ▶ 유튜브
+9월 3-4주 | Classroom Map | 교실 지도 그리고 물건 위치 영어로 라벨 붙이기. | 지도 양식, 스티커 | 완성 후 "The book is on the shelf" 문장으로 설명하게 하기. | ▶ 유튜브
+10월 1-2주 | Halloween Role Play | Trick or Treat 상황극 "What do you want?" "I want candy!" | 소품 박스, 사탕 바구니 | 스크립트 2-3회 연습 후 자유롭게. 의상 있으면 더욱 효과적. | ▶ 유튜브
+10월 3-4주 | Opposites Tug of War | big/small, fast/slow 팀 나눠 개념 몸으로 표현 + 플래시카드 매칭. | 반대말 카드 | 카드 보여주며 "What's the opposite?" 빠르게 답하기. 박자감 있게 진행. | ▶ 유튜브
+11월 1-2주 | Community Helpers Role Play | 직업 의상 입고 역할극 "I am a doctor. Are you sick?" | 의상 소품 박스 | 2인 1조 대화. 관객이 "What is your job?" 질문하기. | ▶ 유튜브
+11월 3-4주 | Thankful Tree | "I am thankful for my ___" 문장 나뭇잎에 쓰고 트리 완성. | 나뭇잎 종이, 트리 보드 | 쓰기 어려운 아이는 그림으로 OK. 발표 후 박수. 학부모 사진 공유. | ▶ 유튜브
+12월 1-2주 | Christmas Wish List Letter | 산타에게 "I want a ___ because ___" 편지 쓰기. | 편지지 | because 이유 말하기 필수. 완성 후 크게 읽어보기. | ▶ 유튜브
+12월 3-4주 | Mini Performance | 1년 배운 노래+챈트+역할극 미니 발표회. | 없음 (의상 선택) | 2주 전부터 파트 나누기. 학부모 초대 또는 영상 촬영 공유. | ▶ 유튜브
+1월 1-2주 | Show & Tell | 집에서 좋아하는 물건 가져와 3문장 이상 소개. | 개인 소품 | 발표 전날 문장 연습 숙제 내주기. 청중은 질문 1개씩 하기. | ▶ 유튜브
+1월 3-4주 | Alphabet Phonics Bingo | 알파벳 소리 듣고 빙고 + "B says /b/! Bingo!" | 빙고 카드 | 소리만 듣고 맞히기 → 단어 듣고 맞히기 순서로 난이도 높이기. | ▶ 유튜브
+2월 1-2주 | Story Retelling | 그림책 읽고 순서 카드 배열 + 한 문장씩 말하기. | 그림책, 순서 카드 | 추천: Brown Bear / Very Hungry Caterpillar. 순서 배열 후 역할 나눠 발표. | ▶ 유튜브
+2월 3-4주 | "I Can Now!" Presentation | 1년간 배운 것 발표 + 친구에게 메시지 카드. | 발표 카드, 메시지 카드 | 포트폴리오 함께 넘기며 성장 확인. "I'm proud of you!" 선생님이 한 명씩 안아주기. | ▶ 유튜브
+
+--- Table 5 ---
+시기 | 활동명 | 내용 | 소품 | 진행 팁 | 참고 영상
+3월 1-2주 | Me in a Bag | 종이봉투에 자신을 나타내는 물건 3개 넣어 "This represents me because..." 발표. | 종이봉투, 개인 소품 | 발표 후 "What do you have in common?" 친구와 비교. 공동점 찾기. | ▶ 유튜브
+3월 3-4주 | Question of the Day | 칠판 질문("What is your favorite season?")에 답하고 이유 2문장 말하기. | 칠판, 마커 | 답 먼저 쓰고 발표. "I like ___ because ___ and ___." 구조 안내. | ▶ 유튜브
+4월 1-2주 | Compound Word Builder | 단어 카드 2장 합쳐 합성어 만들기 (sun+flower=sunflower). | 단어 카드 세트 | 칠판에 붙이며 다 같이 소리내어 읽기. 새 합성어 발견하면 보너스 점수. | ▶ 유튜브
+4월 3-4주 | Adjective Describing Game | 물건 보여주며 형용사 3개 이상 말하기. "It is big, round, and red!" | 다양한 물건 | "Can you think of more?" 도전. 형용사 많이 말한 사람이 다음 물건 선택. | ▶ 유튜브
+5월 1-2주 | Rhyming Word Chain | 공 굴리며 라임 단어 연결하기 (cat-bat-hat-mat). | 비치볼 | 막히면 힌트 카드 활용. 체인 길이 기록 도전 "Can we beat our record?" | ▶ 유튜브
+5월 3-4주 | Emotion Scenario Cards | 상황 카드 뽑아 감정 말하기 "If I lose my toy, I feel ___. I can ___". | 상황 카드 | 해결책도 함께 말하기. "What can you do?" 공감+해결 사고력 키우기. | ▶ 유튜브
+6월 1-2주 | Weather + Temperature Chart | 날씨와 온도 기록 + "It's hotter than yesterday!" 비교 문장 말하기. | 날씨 차트, 온도계 | 한 달치 기록 후 "Which week was the coldest?" 분석하기. | ▶ 유튜브
+6월 3-4주 | Preposition Map Challenge | 교실 약도에 물건 위치 표시 + "The ___ is between ___ and ___" 설명. | 교실 약도, 스티커 | 파트너와 서로 설명하며 맞추기. between / next to / across from 집중. | ▶ 유튜브
+7월 1-2주 | Food Chain Sequencing | 먹이사슬 카드 순서대로 배열 + "The ___ eats the ___." 문장 말하기. | 먹이사슬 카드 | "What would happen if...?" 가정 질문으로 사고 확장. | ▶ 유튜브
+7월 3-4주 | Opinion Poll & Graph | "What is your favorite summer activity?" 설문 + 그래프 완성 + 발표. | 설문지, 그래프 양식 | 결과 발표 시 "Most of us like..." "Fewer friends like..." 비교 문장 연습. | ▶ 유튜브
+8월 1-2주 | Story Spine | "Once upon a time... Every day... Until one day... Finally..." 구조로 이야기 만들기. | 스토리 카드 | 그룹당 1편. 완성 후 발표. 가장 창의적인 팀에게 박수. | ▶ 유튜브
+8월 3-4주 | Debate Circle (Simple) | "Dogs or cats? Summer or winter?" 팀 나눠 이유 말하기. | 토론 주제 카드 | "I think ___ because ___." 구조 사용. 상대방 의견 "I understand, but..." 반박 연습. | ▶ 유튜브
+9월 1-2주 | Synonym Swap | 단어 카드 뽑아 동의어 말하기 (big→large→huge). | 단어 카드 | 난이도: 쉬운 단어 → 감정 단어 → 동작 단어. 사전 보여주며 흥미 유도. | ▶ 유튜브
+9월 3-4주 | News Reporter | 학교 소식이나 간단한 사건 영어로 리포팅. "Today at our school..." | 마이크 소품, 메모지 | 전날 주제 미리 알려주기. 카메라 앞에서 찍으면 동기 부여 UP. | ▶ 유튜브
+10월 1-2주 | Spooky Story Circle | 공 전달하며 이야기 이어가기 "One dark night..." 협동 스토리텔링. | 비치볼 | "Then suddenly..." "All of a sudden..." 전환 표현 가르쳐 주기. | ▶ 유튜브
+10월 3-4주 | Would You Rather? | "Would you rather fly or be invisible?" 골라 이유 말하기. | 질문 카드 | "I would rather ___ because ___." 구조 사용. 두 번 이상 이유 말하기 도전. | ▶ 유튜브
+11월 1-2주 | Problem Solving Scenarios | 상황 카드(친구와 싸움, 물건 잃어버림) 뽑아 해결책 토론. | 상황 카드 | "First I would... Then I would..." 순서 있는 해결책 말하기. | ▶ 유튜브
+11월 3-4주 | Gratitude Letter Reading | 감사 편지 써서 친구 앞에서 낭독 "Dear ___, I am thankful for you because..." | 편지지 | 낭독 전 연습 1회. 낭독 후 받는 친구 반응 "Thank you! I feel ___" 유도. | ▶ 유튜브
+12월 1-2주 | My Dream Job Presentation | "I want to be a ___ because ___. I will ___" 3문장 발표. | 발표 양식 or 포스터 | 그림+문장 미니 포스터로 발표. 질문 1개씩 받기. | ▶ 유튜브
+12월 3-4주 | Year-End Talk Show | 사회자+게스트 역할로 1년 인터뷰. "What was your favorite activity?" | 마이크 소품 | 사회자 역할 돌아가며. 과장된 리액션 유도. 영상 촬영 후 공유. | ▶ 유튜브
+1월 1-2주 | Book Talk | 좋아하는 책 30초 소개 "This book is about... I liked it because..." | 개인 책 | 완벽하지 않아도 OK. "Any questions?" 청중 질문 1개 연습. | ▶ 유튜브
+1월 3-4주 | Rhyme & Riddle Time | 수수께끼 내고 맞히기 "I am round. I am orange. You eat me. What am I?" | 수수께끼 카드 | 아이가 직접 수수께끼 만들기 도전. 힌트 3개 구조 가르쳐 주기. | ▶ 유튜브
+2월 1-2주 | Collaborative Story Book | 그룹별 이야기 한 페이지씩 써서 클래스 책 완성. | 빈 책 양식, 색연필 | 그림+문장 함께. 완성 후 전체 낭독. 학교 도서관에 비치. | ▶ 유튜브
+2월 3-4주 | My Growth Portfolio Share | 1년 작품 포트폴리오 발표 "I improved in... I am proud of..." | 포트폴리오 파일 | "Before and after" 비교. 성장에 집중한 칭찬. 학부모 초대 공유 가능. | ▶ 유튜브
