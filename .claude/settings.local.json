@@ -13,7 +13,13 @@
       "Bash(python3:*)",
       "Bash(python --version 2>&1 || python3 --version 2>&1 || py --version 2>&1)",
       "Bash(cd:*)",
-      "Bash(head:*)"
+      "Bash(head:*)",
+      "Bash(node -e:*)",
+      "Bash(npm run dev:*)",
+      "Bash(curl:*)",
+      "Bash(netstat:*)",
+      "Bash(tasklist:*)",
+      "Bash(taskkill:*)"
     ]
   }
 }
