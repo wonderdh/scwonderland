@@ -79,16 +79,16 @@
 
 > Content 섹션의 약 40%가 placeholder 상태. Hero CTA "상담 신청하기" 버튼이 placeholder 페이지(`/community/parent-consultation`)로 연결됨.
 
-### 3.2 SEO 부족
+### 3.2 SEO 부족 — ✅ 개선 완료
 
 | 항목 | 현재 상태 | 필요 |
 |------|----------|------|
 | `title` + `description` | ✅ 각 페이지에 있음 | — |
-| `og:image` | ❌ 없음 | 소셜 미디어 공유 시 이미지 표시 |
-| `og:url` | ❌ 없음 | 정확한 URL 전달 |
-| `keywords` | ❌ 없음 | 검색 엔진 힌트 |
-| `sitemap.xml` | ❌ 없음 | Google 크롤링 |
-| `robots.txt` | ❌ 없음 | 크롤링 제어 |
+| `og:image` | ✅ 추가됨 (layout.tsx) | 소셜 미디어 공유 시 이미지 표시 |
+| `og:url` | ✅ 추가됨 (metadataBase) | 정확한 URL 전달 |
+| `keywords` | ✅ 추가됨 | 검색 엔진 힌트 |
+| `sitemap.xml` | ✅ 추가됨 (app/sitemap.ts) | Google 크롤링 |
+| `robots.txt` | ✅ 추가됨 (app/robots.ts) | 크롤링 제어 |
 | 구조화 데이터 (ld+json) | ❌ 없음 | 검색 결과 리치 스니펫 |
 
 ### 3.3 스타일링 불일치
@@ -108,21 +108,19 @@ Tailwind:    1024px (lg), 768px (md)
 → 768~1280px 구간에서 레이아웃 충돌 가능
 ```
 
-#### 폰트 충돌
+#### 폰트 충돌 — ✅ 개선 완료
 
 ```
-layout.tsx: Geist 폰트 로드
-globals.css: font-family: Arial, Helvetica, sans-serif (덮어쓰기)
-→ Geist 폰트가 실제로 적용되지 않을 수 있음
+globals.css: font-family를 var(--font-geist-sans)로 수정 완료
 ```
 
-### 3.4 접근성 미흡
+### 3.4 접근성 미흡 — ✅ 부분 개선
 
 | 항목 | 상태 | 영향 |
 |------|------|------|
-| `focus` 스타일 | ❌ 대부분 없음 | 키보드 사용자가 현재 위치 파악 불가 |
-| `prefers-reduced-motion` | ❌ 없음 | 모션 민감 사용자 배려 부족 |
-| `htmlFor` + `id` 연결 | ❌ 일부 누락 | 스크린 리더가 label-input 연결 불가 |
+| `focus` 스타일 | ✅ globals.css에 :focus-visible 추가 | 키보드 사용자가 현재 위치 파악 가능 |
+| `prefers-reduced-motion` | ✅ globals.css에 추가 | 모션 민감 사용자 배려 |
+| `htmlFor` + `id` 연결 | ✅ 주요 폼에 추가 (Login, AddStudent, AddTeacher) | 스크린 리더 연결 |
 | 색상 대비 | ⚠️ `text-white/50` 등 | WCAG AA 기준 미달 가능 |
 
 ### 3.5 폼 검증 부족
@@ -132,57 +130,57 @@ globals.css: font-family: Arial, Helvetica, sans-serif (덮어쓰기)
 - AddStudentForm/AddTeacherForm에서 성공 메시지 없음 (에러만 표시)
 - 일부 폼에서 중복 제출 방지 없음 (버튼 disabled 미적용)
 
-### 3.6 이미지 최적화
+### 3.6 이미지 최적화 — ✅ 부분 개선
 
-- `ImageWithFallback`이 HTML `<img>` 사용 (Next.js `Image` 미사용)
+- ✅ `ImageWithFallback` → Next.js `Image` 컴포넌트로 전환 완료
 - CSS `background-image`로 로드하는 이미지 5개 (최적화 불가)
 - PNG 20개 vs SVG 2개 — 아이콘류는 SVG로 전환 권장
 
-### 3.7 에러 처리/로깅
+### 3.7 에러 처리/로깅 — ✅ 개선 완료
 
-- Server Action에서 에러 발생 시 `{ error: error.message }` 반환만 하고 서버 로깅 없음
+- ✅ 모든 Server Action에 `console.error` 로깅 추가 (함수명 태그 포함)
 - try-catch가 일부 액션에만 적용
 - Sentry 같은 에러 모니터링 미연동
 
-### 3.8 Admin 대시보드
+### 3.8 Admin 대시보드 — ✅ 개선 완료
 
-- 현재는 3개 링크 카드만 있음 (학생/교사/반 관리)
-- "서비스 현황을 한눈에" 텍스트가 있으나 실제 통계 정보 없음
-- 추가 필요: 총 학생 수, 교사 수, 반 수, 최근 리포트카드 작성 현황 등
+- ✅ 학생/교사/반/리포트카드 실시간 통계 카드 4개 추가
+- ✅ 교재 관리 링크 카드 추가
+- ✅ `getDashboardStats()` Server Action 추가
 
 ---
 
 ## 4. 추가해야 할 것
 
-### 4.1 즉시 (우선순위 높음)
+### 4.1 즉시 (우선순위 높음) — ✅ 대부분 완료
 
-| 항목 | 내용 |
-|------|------|
-| **SEO 기본** | `og:image`, `sitemap.xml`, `robots.txt` 추가 |
-| **폼 검증** | email pattern, password 강도, 성공 메시지, 중복 제출 방지 |
-| **Admin 대시보드 통계** | 학생/교사/반/리포트카드 카운트 표시 |
-| **에러 로깅** | Server Action에 try-catch + console.error (최소한) |
-| **globals.css 폰트 수정** | Arial → Geist 폰트 사용으로 변경 |
+| 항목 | 내용 | 상태 |
+|------|------|------|
+| **SEO 기본** | `og:image`, `sitemap.xml`, `robots.txt` 추가 | ✅ 완료 |
+| **폼 검증** | email pattern, password 강도, 성공 메시지, 중복 제출 방지 | ⏭ 제외 (관리자 계정 생성이므로) |
+| **Admin 대시보드 통계** | 학생/교사/반/리포트카드 카운트 표시 | ✅ 완료 |
+| **에러 로깅** | Server Action에 try-catch + console.error (최소한) | ✅ 완료 |
+| **globals.css 폰트 수정** | Arial → Geist 폰트 사용으로 변경 | ✅ 완료 |
 
-### 4.2 중기 (기능 완성)
+### 4.2 중기 (기능 완성) — 교재 트래킹 구현 완료
 
-| 항목 | 내용 |
-|------|------|
-| **교사 포털** | `/academy/teacher` — 담당 반 조회, 리포트카드 작성 |
-| **숙제 기능** | `/academy/student/homework` — 숙제 목록/제출 |
-| **Placeholder 페이지** | 7개 Content 페이지 콘텐츠 채우기 |
-| **교재 트래킹** | 학생별/반별 교재 완료 표시 (아래 상세 설계) |
+| 항목 | 내용 | 상태 |
+|------|------|------|
+| **교사 포털** | `/academy/teacher` — 담당 반 조회, 리포트카드 작성 | 🔲 미구현 |
+| **숙제 기능** | `/academy/student/homework` — 숙제 목록/제출 | 🔲 미구현 |
+| **Placeholder 페이지** | 7개 Content 페이지 콘텐츠 채우기 | ⏭ 추후 추가 예정 |
+| **교재 트래킹** | 학생별/반별 교재 완료 표시 | ✅ UI 구현 완료 (DB 테이블은 직접 추가 필요) |
 
-### 4.3 장기 (품질 향상)
+### 4.3 장기 (품질 향상) — 일부 완료
 
-| 항목 | 내용 |
-|------|------|
-| **접근성 개선** | focus 스타일, prefers-reduced-motion, label 연결 |
-| **이미지 최적화** | Next.js Image 전환, SVG 아이콘 |
-| **컬러 시스템 통일** | CSS 변수로 브랜드 컬러 중앙 관리 |
-| **브레이크포인트 통일** | CSS Modules와 Tailwind 간 일관성 |
-| **에러 모니터링** | Sentry 또는 Vercel Analytics 연동 |
-| **테스트 코드** | Server Action 단위 테스트 (현재 테스트 0개) |
+| 항목 | 내용 | 상태 |
+|------|------|------|
+| **접근성 개선** | focus 스타일, prefers-reduced-motion, label 연결 | ✅ 완료 |
+| **이미지 최적화** | Next.js Image 전환, SVG 아이콘 | ✅ 부분 완료 |
+| **컬러 시스템 통일** | CSS 변수로 브랜드 컬러 중앙 관리 | ✅ globals.css에 변수 추가 |
+| **브레이크포인트 통일** | CSS Modules와 Tailwind 간 일관성 | 🔲 미적용 |
+| **에러 모니터링** | Sentry 또는 Vercel Analytics 연동 | 🔲 미연동 |
+| **테스트 코드** | Server Action 단위 테스트 (현재 테스트 0개) | 🔲 미작성 |
 
 ---
 

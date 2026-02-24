@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 const links = [
   { href: "/academy/student", label: "내 정보" },
   { href: "/academy/student/reports", label: "리포트카드" },
+  { href: "/academy/student/textbooks", label: "교재" },
   { href: "/academy/student/homework", label: "숙제" },
 ];
 

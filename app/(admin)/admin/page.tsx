@@ -60,6 +60,15 @@ export default async function AdminDashboardPage() {
             반 생성 · 담당 선생 지정 · 소속 학생 관리
           </p>
         </Link>
+        <Link
+          href="/admin/textbooks"
+          className="block p-5 bg-white rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-md transition"
+        >
+          <span className="text-lg font-medium text-slate-800">교재 관리</span>
+          <p className="mt-1 text-sm text-slate-500">
+            교재 등록 · 반/학생 배정 · 진도 관리
+          </p>
+        </Link>
       </div>
     </div>
   );
