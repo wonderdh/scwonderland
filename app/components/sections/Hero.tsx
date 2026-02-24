@@ -59,21 +59,22 @@ export function Hero() {
                 <ImageWithFallback
                   src="/images/landing/hero_study_1.png"
                   alt="영어 학원에서 즐거운 수업"
-                  className="h-64 w-full object-cover"
+                  className="h-64 w-full"
+                  priority
                 />
               </div>
               <div className="overflow-hidden rounded-lg">
                 <ImageWithFallback
                   src="/images/landing/hero_study_2.png"
                   alt="집중해서 영어 책 읽는 아이"
-                  className="h-64 w-full object-cover"
+                  className="h-64 w-full"
                 />
               </div>
               <div className="overflow-hidden rounded-lg">
                 <ImageWithFallback
                   src="/images/landing/hero_study_3.png"
                   alt="영어 수업에 참여하며 웃는 아이들"
-                  className="h-64 w-full object-cover"
+                  className="h-64 w-full"
                 />
               </div>
             </div>

@@ -17,34 +17,39 @@ export function AddTeacherForm() {
       className="flex flex-wrap items-end gap-3 p-4 bg-white rounded-xl border border-slate-200"
     >
       <div className="min-w-[140px]">
-        <label className="block text-xs font-medium text-slate-500 mb-1">
+        <label htmlFor="teacher-email" className="block text-xs font-medium text-slate-500 mb-1">
           아이디 <span className="text-red-500">*</span>
         </label>
         <input
+          id="teacher-email"
           type="text"
           name="email"
           required
           placeholder="test1"
+          autoComplete="off"
           className="w-full px-3 py-2 border border-slate-300 rounded-lg text-slate-800 text-sm"
         />
         <p className="text-xs text-slate-400 mt-0.5">@ 없이 쓰면 도메인 자동 추가</p>
       </div>
       <div className="min-w-[120px]">
-        <label className="block text-xs font-medium text-slate-500 mb-1">
+        <label htmlFor="teacher-password" className="block text-xs font-medium text-slate-500 mb-1">
           비밀번호 <span className="text-red-500">*</span>
         </label>
         <input
+          id="teacher-password"
           type="password"
           name="password"
           required
+          autoComplete="new-password"
           className="w-full px-3 py-2 border border-slate-300 rounded-lg text-slate-800 text-sm"
         />
       </div>
       <div className="min-w-[120px]">
-        <label className="block text-xs font-medium text-slate-500 mb-1">
+        <label htmlFor="teacher-name" className="block text-xs font-medium text-slate-500 mb-1">
           이름 <span className="text-red-500">*</span>
         </label>
         <input
+          id="teacher-name"
           type="text"
           name="name"
           required

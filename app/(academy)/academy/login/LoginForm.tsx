@@ -79,27 +79,31 @@ export function LoginForm() {
       </p>
       <form className="space-y-4" onSubmit={handleSubmit}>
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">
+          <label htmlFor="login-email" className="block text-sm font-medium text-slate-700 mb-1">
             아이디
           </label>
           <input
+            id="login-email"
             type="text"
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            autoComplete="username"
             className="w-full px-3 py-2 border border-slate-300 rounded-lg text-slate-800 placeholder-slate-400"
             placeholder="test1"
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">
+          <label htmlFor="login-password" className="block text-sm font-medium text-slate-700 mb-1">
             비밀번호
           </label>
           <input
+            id="login-password"
             type="password"
             required
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            autoComplete="current-password"
             className="w-full px-3 py-2 border border-slate-300 rounded-lg text-slate-800"
             placeholder="비밀번호"
           />

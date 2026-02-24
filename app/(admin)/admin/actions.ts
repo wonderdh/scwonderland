@@ -23,6 +23,31 @@ export type UserWithProfile = {
   teacher_number?: string | null;
 };
 
+// --- 대시보드 통계 ---
+
+export type DashboardStats = {
+  studentCount: number;
+  teacherCount: number;
+  classCount: number;
+  reportCardCount: number;
+};
+
+export async function getDashboardStats(): Promise<DashboardStats> {
+  const supabase = createAdminClient();
+  const [students, teachers, classes, reports] = await Promise.all([
+    supabase.from("profiles").select("id", { count: "exact", head: true }).eq("role", "student"),
+    supabase.from("profiles").select("id", { count: "exact", head: true }).eq("role", "teacher"),
+    supabase.from("classes").select("id", { count: "exact", head: true }),
+    supabase.from("report_cards").select("id", { count: "exact", head: true }),
+  ]);
+  return {
+    studentCount: students.count ?? 0,
+    teacherCount: teachers.count ?? 0,
+    classCount: classes.count ?? 0,
+    reportCardCount: reports.count ?? 0,
+  };
+}
+
 export async function createStudent(
   formData: FormData
 ): Promise<{ error?: string }> {
@@ -50,6 +75,7 @@ export async function createStudent(
   });
 
   if (error) {
+    console.error("[createStudent]", error.message, { email });
     return { error: error.message };
   }
   if (!data.user) {
@@ -83,6 +109,7 @@ export async function createTeacher(
   });
 
   if (error) {
+    console.error("[createTeacher]", error.message, { email });
     return { error: error.message };
   }
   if (!data.user) {
@@ -101,7 +128,11 @@ export async function listUsersByRole(
     .select("id, first_name, last_name")
     .eq("role", role);
 
-  if (profilesError || !profiles?.length) {
+  if (profilesError) {
+    console.error("[listUsersByRole]", profilesError.message, { role });
+    return [];
+  }
+  if (!profiles?.length) {
     return [];
   }
 
@@ -163,7 +194,10 @@ export async function deleteUserById(
 
   const supabase = createAdminClient();
   const { error } = await supabase.auth.admin.deleteUser(id);
-  if (error) return { error: error.message };
+  if (error) {
+    console.error("[deleteUserById]", error.message, { id });
+    return { error: error.message };
+  }
   return {};
 }
 
@@ -189,7 +223,10 @@ export async function updateStudentProfile(
     .update({ korean_name, english_name, updated_at: new Date().toISOString() })
     .eq("profile_id", id);
 
-  if (studentError) return { error: studentError.message };
+  if (studentError) {
+    console.error("[updateStudentProfile]", studentError.message, { id });
+    return { error: studentError.message };
+  }
   return {};
 }
 
@@ -214,7 +251,10 @@ export async function updateTeacherProfile(
     .update({ name, updated_at: new Date().toISOString() })
     .eq("profile_id", id);
 
-  if (teacherError) return { error: teacherError.message };
+  if (teacherError) {
+    console.error("[updateTeacherProfile]", teacherError.message, { id });
+    return { error: teacherError.message };
+  }
   return {};
 }
 
@@ -246,7 +286,10 @@ export async function getReportCard(
     .eq("year", year)
     .eq("month", month)
     .maybeSingle();
-  if (error) return null;
+  if (error) {
+    console.error("[getReportCard]", error.message, { studentProfileId, year, month });
+    return null;
+  }
   return data as ReportCard | null;
 }
 
@@ -263,7 +306,10 @@ export async function listReportCardsByStudent(
     .eq("student_profile_id", studentProfileId)
     .order("year", { ascending: false })
     .order("month", { ascending: false });
-  if (error) return [];
+  if (error) {
+    console.error("[listReportCardsByStudent]", error.message, { studentProfileId });
+    return [];
+  }
   return (data ?? []) as ReportCardListItem[];
 }
 
@@ -306,7 +352,10 @@ export async function upsertReportCard(
     },
     { onConflict: "student_profile_id,year,month" }
   );
-  if (error) return { error: error.message };
+  if (error) {
+    console.error("[upsertReportCard]", error.message, { studentProfileId, year, month });
+    return { error: error.message };
+  }
   return {};
 }
 
@@ -336,7 +385,10 @@ export async function updateReportCardReply(
     .from("report_cards")
     .update({ reply: reply.trim() || null, updated_at: new Date().toISOString() })
     .eq("id", reportCardId);
-  if (error) return { error: error.message };
+  if (error) {
+    console.error("[updateReportCardReply]", error.message, { reportCardId });
+    return { error: error.message };
+  }
   return {};
 }
 
@@ -358,7 +410,11 @@ export async function listClassesWithDetails(): Promise<ClassWithDetails[]> {
     .from("classes")
     .select("id, name, teacher_profile_id, created_at, updated_at")
     .order("name");
-  if (classesError || !classes?.length) {
+  if (classesError) {
+    console.error("[listClassesWithDetails]", classesError.message);
+    return [];
+  }
+  if (!classes?.length) {
     return [];
   }
   const teacherIds = [
@@ -491,7 +547,10 @@ export async function createClass(
     })
     .select("id")
     .single();
-  if (error) return { error: error.message };
+  if (error) {
+    console.error("[createClass]", error.message, { name });
+    return { error: error.message };
+  }
   return { id: data.id };
 }
 
@@ -511,14 +570,20 @@ export async function updateClass(
       updated_at: new Date().toISOString(),
     })
     .eq("id", classId);
-  if (error) return { error: error.message };
+  if (error) {
+    console.error("[updateClass]", error.message, { classId, name });
+    return { error: error.message };
+  }
   return {};
 }
 
 export async function deleteClass(classId: string): Promise<{ error?: string }> {
   const supabase = createAdminClient();
   const { error } = await supabase.from("classes").delete().eq("id", classId);
-  if (error) return { error: error.message };
+  if (error) {
+    console.error("[deleteClass]", error.message, { classId });
+    return { error: error.message };
+  }
   return {};
 }
 
@@ -531,7 +596,10 @@ export async function addStudentToClass(
     class_id: classId,
     student_profile_id: studentProfileId,
   });
-  if (error) return { error: error.message };
+  if (error) {
+    console.error("[addStudentToClass]", error.message, { classId, studentProfileId });
+    return { error: error.message };
+  }
   return {};
 }
 
@@ -543,7 +611,10 @@ export async function removeStudentFromClass(
     .from("class_students")
     .delete()
     .eq("id", classStudentId);
-  if (error) return { error: error.message };
+  if (error) {
+    console.error("[removeStudentFromClass]", error.message, { classStudentId });
+    return { error: error.message };
+  }
   return {};
 }
 

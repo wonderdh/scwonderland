@@ -1,6 +1,16 @@
 import Link from "next/link";
+import { getDashboardStats } from "./actions";
 
-export default function AdminDashboardPage() {
+export default async function AdminDashboardPage() {
+  const stats = await getDashboardStats();
+
+  const statCards = [
+    { label: "학생", value: stats.studentCount, color: "text-emerald-600" },
+    { label: "교사", value: stats.teacherCount, color: "text-blue-600" },
+    { label: "반", value: stats.classCount, color: "text-violet-600" },
+    { label: "리포트카드", value: stats.reportCardCount, color: "text-amber-600" },
+  ];
+
   return (
     <div>
       <h1 className="text-2xl font-semibold text-slate-800 mb-1">
@@ -9,6 +19,19 @@ export default function AdminDashboardPage() {
       <p className="text-slate-500 text-sm mb-8">
         서비스 현황을 한눈에 확인하세요.
       </p>
+
+      <div className="grid gap-4 grid-cols-2 sm:grid-cols-4 max-w-2xl mb-8">
+        {statCards.map((s) => (
+          <div
+            key={s.label}
+            className="p-4 bg-white rounded-xl border border-slate-200"
+          >
+            <p className="text-xs font-medium text-slate-500">{s.label}</p>
+            <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
+          </div>
+        ))}
+      </div>
+
       <div className="grid gap-4 sm:grid-cols-2 max-w-2xl">
         <Link
           href="/admin/students"

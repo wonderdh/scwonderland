@@ -13,9 +13,36 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://scwonderland.com";
+
 export const metadata: Metadata = {
-  title: "원더랜드 영어학원",
-  description: "아이들의 영어 자신감을 키우는 원더랜드 영어학원",
+  metadataBase: new URL(BASE_URL),
+  title: {
+    default: "원더랜드 영어학원",
+    template: "%s | 원더랜드 영어학원",
+  },
+  description:
+    "유치원부터 초등학생까지, 아이들의 영어 실력과 자신감을 키워주는 30년 전통의 영어 전문 교육기관",
+  keywords: [
+    "영어학원", "원더랜드", "유치부영어", "초등영어",
+    "어린이영어", "순천영어학원", "Wonderland",
+  ],
+  openGraph: {
+    title: "원더랜드 영어학원",
+    description:
+      "유치원부터 초등학생까지, 아이들의 영어 실력과 자신감을 키워주는 30년 전통의 영어 전문 교육기관",
+    siteName: "원더랜드 영어학원",
+    locale: "ko_KR",
+    type: "website",
+    images: [
+      {
+        url: "/sc-wonderland-logo.png",
+        width: 512,
+        height: 512,
+        alt: "원더랜드 영어학원 로고",
+      },
+    ],
+  },
 };
 
 export default function RootLayout({
