@@ -19,7 +19,9 @@
       "Bash(curl:*)",
       "Bash(netstat:*)",
       "Bash(tasklist:*)",
-      "Bash(taskkill:*)"
+      "Bash(taskkill:*)",
+      "Bash(claude mcp add:*)",
+      "Bash(claude mcp:*)"
     ]
   }
 }
