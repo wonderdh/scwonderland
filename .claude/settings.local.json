@@ -21,7 +21,8 @@
       "Bash(tasklist:*)",
       "Bash(taskkill:*)",
       "Bash(claude mcp add:*)",
-      "Bash(claude mcp:*)"
+      "Bash(claude mcp:*)",
+      "Bash(wc:*)"
     ]
   }
 }
