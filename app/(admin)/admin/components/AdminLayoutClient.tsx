@@ -8,7 +8,7 @@ export function AdminLayoutClient({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-slate-50 flex">
+    <div className="min-h-screen bg-background flex">
       <AdminSidebar />
       <main className="flex-1 min-w-0 p-6 md:p-8">
         {children}

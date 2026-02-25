@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import type { UserWithProfile } from "../actions";
+import type { UserWithProfile } from "@/lib/types";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 type UserRowProps = {
   user: UserWithProfile;
@@ -49,7 +51,7 @@ export function UserRow({ user, variant, onUpdate, onDelete }: UserRowProps) {
         : user.email;
 
   return (
-    <li className="flex items-center gap-4 px-4 py-3 hover:bg-slate-50">
+    <li className="flex items-center gap-4 px-4 py-3 hover:bg-muted/50">
       <div className="flex-1 min-w-0">
         {editing ? (
           <form
@@ -57,77 +59,80 @@ export function UserRow({ user, variant, onUpdate, onDelete }: UserRowProps) {
             className="flex flex-wrap items-center gap-2"
           >
             <input type="hidden" name="id" value={user.id} />
-            <span className="text-slate-500 text-sm w-full">{user.email}</span>
+            <span className="text-muted-foreground text-sm w-full">{user.email}</span>
             {variant === "student" ? (
               <>
-                <input
+                <Input
                   type="text"
                   name="korean_name"
                   defaultValue={user.korean_name ?? user.first_name ?? ""}
                   placeholder="한글 이름 *"
                   required
-                  className="px-2 py-1 border border-slate-300 rounded text-sm w-28"
+                  className="h-8 w-28 text-sm"
                 />
-                <input
+                <Input
                   type="text"
                   name="english_name"
                   defaultValue={user.english_name ?? user.last_name ?? ""}
                   placeholder="영어 이름"
-                  className="px-2 py-1 border border-slate-300 rounded text-sm w-28"
+                  className="h-8 w-28 text-sm"
                 />
               </>
             ) : (
-              <input
+              <Input
                 type="text"
                 name="name"
                 defaultValue={user.name ?? user.first_name ?? ""}
                 placeholder="이름 *"
                 required
-                className="px-2 py-1 border border-slate-300 rounded text-sm w-32"
+                className="h-8 w-32 text-sm"
               />
             )}
-            <button
-              type="submit"
-              className="px-2 py-1 bg-slate-700 text-white text-xs rounded hover:bg-slate-600"
-            >
+            <Button type="submit" size="sm" variant="default" className="h-7 text-xs">
               저장
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
+              size="sm"
+              variant="ghost"
+              className="h-7 text-xs"
               onClick={() => setEditing(false)}
-              className="px-2 py-1 text-slate-500 text-xs"
             >
               취소
-            </button>
+            </Button>
           </form>
         ) : (
           <>
-            <p className="font-medium text-slate-800 truncate">{displayName}</p>
-            <p className="text-sm text-slate-500 truncate">{subLine}</p>
+            <p className="font-medium text-foreground truncate">{displayName}</p>
+            <p className="text-sm text-muted-foreground truncate">{subLine}</p>
           </>
         )}
         {error && (
-          <p className="text-xs text-red-600 mt-1">{error}</p>
+          <p className="text-xs text-destructive mt-1">{error}</p>
         )}
       </div>
       <div className="flex items-center gap-2 shrink-0">
         {!editing && (
           <>
-            <button
+            <Button
               type="button"
+              variant="outline"
+              size="sm"
+              className="h-7 text-xs"
               onClick={() => setEditing(true)}
-              className="px-3 py-1.5 text-sm text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200"
             >
               수정
-            </button>
+            </Button>
             <form className="inline" onSubmit={handleDelete}>
               <input type="hidden" name="id" value={user.id} />
-              <button
+              <Button
                 type="submit"
-                className="px-3 py-1.5 text-sm text-red-600 bg-red-50 rounded-lg hover:bg-red-100"
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs text-destructive border-destructive/30 hover:bg-destructive/10"
               >
                 삭제
-              </button>
+              </Button>
             </form>
           </>
         )}

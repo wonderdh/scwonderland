@@ -7,9 +7,8 @@ import {
   listStudentsNotInClass,
   removeStudentFromClass,
   updateClass,
-  type ClassWithDetails,
-  type ClassStudentRow,
 } from "../../actions";
+import type { ClassWithDetails, ClassStudentRow } from "@/lib/types";
 import {
   assignTextbookToClass,
   removeTextbookFromClass,
@@ -17,11 +16,18 @@ import {
   listTextbooksNotInClass,
   type ClassTextbook,
   type Textbook,
-} from "../../textbook-actions";
+} from "../../actions/textbook-actions";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 type TeacherOption = { id: string; name: string };
+
+type StudentInfo = {
+  id: string;
+  korean_name: string | null;
+  english_name: string | null;
+  student_number: string | null;
+};
 
 type FlatClassStudent = {
   class_id: string;
@@ -36,40 +42,26 @@ export function ClassesManager({
   initialClasses,
   teachers,
   allClassStudents,
+  allStudents,
 }: {
   initialClasses: ClassWithDetails[];
   teachers: TeacherOption[];
   allClassStudents: FlatClassStudent[];
+  allStudents: StudentInfo[];
 }) {
   const router = useRouter();
-  const [teacherFilter, setTeacherFilter] = useState<string>("");
   const [search, setSearch] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
   const [editClass, setEditClass] = useState<ClassWithDetails | null>(null);
-  const [addStudentOpen, setAddStudentOpen] = useState<ClassWithDetails | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ClassWithDetails | null>(null);
+  const [addStudentOpen, setAddStudentOpen] = useState<ClassWithDetails | null>(null);
   const [removeStudentTarget, setRemoveStudentTarget] =
     useState<{ classId: string; row: ClassStudentRow } | null>(null);
-  const [dragInfo, setDragInfo] = useState<{
-    studentProfileId: string;
-    fromClassId: string;
-    classStudentId: string;
-  } | null>(null);
-  const [dropTargetId, setDropTargetId] = useState<string | null>(null);
 
-  const handleDrop = async (toClassId: string) => {
-    if (!dragInfo || dragInfo.fromClassId === toClassId) {
-      setDragInfo(null);
-      setDropTargetId(null);
-      return;
-    }
-    // 학생을 기존 반에서 제거 후 새 반에 추가
-    await removeStudentFromClass(dragInfo.classStudentId);
-    await addStudentToClass(toClassId, dragInfo.studentProfileId);
-    setDragInfo(null);
-    setDropTargetId(null);
-    router.refresh();
-  };
+  // 오른쪽 패널: 대상 반
+  const [targetClassId, setTargetClassId] = useState<string>("");
+  const [targetSearch, setTargetSearch] = useState("");
+  const [isDropOver, setIsDropOver] = useState(false);
 
   const studentsByClassId = useMemo(() => {
     const map: Record<string, ClassStudentRow[]> = {};
@@ -86,103 +78,352 @@ export function ClassesManager({
     return map;
   }, [allClassStudents]);
 
+  // 미배정 학생 (어떤 반에도 속하지 않은 학생)
+  const unassignedStudents = useMemo(() => {
+    const assignedIds = new Set(allClassStudents.map((s) => s.student_profile_id));
+    return allStudents.filter((s) => !assignedIds.has(s.id));
+  }, [allStudents, allClassStudents]);
+
+  // 왼쪽 패널 검색 필터
   const filteredClasses = useMemo(() => {
-    let list = initialClasses;
-    if (teacherFilter) {
-      list = list.filter((c) => c.teacher_profile_id === teacherFilter);
+    if (!search.trim()) return initialClasses;
+    const q = search.trim().toLowerCase();
+    return initialClasses.filter((c) => {
+      if (c.name.toLowerCase().includes(q)) return true;
+      const students = studentsByClassId[c.id] ?? [];
+      return students.some(
+        (s) =>
+          (s.korean_name && s.korean_name.toLowerCase().includes(q)) ||
+          (s.english_name && s.english_name.toLowerCase().includes(q)) ||
+          (s.student_number && s.student_number.toLowerCase().includes(q))
+      );
+    });
+  }, [initialClasses, search, studentsByClassId]);
+
+  const filteredUnassigned = useMemo(() => {
+    if (!search.trim()) return unassignedStudents;
+    const q = search.trim().toLowerCase();
+    return unassignedStudents.filter(
+      (s) =>
+        (s.korean_name && s.korean_name.toLowerCase().includes(q)) ||
+        (s.english_name && s.english_name.toLowerCase().includes(q)) ||
+        (s.student_number && s.student_number.toLowerCase().includes(q))
+    );
+  }, [unassignedStudents, search]);
+
+  // 대상 반 정보
+  const targetClass = initialClasses.find((c) => c.id === targetClassId) ?? null;
+  const targetStudents = targetClassId ? studentsByClassId[targetClassId] ?? [] : [];
+
+  // 대상 반 학생 검색 필터
+  const filteredTargetStudents = useMemo(() => {
+    if (!targetSearch.trim()) return targetStudents;
+    const q = targetSearch.trim().toLowerCase();
+    return targetStudents.filter(
+      (s) =>
+        (s.korean_name && s.korean_name.toLowerCase().includes(q)) ||
+        (s.english_name && s.english_name.toLowerCase().includes(q)) ||
+        (s.student_number && s.student_number.toLowerCase().includes(q))
+    );
+  }, [targetStudents, targetSearch]);
+
+  // 드래그 앤 드롭: 학생을 대상 반으로 이동
+  const handleDropToTarget = async (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDropOver(false);
+    if (!targetClassId) return;
+
+    const data = e.dataTransfer.getData("application/json");
+    if (!data) return;
+
+    const { studentProfileId, fromClassId, classStudentId } = JSON.parse(data);
+
+    if (fromClassId === targetClassId) return;
+
+    // 기존 반에서 제거 (반이 있는 경우)
+    if (classStudentId) {
+      await removeStudentFromClass(classStudentId);
     }
-    if (search.trim()) {
-      const q = search.trim().toLowerCase();
-      list = list.filter((c) => {
-        if (c.name.toLowerCase().includes(q)) return true;
-        const students = studentsByClassId[c.id] ?? [];
-        return students.some(
-          (s) =>
-            (s.korean_name && s.korean_name.toLowerCase().includes(q)) ||
-            (s.english_name && s.english_name.toLowerCase().includes(q)) ||
-            (s.student_number && s.student_number.toLowerCase().includes(q))
-        );
-      });
+    // 대상 반에 추가
+    await addStudentToClass(targetClassId, studentProfileId);
+    router.refresh();
+  };
+
+  // 드래그 앤 드롭: 반 카드 간 이동 (기존 기능 유지)
+  const [cardDropTarget, setCardDropTarget] = useState<string | null>(null);
+
+  const handleDropToCard = async (toClassId: string, e: React.DragEvent) => {
+    e.preventDefault();
+    setCardDropTarget(null);
+
+    const data = e.dataTransfer.getData("application/json");
+    if (!data) return;
+
+    const { studentProfileId, fromClassId, classStudentId } = JSON.parse(data);
+    if (fromClassId === toClassId) return;
+
+    if (classStudentId) {
+      await removeStudentFromClass(classStudentId);
     }
-    return list;
-  }, [initialClasses, teacherFilter, search, studentsByClassId]);
+    await addStudentToClass(toClassId, studentProfileId);
+    router.refresh();
+  };
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-semibold text-slate-800">반 관리</h1>
-
-      {/* 필터 */}
-      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white p-4">
-        <div className="flex items-center gap-2">
-          <label className="text-sm font-medium text-slate-600">선생님</label>
-          <select
-            value={teacherFilter}
-            onChange={(e) => setTeacherFilter(e.target.value)}
-            className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800"
-          >
-            <option value="">전체</option>
-            {teachers.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="flex items-center gap-2">
-          <label className="text-sm font-medium text-slate-600">검색</label>
-          <input
-            type="search"
-            placeholder="반 이름 또는 학생 이름·학번"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-48 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 placeholder-slate-400 sm:w-64"
-          />
-        </div>
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold text-foreground">반 관리</h1>
+        <button
+          type="button"
+          onClick={() => setCreateOpen(true)}
+          className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500 shadow-sm"
+        >
+          + 반 추가
+        </button>
       </div>
 
-      {/* 반 목록 (단일 열) */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between gap-2">
-          <h2 className="text-sm font-medium text-slate-600">반 목록</h2>
-          <button
-            type="button"
-            onClick={() => setCreateOpen(true)}
-            className="rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-500"
-          >
-            반 추가
-          </button>
-        </div>
-        {filteredClasses.length === 0 ? (
-          <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-8 text-center text-sm text-slate-500">
-            {initialClasses.length === 0
-              ? "등록된 반이 없습니다. 반 추가로 생성하세요."
-              : "검색 결과가 없습니다."}
+      {/* 좌우 분할 레이아웃 */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+        {/* ===== 왼쪽 패널: 전체 반 + 미배정 학생 ===== */}
+        <div className="space-y-3">
+          <div className="rounded-xl border bg-card p-3">
+            <div className="flex items-center gap-2 mb-3">
+              <svg className="size-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+              </svg>
+              <input
+                type="search"
+                placeholder="반 이름 · 학생 이름 · 학번 검색"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="flex-1 rounded-lg border border-input px-3 py-1.5 text-sm text-foreground placeholder-muted-foreground bg-background"
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              학생을 드래그하여 오른쪽 대상 반으로 이동할 수 있습니다
+            </p>
           </div>
-        ) : (
-          <ul className="space-y-4">
+
+          <div className="space-y-3 max-h-[calc(100vh-240px)] overflow-y-auto pr-1">
+            {/* 반 카드 목록 */}
             {filteredClasses.map((c) => (
-              <li key={c.id}>
-                <ClassCard
-                  classRow={c}
-                  students={studentsByClassId[c.id] ?? []}
-                  onEdit={() => setEditClass(c)}
-                  onDelete={() => setDeleteTarget(c)}
-                  onAddStudent={() => setAddStudentOpen(c)}
-                  onRemoveStudent={(row) =>
-                    setRemoveStudentTarget({ classId: c.id, row })
-                  }
-                  isDropTarget={dropTargetId === c.id}
-                  onDragStart={(studentProfileId, classStudentId) =>
-                    setDragInfo({ studentProfileId, fromClassId: c.id, classStudentId })
-                  }
-                  onDragOver={() => setDropTargetId(c.id)}
-                  onDragLeave={() => setDropTargetId(null)}
-                  onDrop={() => handleDrop(c.id)}
-                />
-              </li>
+              <ClassCard
+                key={c.id}
+                classRow={c}
+                students={studentsByClassId[c.id] ?? []}
+                isTarget={c.id === targetClassId}
+                onEdit={() => setEditClass(c)}
+                onDelete={() => setDeleteTarget(c)}
+                onAddStudent={() => setAddStudentOpen(c)}
+                onRemoveStudent={(row) =>
+                  setRemoveStudentTarget({ classId: c.id, row })
+                }
+                onSelectAsTarget={() => setTargetClassId(c.id)}
+                isCardDropTarget={cardDropTarget === c.id}
+                onCardDragOver={() => setCardDropTarget(c.id)}
+                onCardDragLeave={() => setCardDropTarget(null)}
+                onCardDrop={(e) => handleDropToCard(c.id, e)}
+              />
             ))}
-          </ul>
-        )}
+
+            {/* 미배정 학생 */}
+            {filteredUnassigned.length > 0 && (
+              <div className="rounded-xl border-2 border-dashed border-amber-300 bg-amber-50/50 overflow-hidden">
+                <div className="px-4 py-2.5 bg-amber-100/50 border-b border-amber-200">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-semibold text-amber-800">미배정 학생</span>
+                    <span className="rounded-full bg-amber-200 px-2 py-0.5 text-xs font-medium text-amber-800">
+                      {filteredUnassigned.length}명
+                    </span>
+                  </div>
+                </div>
+                <div className="px-4 py-2.5">
+                  <ul className="space-y-1">
+                    {filteredUnassigned.map((s) => (
+                      <li
+                        key={s.id}
+                        draggable
+                        onDragStart={(e) => {
+                          e.dataTransfer.effectAllowed = "move";
+                          e.dataTransfer.setData(
+                            "application/json",
+                            JSON.stringify({
+                              studentProfileId: s.id,
+                              fromClassId: null,
+                              classStudentId: null,
+                            })
+                          );
+                        }}
+                        className="flex items-center gap-1.5 text-sm cursor-grab active:cursor-grabbing rounded-lg px-2 py-1.5 hover:bg-amber-100/50 transition-colors"
+                      >
+                        <svg className="w-3.5 h-3.5 text-amber-400 shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                          <circle cx="9" cy="5" r="1.5" /><circle cx="15" cy="5" r="1.5" />
+                          <circle cx="9" cy="12" r="1.5" /><circle cx="15" cy="12" r="1.5" />
+                          <circle cx="9" cy="19" r="1.5" /><circle cx="15" cy="19" r="1.5" />
+                        </svg>
+                        <span className="text-foreground">
+                          {[s.korean_name, s.english_name].filter(Boolean).join(" / ") || "—"}
+                        </span>
+                        {s.student_number && (
+                          <span className="ml-auto font-mono text-xs text-muted-foreground">
+                            {s.student_number}
+                          </span>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            )}
+
+            {filteredClasses.length === 0 && filteredUnassigned.length === 0 && (
+              <div className="rounded-xl border bg-muted/30 p-8 text-center text-sm text-muted-foreground">
+                {search.trim() ? "검색 결과가 없습니다." : "등록된 반이 없습니다. 반 추가로 생성하세요."}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ===== 오른쪽 패널: 대상 반 (드롭 영역) ===== */}
+        <div className="lg:sticky lg:top-6 self-start space-y-3">
+          <div className="rounded-xl border-2 border-primary/30 bg-card overflow-hidden shadow-sm">
+            <div className="bg-gradient-to-r from-red-500 via-yellow-400 via-green-500 to-blue-500 p-3">
+              <div className="flex items-center gap-2">
+                <svg className="size-4 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 16.875h3.375m0 0h3.375m-3.375 0V13.5m0 3.375v3.375M6 10.5h2.25a2.25 2.25 0 0 0 2.25-2.25V6a2.25 2.25 0 0 0-2.25-2.25H6A2.25 2.25 0 0 0 3.75 6v2.25A2.25 2.25 0 0 0 6 10.5Zm0 9.75h2.25A2.25 2.25 0 0 0 10.5 18v-2.25a2.25 2.25 0 0 0-2.25-2.25H6a2.25 2.25 0 0 0-2.25 2.25V18A2.25 2.25 0 0 0 6 20.25Zm9.75-9.75H18a2.25 2.25 0 0 0 2.25-2.25V6A2.25 2.25 0 0 0 18 3.75h-2.25A2.25 2.25 0 0 0 13.5 6v2.25a2.25 2.25 0 0 0 2.25 2.25Z" />
+                </svg>
+                <span className="text-sm font-semibold text-white">대상 반</span>
+              </div>
+            </div>
+
+            <div className="p-4 space-y-3">
+              <select
+                value={targetClassId}
+                onChange={(e) => {
+                  setTargetClassId(e.target.value);
+                  setTargetSearch("");
+                }}
+                className="w-full rounded-lg border border-input px-3 py-2 text-sm text-foreground bg-background"
+              >
+                <option value="">반을 선택하세요</option>
+                {initialClasses.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name} ({studentsByClassId[c.id]?.length ?? 0}명) — 담당: {c.teacher_name ?? "미지정"}
+                  </option>
+                ))}
+              </select>
+
+              {!targetClassId ? (
+                <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-muted-foreground/20 p-10 text-center">
+                  <svg className="size-10 text-muted-foreground/30 mb-3" fill="none" viewBox="0 0 24 24" strokeWidth={1} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0ZM4 19.235v-.11a6.375 6.375 0 0 1 12.75 0v.109A12.318 12.318 0 0 1 10.374 21c-2.331 0-4.512-.645-6.374-1.766Z" />
+                  </svg>
+                  <p className="text-sm text-muted-foreground">위에서 반을 선택하면</p>
+                  <p className="text-sm text-muted-foreground">왼쪽에서 학생을 드래그하여 추가할 수 있습니다</p>
+                </div>
+              ) : (
+                <>
+                  {/* 대상 반 정보 */}
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="font-semibold text-foreground">{targetClass?.name}</h3>
+                      <p className="text-xs text-muted-foreground">
+                        담당: {targetClass?.teacher_name ?? "미지정"} · {targetStudents.length}명
+                      </p>
+                    </div>
+                    <div className="flex gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => targetClass && setEditClass(targetClass)}
+                        className="rounded-lg bg-secondary px-2.5 py-1 text-xs font-medium text-secondary-foreground hover:bg-secondary/80"
+                      >
+                        수정
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => targetClass && setAddStudentOpen(targetClass)}
+                        className="rounded-lg bg-emerald-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-emerald-500"
+                      >
+                        + 학생
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* 대상 반 학생 검색 */}
+                  {targetStudents.length > 3 && (
+                    <input
+                      type="search"
+                      placeholder="반 내 학생 검색"
+                      value={targetSearch}
+                      onChange={(e) => setTargetSearch(e.target.value)}
+                      className="w-full rounded-lg border border-input px-3 py-1.5 text-sm text-foreground placeholder-muted-foreground bg-background"
+                    />
+                  )}
+
+                  {/* 드롭 존 */}
+                  <div
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = "move";
+                      setIsDropOver(true);
+                    }}
+                    onDragLeave={() => setIsDropOver(false)}
+                    onDrop={handleDropToTarget}
+                    className={`rounded-xl border-2 border-dashed transition-all min-h-[200px] p-2 ${
+                      isDropOver
+                        ? "border-emerald-400 bg-emerald-50/50 shadow-inner"
+                        : "border-muted-foreground/20 bg-muted/20"
+                    }`}
+                  >
+                    {filteredTargetStudents.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center h-[180px] text-center">
+                        <svg className="size-8 text-muted-foreground/30 mb-2" fill="none" viewBox="0 0 24 24" strokeWidth={1} stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                        </svg>
+                        <p className="text-sm text-muted-foreground">
+                          {isDropOver ? "여기에 놓으세요!" : "왼쪽에서 학생을 드래그하세요"}
+                        </p>
+                      </div>
+                    ) : (
+                      <ul className="space-y-1">
+                        {filteredTargetStudents.map((s) => (
+                          <li
+                            key={s.id}
+                            className="flex items-center justify-between gap-2 text-sm rounded-lg px-3 py-2 bg-card hover:bg-muted/50 transition-colors"
+                          >
+                            <span className="text-foreground">
+                              {[s.korean_name, s.english_name].filter(Boolean).join(" / ") || "—"}
+                              {s.student_number && (
+                                <span className="ml-1.5 font-mono text-muted-foreground text-xs">
+                                  {s.student_number}
+                                </span>
+                              )}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setRemoveStudentTarget({ classId: targetClassId, row: s })
+                              }
+                              className="rounded bg-destructive/10 px-2 py-0.5 text-xs text-destructive hover:bg-destructive/20"
+                            >
+                              제외
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+
+                  {isDropOver && (
+                    <p className="text-xs text-emerald-600 font-medium text-center animate-pulse">
+                      드롭하여 학생을 추가합니다
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* 모달들 */}
@@ -227,6 +468,7 @@ export function ClassesManager({
           onConfirm={async () => {
             await deleteClass(deleteTarget.id);
             setDeleteTarget(null);
+            if (targetClassId === deleteTarget.id) setTargetClassId("");
             router.refresh();
           }}
         />
@@ -249,30 +491,33 @@ export function ClassesManager({
   );
 }
 
+/* ===== 왼쪽 반 카드 ===== */
 function ClassCard({
   classRow,
   students,
+  isTarget,
   onEdit,
   onDelete,
   onAddStudent,
   onRemoveStudent,
-  isDropTarget,
-  onDragStart,
-  onDragOver,
-  onDragLeave,
-  onDrop,
+  onSelectAsTarget,
+  isCardDropTarget,
+  onCardDragOver,
+  onCardDragLeave,
+  onCardDrop,
 }: {
   classRow: ClassWithDetails;
   students: ClassStudentRow[];
+  isTarget: boolean;
   onEdit: () => void;
   onDelete: () => void;
   onAddStudent: () => void;
   onRemoveStudent: (row: ClassStudentRow) => void;
-  isDropTarget?: boolean;
-  onDragStart?: (studentProfileId: string, classStudentId: string) => void;
-  onDragOver?: () => void;
-  onDragLeave?: () => void;
-  onDrop?: () => void;
+  onSelectAsTarget: () => void;
+  isCardDropTarget: boolean;
+  onCardDragOver: () => void;
+  onCardDragLeave: () => void;
+  onCardDrop: (e: React.DragEvent) => void;
 }) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<"students" | "textbooks">("students");
@@ -300,61 +545,72 @@ function ClassCard({
 
   return (
     <div
-      className={`rounded-xl border-2 bg-white overflow-hidden transition-colors ${
-        isDropTarget
+      className={`rounded-xl border-2 bg-card overflow-hidden transition-all ${
+        isTarget
+          ? "border-primary/50 ring-2 ring-primary/20"
+          : isCardDropTarget
           ? "border-emerald-400 bg-emerald-50/30 shadow-md"
-          : "border-slate-200"
+          : "border-border"
       }`}
       onDragOver={(e) => {
         e.preventDefault();
-        onDragOver?.();
+        onCardDragOver();
       }}
-      onDragLeave={() => onDragLeave?.()}
+      onDragLeave={() => onCardDragLeave()}
       onDrop={(e) => {
         e.preventDefault();
-        onDrop?.();
+        onCardDrop(e);
       }}
     >
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-slate-50/80 px-4 py-3">
+      {/* 헤더 */}
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b bg-muted/50 px-4 py-2.5">
         <div className="flex items-center gap-2">
-          <span className="font-semibold text-slate-800">{classRow.name}</span>
-          <span className="rounded-full bg-violet-100 px-2.5 py-0.5 text-xs font-medium text-violet-700">
+          <span className="font-semibold text-foreground text-sm">{classRow.name}</span>
+          <span className="rounded-full bg-violet-100 px-2 py-0.5 text-xs font-medium text-violet-700">
             {classRow.student_count}명
           </span>
-          {isDropTarget && (
+          {isCardDropTarget && (
             <span className="text-xs text-emerald-600 font-medium">여기에 놓기</span>
           )}
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-slate-500">
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs text-muted-foreground mr-1">
             담당: {classRow.teacher_name ?? "—"}
           </span>
           <button
             type="button"
+            onClick={onSelectAsTarget}
+            className="rounded-lg bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary hover:bg-primary/20"
+            title="오른쪽 대상 반으로 선택"
+          >
+            대상
+          </button>
+          <button
+            type="button"
             onClick={onEdit}
-            className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-200"
+            className="rounded-lg bg-secondary px-2 py-0.5 text-xs font-medium text-secondary-foreground hover:bg-secondary/80"
           >
             수정
           </button>
           <button
             type="button"
             onClick={onDelete}
-            className="rounded-lg bg-red-50 px-2.5 py-1 text-xs font-medium text-red-600 hover:bg-red-100"
+            className="rounded-lg bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive hover:bg-destructive/20"
           >
             삭제
           </button>
         </div>
       </div>
 
-      {/* 탭 전환: 학생 | 교재 */}
-      <div className="flex border-b border-slate-100">
+      {/* 탭 */}
+      <div className="flex border-b">
         <button
           type="button"
           onClick={() => setActiveTab("students")}
-          className={`flex-1 px-4 py-2 text-xs font-medium transition-colors ${
+          className={`flex-1 px-4 py-1.5 text-xs font-medium transition-colors ${
             activeTab === "students"
-              ? "text-slate-800 border-b-2 border-slate-800 bg-white"
-              : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"
+              ? "text-foreground border-b-2 border-primary bg-card"
+              : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
           }`}
         >
           학생 ({students.length})
@@ -362,52 +618,61 @@ function ClassCard({
         <button
           type="button"
           onClick={() => setActiveTab("textbooks")}
-          className={`flex-1 px-4 py-2 text-xs font-medium transition-colors ${
+          className={`flex-1 px-4 py-1.5 text-xs font-medium transition-colors ${
             activeTab === "textbooks"
-              ? "text-slate-800 border-b-2 border-slate-800 bg-white"
-              : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"
+              ? "text-foreground border-b-2 border-primary bg-card"
+              : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
           }`}
         >
           교재 ({textbooksLoaded ? textbooks.length : "…"})
         </button>
       </div>
 
-      <div className="px-4 py-3">
+      {/* 콘텐츠 */}
+      <div className="px-4 py-2.5">
         {activeTab === "students" ? (
           <>
-            <div className="flex justify-end mb-2">
+            <div className="flex justify-end mb-1.5">
               <button
                 type="button"
                 onClick={onAddStudent}
-                className="rounded-lg bg-emerald-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-emerald-500"
+                className="rounded-lg bg-emerald-600 px-2 py-0.5 text-xs font-medium text-white hover:bg-emerald-500"
               >
                 + 학생 추가
               </button>
             </div>
             {students.length === 0 ? (
-              <p className="text-sm text-slate-400">소속 학생 없음</p>
+              <p className="text-xs text-muted-foreground py-2">소속 학생 없음</p>
             ) : (
-              <ul className="space-y-1.5">
+              <ul className="space-y-1">
                 {students.map((s) => (
                   <li
                     key={s.id}
                     draggable
                     onDragStart={(e) => {
                       e.dataTransfer.effectAllowed = "move";
-                      e.dataTransfer.setData("text/plain", s.student_profile_id);
-                      onDragStart?.(s.student_profile_id, s.id);
+                      e.dataTransfer.setData(
+                        "application/json",
+                        JSON.stringify({
+                          studentProfileId: s.student_profile_id,
+                          fromClassId: classRow.id,
+                          classStudentId: s.id,
+                        })
+                      );
                     }}
-                    className="flex items-center justify-between gap-2 text-sm cursor-grab active:cursor-grabbing rounded-lg px-2 py-1 -mx-2 hover:bg-slate-50 transition-colors"
+                    className="flex items-center justify-between gap-2 text-sm cursor-grab active:cursor-grabbing rounded-lg px-2 py-1 -mx-1 hover:bg-muted/50 transition-colors"
                   >
-                    <span className="text-slate-800 flex items-center gap-1.5">
-                      <svg className="w-3.5 h-3.5 text-slate-300 shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                    <span className="text-foreground flex items-center gap-1.5">
+                      <svg className="w-3 h-3 text-muted-foreground/50 shrink-0" fill="currentColor" viewBox="0 0 24 24">
                         <circle cx="9" cy="5" r="1.5" /><circle cx="15" cy="5" r="1.5" />
                         <circle cx="9" cy="12" r="1.5" /><circle cx="15" cy="12" r="1.5" />
                         <circle cx="9" cy="19" r="1.5" /><circle cx="15" cy="19" r="1.5" />
                       </svg>
-                      {[s.korean_name, s.english_name].filter(Boolean).join(" / ") || "—"}
+                      <span className="text-xs">
+                        {[s.korean_name, s.english_name].filter(Boolean).join(" / ") || "—"}
+                      </span>
                       {s.student_number && (
-                        <span className="ml-1.5 font-mono text-slate-500">
+                        <span className="font-mono text-muted-foreground text-xs">
                           {s.student_number}
                         </span>
                       )}
@@ -415,7 +680,7 @@ function ClassCard({
                     <button
                       type="button"
                       onClick={() => onRemoveStudent(s)}
-                      className="rounded bg-red-50 px-1.5 py-0.5 text-xs text-red-600 hover:bg-red-100"
+                      className="rounded bg-destructive/10 px-1.5 py-0.5 text-xs text-destructive hover:bg-destructive/20"
                     >
                       제외
                     </button>
@@ -426,41 +691,41 @@ function ClassCard({
           </>
         ) : (
           <>
-            <div className="flex justify-end mb-2">
+            <div className="flex justify-end mb-1.5">
               <button
                 type="button"
                 onClick={() => setAddTextbookOpen(true)}
-                className="rounded-lg bg-emerald-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-emerald-500"
+                className="rounded-lg bg-emerald-600 px-2 py-0.5 text-xs font-medium text-white hover:bg-emerald-500"
               >
                 + 교재 배정
               </button>
             </div>
             {!textbooksLoaded ? (
-              <p className="text-sm text-slate-400">불러오는 중…</p>
+              <p className="text-xs text-muted-foreground py-2">불러오는 중…</p>
             ) : textbooks.length === 0 ? (
-              <p className="text-sm text-slate-400">배정된 교재 없음</p>
+              <p className="text-xs text-muted-foreground py-2">배정된 교재 없음</p>
             ) : (
-              <ul className="space-y-1.5">
+              <ul className="space-y-1">
                 {textbooks.map((ct) => (
                   <li
                     key={ct.id}
                     className="flex items-center justify-between gap-2 text-sm"
                   >
-                    <span className="text-slate-800">
+                    <span className="text-foreground text-xs">
                       {ct.textbook_title}
                       {ct.textbook_level && (
-                        <span className="ml-1.5 text-slate-500 text-xs">
+                        <span className="ml-1.5 text-muted-foreground">
                           Lv.{ct.textbook_level}
                         </span>
                       )}
-                      <span className="ml-1.5 text-slate-400 text-xs">
+                      <span className="ml-1.5 text-muted-foreground/70">
                         {ct.total_units}단원
                       </span>
                     </span>
                     <button
                       type="button"
                       onClick={() => handleRemoveTextbook(ct.textbook_id)}
-                      className="rounded bg-red-50 px-1.5 py-0.5 text-xs text-red-600 hover:bg-red-100"
+                      className="rounded bg-destructive/10 px-1.5 py-0.5 text-xs text-destructive hover:bg-destructive/20"
                     >
                       제거
                     </button>
@@ -486,6 +751,8 @@ function ClassCard({
     </div>
   );
 }
+
+/* ===== 모달 컴포넌트들 ===== */
 
 function AddTextbookToClassModal({
   classId,
@@ -535,25 +802,25 @@ function AddTextbookToClassModal({
   return (
     <Modal title="교재 배정" onClose={onClose}>
       {loading ? (
-        <p className="py-4 text-center text-sm text-slate-500">불러오는 중…</p>
+        <p className="py-4 text-center text-sm text-muted-foreground">불러오는 중…</p>
       ) : options.length === 0 ? (
-        <p className="py-4 text-center text-sm text-slate-500">
+        <p className="py-4 text-center text-sm text-muted-foreground">
           배정 가능한 교재가 없습니다. 먼저 교재 관리에서 교재를 등록하세요.
         </p>
       ) : (
         <form onSubmit={handleSubmit} className="space-y-4">
-          {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
+          {error && <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
           <input
             type="search"
             placeholder="교재명 검색"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 placeholder-slate-400"
+            className="w-full rounded-lg border border-input px-3 py-2 text-sm text-foreground placeholder-muted-foreground bg-background"
           />
           <select
             value={selectedId}
             onChange={(e) => setSelectedId(e.target.value)}
-            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800"
+            className="w-full rounded-lg border border-input px-3 py-2 text-sm text-foreground bg-background"
             required
           >
             <option value="">교재를 선택하세요</option>
@@ -564,7 +831,7 @@ function AddTextbookToClassModal({
             ))}
           </select>
           <div className="flex justify-end gap-2 pt-2">
-            <button type="button" onClick={onClose} className="rounded-lg bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-200">
+            <button type="button" onClick={onClose} className="rounded-lg bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground hover:bg-secondary/80">
               취소
             </button>
             <button type="submit" disabled={pending} className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500 disabled:opacity-50">
@@ -608,31 +875,31 @@ function AddClassModal({
     <Modal title="반 추가" onClose={onClose}>
       <form onSubmit={handleSubmit} className="space-y-4">
         {error && (
-          <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
+          <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">
             {error}
           </p>
         )}
         <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">
+          <label className="mb-1 block text-sm font-medium text-foreground">
             반 이름
           </label>
           <input
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-slate-800"
+            className="w-full rounded-lg border border-input px-3 py-2 text-foreground bg-background"
             placeholder="예: 토요 1반"
             required
           />
         </div>
         <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">
+          <label className="mb-1 block text-sm font-medium text-foreground">
             담당 선생님
           </label>
           <select
             value={teacherId}
             onChange={(e) => setTeacherId(e.target.value)}
-            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-slate-800"
+            className="w-full rounded-lg border border-input px-3 py-2 text-foreground bg-background"
           >
             <option value="">선택 안 함</option>
             {teachers.map((t) => (
@@ -646,7 +913,7 @@ function AddClassModal({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-200"
+            className="rounded-lg bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground hover:bg-secondary/80"
           >
             취소
           </button>
@@ -700,30 +967,30 @@ function EditClassModal({
     <Modal title="반 수정" onClose={onClose}>
       <form onSubmit={handleSubmit} className="space-y-4">
         {error && (
-          <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
+          <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">
             {error}
           </p>
         )}
         <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">
+          <label className="mb-1 block text-sm font-medium text-foreground">
             반 이름
           </label>
           <input
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-slate-800"
+            className="w-full rounded-lg border border-input px-3 py-2 text-foreground bg-background"
             required
           />
         </div>
         <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">
+          <label className="mb-1 block text-sm font-medium text-foreground">
             담당 선생님
           </label>
           <select
             value={teacherId}
             onChange={(e) => setTeacherId(e.target.value)}
-            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-slate-800"
+            className="w-full rounded-lg border border-input px-3 py-2 text-foreground bg-background"
           >
             <option value="">선택 안 함</option>
             {teachers.map((t) => (
@@ -737,7 +1004,7 @@ function EditClassModal({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-200"
+            className="rounded-lg bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground hover:bg-secondary/80"
           >
             취소
           </button>
@@ -813,20 +1080,20 @@ function AddStudentModal({
   return (
     <Modal title="학생 추가" onClose={onClose}>
       {loading ? (
-        <p className="py-4 text-center text-sm text-slate-500">불러오는 중…</p>
+        <p className="py-4 text-center text-sm text-muted-foreground">불러오는 중…</p>
       ) : options.length === 0 ? (
-        <p className="py-4 text-center text-sm text-slate-500">
+        <p className="py-4 text-center text-sm text-muted-foreground">
           이 반에 추가할 수 있는 학생이 없습니다.
         </p>
       ) : (
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
-            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
+            <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">
               {error}
             </p>
           )}
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">
+            <label className="mb-1 block text-sm font-medium text-foreground">
               학생 검색
             </label>
             <input
@@ -834,17 +1101,17 @@ function AddStudentModal({
               value={studentSearch}
               onChange={(e) => setStudentSearch(e.target.value)}
               placeholder="이름 또는 학번으로 검색"
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-slate-800 placeholder-slate-400"
+              className="w-full rounded-lg border border-input px-3 py-2 text-foreground placeholder-muted-foreground bg-background"
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">
+            <label className="mb-1 block text-sm font-medium text-foreground">
               학생 선택
             </label>
             <select
               value={selectedId}
               onChange={(e) => setSelectedId(e.target.value)}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-slate-800"
+              className="w-full rounded-lg border border-input px-3 py-2 text-foreground bg-background"
               required
             >
               <option value="">선택하세요</option>
@@ -856,14 +1123,14 @@ function AddStudentModal({
               ))}
             </select>
             {studentSearch && filteredOptions.length === 0 && (
-              <p className="mt-1 text-xs text-slate-500">검색 결과 없음</p>
+              <p className="mt-1 text-xs text-muted-foreground">검색 결과 없음</p>
             )}
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <button
               type="button"
               onClick={onClose}
-              className="rounded-lg bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-200"
+              className="rounded-lg bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground hover:bg-secondary/80"
             >
               취소
             </button>
@@ -897,13 +1164,13 @@ function Modal({
         onClick={onClose}
         aria-hidden
       />
-      <div className="relative w-full max-w-md rounded-xl border border-slate-200 bg-white p-5 shadow-xl">
+      <div className="relative w-full max-w-md rounded-xl border bg-card p-5 shadow-xl">
         <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-slate-800">{title}</h3>
+          <h3 className="text-lg font-semibold text-foreground">{title}</h3>
           <button
             type="button"
             onClick={onClose}
-            className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+            className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
             aria-label="닫기"
           >
             <svg
@@ -950,14 +1217,14 @@ function ConfirmModal({
         onClick={onClose}
         aria-hidden
       />
-      <div className="relative w-full max-w-sm rounded-xl border border-slate-200 bg-white p-5 shadow-xl">
-        <h3 className="text-lg font-semibold text-slate-800">{title}</h3>
-        <p className="mt-2 text-sm text-slate-600">{message}</p>
+      <div className="relative w-full max-w-sm rounded-xl border bg-card p-5 shadow-xl">
+        <h3 className="text-lg font-semibold text-foreground">{title}</h3>
+        <p className="mt-2 text-sm text-muted-foreground">{message}</p>
         <div className="mt-4 flex justify-end gap-2">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-200"
+            className="rounded-lg bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground hover:bg-secondary/80"
           >
             취소
           </button>

@@ -3,12 +3,12 @@ import {
   listUsersByRole,
   updateStudentProfile,
 } from "../actions";
-import { AddStudentForm } from "../components/AddStudentForm";
 import { AdminListSidebar } from "../components/AdminListSidebar";
 import { ScrollToSection } from "../components/ScrollToSection";
-import { StudentInfoCard } from "../components/StudentSelectedView";
-import { StudentTabNav, type StudentTabId } from "../components/StudentTabNav";
 import { UserList } from "../components/UserList";
+import { AddStudentForm } from "./components/AddStudentForm";
+import { StudentInfoCard } from "./components/StudentSelectedView";
+import { StudentTabNav, type StudentTabId } from "./components/StudentTabNav";
 import { StudentComingTab } from "./components/StudentComingTab";
 import { StudentLearningTab } from "./components/StudentLearningTab";
 import { StudentReportTab } from "./components/StudentReportTab";

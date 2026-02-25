@@ -1,4 +1,4 @@
-import type { UserWithProfile } from "../actions";
+import type { UserWithProfile } from "@/lib/types";
 import { UserRow } from "./UserRow";
 
 type UserListProps = {

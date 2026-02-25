@@ -3,12 +3,12 @@ import {
   listUsersByRole,
   updateTeacherProfile,
 } from "../actions";
-import { AddTeacherForm } from "../components/AddTeacherForm";
 import { AdminListSidebar } from "../components/AdminListSidebar";
 import { ScrollToSection } from "../components/ScrollToSection";
-import { TeacherInfoCard } from "../components/TeacherInfoCard";
-import { TeacherTabNav, type TeacherTabId } from "../components/TeacherTabNav";
 import { UserList } from "../components/UserList";
+import { AddTeacherForm } from "./components/AddTeacherForm";
+import { TeacherInfoCard } from "./components/TeacherInfoCard";
+import { TeacherTabNav, type TeacherTabId } from "./components/TeacherTabNav";
 import { TeacherClassesTab } from "./components/TeacherClassesTab";
 
 const VALID_TABS: TeacherTabId[] = ["info", "classes"];

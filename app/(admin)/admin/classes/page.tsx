@@ -1,14 +1,18 @@
 import {
   getAllClassStudentsFlat,
+  listAllStudents,
   listClassesWithDetails,
   listTeachersForSelect,
 } from "../actions";
 import { ClassesManager } from "./components/ClassesManager";
 
 export default async function AdminClassesPage() {
-  const classes = await listClassesWithDetails();
-  const teachers = await listTeachersForSelect();
-  const allClassStudents = await getAllClassStudentsFlat();
+  const [classes, teachers, allClassStudents, allStudents] = await Promise.all([
+    listClassesWithDetails(),
+    listTeachersForSelect(),
+    getAllClassStudentsFlat(),
+    listAllStudents(),
+  ]);
 
   return (
     <div className="flex flex-1 min-w-0 flex-col p-6 md:p-8">
@@ -16,6 +20,7 @@ export default async function AdminClassesPage() {
         initialClasses={classes}
         teachers={teachers}
         allClassStudents={allClassStudents}
+        allStudents={allStudents}
       />
     </div>
   );

@@ -1,8 +1,10 @@
 "use client";
 
-import { LogoutButton } from "@/app/(academy)/academy/components/LogoutButton";
+import { LogoutButton } from "@/components/LogoutButton";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 
 const navItems = [
   { href: "/admin", label: "대시보드", icon: HomeIcon },
@@ -72,10 +74,10 @@ export function AdminSidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="w-44 min-h-screen bg-slate-900 flex flex-col shrink-0">
-      <div className="p-3 border-b border-slate-700/60">
+    <aside className="w-44 min-h-screen bg-sidebar flex flex-col shrink-0 border-r border-sidebar-border">
+      <div className="p-3 border-b border-sidebar-border">
         <Link href="/admin" className="block">
-          <span className="text-white font-semibold text-sm tracking-tight">Admin Panel</span>
+          <span className="text-sidebar-foreground font-semibold text-sm tracking-tight">Admin Panel</span>
         </Link>
       </div>
       <nav className="flex-1 py-3 px-2">
@@ -88,7 +90,9 @@ export function AdminSidebar() {
                 <Link
                   href={href}
                   className={`flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-medium transition-colors ${
-                    isActive ? "bg-emerald-500 text-white" : "text-slate-300 hover:bg-slate-800 hover:text-white"
+                    isActive
+                      ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                      : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                   }`}
                 >
                   <Icon className="w-4 h-4 shrink-0" />
@@ -99,18 +103,18 @@ export function AdminSidebar() {
           })}
         </ul>
       </nav>
-      <div className="p-2 border-t border-slate-700/60 space-y-0.5">
+      <div className="p-2 space-y-0.5">
+        <Separator className="mb-2 bg-sidebar-border" />
         <Link
           href="/"
-          className="flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-medium text-slate-300 hover:bg-slate-800 hover:text-white transition-colors"
+          className="flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-medium text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
         >
           <ExternalIcon className="w-4 h-4 shrink-0" />
           사이트로 이동
         </Link>
-        <div className="flex items-center gap-2 px-2.5 py-2 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white transition-colors">
+        <LogoutButton className="flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-medium text-sidebar-foreground/70 hover:bg-red-500/20 hover:text-red-300 transition-colors cursor-pointer w-full">
           <LogoutIcon className="w-4 h-4 shrink-0" />
-          <LogoutButton className="text-left text-inherit bg-transparent p-0 min-w-0 rounded-none hover:bg-transparent hover:opacity-90 text-xs font-medium" />
-        </div>
+        </LogoutButton>
       </div>
     </aside>
   );

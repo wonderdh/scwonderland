@@ -1,9 +1,14 @@
 import { getCurrentStudentTextbooks } from "../../actions";
+import {
+  Card,
+  CardContent,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 
 const STATUS_MAP = {
-  not_started: { label: "시작 전", color: "bg-slate-100 text-slate-600" },
-  in_progress: { label: "진행 중", color: "bg-blue-100 text-blue-700" },
-  completed: { label: "완료", color: "bg-emerald-100 text-emerald-700" },
+  not_started: { label: "시작 전", variant: "secondary" as const },
+  in_progress: { label: "진행 중", variant: "default" as const },
+  completed: { label: "완료", variant: "outline" as const },
 } as const;
 
 const CATEGORY_MAP: Record<string, string> = {
@@ -23,77 +28,98 @@ export default async function StudentTextbooksPage() {
   const inProgress = textbooks.filter((t) => t.status === "in_progress").length;
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-5 sm:p-6">
-      <h1 className="text-lg font-semibold text-slate-800 mb-4">내 교재</h1>
+    <div className="space-y-6">
+      <h1 className="text-xl font-bold tracking-tight">내 교재</h1>
 
-      {/* 요약 통계 */}
       {textbooks.length > 0 && (
-        <div className="grid grid-cols-3 gap-3 mb-6">
-          <div className="rounded-lg border border-slate-200 p-3 text-center">
-            <p className="text-2xl font-bold text-slate-800">{textbooks.length}</p>
-            <p className="text-xs text-slate-500">전체</p>
-          </div>
-          <div className="rounded-lg border border-blue-200 bg-blue-50/50 p-3 text-center">
-            <p className="text-2xl font-bold text-blue-700">{inProgress}</p>
-            <p className="text-xs text-blue-600">진행 중</p>
-          </div>
-          <div className="rounded-lg border border-emerald-200 bg-emerald-50/50 p-3 text-center">
-            <p className="text-2xl font-bold text-emerald-700">{completed}</p>
-            <p className="text-xs text-emerald-600">완료</p>
-          </div>
+        <div className="grid grid-cols-3 gap-3">
+          <Card className="py-3 gap-0 overflow-hidden">
+            <div className="h-1 bg-gradient-to-r from-violet-500 to-purple-500" />
+            <CardContent className="text-center">
+              <p className="text-2xl font-bold text-violet-700">{textbooks.length}</p>
+              <p className="text-xs text-violet-600 font-medium">전체</p>
+            </CardContent>
+          </Card>
+          <Card className="py-3 gap-0 overflow-hidden">
+            <div className="h-1 bg-gradient-to-r from-blue-500 to-indigo-500" />
+            <CardContent className="text-center">
+              <p className="text-2xl font-bold text-blue-700">{inProgress}</p>
+              <p className="text-xs text-blue-600 font-medium">진행 중</p>
+            </CardContent>
+          </Card>
+          <Card className="py-3 gap-0 overflow-hidden">
+            <div className="h-1 bg-gradient-to-r from-emerald-500 to-teal-500" />
+            <CardContent className="text-center">
+              <p className="text-2xl font-bold text-emerald-700">{completed}</p>
+              <p className="text-xs text-emerald-600 font-medium">완료</p>
+            </CardContent>
+          </Card>
         </div>
       )}
 
       {textbooks.length === 0 ? (
-        <div className="rounded-lg border border-slate-200 bg-slate-50/50 p-8 text-center text-sm text-slate-500">
-          배정된 교재가 없습니다.
-        </div>
+        <Card className="py-12">
+          <CardContent className="text-center text-sm text-muted-foreground">
+            배정된 교재가 없습니다.
+          </CardContent>
+        </Card>
       ) : (
         <div className="space-y-3">
           {textbooks.map((t) => {
             const pct = t.total_units > 0 ? Math.round((t.completed_units / t.total_units) * 100) : 0;
             const st = STATUS_MAP[t.status];
-            const catLabel = CATEGORY_MAP[t.textbook_category] ?? t.textbook_category;
 
             return (
-              <div
-                key={t.id}
-                className="rounded-xl border border-slate-200 p-4"
-              >
-                <div className="flex items-start justify-between gap-2 mb-2">
-                  <div>
-                    <h3 className="font-medium text-slate-800">{t.textbook_title}</h3>
-                    <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-slate-500">
-                      <span className="rounded bg-blue-50 px-1.5 py-0.5 text-blue-700">{catLabel}</span>
-                      {t.textbook_level && <span>Lv. {t.textbook_level}</span>}
-                      {t.textbook_series && <span>{t.textbook_series}</span>}
-                      <span className="text-slate-400">
-                        {t.source_type === "class"
-                          ? `반 배정 (${t.source_class_name ?? ""})`
-                          : "개별 배정"}
-                      </span>
+              <Card key={t.id} className="py-4 gap-3">
+                <CardContent className="space-y-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <h3 className="font-semibold">{t.textbook_title}</h3>
+                      <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                        <Badge variant="outline" className="text-[10px] bg-violet-50 text-violet-700 border-violet-200">
+                          {CATEGORY_MAP[t.textbook_category] ?? t.textbook_category}
+                        </Badge>
+                        {t.textbook_level && (
+                          <span className="text-xs text-muted-foreground">Lv. {t.textbook_level}</span>
+                        )}
+                        {t.source_type === "class" && (
+                          <span className="text-xs text-muted-foreground">
+                            반: {t.source_class_name ?? ""}
+                          </span>
+                        )}
+                      </div>
                     </div>
+                    <Badge
+                      variant={st.variant}
+                      className={
+                        t.status === "completed"
+                          ? "bg-emerald-100 text-emerald-700 border-emerald-200"
+                          : t.status === "in_progress"
+                            ? "bg-blue-600 text-white"
+                            : ""
+                      }
+                    >
+                      {st.label}
+                    </Badge>
                   </div>
-                  <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${st.color}`}>
-                    {st.label}
-                  </span>
-                </div>
 
-                {/* 진도 바 */}
-                <div className="flex items-center gap-2">
-                  <div className="flex-1 h-2.5 rounded-full bg-slate-100 overflow-hidden">
-                    <div
-                      className={`h-full rounded-full transition-all ${
-                        pct >= 100 ? "bg-emerald-500" : "bg-blue-500"
-                      }`}
-                      style={{ width: `${pct}%` }}
-                    />
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1 h-2 rounded-full bg-secondary overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all ${
+                          pct >= 100
+                            ? "bg-gradient-to-r from-emerald-400 to-emerald-600"
+                            : "bg-gradient-to-r from-blue-400 to-indigo-500"
+                        }`}
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                    <span className="text-xs font-medium text-muted-foreground shrink-0">
+                      {t.completed_units}/{t.total_units} ({pct}%)
+                    </span>
                   </div>
-                  <span className="text-xs font-medium text-slate-600 shrink-0 min-w-[5rem] text-right">
-                    {t.completed_units}/{t.total_units}단원 ({pct}%)
-                  </span>
-                </div>
-              </div>
+                </CardContent>
+              </Card>
             );
           })}
         </div>

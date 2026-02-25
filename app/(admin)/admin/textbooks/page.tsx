@@ -1,4 +1,4 @@
-import { listTextbooks } from "../textbook-actions";
+import { listTextbooks } from "../actions/textbook-actions";
 import { TextbooksManager } from "./components/TextbooksManager";
 
 export default async function AdminTextbooksPage() {

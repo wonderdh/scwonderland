@@ -8,8 +8,8 @@ import {
   updateProgress,
   type StudentTextbookProgress,
   type Textbook,
-} from "../../textbook-actions";
-import { TEXTBOOK_CATEGORIES } from "../../textbook-constants";
+} from "../../actions/textbook-actions";
+import { TEXTBOOK_CATEGORIES } from "../../actions/textbook-constants";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 

@@ -1,0 +1,35 @@
+import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
+import { TeacherNav } from "./components/TeacherNav";
+
+export default async function TeacherLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/academy/login?next=/academy/teacher");
+  }
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+
+  if (profile?.role !== "teacher") {
+    redirect("/academy/dashboard");
+  }
+
+  return (
+    <div className="mx-auto max-w-4xl">
+      <TeacherNav />
+      {children}
+    </div>
+  );
+}

@@ -5,12 +5,21 @@ export default function AcademyLoginPage() {
   return (
     <Suspense
       fallback={
-        <div className="max-w-sm mx-auto mt-12 p-6 bg-white rounded-xl shadow-sm border border-slate-200 animate-pulse">
-          <div className="h-7 bg-slate-200 rounded w-32 mb-2" />
-          <div className="h-4 bg-slate-100 rounded w-full mb-6" />
-          <div className="h-10 bg-slate-100 rounded mb-4" />
-          <div className="h-10 bg-slate-100 rounded mb-4" />
-          <div className="h-10 bg-slate-200 rounded" />
+        <div className="min-h-[70vh] flex items-center justify-center px-4">
+          <div className="w-full max-w-sm rounded-xl border bg-card p-6 shadow-sm animate-pulse">
+            <div className="flex flex-col items-center mb-4">
+              <div className="size-12 rounded-full bg-muted mb-3" />
+              <div className="h-6 bg-muted rounded w-40 mb-2" />
+              <div className="h-4 bg-muted rounded w-56" />
+            </div>
+            <div className="space-y-4">
+              <div className="h-4 bg-muted rounded w-16" />
+              <div className="h-10 bg-muted rounded" />
+              <div className="h-4 bg-muted rounded w-20" />
+              <div className="h-10 bg-muted rounded" />
+              <div className="h-10 bg-muted rounded" />
+            </div>
+          </div>
         </div>
       }
     >

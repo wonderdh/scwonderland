@@ -25,9 +25,18 @@ npm run lint     # ESLint 실행
 
 ```
 app/
-├── page.tsx                    # 메인 랜딩 페이지 (Hero + MainProgram)
-├── (content)/                  # 공개 웹사이트
+├── layout.tsx                  # 최소: 폰트, 메타데이터, html/body
+├── (site)/                     # 학원 소개 사이트 (공개)
+│   ├── layout.tsx              # Navigation + SideBar + Footer
+│   ├── page.tsx                # 랜딩 페이지
+│   ├── _components/            # 사이트 전용 컴포넌트
+│   └── about-wonderland/, program/, notice/, community/, experience/
 ├── (admin)/admin/              # 관리자 대시보드 (/admin)
+│   ├── actions.ts              # barrel re-export
+│   ├── actions/                # 도메인별 분할 (user, report, class, dashboard, textbook)
+│   ├── components/             # 공유 컴포넌트 (AdminLayoutClient, AdminSidebar 등)
+│   ├── students/components/    # 학생 전용 컴포넌트 (co-located)
+│   └── teachers/components/    # 교사 전용 컴포넌트 (co-located)
 └── (academy)/academy/          # 학생·교사 포털 (/academy)
 ```
 
@@ -35,13 +44,13 @@ app/
 
 ```
 RootLayout (app/layout.tsx) — Geist 폰트, HTML lang="ko"
-└── LayoutSwitcher — pathname 기반으로 레이아웃 분기
-    ├── [/academy, /admin] → 최소 레이아웃 (Navigation 없음)
-    └── [그 외] → 전체 레이아웃
-        ├── Navigation (fixed top, mega menu)
-        ├── SideBar (desktop: fixed right, mobile: FAB)
-        ├── Page Content
-        └── Footer
+├── (site)/layout.tsx — 소개 사이트 전용 레이아웃
+│   ├── Navigation (fixed top, mega menu)
+│   ├── SideBar (desktop: fixed right, mobile: FAB)
+│   ├── Page Content
+│   └── Footer
+├── (admin)/admin/layout.tsx — 관리자 전용 레이아웃
+└── (academy)/academy/layout.tsx — 포털 전용 레이아웃
 ```
 
 Content 섹션 내부:
@@ -54,7 +63,7 @@ CategoryLayout (menuId로 라우팅)
 
 ## Route Map
 
-### (content) — 공개 웹사이트
+### (site) — 공개 웹사이트
 
 | 경로 | 페이지 | 상태 |
 |------|--------|------|
@@ -137,23 +146,25 @@ NEXT_PUBLIC_EMAIL_DOMAIN          # 이메일 도메인 (기본값: "scwonderlan
 
 ## Server Actions
 
-### admin/actions.ts (582줄)
+### admin/actions/ (도메인별 분할, barrel re-export via actions.ts)
 
-**사용자 관리:**
+**user-actions.ts — 사용자 관리:**
 - `createStudent(formData)` — 학생 계정 생성 (AdminClient, email_confirm: true)
 - `createTeacher(formData)` — 교사 계정 생성
 - `listUsersByRole(role)` — 역할별 사용자 목록 (profiles + auth + students/teachers 조인)
 - `deleteUserById(formData)` — 사용자 삭제 (cascade)
 - `updateStudentProfile(formData)` — 학생 이름 수정 (profiles + students 테이블)
 - `updateTeacherProfile(formData)` — 교사 이름 수정
+- `resetUserPassword(userId, newPassword)` — 비밀번호 초기화
+- `listAllStudents()` — 전체 학생 목록
 
-**리포트카드:**
+**report-actions.ts — 리포트카드:**
 - `getReportCard(studentProfileId, year, month)` — 리포트카드 조회 (RLS)
 - `listReportCardsByStudent(studentProfileId)` — 학생별 리포트카드 목록
 - `upsertReportCard(studentProfileId, year, month, content)` — 리포트카드 작성/수정 (교사/관리자만)
 - `updateReportCardReply(reportCardId, reply)` — 학생 답변 작성 (본인만)
 
-**반 관리:**
+**class-actions.ts — 반 관리:**
 - `listClassesWithDetails()` — 전체 반 목록 (교사명, 학생 수 포함)
 - `getClassWithStudents(classId)` — 반 상세 + 학생 목록
 - `getAllClassStudentsFlat()` — 전체 반-학생 매핑 (flat)
@@ -165,10 +176,19 @@ NEXT_PUBLIC_EMAIL_DOMAIN          # 이메일 도메인 (기본값: "scwonderlan
 - `listTeachersForSelect()` — 교사 드롭다운 목록
 - `listStudentsNotInClass(classId)` — 반에 미등록 학생 목록
 
-### academy/actions.ts (101줄)
+**dashboard-actions.ts:** `getDashboardStats()` — 대시보드 통계
+
+**textbook-actions.ts:** 교재 CRUD 및 반-교재 배정
+
+### academy/actions.ts
 
 - `getCurrentStudentProfile()` — 현재 로그인 학생의 프로필 조회
 - `getCurrentStudentClasses()` — 현재 학생의 소속 반 + 담당 교사 조회
+- `getCurrentTeacherProfile()` — 현재 로그인 교사의 프로필 조회
+- `getTeacherClasses()` — 교사 담당 반 + 학생 목록
+- `getClassReportStatus(classId, year, month)` — 반별 리포트카드 작성 현황
+- `getClassTextbooks(classId)` — 반 교재 목록
+- `getCurrentStudentTextbooks()` — 학생 교재 진도 조회
 
 ## Important Patterns
 
@@ -185,14 +205,14 @@ getMenuIdFromPathname("/program/map") // → "programs"
 
 **새 페이지 추가 시:** 폴더 생성 → `itemSlugs` 업데이트 → 카테고리 layout 확인
 
-### Email Normalization
+### Email Normalization (lib/auth-utils.ts)
 
-`@`가 없으면 자동으로 `@scwonderland.com` 추가:
+`@`가 없으면 자동으로 `@{NEXT_PUBLIC_EMAIL_DOMAIN}` 추가:
 ```typescript
 normalizeEmail("student123")      // → "student123@scwonderland.com"
 normalizeEmail("user@gmail.com")  // → "user@gmail.com"
 ```
-admin/actions.ts와 LoginForm.tsx 양쪽에서 사용.
+`lib/auth-utils.ts`에 중앙화됨. `getAuthErrorMessage()`도 동일 파일에 위치.
 
 ### Authentication Flow
 
@@ -216,47 +236,40 @@ admin/actions.ts와 LoginForm.tsx 양쪽에서 사용.
 
 ## Components
 
-### Layout Components
+### Site Components (app/(site)/_components/)
 
-| 컴포넌트 | 파일 | 역할 |
+| 컴포넌트 | 위치 | 역할 |
 |---------|------|------|
-| `LayoutSwitcher` | `components/layout/LayoutSwitcher.tsx` | pathname 기반 레이아웃 분기 (academy/admin vs content) |
-| `Navigation` | `components/layout/Navigation.tsx` | 고정 상단 네비게이션 + 메가 메뉴 (hover) + 모바일 햄버거 |
-| `SubNav` | `components/layout/SubNav.tsx` | 카테고리 내 탭 네비게이션, 활성 탭 green-600 하이라이트 |
-| `CategoryLayout` | `components/layout/CategoryLayout.tsx` | 섹션별 SubNav 래퍼 |
-| `CategoryPageWrapper` | `components/layout/CategoryPageWrapper.tsx` | 콘텐츠 래퍼 (pt-24 for fixed nav) |
-| `Footer` | `components/layout/Footer.tsx` | 하단 저작권 (bg-gray-900) |
-| `SideBar` | `components/sections/SideBar.tsx` | 빠른 링크 6개 (desktop: fixed right, mobile: FAB + overlay) |
+| `Navigation` | `_components/layout/` | 고정 상단 네비게이션 + 메가 메뉴 (hover) + 모바일 햄버거 |
+| `SubNav` | `_components/layout/` | 카테고리 내 탭 네비게이션, 활성 탭 green-600 하이라이트 |
+| `CategoryLayout` | `_components/layout/` | 섹션별 SubNav 래퍼 |
+| `CategoryPageWrapper` | `_components/layout/` | 콘텐츠 래퍼 (pt-24 for fixed nav) |
+| `Footer` | `_components/layout/` | 하단 저작권 (bg-gray-900) |
+| `SideBar` | `_components/sections/` | 빠른 링크 6개 (desktop: fixed right, mobile: FAB + overlay) |
+| `Hero` | `_components/sections/` | 랜딩 히어로 (제목 + CTA + 이미지 그리드) |
+| `MainProgram` | `_components/sections/` | 랜딩 프로그램 카드 5개 (hover 슬라이드 애니메이션) |
+| `ImageWithFallback` | `_components/common/` | 이미지 에러 시 SVG fallback |
 
-### Section Components
+### Admin Components
 
-| 컴포넌트 | 파일 | 역할 |
-|---------|------|------|
-| `Hero` | `components/sections/Hero.tsx` | 랜딩 히어로 (제목 + CTA + 이미지 그리드) |
-| `MainProgram` | `components/sections/MainProgram.tsx` | 랜딩 프로그램 카드 5개 (hover 슬라이드 애니메이션) |
-| `PageContent` | `components/sections/PageContent.tsx` | placeholder 페이지 래퍼 |
-| `ImageWithFallback` | `components/common/ImageWithFallback.tsx` | 이미지 에러 시 SVG fallback |
+**공유 (admin/components/):** `AdminLayoutClient`, `AdminSidebar`, `AdminListSidebar`, `UserRow`, `UserList`, `ScrollToSection`
 
-### Admin Components (app/(admin)/admin/components/)
+**학생 전용 (admin/students/components/):** `AddStudentForm`, `StudentSelectedView`, `StudentTabNav`, `StudentReportTab`, `StudentLearningTab`, `StudentTextbookTab`, `StudentComingTab`, `ReportCardReadView`
+
+**교사 전용 (admin/teachers/components/):** `AddTeacherForm`, `TeacherInfoCard`, `TeacherTabNav`, `TeacherClassesTab`
+
+### Shared Components (components/)
 
 | 컴포넌트 | 역할 |
 |---------|------|
-| `AdminLayoutClient` | 사이드바 + 메인 영역 레이아웃 |
-| `AdminSidebar` | 왼쪽 네비게이션 (학생/교사/반 관리 + 로그아웃) |
-| `AdminListSidebar` | 사용자 목록 + 검색 + 선택 하이라이트 |
-| `AddStudentForm` / `AddTeacherForm` | 인라인 추가 폼 (useActionState) |
-| `UserRow` | 수정/삭제 가능한 사용자 행 (editing 토글) |
-| `StudentInfoCard` / `TeacherInfoCard` | 선택된 사용자 상세 정보 + 수정 폼 |
-| `StudentTabNav` / `TeacherTabNav` | 탭 네비게이션 (정보/학습/리포트/예정) |
-| `StudentReportTab` | 리포트카드 UI (년월 선택, 내용 편집, 학생 답변 표시) |
-| `ClassesManager` | 반 전체 관리 (카드 + 모달: 생성/수정/삭제/학생추가) |
+| `LogoutButton` | 로그아웃 + 리다이렉트 (admin + academy 공유) |
+| `ui/` | shadcn/ui 컴포넌트 (button, card, input 등) |
 
-### Academy Components (app/(academy)/academy/components/)
+### Academy Components (app/(academy)/academy/)
 
 | 컴포넌트 | 역할 |
 |---------|------|
 | `LoginForm` | 이메일/비밀번호 로그인 (에러 코드별 한국어 메시지) |
-| `LogoutButton` | 로그아웃 + 리다이렉트 |
 | `StudentNav` | 학생 포털 탭 (내 정보/리포트카드/숙제) |
 | `ReportCardReplyForm` | 학생 리포트카드 답변 작성 폼 |
 
@@ -308,15 +321,15 @@ public/
 
 | 파일 | 역할 |
 |------|------|
-| `lib/menu-routes.ts` | (content) 라우트 중앙 설정 |
+| `lib/menu-routes.ts` | (site) 라우트 중앙 설정 |
+| `lib/auth-utils.ts` | 이메일 정규화 + 인증 에러 메시지 (공유) |
+| `lib/types/` | 공유 타입 정의 (database.ts + barrel index.ts) |
 | `middleware.ts` | 모든 요청에서 Supabase 세션 갱신 |
-| `app/(admin)/admin/actions.ts` | Admin 전체 Server Actions (582줄) |
-| `app/(academy)/academy/actions.ts` | Academy Server Actions (101줄) |
+| `app/(admin)/admin/actions.ts` | Admin Server Actions barrel re-export |
+| `app/(admin)/admin/actions/` | 도메인별 분할 (user, report, class, dashboard, textbook) |
+| `app/(academy)/academy/actions.ts` | Academy Server Actions |
 | `lib/supabase/admin.ts` | Admin Supabase 클라이언트 (service role) |
 | `docs/*.sql` | DB 스키마 및 마이그레이션 |
-| `docs/domain-setup-guide.md` | 도메인 구매·연결 가이드 (Cloudflare + Vercel) |
-| `docs/web-infra-concepts.md` | 웹 인프라 핵심 개념 정리 |
-| `docs/VERCEL_SUPABASE.md` | Vercel + Supabase 연동 방법 |
 
 ## Notes
 

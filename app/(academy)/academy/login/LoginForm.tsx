@@ -3,32 +3,17 @@
 import { createClient } from "@/lib/supabase/client";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
-
-function getLoginErrorMessage(err: { message?: string; code?: string }): string {
-  const code = (err as { code?: string }).code;
-  const msg = (err.message ?? "").toLowerCase();
-
-  if (code === "invalid_credentials" || msg.includes("invalid login credentials")) {
-    return "아이디 또는 비밀번호가 올바르지 않습니다.";
-  }
-  if (code === "email_not_confirmed" || msg.includes("email not confirmed")) {
-    return "이메일 인증이 완료되지 않았습니다. 메일함을 확인해 주세요.";
-  }
-  if (code === "user_banned" || msg.includes("banned")) {
-    return "해당 계정은 이용이 제한되었습니다.";
-  }
-  if (code === "over_request_rate_limit" || msg.includes("rate limit") || msg.includes("too many")) {
-    return "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.";
-  }
-  if (code === "email_provider_disabled" || msg.includes("signups are disabled")) {
-    return "이메일 로그인이 비활성화되어 있습니다.";
-  }
-  if (msg.includes("network") || msg.includes("fetch")) {
-    return "네트워크 연결을 확인한 뒤 다시 시도해 주세요.";
-  }
-
-  return err.message ?? "로그인에 실패했습니다. 다시 시도해 주세요.";
-}
+import Image from "next/image";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { normalizeEmail, getAuthErrorMessage } from "@/lib/auth-utils";
 
 export function LoginForm() {
   const router = useRouter();
@@ -43,26 +28,19 @@ export function LoginForm() {
   );
   const [loading, setLoading] = useState(false);
 
-  function toFullEmail(value: string): string {
-    const v = value.trim();
-    if (!v) return v;
-    return v.includes("@") ? v : `${v}@scwonderland.com`;
-  }
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setLoading(true);
     const supabase = createClient();
-    const fullEmail = toFullEmail(email);
     const { error: err } = await supabase.auth.signInWithPassword({
-      email: fullEmail,
+      email: normalizeEmail(email),
       password,
     });
     setLoading(false);
     if (err) {
       console.error("[로그인 실패]", err);
-      setError(getLoginErrorMessage(err));
+      setError(getAuthErrorMessage(err));
       return;
     }
     router.push(next);
@@ -70,57 +48,59 @@ export function LoginForm() {
   }
 
   return (
-    <div className="max-w-sm mx-auto mt-12 p-6 bg-white rounded-xl shadow-sm border border-slate-200">
-      <h1 className="text-xl font-semibold text-slate-800 mb-2">
-        학원 로그인
-      </h1>
-      <p className="text-slate-500 text-sm mb-6">
-        아이디만 입력하면 @scwonderland.com은 자동으로 붙습니다.
-      </p>
-      <form className="space-y-4" onSubmit={handleSubmit}>
-        <div>
-          <label htmlFor="login-email" className="block text-sm font-medium text-slate-700 mb-1">
-            아이디
-          </label>
-          <input
-            id="login-email"
-            type="text"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            autoComplete="username"
-            className="w-full px-3 py-2 border border-slate-300 rounded-lg text-slate-800 placeholder-slate-400"
-            placeholder="test1"
-          />
-        </div>
-        <div>
-          <label htmlFor="login-password" className="block text-sm font-medium text-slate-700 mb-1">
-            비밀번호
-          </label>
-          <input
-            id="login-password"
-            type="password"
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            autoComplete="current-password"
-            className="w-full px-3 py-2 border border-slate-300 rounded-lg text-slate-800"
-            placeholder="비밀번호"
-          />
-        </div>
-        {error && (
-          <p className="text-sm text-red-600" role="alert">
-            {error}
-          </p>
-        )}
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full py-2.5 bg-slate-800 text-white rounded-lg font-medium hover:bg-slate-700 disabled:opacity-50"
-        >
-          {loading ? "로그인 중…" : "로그인"}
-        </button>
-      </form>
+    <div className="min-h-[70vh] flex items-center justify-center px-4">
+      <Card className="w-full max-w-sm overflow-hidden">
+        <div className="h-2 bg-gradient-to-r from-red-500 via-yellow-400 via-green-500 to-blue-500" />
+        <CardHeader className="text-center pt-8">
+          <div className="mx-auto mb-2">
+            <Image
+              src="/sc-wonderland-logo.png"
+              alt="원더랜드 로고"
+              width={140}
+              height={80}
+              className="mx-auto"
+              priority
+            />
+          </div>
+          <CardTitle className="text-xl">원더랜드 로그인</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form className="space-y-4" onSubmit={handleSubmit}>
+            <div className="space-y-2">
+              <Label htmlFor="login-email">아이디</Label>
+              <Input
+                id="login-email"
+                type="text"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                autoComplete="username"
+                placeholder="test1"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="login-password">비밀번호</Label>
+              <Input
+                id="login-password"
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="current-password"
+                placeholder="비밀번호"
+              />
+            </div>
+            {error && (
+              <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700" role="alert">
+                {error}
+              </div>
+            )}
+            <Button type="submit" className="w-full bg-gradient-to-r from-red-500 via-orange-500 to-yellow-500 hover:from-red-600 hover:via-orange-600 hover:to-yellow-600 text-white shadow-md" disabled={loading}>
+              {loading ? "로그인 중…" : "로그인"}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   );
 }

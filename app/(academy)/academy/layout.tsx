@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
+import Image from "next/image";
 import Link from "next/link";
-import { LogoutButton } from "./components/LogoutButton";
+import { LogoutButton } from "@/components/LogoutButton";
 
 export default async function AcademyLayout({
   children,
@@ -17,9 +18,15 @@ export default async function AcademyLayout({
       <header className="bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between">
         <Link
           href="/academy/dashboard"
-          className="font-semibold text-slate-800 hover:text-slate-600"
+          className="flex items-center gap-2 hover:opacity-80 transition-opacity"
         >
-          원더랜드 학원
+          <Image
+            src="/sc-wonderland-logo.png"
+            alt="원더랜드 로고"
+            width={100}
+            height={40}
+            className="h-8 w-auto"
+          />
         </Link>
         <nav className="flex items-center gap-4 text-sm">
           <Link
@@ -38,7 +45,7 @@ export default async function AcademyLayout({
           {user && (
             <>
               <span className="text-slate-400">|</span>
-              <LogoutButton className="text-slate-600 hover:text-slate-900 font-medium px-0 py-0 bg-transparent hover:bg-transparent" />
+              <LogoutButton className="text-muted-foreground hover:text-red-600 font-medium px-2 py-1 bg-transparent hover:bg-red-50 rounded-md" />
             </>
           )}
         </nav>
