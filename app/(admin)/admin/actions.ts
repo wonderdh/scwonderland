@@ -32,3 +32,11 @@ export {
   listTeachersForSelect,
   listStudentsNotInClass,
 } from "./actions/class-actions";
+
+export {
+  listNotices,
+  getNoticeWithAttachments,
+  createNotice,
+  updateNotice,
+  deleteNotice,
+} from "./actions/notice-actions";

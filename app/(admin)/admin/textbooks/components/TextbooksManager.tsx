@@ -8,7 +8,8 @@ import {
 } from "../../actions/textbook-actions";
 import { TEXTBOOK_CATEGORIES } from "../../actions/textbook-constants";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import Image from "next/image";
+import { useMemo, useRef, useState } from "react";
 
 export function TextbooksManager({
   initialTextbooks,
@@ -97,7 +98,7 @@ export function TextbooksManager({
           </p>
         </div>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="flex flex-wrap gap-3">
           {filtered.map((t) => (
             <TextbookCard
               key={t.id}
@@ -166,45 +167,57 @@ function TextbookCard({
     TEXTBOOK_CATEGORIES.find((c) => c.value === textbook.category)?.label ?? textbook.category;
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 flex flex-col gap-3 hover:shadow-sm transition-shadow">
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0 flex-1">
-          <h3 className="font-semibold text-slate-800 truncate">{textbook.title}</h3>
-          {textbook.series && (
-            <p className="text-xs text-slate-500 truncate">{textbook.series}</p>
-          )}
+    <div className="group rounded-lg border border-slate-200 bg-white flex flex-col hover:shadow-sm transition-shadow overflow-hidden" style={{ width: 150 }}>
+      {/* 커버 이미지 (150×170 고정) */}
+      {textbook.cover_image ? (
+        <div className="flex items-center justify-center bg-slate-50">
+          <Image
+            src={textbook.cover_image}
+            alt={textbook.title}
+            width={150}
+            height={170}
+            className="object-cover"
+            style={{ width: 150, height: 170 }}
+            sizes="150px"
+          />
         </div>
-        <span className="shrink-0 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
-          {categoryLabel}
-        </span>
-      </div>
-
-      <div className="flex items-center gap-3 text-xs text-slate-500">
-        {textbook.level && (
-          <span className="rounded bg-slate-100 px-1.5 py-0.5">Lv. {textbook.level}</span>
-        )}
-        <span>{textbook.total_units}단원</span>
-      </div>
-
-      {textbook.description && (
-        <p className="text-xs text-slate-500 line-clamp-2">{textbook.description}</p>
+      ) : (
+        <div className="flex items-center justify-center bg-slate-50" style={{ width: 150, height: 170, margin: "0 auto" }}>
+          <svg className="h-8 w-8 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+          </svg>
+        </div>
       )}
 
-      <div className="flex justify-end gap-2 mt-auto pt-2 border-t border-slate-100">
-        <button
-          type="button"
-          onClick={onEdit}
-          className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-200 transition-colors"
-        >
-          수정
-        </button>
-        <button
-          type="button"
-          onClick={onDelete}
-          className="rounded-lg bg-red-50 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-100 transition-colors"
-        >
-          삭제
-        </button>
+      <div className="flex flex-1 flex-col gap-1.5 p-2.5">
+        <h3 className="text-sm font-semibold text-slate-800 truncate leading-tight">{textbook.title}</h3>
+        {textbook.series && (
+          <p className="text-[11px] text-slate-500 truncate">{textbook.series}</p>
+        )}
+        <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
+          <span className="rounded bg-blue-50 px-1.5 py-0.5 text-blue-700 font-medium">{categoryLabel}</span>
+          {textbook.level && (
+            <span className="rounded bg-slate-100 px-1 py-0.5">Lv.{textbook.level}</span>
+          )}
+          <span>{textbook.total_units}단원</span>
+        </div>
+
+        <div className="flex justify-end gap-1.5 mt-auto pt-1.5 border-t border-slate-100 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button
+            type="button"
+            onClick={onEdit}
+            className="rounded bg-slate-100 px-2 py-1 text-[11px] font-medium text-slate-700 hover:bg-slate-200 transition-colors"
+          >
+            수정
+          </button>
+          <button
+            type="button"
+            onClick={onDelete}
+            className="rounded bg-red-50 px-2 py-1 text-[11px] font-medium text-red-600 hover:bg-red-100 transition-colors"
+          >
+            삭제
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -229,8 +242,38 @@ function TextbookFormModal({
     total_units: initial?.total_units ?? 1,
     description: initial?.description ?? "",
   });
+  const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [coverPreview, setCoverPreview] = useState<string | null>(initial?.cover_image ?? null);
+  const [removeCover, setRemoveCover] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const allowed = ["image/jpeg", "image/png", "image/webp"];
+    if (!allowed.includes(file.type)) {
+      setError("JPG, PNG, WebP 이미지만 업로드할 수 있습니다.");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setError("이미지 크기가 10MB를 초과합니다.");
+      return;
+    }
+
+    setCoverFile(file);
+    setRemoveCover(false);
+    setCoverPreview(URL.createObjectURL(file));
+  };
+
+  const handleRemoveCover = () => {
+    setCoverFile(null);
+    setCoverPreview(null);
+    setRemoveCover(true);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -243,6 +286,8 @@ function TextbookFormModal({
     fd.set("category", form.category);
     fd.set("total_units", String(form.total_units));
     fd.set("description", form.description);
+    if (coverFile) fd.set("cover_image", coverFile);
+    if (removeCover) fd.set("remove_cover", "true");
     const err = await onSubmit(fd);
     setPending(false);
     if (err) setError(err);
@@ -356,6 +401,54 @@ function TextbookFormModal({
               placeholder="교재에 대한 간단한 설명"
             />
           </div>
+
+          {/* 커버 이미지 */}
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">
+              커버 이미지
+            </label>
+            {coverPreview ? (
+              <div className="relative rounded-lg border border-slate-200 overflow-hidden">
+                <div className="relative h-40 w-full bg-slate-100">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={coverPreview}
+                    alt="커버 미리보기"
+                    className="h-full w-full object-cover"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={handleRemoveCover}
+                  className="absolute top-2 right-2 rounded-full bg-black/50 p-1 text-white hover:bg-black/70 transition-colors"
+                  aria-label="이미지 제거"
+                >
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-slate-300 py-6 text-sm text-slate-500 hover:border-slate-400 hover:text-slate-600 transition-colors"
+              >
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0022.5 18.75V5.25A2.25 2.25 0 0020.25 3H3.75A2.25 2.25 0 001.5 5.25v13.5A2.25 2.25 0 003.75 21z" />
+                </svg>
+                이미지 선택 (JPG, PNG, WebP / 10MB 이하)
+              </button>
+            )}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={handleFileChange}
+              className="hidden"
+            />
+          </div>
+
           <div className="flex justify-end gap-2 pt-2">
             <button
               type="button"

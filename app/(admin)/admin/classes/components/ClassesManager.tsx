@@ -59,9 +59,16 @@ export function ClassesManager({
     useState<{ classId: string; row: ClassStudentRow } | null>(null);
 
   // 오른쪽 패널: 대상 반
+  const [rightMode, setRightMode] = useState<"students" | "textbooks">("students");
   const [targetClassId, setTargetClassId] = useState<string>("");
   const [targetSearch, setTargetSearch] = useState("");
   const [isDropOver, setIsDropOver] = useState(false);
+
+  // 오른쪽 패널: 교재 관리 모드
+  const [targetTextbooks, setTargetTextbooks] = useState<ClassTextbook[]>([]);
+  const [targetTextbooksLoaded, setTargetTextbooksLoaded] = useState(false);
+  const [textbookSearch, setTextbookSearch] = useState("");
+  const [addTextbookToTarget, setAddTextbookToTarget] = useState(false);
 
   const studentsByClassId = useMemo(() => {
     const map: Record<string, ClassStudentRow[]> = {};
@@ -126,6 +133,39 @@ export function ClassesManager({
         (s.student_number && s.student_number.toLowerCase().includes(q))
     );
   }, [targetStudents, targetSearch]);
+
+  // 교재 관리 모드: 대상 반 변경 시 교재 로드
+  const loadTargetTextbooks = useCallback(async (classId: string) => {
+    if (!classId) return;
+    const data = await listClassTextbooks(classId);
+    setTargetTextbooks(data);
+    setTargetTextbooksLoaded(true);
+  }, []);
+
+  useEffect(() => {
+    if (rightMode === "textbooks" && targetClassId) {
+      setTargetTextbooksLoaded(false);
+      loadTargetTextbooks(targetClassId);
+    }
+  }, [rightMode, targetClassId, loadTargetTextbooks]);
+
+  const filteredTargetTextbooks = useMemo(() => {
+    if (!textbookSearch.trim()) return targetTextbooks;
+    const q = textbookSearch.trim().toLowerCase();
+    return targetTextbooks.filter(
+      (t) =>
+        t.textbook_title.toLowerCase().includes(q) ||
+        (t.textbook_series && t.textbook_series.toLowerCase().includes(q)) ||
+        (t.textbook_level && `lv.${t.textbook_level}`.includes(q))
+    );
+  }, [targetTextbooks, textbookSearch]);
+
+  const handleRemoveTextbookFromTarget = async (textbookId: string) => {
+    if (!targetClassId) return;
+    await removeTextbookFromClass(targetClassId, textbookId);
+    loadTargetTextbooks(targetClassId);
+    router.refresh();
+  };
 
   // 드래그 앤 드롭: 학생을 대상 반으로 이동
   const handleDropToTarget = async (e: React.DragEvent) => {
@@ -284,24 +324,54 @@ export function ClassesManager({
           </div>
         </div>
 
-        {/* ===== 오른쪽 패널: 대상 반 (드롭 영역) ===== */}
+        {/* ===== 오른쪽 패널: 학생 관리 / 교재 관리 ===== */}
         <div className="lg:sticky lg:top-6 self-start space-y-3">
           <div className="rounded-xl border-2 border-primary/30 bg-card overflow-hidden shadow-sm">
-            <div className="bg-gradient-to-r from-red-500 via-yellow-400 via-green-500 to-blue-500 p-3">
-              <div className="flex items-center gap-2">
-                <svg className="size-4 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 16.875h3.375m0 0h3.375m-3.375 0V13.5m0 3.375v3.375M6 10.5h2.25a2.25 2.25 0 0 0 2.25-2.25V6a2.25 2.25 0 0 0-2.25-2.25H6A2.25 2.25 0 0 0 3.75 6v2.25A2.25 2.25 0 0 0 6 10.5Zm0 9.75h2.25A2.25 2.25 0 0 0 10.5 18v-2.25a2.25 2.25 0 0 0-2.25-2.25H6a2.25 2.25 0 0 0-2.25 2.25V18A2.25 2.25 0 0 0 6 20.25Zm9.75-9.75H18a2.25 2.25 0 0 0 2.25-2.25V6A2.25 2.25 0 0 0 18 3.75h-2.25A2.25 2.25 0 0 0 13.5 6v2.25a2.25 2.25 0 0 0 2.25 2.25Z" />
-                </svg>
-                <span className="text-sm font-semibold text-white">대상 반</span>
-              </div>
+            {/* 모드 토글 헤더 */}
+            <div className="flex border-b">
+              <button
+                type="button"
+                onClick={() => setRightMode("students")}
+                className={`flex-1 px-4 py-2.5 text-sm font-semibold transition-colors ${
+                  rightMode === "students"
+                    ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white"
+                    : "bg-muted/50 text-muted-foreground hover:text-foreground hover:bg-muted"
+                }`}
+              >
+                <span className="flex items-center justify-center gap-1.5">
+                  <svg className="size-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" />
+                  </svg>
+                  학생 관리
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setRightMode("textbooks")}
+                className={`flex-1 px-4 py-2.5 text-sm font-semibold transition-colors ${
+                  rightMode === "textbooks"
+                    ? "bg-gradient-to-r from-blue-500 to-indigo-500 text-white"
+                    : "bg-muted/50 text-muted-foreground hover:text-foreground hover:bg-muted"
+                }`}
+              >
+                <span className="flex items-center justify-center gap-1.5">
+                  <svg className="size-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
+                  </svg>
+                  교재 관리
+                </span>
+              </button>
             </div>
 
             <div className="p-4 space-y-3">
+              {/* 반 선택 드롭다운 (공통) */}
               <select
                 value={targetClassId}
                 onChange={(e) => {
                   setTargetClassId(e.target.value);
                   setTargetSearch("");
+                  setTextbookSearch("");
+                  setTargetTextbooksLoaded(false);
                 }}
                 className="w-full rounded-lg border border-input px-3 py-2 text-sm text-foreground bg-background"
               >
@@ -315,15 +385,27 @@ export function ClassesManager({
 
               {!targetClassId ? (
                 <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-muted-foreground/20 p-10 text-center">
-                  <svg className="size-10 text-muted-foreground/30 mb-3" fill="none" viewBox="0 0 24 24" strokeWidth={1} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0ZM4 19.235v-.11a6.375 6.375 0 0 1 12.75 0v.109A12.318 12.318 0 0 1 10.374 21c-2.331 0-4.512-.645-6.374-1.766Z" />
-                  </svg>
-                  <p className="text-sm text-muted-foreground">위에서 반을 선택하면</p>
-                  <p className="text-sm text-muted-foreground">왼쪽에서 학생을 드래그하여 추가할 수 있습니다</p>
+                  {rightMode === "students" ? (
+                    <>
+                      <svg className="size-10 text-muted-foreground/30 mb-3" fill="none" viewBox="0 0 24 24" strokeWidth={1} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0ZM4 19.235v-.11a6.375 6.375 0 0 1 12.75 0v.109A12.318 12.318 0 0 1 10.374 21c-2.331 0-4.512-.645-6.374-1.766Z" />
+                      </svg>
+                      <p className="text-sm text-muted-foreground">위에서 반을 선택하면</p>
+                      <p className="text-sm text-muted-foreground">왼쪽에서 학생을 드래그하여 추가할 수 있습니다</p>
+                    </>
+                  ) : (
+                    <>
+                      <svg className="size-10 text-muted-foreground/30 mb-3" fill="none" viewBox="0 0 24 24" strokeWidth={1} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
+                      </svg>
+                      <p className="text-sm text-muted-foreground">위에서 반을 선택하면</p>
+                      <p className="text-sm text-muted-foreground">배정된 교재 목록을 관리할 수 있습니다</p>
+                    </>
+                  )}
                 </div>
-              ) : (
+              ) : rightMode === "students" ? (
                 <>
-                  {/* 대상 반 정보 */}
+                  {/* ===== 학생 관리 모드 ===== */}
                   <div className="flex items-center justify-between">
                     <div>
                       <h3 className="font-semibold text-foreground">{targetClass?.name}</h3>
@@ -349,7 +431,6 @@ export function ClassesManager({
                     </div>
                   </div>
 
-                  {/* 대상 반 학생 검색 */}
                   {targetStudents.length > 3 && (
                     <input
                       type="search"
@@ -420,6 +501,101 @@ export function ClassesManager({
                     </p>
                   )}
                 </>
+              ) : (
+                <>
+                  {/* ===== 교재 관리 모드 ===== */}
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="font-semibold text-foreground">{targetClass?.name}</h3>
+                      <p className="text-xs text-muted-foreground">
+                        담당: {targetClass?.teacher_name ?? "미지정"} · 교재 {targetTextbooksLoaded ? `${targetTextbooks.length}권` : "…"}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setAddTextbookToTarget(true)}
+                      className="rounded-lg bg-blue-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-blue-500"
+                    >
+                      + 교재 배정
+                    </button>
+                  </div>
+
+                  {/* 교재 검색 */}
+                  <div className="flex items-center gap-2">
+                    <svg className="size-4 text-muted-foreground shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+                    </svg>
+                    <input
+                      type="search"
+                      placeholder="교재명 · 시리즈 · 레벨 검색"
+                      value={textbookSearch}
+                      onChange={(e) => setTextbookSearch(e.target.value)}
+                      className="flex-1 rounded-lg border border-input px-3 py-1.5 text-sm text-foreground placeholder-muted-foreground bg-background"
+                    />
+                  </div>
+
+                  {/* 교재 목록 */}
+                  <div className="rounded-xl border-2 border-dashed border-blue-200 bg-blue-50/30 min-h-[200px] p-2">
+                    {!targetTextbooksLoaded ? (
+                      <div className="flex items-center justify-center h-[180px]">
+                        <p className="text-sm text-muted-foreground">불러오는 중…</p>
+                      </div>
+                    ) : filteredTargetTextbooks.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center h-[180px] text-center">
+                        <svg className="size-8 text-muted-foreground/30 mb-2" fill="none" viewBox="0 0 24 24" strokeWidth={1} stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
+                        </svg>
+                        <p className="text-sm text-muted-foreground">
+                          {textbookSearch.trim()
+                            ? "검색 결과가 없습니다."
+                            : "배정된 교재가 없습니다."}
+                        </p>
+                        {!textbookSearch.trim() && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            위의 &quot;+ 교재 배정&quot; 버튼으로 교재를 추가하세요
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      <ul className="space-y-1">
+                        {filteredTargetTextbooks.map((ct) => (
+                          <li
+                            key={ct.id}
+                            className="flex items-center justify-between gap-2 text-sm rounded-lg px-3 py-2 bg-card hover:bg-muted/50 transition-colors"
+                          >
+                            <div className="min-w-0 flex-1">
+                              <span className="text-foreground text-sm">
+                                {ct.textbook_title}
+                              </span>
+                              <div className="flex items-center gap-2 mt-0.5">
+                                {ct.textbook_series && (
+                                  <span className="text-xs text-muted-foreground">
+                                    {ct.textbook_series}
+                                  </span>
+                                )}
+                                {ct.textbook_level && (
+                                  <span className="rounded bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">
+                                    Lv.{ct.textbook_level}
+                                  </span>
+                                )}
+                                <span className="text-xs text-muted-foreground/70">
+                                  {ct.total_units}단원
+                                </span>
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveTextbookFromTarget(ct.textbook_id)}
+                              className="rounded bg-destructive/10 px-2 py-0.5 text-xs text-destructive hover:bg-destructive/20 shrink-0"
+                            >
+                              제거
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </>
               )}
             </div>
           </div>
@@ -483,6 +659,17 @@ export function ClassesManager({
           onConfirm={async () => {
             await removeStudentFromClass(removeStudentTarget.row.id);
             setRemoveStudentTarget(null);
+            router.refresh();
+          }}
+        />
+      )}
+      {addTextbookToTarget && targetClassId && (
+        <AddTextbookToClassModal
+          classId={targetClassId}
+          onClose={() => setAddTextbookToTarget(false)}
+          onSuccess={() => {
+            setAddTextbookToTarget(false);
+            loadTargetTextbooks(targetClassId);
             router.refresh();
           }}
         />

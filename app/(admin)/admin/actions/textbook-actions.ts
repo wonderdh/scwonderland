@@ -3,6 +3,10 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
+const COVER_BUCKET = "textbook-covers";
+const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10MB
+
 // ──────────────────────────────────────────────
 // 타입 정의
 // ──────────────────────────────────────────────
@@ -69,6 +73,50 @@ export type ClassTextbookProgressRow = {
 // TEXTBOOK_CATEGORIES는 textbook-constants.ts에서 import
 
 // ──────────────────────────────────────────────
+// 커버 이미지 헬퍼
+// ──────────────────────────────────────────────
+
+async function uploadCoverImage(
+  file: File
+): Promise<{ url: string } | { error: string }> {
+  if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+    return { error: "허용되지 않는 이미지 형식입니다. (JPG, PNG, WebP만 가능)" };
+  }
+  if (file.size > MAX_IMAGE_SIZE) {
+    return { error: "이미지 크기가 10MB를 초과합니다." };
+  }
+
+  const ext = file.name.includes(".") ? file.name.substring(file.name.lastIndexOf(".")) : ".jpg";
+  const storagePath = `${Date.now()}_${Math.random().toString(36).substring(2, 8)}${ext}`;
+
+  const supabase = createAdminClient();
+  const { error } = await supabase.storage
+    .from(COVER_BUCKET)
+    .upload(storagePath, file, { contentType: file.type, upsert: false });
+
+  if (error) {
+    console.error("[uploadCoverImage]", error.message);
+    return { error: `이미지 업로드 실패: ${error.message}` };
+  }
+
+  const { data: urlData } = supabase.storage
+    .from(COVER_BUCKET)
+    .getPublicUrl(storagePath);
+
+  return { url: urlData.publicUrl };
+}
+
+async function deleteCoverImage(publicUrl: string): Promise<void> {
+  const marker = `/storage/v1/object/public/${COVER_BUCKET}/`;
+  const idx = publicUrl.indexOf(marker);
+  if (idx === -1) return;
+
+  const storagePath = publicUrl.substring(idx + marker.length);
+  const supabase = createAdminClient();
+  await supabase.storage.from(COVER_BUCKET).remove([storagePath]);
+}
+
+// ──────────────────────────────────────────────
 // 교재 CRUD
 // ──────────────────────────────────────────────
 
@@ -108,18 +156,29 @@ export async function createTextbook(formData: FormData): Promise<{ error?: stri
   const category = (formData.get("category") as string) || "general";
   const total_units = Number(formData.get("total_units")) || 1;
   const description = (formData.get("description") as string)?.trim() || null;
+  const coverFile = formData.get("cover_image") as File | null;
 
   if (!title) return { error: "교재명을 입력해 주세요." };
   if (total_units < 1) return { error: "총 단원 수는 1 이상이어야 합니다." };
 
+  // 커버 이미지 업로드
+  let cover_image: string | null = null;
+  if (coverFile && coverFile.size > 0) {
+    const uploadResult = await uploadCoverImage(coverFile);
+    if ("error" in uploadResult) return { error: uploadResult.error };
+    cover_image = uploadResult.url;
+  }
+
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("textbooks")
-    .insert({ title, series, level, category, total_units, description })
+    .insert({ title, series, level, category, total_units, description, cover_image })
     .select("id")
     .single();
 
   if (error) {
+    // 업로드한 이미지 롤백
+    if (cover_image) await deleteCoverImage(cover_image);
     console.error("[createTextbook]", error.message);
     return { error: error.message };
   }
@@ -134,26 +193,71 @@ export async function updateTextbook(formData: FormData): Promise<{ error?: stri
   const category = (formData.get("category") as string) || "general";
   const total_units = Number(formData.get("total_units")) || 1;
   const description = (formData.get("description") as string)?.trim() || null;
+  const coverFile = formData.get("cover_image") as File | null;
+  const removeCover = formData.get("remove_cover") === "true";
 
   if (!id) return { error: "id가 없습니다." };
   if (!title) return { error: "교재명을 입력해 주세요." };
 
   const supabase = createAdminClient();
+
+  // 기존 커버 이미지 URL 조회 (교체/삭제 시 필요)
+  const { data: existing } = await supabase
+    .from("textbooks")
+    .select("cover_image")
+    .eq("id", id)
+    .single();
+  const oldCoverUrl = existing?.cover_image as string | null;
+
+  // 커버 이미지 처리
+  let cover_image: string | null | undefined = undefined; // undefined = 변경 없음
+  if (removeCover) {
+    cover_image = null;
+  } else if (coverFile && coverFile.size > 0) {
+    const uploadResult = await uploadCoverImage(coverFile);
+    if ("error" in uploadResult) return { error: uploadResult.error };
+    cover_image = uploadResult.url;
+  }
+
+  const updateData: Record<string, unknown> = {
+    title, series, level, category, total_units, description,
+    updated_at: new Date().toISOString(),
+  };
+  if (cover_image !== undefined) {
+    updateData.cover_image = cover_image;
+  }
+
   const { error } = await supabase
     .from("textbooks")
-    .update({ title, series, level, category, total_units, description, updated_at: new Date().toISOString() })
+    .update(updateData)
     .eq("id", id);
 
   if (error) {
+    // 새로 업로드한 이미지 롤백
+    if (cover_image) await deleteCoverImage(cover_image);
     console.error("[updateTextbook]", error.message);
     return { error: error.message };
   }
+
+  // DB 업데이트 성공 후 이전 이미지 삭제
+  if (cover_image !== undefined && oldCoverUrl) {
+    await deleteCoverImage(oldCoverUrl);
+  }
+
   return {};
 }
 
 export async function deleteTextbook(textbookId: string): Promise<{ error?: string }> {
-  // soft delete: is_active = false
   const supabase = createAdminClient();
+
+  // 커버 이미지 URL 조회 (삭제용)
+  const { data: existing } = await supabase
+    .from("textbooks")
+    .select("cover_image")
+    .eq("id", textbookId)
+    .single();
+
+  // soft delete: is_active = false
   const { error } = await supabase
     .from("textbooks")
     .update({ is_active: false, updated_at: new Date().toISOString() })
@@ -163,6 +267,12 @@ export async function deleteTextbook(textbookId: string): Promise<{ error?: stri
     console.error("[deleteTextbook]", error.message);
     return { error: error.message };
   }
+
+  // Storage에서 커버 이미지 삭제
+  if (existing?.cover_image) {
+    await deleteCoverImage(existing.cover_image as string);
+  }
+
   return {};
 }
 

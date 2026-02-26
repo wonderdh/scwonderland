@@ -17,6 +17,7 @@ export type DashboardStats = {
   teacherCount: number;
   classCount: number;
   reportCardCount: number;
+  noticeCount: number;
 };
 
 export type ReportCard = {
@@ -118,4 +119,32 @@ export type StudentTextbookItem = {
   source_class_name: string | null;
   status: "not_started" | "in_progress" | "completed";
   completed_units: number;
+};
+
+// ── 공지사항 타입 ──
+
+export type Notice = {
+  id: string;
+  title: string;
+  content: string | null;
+  excerpt: string | null;
+  author_id: string | null;
+  is_published: boolean;
+  is_pinned: boolean;
+  published_at: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type NoticeAttachment = {
+  id: string;
+  notice_id: string;
+  storage_path: string;
+  public_url: string;
+  original_filename: string;
+  mime_type: string;
+  file_size: number;
+  file_type: "image" | "attachment";
+  sort_order: number;
+  created_at: string;
 };

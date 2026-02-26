@@ -12,4 +12,6 @@ export type {
   ReportCardStatus,
   TeacherClassTextbook,
   StudentTextbookItem,
+  Notice,
+  NoticeAttachment,
 } from "./database";
