@@ -79,14 +79,24 @@ export function UserRow({ user, variant, onUpdate, onDelete }: UserRowProps) {
                 />
               </>
             ) : (
-              <Input
-                type="text"
-                name="name"
-                defaultValue={user.name ?? user.first_name ?? ""}
-                placeholder="이름 *"
-                required
-                className="h-8 w-32 text-sm"
-              />
+              <>
+                <Input
+                  type="text"
+                  name="name"
+                  defaultValue={user.name ?? user.first_name ?? ""}
+                  placeholder="이름 *"
+                  required
+                  className="h-8 w-32 text-sm"
+                />
+                <select
+                  name="teacher_type"
+                  defaultValue={user.teacher_type ?? "korean"}
+                  className="h-8 rounded-md border border-input bg-transparent px-2 text-sm"
+                >
+                  <option value="korean">한국인</option>
+                  <option value="native">원어민</option>
+                </select>
+              </>
             )}
             <Button type="submit" size="sm" variant="default" className="h-7 text-xs">
               저장
@@ -103,7 +113,16 @@ export function UserRow({ user, variant, onUpdate, onDelete }: UserRowProps) {
           </form>
         ) : (
           <>
-            <p className="font-medium text-foreground truncate">{displayName}</p>
+            <p className="font-medium text-foreground truncate flex items-center gap-1.5">
+              {displayName}
+              {variant === "teacher" && user.teacher_type && (
+                <span className={`inline-flex rounded px-1.5 py-0.5 text-xs font-medium ${
+                  user.teacher_type === "native" ? "bg-blue-100 text-blue-700" : "bg-emerald-100 text-emerald-700"
+                }`}>
+                  {user.teacher_type === "native" ? "원어민" : "한국인"}
+                </span>
+              )}
+            </p>
             <p className="text-sm text-muted-foreground truncate">{subLine}</p>
           </>
         )}

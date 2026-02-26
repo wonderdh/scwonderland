@@ -46,9 +46,13 @@ export async function createTeacher(
   const email = normalizeEmail((formData.get("email") as string) ?? "");
   const password = (formData.get("password") as string) ?? "";
   const name = (formData.get("name") as string)?.trim() ?? "";
+  const teacher_type = (formData.get("teacher_type") as string) ?? "korean";
 
   if (!email || !password || !name) {
     return { error: "아이디, 비밀번호, 이름을 입력해 주세요." };
+  }
+  if (teacher_type !== "korean" && teacher_type !== "native") {
+    return { error: "교사 유형을 선택해 주세요." };
   }
 
   const supabase = createAdminClient();
@@ -61,6 +65,7 @@ export async function createTeacher(
       last_name: "",
       role: "teacher",
       name,
+      teacher_type,
     },
   });
 
@@ -71,6 +76,15 @@ export async function createTeacher(
   if (!data.user) {
     return { error: "사용자 생성에 실패했습니다." };
   }
+
+  // teachers 테이블에 teacher_type 업데이트 (트리거가 기본값 korean으로 생성하므로)
+  if (teacher_type === "native") {
+    await supabase
+      .from("teachers")
+      .update({ teacher_type: "native" })
+      .eq("profile_id", data.user.id);
+  }
+
   return {};
 }
 
@@ -123,7 +137,7 @@ export async function listUsersByRole(
 
   const { data: teachers } = await supabase
     .from("teachers")
-    .select("profile_id, name, teacher_number")
+    .select("profile_id, name, teacher_number, teacher_type")
     .in("profile_id", ids);
   const teacherMap = new Map(
     (teachers ?? []).map((t) => [t.profile_id, t])
@@ -138,6 +152,7 @@ export async function listUsersByRole(
       last_name: p.last_name,
       name: t?.name ?? p.first_name,
       teacher_number: t?.teacher_number ?? null,
+      teacher_type: (t?.teacher_type ?? "korean") as "korean" | "native",
     };
   });
 }
@@ -191,6 +206,7 @@ export async function updateTeacherProfile(
 ): Promise<{ error?: string }> {
   const id = (formData.get("id") as string)?.trim();
   const name = (formData.get("name") as string)?.trim() ?? "";
+  const teacher_type = (formData.get("teacher_type") as string) || null;
 
   if (!id) return { error: "id가 없습니다." };
   if (!name) return { error: "이름을 입력해 주세요." };
@@ -202,9 +218,14 @@ export async function updateTeacherProfile(
     .update({ first_name: name, last_name: "" })
     .eq("id", id);
 
+  const updateData: Record<string, unknown> = { name, updated_at: new Date().toISOString() };
+  if (teacher_type === "korean" || teacher_type === "native") {
+    updateData.teacher_type = teacher_type;
+  }
+
   const { error: teacherError } = await supabase
     .from("teachers")
-    .update({ name, updated_at: new Date().toISOString() })
+    .update(updateData)
     .eq("profile_id", id);
 
   if (teacherError) {

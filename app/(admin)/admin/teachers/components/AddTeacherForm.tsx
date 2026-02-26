@@ -1,21 +1,31 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { createTeacher } from "../../actions";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 
+type FormState = { error?: string; success?: string } | null;
+
 export function AddTeacherForm() {
+  const formRef = useRef<HTMLFormElement>(null);
+  const router = useRouter();
   const [state, formAction] = useActionState(
-    async (_: { error?: string } | null, formData: FormData) => {
-      return createTeacher(formData);
+    async (_: FormState, formData: FormData) => {
+      const result = await createTeacher(formData);
+      if (result.error) return { error: result.error };
+      formRef.current?.reset();
+      router.refresh();
+      return { success: "교사가 추가되었습니다." };
     },
-    null as { error?: string } | null
+    null as FormState
   );
 
   return (
     <form
+      ref={formRef}
       action={formAction}
       className="flex flex-wrap items-end gap-3 p-4 rounded-xl border bg-card"
     >
@@ -60,11 +70,30 @@ export function AddTeacherForm() {
           className="mt-1"
         />
       </div>
+      <div className="min-w-[120px]">
+        <Label htmlFor="teacher-type">
+          유형 <span className="text-destructive">*</span>
+        </Label>
+        <select
+          id="teacher-type"
+          name="teacher_type"
+          required
+          className="mt-1 flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        >
+          <option value="korean">한국인</option>
+          <option value="native">원어민</option>
+        </select>
+      </div>
       <Button type="submit">추가</Button>
       <p className="w-full text-xs text-muted-foreground">* 필수 입력</p>
       {state?.error && (
         <p className="w-full text-sm text-destructive" role="alert">
           {state.error}
+        </p>
+      )}
+      {state?.success && (
+        <p className="w-full text-sm text-green-600" role="status">
+          {state.success}
         </p>
       )}
     </form>

@@ -1,13 +1,13 @@
 "use server";
 
 import { createAdminClient } from "@/lib/supabase/admin";
-import type { ClassWithDetails, ClassStudentRow } from "@/lib/types";
+import type { ClassWithDetails, ClassStudentRow, ClassTeacherInfo } from "@/lib/types";
 
 export async function listClassesWithDetails(): Promise<ClassWithDetails[]> {
   const supabase = createAdminClient();
   const { data: classes, error: classesError } = await supabase
     .from("classes")
-    .select("id, name, teacher_profile_id, created_at, updated_at")
+    .select("id, name, created_at, updated_at")
     .order("name");
   if (classesError) {
     console.error("[listClassesWithDetails]", classesError.message);
@@ -16,23 +16,44 @@ export async function listClassesWithDetails(): Promise<ClassWithDetails[]> {
   if (!classes?.length) {
     return [];
   }
+
+  // class_teachers 중간 테이블에서 교사 매핑 조회
+  const classIds = classes.map((c) => c.id);
+  const { data: classTeachers } = await supabase
+    .from("class_teachers")
+    .select("class_id, teacher_profile_id")
+    .in("class_id", classIds);
+
   const teacherIds = [
     ...new Set(
-      (classes as { teacher_profile_id: string | null }[])
-        .map((c) => c.teacher_profile_id)
-        .filter(Boolean) as string[]
+      (classTeachers ?? []).map((ct) => ct.teacher_profile_id)
     ),
   ];
-  let teacherMap = new Map<string, string>();
+  let teacherMap = new Map<string, { name: string; teacher_type: string }>();
   if (teacherIds.length > 0) {
     const { data: teachers } = await supabase
       .from("teachers")
-      .select("profile_id, name")
+      .select("profile_id, name, teacher_type")
       .in("profile_id", teacherIds);
     teacherMap = new Map(
-      (teachers ?? []).map((t) => [t.profile_id, t.name ?? ""])
+      (teachers ?? []).map((t) => [t.profile_id, { name: t.name ?? "", teacher_type: t.teacher_type ?? "korean" }])
     );
   }
+
+  // 반별 교사 목록 구성
+  const teachersByClass = new Map<string, ClassTeacherInfo[]>();
+  for (const ct of classTeachers ?? []) {
+    const info = teacherMap.get(ct.teacher_profile_id);
+    if (!info) continue;
+    const list = teachersByClass.get(ct.class_id) ?? [];
+    list.push({
+      profile_id: ct.teacher_profile_id,
+      name: info.name,
+      teacher_type: info.teacher_type as "korean" | "native",
+    });
+    teachersByClass.set(ct.class_id, list);
+  }
+
   const { data: members } = await supabase
     .from("class_students")
     .select("class_id");
@@ -46,10 +67,7 @@ export async function listClassesWithDetails(): Promise<ClassWithDetails[]> {
   return classes.map((c) => ({
     id: c.id,
     name: c.name,
-    teacher_profile_id: c.teacher_profile_id,
-    teacher_name: c.teacher_profile_id
-      ? teacherMap.get(c.teacher_profile_id) ?? null
-      : null,
+    teachers: teachersByClass.get(c.id) ?? [],
     student_count: countByClass[c.id] ?? 0,
     created_at: c.created_at,
     updated_at: c.updated_at,
@@ -125,22 +143,28 @@ export async function getAllClassStudentsFlat(): Promise<
 
 export async function createClass(
   name: string,
-  teacherProfileId: string | null
+  teacherProfileIds: string[]
 ): Promise<{ error?: string; id?: string }> {
   const supabase = createAdminClient();
   const n = name?.trim();
   if (!n) return { error: "반 이름을 입력해 주세요." };
   const { data, error } = await supabase
     .from("classes")
-    .insert({
-      name: n,
-      teacher_profile_id: teacherProfileId || null,
-    })
+    .insert({ name: n })
     .select("id")
     .single();
   if (error) {
     console.error("[createClass]", error.message, { name });
     return { error: error.message };
+  }
+  // 교사 배정
+  if (teacherProfileIds.length > 0) {
+    const { error: ctError } = await supabase
+      .from("class_teachers")
+      .insert(teacherProfileIds.map((tid) => ({ class_id: data.id, teacher_profile_id: tid })));
+    if (ctError) {
+      console.error("[createClass:teachers]", ctError.message);
+    }
   }
   return { id: data.id };
 }
@@ -148,7 +172,7 @@ export async function createClass(
 export async function updateClass(
   classId: string,
   name: string,
-  teacherProfileId: string | null
+  teacherProfileIds: string[]
 ): Promise<{ error?: string }> {
   const supabase = createAdminClient();
   const n = name?.trim();
@@ -157,13 +181,22 @@ export async function updateClass(
     .from("classes")
     .update({
       name: n,
-      teacher_profile_id: teacherProfileId || null,
       updated_at: new Date().toISOString(),
     })
     .eq("id", classId);
   if (error) {
     console.error("[updateClass]", error.message, { classId, name });
     return { error: error.message };
+  }
+  // 교사 재배정: 기존 삭제 → 새로 삽입
+  await supabase.from("class_teachers").delete().eq("class_id", classId);
+  if (teacherProfileIds.length > 0) {
+    const { error: ctError } = await supabase
+      .from("class_teachers")
+      .insert(teacherProfileIds.map((tid) => ({ class_id: classId, teacher_profile_id: tid })));
+    if (ctError) {
+      console.error("[updateClass:teachers]", ctError.message);
+    }
   }
   return {};
 }
@@ -210,14 +243,18 @@ export async function removeStudentFromClass(
 }
 
 export async function listTeachersForSelect(): Promise<
-  { id: string; name: string }[]
+  { id: string; name: string; teacher_type: "korean" | "native" }[]
 > {
   const supabase = createAdminClient();
   const { data } = await supabase
     .from("teachers")
-    .select("profile_id, name")
+    .select("profile_id, name, teacher_type")
     .order("name");
-  return (data ?? []).map((t) => ({ id: t.profile_id, name: t.name ?? "" }));
+  return (data ?? []).map((t) => ({
+    id: t.profile_id,
+    name: t.name ?? "",
+    teacher_type: (t.teacher_type ?? "korean") as "korean" | "native",
+  }));
 }
 
 export async function listStudentsNotInClass(

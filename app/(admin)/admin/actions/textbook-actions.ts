@@ -46,12 +46,14 @@ export type StudentTextbookProgress = {
   textbook_series: string | null;
   textbook_level: string | null;
   textbook_category: string;
+  textbook_cover_image: string | null;
   total_units: number;
   source_type: "class" | "individual";
   source_class_id: string | null;
   source_class_name: string | null;
   status: "not_started" | "in_progress" | "completed";
   completed_units: number;
+  assigned_at: string | null;
   started_at: string | null;
   completed_at: string | null;
   note: string | null;
@@ -446,7 +448,9 @@ export async function removeTextbookFromStudent(progressId: string): Promise<{ e
 export async function updateProgress(
   progressId: string,
   completedUnits: number,
-  note?: string | null
+  note?: string | null,
+  assignedAt?: string | null,
+  completedAt?: string | null
 ): Promise<{ error?: string }> {
   const supabase = createAdminClient();
 
@@ -491,6 +495,16 @@ export async function updateProgress(
   if (completed_at) updateData.completed_at = completed_at;
   if (note !== undefined) updateData.note = note;
 
+  // 날짜 수동 지정 (admin/교사가 직접 수정 시)
+  if (assignedAt !== undefined) updateData.assigned_at = assignedAt;
+  if (completedAt !== undefined) {
+    updateData.completed_at = completedAt;
+    // 완료일이 수동 설정되면 상태도 completed로
+    if (completedAt && units >= totalUnits) {
+      updateData.status = "completed";
+    }
+  }
+
   const { error } = await supabase
     .from("student_textbook_progress")
     .update(updateData)
@@ -519,11 +533,11 @@ export async function listStudentProgress(
   }
   if (!data?.length) return [];
 
-  // 교재 정보 조인
+  // 교재 정보 조인 (cover_image 포함)
   const textbookIds = [...new Set(data.map((p) => p.textbook_id))];
   const { data: textbooks } = await supabase
     .from("textbooks")
-    .select("id, title, series, level, category, total_units")
+    .select("id, title, series, level, category, total_units, cover_image")
     .in("id", textbookIds);
   const textbookMap = new Map((textbooks ?? []).map((t) => [t.id, t]));
 
@@ -548,12 +562,14 @@ export async function listStudentProgress(
       textbook_series: t?.series ?? null,
       textbook_level: t?.level ?? null,
       textbook_category: t?.category ?? "general",
+      textbook_cover_image: t?.cover_image ?? null,
       total_units: t?.total_units ?? 0,
       source_type: p.source_type as "class" | "individual",
       source_class_id: p.source_class_id,
       source_class_name: p.source_class_id ? classMap.get(p.source_class_id) ?? null : null,
       status: p.status as "not_started" | "in_progress" | "completed",
       completed_units: p.completed_units ?? 0,
+      assigned_at: p.assigned_at,
       started_at: p.started_at,
       completed_at: p.completed_at,
       note: p.note,

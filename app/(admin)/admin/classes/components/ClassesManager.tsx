@@ -13,14 +13,40 @@ import {
   assignTextbookToClass,
   removeTextbookFromClass,
   listClassTextbooks,
-  listTextbooksNotInClass,
+  listTextbooks,
   type ClassTextbook,
   type Textbook,
 } from "../../actions/textbook-actions";
+import type { ClassTeacherInfo } from "@/lib/types";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-type TeacherOption = { id: string; name: string };
+function formatTeachers(teachers: ClassTeacherInfo[]): string {
+  if (teachers.length === 0) return "미지정";
+  return teachers.map((t) => `${t.name ?? "—"}(${t.teacher_type === "native" ? "원어민" : "한국인"})`).join(", ");
+}
+
+function TeacherBadges({ teachers }: { teachers: ClassTeacherInfo[] }) {
+  if (teachers.length === 0) return <span className="text-muted-foreground">미지정</span>;
+  return (
+    <span className="inline-flex items-center gap-1 flex-wrap">
+      {teachers.map((t) => (
+        <span
+          key={t.profile_id}
+          className={`inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium ${
+            t.teacher_type === "native"
+              ? "bg-blue-100 text-blue-700"
+              : "bg-emerald-100 text-emerald-700"
+          }`}
+        >
+          {t.name ?? "—"}
+        </span>
+      ))}
+    </span>
+  );
+}
+
+type TeacherOption = { id: string; name: string; teacher_type: "korean" | "native" };
 
 type StudentInfo = {
   id: string;
@@ -58,17 +84,23 @@ export function ClassesManager({
   const [removeStudentTarget, setRemoveStudentTarget] =
     useState<{ classId: string; row: ClassStudentRow } | null>(null);
 
-  // 오른쪽 패널: 대상 반
+  // 오른쪽 패널 모드
   const [rightMode, setRightMode] = useState<"students" | "textbooks">("students");
-  const [targetClassId, setTargetClassId] = useState<string>("");
-  const [targetSearch, setTargetSearch] = useState("");
-  const [isDropOver, setIsDropOver] = useState(false);
+  const [rightSearch, setRightSearch] = useState("");
 
-  // 오른쪽 패널: 교재 관리 모드
-  const [targetTextbooks, setTargetTextbooks] = useState<ClassTextbook[]>([]);
-  const [targetTextbooksLoaded, setTargetTextbooksLoaded] = useState(false);
-  const [textbookSearch, setTextbookSearch] = useState("");
-  const [addTextbookToTarget, setAddTextbookToTarget] = useState(false);
+  // 오른쪽 패널: 전체 교재 목록
+  const [allTextbooks, setAllTextbooks] = useState<Textbook[]>([]);
+  const [allTextbooksLoaded, setAllTextbooksLoaded] = useState(false);
+
+  // 왼쪽 카드: per-class textbooks
+  const [cardTextbooks, setCardTextbooks] = useState<Record<string, ClassTextbook[]>>({});
+  const [cardTextbooksLoaded, setCardTextbooksLoaded] = useState<Record<string, boolean>>({});
+
+  // 드래그 앤 드롭: 호버 중인 카드
+  const [dropTargetClassId, setDropTargetClassId] = useState<string | null>(null);
+
+  // 알림 토스트
+  const [notification, setNotification] = useState<{ type: "error" | "success"; message: string } | null>(null);
 
   const studentsByClassId = useMemo(() => {
     const map: Record<string, ClassStudentRow[]> = {};
@@ -85,11 +117,16 @@ export function ClassesManager({
     return map;
   }, [allClassStudents]);
 
-  // 미배정 학생 (어떤 반에도 속하지 않은 학생)
-  const unassignedStudents = useMemo(() => {
-    const assignedIds = new Set(allClassStudents.map((s) => s.student_profile_id));
-    return allStudents.filter((s) => !assignedIds.has(s.id));
-  }, [allStudents, allClassStudents]);
+  // 학생의 소속 반 정보
+  const studentClassMap = useMemo(() => {
+    const map: Record<string, string[]> = {};
+    for (const cs of allClassStudents) {
+      if (!map[cs.student_profile_id]) map[cs.student_profile_id] = [];
+      const cls = initialClasses.find((c) => c.id === cs.class_id);
+      if (cls) map[cs.student_profile_id].push(cls.name);
+    }
+    return map;
+  }, [allClassStudents, initialClasses]);
 
   // 왼쪽 패널 검색 필터
   const filteredClasses = useMemo(() => {
@@ -107,110 +144,170 @@ export function ClassesManager({
     });
   }, [initialClasses, search, studentsByClassId]);
 
-  const filteredUnassigned = useMemo(() => {
-    if (!search.trim()) return unassignedStudents;
-    const q = search.trim().toLowerCase();
-    return unassignedStudents.filter(
+  // 오른쪽 패널: 학생 검색 필터
+  const filteredRightStudents = useMemo(() => {
+    if (!rightSearch.trim()) return allStudents;
+    const q = rightSearch.trim().toLowerCase();
+    return allStudents.filter(
       (s) =>
         (s.korean_name && s.korean_name.toLowerCase().includes(q)) ||
         (s.english_name && s.english_name.toLowerCase().includes(q)) ||
         (s.student_number && s.student_number.toLowerCase().includes(q))
     );
-  }, [unassignedStudents, search]);
+  }, [allStudents, rightSearch]);
 
-  // 대상 반 정보
-  const targetClass = initialClasses.find((c) => c.id === targetClassId) ?? null;
-  const targetStudents = targetClassId ? studentsByClassId[targetClassId] ?? [] : [];
-
-  // 대상 반 학생 검색 필터
-  const filteredTargetStudents = useMemo(() => {
-    if (!targetSearch.trim()) return targetStudents;
-    const q = targetSearch.trim().toLowerCase();
-    return targetStudents.filter(
-      (s) =>
-        (s.korean_name && s.korean_name.toLowerCase().includes(q)) ||
-        (s.english_name && s.english_name.toLowerCase().includes(q)) ||
-        (s.student_number && s.student_number.toLowerCase().includes(q))
+  // 오른쪽 패널: 교재 검색 필터
+  const filteredRightTextbooks = useMemo(() => {
+    if (!rightSearch.trim()) return allTextbooks;
+    const q = rightSearch.trim().toLowerCase();
+    return allTextbooks.filter(
+      (t) =>
+        t.title.toLowerCase().includes(q) ||
+        (t.series && t.series.toLowerCase().includes(q)) ||
+        (t.level && `lv.${t.level}`.includes(q))
     );
-  }, [targetStudents, targetSearch]);
+  }, [allTextbooks, rightSearch]);
 
-  // 교재 관리 모드: 대상 반 변경 시 교재 로드
-  const loadTargetTextbooks = useCallback(async (classId: string) => {
-    if (!classId) return;
-    const data = await listClassTextbooks(classId);
-    setTargetTextbooks(data);
-    setTargetTextbooksLoaded(true);
+  // 교재 목록 로드
+  const loadAllTextbooks = useCallback(async () => {
+    const data = await listTextbooks();
+    setAllTextbooks(data);
+    setAllTextbooksLoaded(true);
   }, []);
 
   useEffect(() => {
-    if (rightMode === "textbooks" && targetClassId) {
-      setTargetTextbooksLoaded(false);
-      loadTargetTextbooks(targetClassId);
+    if (rightMode === "textbooks" && !allTextbooksLoaded) {
+      loadAllTextbooks();
     }
-  }, [rightMode, targetClassId, loadTargetTextbooks]);
+  }, [rightMode, allTextbooksLoaded, loadAllTextbooks]);
 
-  const filteredTargetTextbooks = useMemo(() => {
-    if (!textbookSearch.trim()) return targetTextbooks;
-    const q = textbookSearch.trim().toLowerCase();
-    return targetTextbooks.filter(
-      (t) =>
-        t.textbook_title.toLowerCase().includes(q) ||
-        (t.textbook_series && t.textbook_series.toLowerCase().includes(q)) ||
-        (t.textbook_level && `lv.${t.textbook_level}`.includes(q))
+  // 왼쪽 카드: per-class 교재 로드
+  const loadCardTextbooks = useCallback(async (classId: string) => {
+    const data = await listClassTextbooks(classId);
+    setCardTextbooks((prev) => ({ ...prev, [classId]: data }));
+    setCardTextbooksLoaded((prev) => ({ ...prev, [classId]: true }));
+  }, []);
+
+  useEffect(() => {
+    if (rightMode === "textbooks") {
+      for (const c of initialClasses) {
+        if (!cardTextbooksLoaded[c.id]) {
+          loadCardTextbooks(c.id);
+        }
+      }
+    }
+  }, [rightMode, initialClasses, cardTextbooksLoaded, loadCardTextbooks]);
+
+  // 알림 자동 해제
+  useEffect(() => {
+    if (notification) {
+      const timer = setTimeout(() => setNotification(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [notification]);
+
+  // 교재 제거 (왼쪽 카드)
+  const handleRemoveTextbookFromCard = async (classId: string, textbookId: string) => {
+    await removeTextbookFromClass(classId, textbookId);
+    loadCardTextbooks(classId);
+    router.refresh();
+  };
+
+  // 드롭 핸들러: 학생을 카드에 드롭
+  const handleDropStudentToCard = async (classId: string, e: React.DragEvent) => {
+    e.preventDefault();
+    setDropTargetClassId(null);
+
+    const raw = e.dataTransfer.getData("application/json");
+    if (!raw) return;
+    const parsed = JSON.parse(raw);
+    if (parsed.type !== "student") return;
+
+    const { studentProfileId } = parsed;
+
+    // 이미 이 반에 있는지 확인
+    const existing = studentsByClassId[classId] ?? [];
+    if (existing.some((s) => s.student_profile_id === studentProfileId)) {
+      setNotification({ type: "error", message: "이미 이 반에 소속된 학생입니다." });
+      return;
+    }
+
+    // 다른 반에 소속되어 있으면 기존 반에서 제거
+    const currentEntry = allClassStudents.find(
+      (cs) => cs.student_profile_id === studentProfileId
     );
-  }, [targetTextbooks, textbookSearch]);
+    if (currentEntry) {
+      await removeStudentFromClass(currentEntry.id);
+    }
 
-  const handleRemoveTextbookFromTarget = async (textbookId: string) => {
-    if (!targetClassId) return;
-    await removeTextbookFromClass(targetClassId, textbookId);
-    loadTargetTextbooks(targetClassId);
+    await addStudentToClass(classId, studentProfileId);
+    const studentName = allStudents.find((s) => s.id === studentProfileId);
+    const name = studentName?.korean_name ?? studentName?.english_name ?? "학생";
+    const targetClassName = initialClasses.find((c) => c.id === classId)?.name ?? "";
+    if (currentEntry) {
+      const fromClassName = initialClasses.find((c) => c.id === currentEntry.class_id)?.name ?? "";
+      setNotification({ type: "success", message: `${name}: ${fromClassName} → ${targetClassName}` });
+    } else {
+      setNotification({ type: "success", message: `${name}이(가) ${targetClassName}에 추가되었습니다.` });
+    }
     router.refresh();
   };
 
-  // 드래그 앤 드롭: 학생을 대상 반으로 이동
-  const handleDropToTarget = async (e: React.DragEvent) => {
+  // 드롭 핸들러: 교재를 카드에 드롭
+  const handleDropTextbookToCard = async (classId: string, e: React.DragEvent) => {
     e.preventDefault();
-    setIsDropOver(false);
-    if (!targetClassId) return;
+    setDropTargetClassId(null);
 
-    const data = e.dataTransfer.getData("application/json");
-    if (!data) return;
+    const raw = e.dataTransfer.getData("application/json");
+    if (!raw) return;
+    const parsed = JSON.parse(raw);
+    if (parsed.type !== "textbook") return;
 
-    const { studentProfileId, fromClassId, classStudentId } = JSON.parse(data);
+    const { textbookId } = parsed;
 
-    if (fromClassId === targetClassId) return;
-
-    // 기존 반에서 제거 (반이 있는 경우)
-    if (classStudentId) {
-      await removeStudentFromClass(classStudentId);
+    // 이미 배정되어 있는지 확인
+    const existing = cardTextbooks[classId] ?? [];
+    if (existing.some((ct) => ct.textbook_id === textbookId)) {
+      setNotification({ type: "error", message: "이미 이 반에 배정된 교재입니다." });
+      return;
     }
-    // 대상 반에 추가
-    await addStudentToClass(targetClassId, studentProfileId);
-    router.refresh();
-  };
 
-  // 드래그 앤 드롭: 반 카드 간 이동 (기존 기능 유지)
-  const [cardDropTarget, setCardDropTarget] = useState<string | null>(null);
-
-  const handleDropToCard = async (toClassId: string, e: React.DragEvent) => {
-    e.preventDefault();
-    setCardDropTarget(null);
-
-    const data = e.dataTransfer.getData("application/json");
-    if (!data) return;
-
-    const { studentProfileId, fromClassId, classStudentId } = JSON.parse(data);
-    if (fromClassId === toClassId) return;
-
-    if (classStudentId) {
-      await removeStudentFromClass(classStudentId);
+    const result = await assignTextbookToClass(classId, textbookId);
+    if (result?.error) {
+      setNotification({ type: "error", message: result.error });
+      return;
     }
-    await addStudentToClass(toClassId, studentProfileId);
+    loadCardTextbooks(classId);
+    setNotification({ type: "success", message: "교재가 배정되었습니다." });
     router.refresh();
   };
 
   return (
     <div className="space-y-4">
+      {/* 알림 토스트 */}
+      {notification && (
+        <div
+          className={`fixed top-4 right-4 z-50 rounded-lg px-4 py-3 shadow-lg text-sm font-medium transition-all ${
+            notification.type === "error"
+              ? "bg-red-50 text-red-700 border border-red-200"
+              : "bg-emerald-50 text-emerald-700 border border-emerald-200"
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            {notification.type === "error" ? (
+              <svg className="size-4 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
+              </svg>
+            ) : (
+              <svg className="size-4 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+              </svg>
+            )}
+            {notification.message}
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold text-foreground">반 관리</h1>
         <button
@@ -224,10 +321,10 @@ export function ClassesManager({
 
       {/* 좌우 분할 레이아웃 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
-        {/* ===== 왼쪽 패널: 전체 반 + 미배정 학생 ===== */}
+        {/* ===== 왼쪽 패널: 반 카드 목록 ===== */}
         <div className="space-y-3">
           <div className="rounded-xl border bg-card p-3">
-            <div className="flex items-center gap-2 mb-3">
+            <div className="flex items-center gap-2 mb-1">
               <svg className="size-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
               </svg>
@@ -240,83 +337,41 @@ export function ClassesManager({
               />
             </div>
             <p className="text-xs text-muted-foreground">
-              학생을 드래그하여 오른쪽 대상 반으로 이동할 수 있습니다
+              {rightMode === "students"
+                ? "오른쪽에서 학생을 드래그하여 반에 추가하세요"
+                : "오른쪽에서 교재를 드래그하여 반에 배정하세요"}
             </p>
           </div>
 
           <div className="space-y-3 max-h-[calc(100vh-240px)] overflow-y-auto pr-1">
-            {/* 반 카드 목록 */}
             {filteredClasses.map((c) => (
               <ClassCard
                 key={c.id}
                 classRow={c}
                 students={studentsByClassId[c.id] ?? []}
-                isTarget={c.id === targetClassId}
+                globalMode={rightMode}
+                textbooks={cardTextbooks[c.id] ?? []}
+                textbooksLoaded={cardTextbooksLoaded[c.id] ?? false}
                 onEdit={() => setEditClass(c)}
                 onDelete={() => setDeleteTarget(c)}
-                onAddStudent={() => setAddStudentOpen(c)}
                 onRemoveStudent={(row) =>
                   setRemoveStudentTarget({ classId: c.id, row })
                 }
-                onSelectAsTarget={() => setTargetClassId(c.id)}
-                isCardDropTarget={cardDropTarget === c.id}
-                onCardDragOver={() => setCardDropTarget(c.id)}
-                onCardDragLeave={() => setCardDropTarget(null)}
-                onCardDrop={(e) => handleDropToCard(c.id, e)}
+                onRemoveTextbook={(textbookId) =>
+                  handleRemoveTextbookFromCard(c.id, textbookId)
+                }
+                isDropTarget={dropTargetClassId === c.id}
+                onDragOver={() => setDropTargetClassId(c.id)}
+                onDragLeave={() => setDropTargetClassId(null)}
+                onDrop={(e) =>
+                  rightMode === "students"
+                    ? handleDropStudentToCard(c.id, e)
+                    : handleDropTextbookToCard(c.id, e)
+                }
               />
             ))}
 
-            {/* 미배정 학생 */}
-            {filteredUnassigned.length > 0 && (
-              <div className="rounded-xl border-2 border-dashed border-amber-300 bg-amber-50/50 overflow-hidden">
-                <div className="px-4 py-2.5 bg-amber-100/50 border-b border-amber-200">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-semibold text-amber-800">미배정 학생</span>
-                    <span className="rounded-full bg-amber-200 px-2 py-0.5 text-xs font-medium text-amber-800">
-                      {filteredUnassigned.length}명
-                    </span>
-                  </div>
-                </div>
-                <div className="px-4 py-2.5">
-                  <ul className="space-y-1">
-                    {filteredUnassigned.map((s) => (
-                      <li
-                        key={s.id}
-                        draggable
-                        onDragStart={(e) => {
-                          e.dataTransfer.effectAllowed = "move";
-                          e.dataTransfer.setData(
-                            "application/json",
-                            JSON.stringify({
-                              studentProfileId: s.id,
-                              fromClassId: null,
-                              classStudentId: null,
-                            })
-                          );
-                        }}
-                        className="flex items-center gap-1.5 text-sm cursor-grab active:cursor-grabbing rounded-lg px-2 py-1.5 hover:bg-amber-100/50 transition-colors"
-                      >
-                        <svg className="w-3.5 h-3.5 text-amber-400 shrink-0" fill="currentColor" viewBox="0 0 24 24">
-                          <circle cx="9" cy="5" r="1.5" /><circle cx="15" cy="5" r="1.5" />
-                          <circle cx="9" cy="12" r="1.5" /><circle cx="15" cy="12" r="1.5" />
-                          <circle cx="9" cy="19" r="1.5" /><circle cx="15" cy="19" r="1.5" />
-                        </svg>
-                        <span className="text-foreground">
-                          {[s.korean_name, s.english_name].filter(Boolean).join(" / ") || "—"}
-                        </span>
-                        {s.student_number && (
-                          <span className="ml-auto font-mono text-xs text-muted-foreground">
-                            {s.student_number}
-                          </span>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            )}
-
-            {filteredClasses.length === 0 && filteredUnassigned.length === 0 && (
+            {filteredClasses.length === 0 && (
               <div className="rounded-xl border bg-muted/30 p-8 text-center text-sm text-muted-foreground">
                 {search.trim() ? "검색 결과가 없습니다." : "등록된 반이 없습니다. 반 추가로 생성하세요."}
               </div>
@@ -324,14 +379,14 @@ export function ClassesManager({
           </div>
         </div>
 
-        {/* ===== 오른쪽 패널: 학생 관리 / 교재 관리 ===== */}
+        {/* ===== 오른쪽 패널: 학생/교재 소스 목록 ===== */}
         <div className="lg:sticky lg:top-6 self-start space-y-3">
           <div className="rounded-xl border-2 border-primary/30 bg-card overflow-hidden shadow-sm">
             {/* 모드 토글 헤더 */}
             <div className="flex border-b">
               <button
                 type="button"
-                onClick={() => setRightMode("students")}
+                onClick={() => { setRightMode("students"); setRightSearch(""); }}
                 className={`flex-1 px-4 py-2.5 text-sm font-semibold transition-colors ${
                   rightMode === "students"
                     ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white"
@@ -347,7 +402,7 @@ export function ClassesManager({
               </button>
               <button
                 type="button"
-                onClick={() => setRightMode("textbooks")}
+                onClick={() => { setRightMode("textbooks"); setRightSearch(""); }}
                 className={`flex-1 px-4 py-2.5 text-sm font-semibold transition-colors ${
                   rightMode === "textbooks"
                     ? "bg-gradient-to-r from-blue-500 to-indigo-500 text-white"
@@ -364,235 +419,149 @@ export function ClassesManager({
             </div>
 
             <div className="p-4 space-y-3">
-              {/* 반 선택 드롭다운 (공통) */}
-              <select
-                value={targetClassId}
-                onChange={(e) => {
-                  setTargetClassId(e.target.value);
-                  setTargetSearch("");
-                  setTextbookSearch("");
-                  setTargetTextbooksLoaded(false);
-                }}
-                className="w-full rounded-lg border border-input px-3 py-2 text-sm text-foreground bg-background"
-              >
-                <option value="">반을 선택하세요</option>
-                {initialClasses.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name} ({studentsByClassId[c.id]?.length ?? 0}명) — 담당: {c.teacher_name ?? "미지정"}
-                  </option>
-                ))}
-              </select>
-
-              {!targetClassId ? (
-                <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-muted-foreground/20 p-10 text-center">
-                  {rightMode === "students" ? (
-                    <>
-                      <svg className="size-10 text-muted-foreground/30 mb-3" fill="none" viewBox="0 0 24 24" strokeWidth={1} stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0ZM4 19.235v-.11a6.375 6.375 0 0 1 12.75 0v.109A12.318 12.318 0 0 1 10.374 21c-2.331 0-4.512-.645-6.374-1.766Z" />
-                      </svg>
-                      <p className="text-sm text-muted-foreground">위에서 반을 선택하면</p>
-                      <p className="text-sm text-muted-foreground">왼쪽에서 학생을 드래그하여 추가할 수 있습니다</p>
-                    </>
-                  ) : (
-                    <>
-                      <svg className="size-10 text-muted-foreground/30 mb-3" fill="none" viewBox="0 0 24 24" strokeWidth={1} stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
-                      </svg>
-                      <p className="text-sm text-muted-foreground">위에서 반을 선택하면</p>
-                      <p className="text-sm text-muted-foreground">배정된 교재 목록을 관리할 수 있습니다</p>
-                    </>
-                  )}
-                </div>
-              ) : rightMode === "students" ? (
+              {rightMode === "students" ? (
                 <>
-                  {/* ===== 학생 관리 모드 ===== */}
+                  {/* ===== 학생 목록 ===== */}
                   <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-semibold text-foreground">{targetClass?.name}</h3>
-                      <p className="text-xs text-muted-foreground">
-                        담당: {targetClass?.teacher_name ?? "미지정"} · {targetStudents.length}명
-                      </p>
-                    </div>
-                    <div className="flex gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => targetClass && setEditClass(targetClass)}
-                        className="rounded-lg bg-secondary px-2.5 py-1 text-xs font-medium text-secondary-foreground hover:bg-secondary/80"
-                      >
-                        수정
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => targetClass && setAddStudentOpen(targetClass)}
-                        className="rounded-lg bg-emerald-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-emerald-500"
-                      >
-                        + 학생
-                      </button>
-                    </div>
+                    <h3 className="font-semibold text-foreground">전체 학생</h3>
+                    <span className="text-xs text-muted-foreground">{allStudents.length}명</span>
                   </div>
+                  <input
+                    type="search"
+                    placeholder="이름 · 학번 검색"
+                    value={rightSearch}
+                    onChange={(e) => setRightSearch(e.target.value)}
+                    className="w-full rounded-lg border border-input px-3 py-1.5 text-sm text-foreground placeholder-muted-foreground bg-background"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    학생을 드래그하여 왼쪽 반에 추가하세요
+                  </p>
 
-                  {targetStudents.length > 3 && (
-                    <input
-                      type="search"
-                      placeholder="반 내 학생 검색"
-                      value={targetSearch}
-                      onChange={(e) => setTargetSearch(e.target.value)}
-                      className="w-full rounded-lg border border-input px-3 py-1.5 text-sm text-foreground placeholder-muted-foreground bg-background"
-                    />
-                  )}
-
-                  {/* 드롭 존 */}
-                  <div
-                    onDragOver={(e) => {
-                      e.preventDefault();
-                      e.dataTransfer.dropEffect = "move";
-                      setIsDropOver(true);
-                    }}
-                    onDragLeave={() => setIsDropOver(false)}
-                    onDrop={handleDropToTarget}
-                    className={`rounded-xl border-2 border-dashed transition-all min-h-[200px] p-2 ${
-                      isDropOver
-                        ? "border-emerald-400 bg-emerald-50/50 shadow-inner"
-                        : "border-muted-foreground/20 bg-muted/20"
-                    }`}
-                  >
-                    {filteredTargetStudents.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center h-[180px] text-center">
+                  <div className="max-h-[calc(100vh-360px)] overflow-y-auto space-y-0.5 rounded-xl border border-muted p-1.5">
+                    {filteredRightStudents.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-8 text-center">
                         <svg className="size-8 text-muted-foreground/30 mb-2" fill="none" viewBox="0 0 24 24" strokeWidth={1} stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
                         </svg>
                         <p className="text-sm text-muted-foreground">
-                          {isDropOver ? "여기에 놓으세요!" : "왼쪽에서 학생을 드래그하세요"}
+                          {rightSearch.trim() ? "검색 결과가 없습니다." : "등록된 학생이 없습니다."}
                         </p>
                       </div>
                     ) : (
-                      <ul className="space-y-1">
-                        {filteredTargetStudents.map((s) => (
-                          <li
+                      filteredRightStudents.map((s) => {
+                        const classes = studentClassMap[s.id];
+                        return (
+                          <div
                             key={s.id}
-                            className="flex items-center justify-between gap-2 text-sm rounded-lg px-3 py-2 bg-card hover:bg-muted/50 transition-colors"
+                            draggable
+                            onDragStart={(e) => {
+                              e.dataTransfer.effectAllowed = "move";
+                              e.dataTransfer.setData(
+                                "application/json",
+                                JSON.stringify({ type: "student", studentProfileId: s.id })
+                              );
+                            }}
+                            className="flex items-center gap-2 text-sm cursor-grab active:cursor-grabbing rounded-lg px-2.5 py-1.5 hover:bg-muted/50 transition-colors"
                           >
-                            <span className="text-foreground">
+                            <svg className="w-3 h-3 text-muted-foreground/40 shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                              <circle cx="9" cy="5" r="1.5" /><circle cx="15" cy="5" r="1.5" />
+                              <circle cx="9" cy="12" r="1.5" /><circle cx="15" cy="12" r="1.5" />
+                              <circle cx="9" cy="19" r="1.5" /><circle cx="15" cy="19" r="1.5" />
+                            </svg>
+                            <span className="text-foreground text-xs min-w-0 truncate">
                               {[s.korean_name, s.english_name].filter(Boolean).join(" / ") || "—"}
-                              {s.student_number && (
-                                <span className="ml-1.5 font-mono text-muted-foreground text-xs">
-                                  {s.student_number}
+                            </span>
+                            {s.student_number && (
+                              <span className="font-mono text-muted-foreground text-xs shrink-0">
+                                {s.student_number}
+                              </span>
+                            )}
+                            <span className="ml-auto shrink-0">
+                              {classes && classes.length > 0 ? (
+                                <span className="rounded bg-violet-100 px-1.5 py-0.5 text-[10px] font-medium text-violet-700">
+                                  {classes.join(", ")}
+                                </span>
+                              ) : (
+                                <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">
+                                  미배정
                                 </span>
                               )}
                             </span>
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setRemoveStudentTarget({ classId: targetClassId, row: s })
-                              }
-                              className="rounded bg-destructive/10 px-2 py-0.5 text-xs text-destructive hover:bg-destructive/20"
-                            >
-                              제외
-                            </button>
-                          </li>
-                        ))}
-                      </ul>
+                          </div>
+                        );
+                      })
                     )}
                   </div>
-
-                  {isDropOver && (
-                    <p className="text-xs text-emerald-600 font-medium text-center animate-pulse">
-                      드롭하여 학생을 추가합니다
-                    </p>
-                  )}
                 </>
               ) : (
                 <>
-                  {/* ===== 교재 관리 모드 ===== */}
+                  {/* ===== 교재 목록 ===== */}
                   <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-semibold text-foreground">{targetClass?.name}</h3>
-                      <p className="text-xs text-muted-foreground">
-                        담당: {targetClass?.teacher_name ?? "미지정"} · 교재 {targetTextbooksLoaded ? `${targetTextbooks.length}권` : "…"}
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setAddTextbookToTarget(true)}
-                      className="rounded-lg bg-blue-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-blue-500"
-                    >
-                      + 교재 배정
-                    </button>
+                    <h3 className="font-semibold text-foreground">전체 교재</h3>
+                    <span className="text-xs text-muted-foreground">
+                      {allTextbooksLoaded ? `${allTextbooks.length}권` : "…"}
+                    </span>
                   </div>
+                  <input
+                    type="search"
+                    placeholder="교재명 · 시리즈 · 레벨 검색"
+                    value={rightSearch}
+                    onChange={(e) => setRightSearch(e.target.value)}
+                    className="w-full rounded-lg border border-input px-3 py-1.5 text-sm text-foreground placeholder-muted-foreground bg-background"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    교재를 드래그하여 왼쪽 반에 배정하세요
+                  </p>
 
-                  {/* 교재 검색 */}
-                  <div className="flex items-center gap-2">
-                    <svg className="size-4 text-muted-foreground shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
-                    </svg>
-                    <input
-                      type="search"
-                      placeholder="교재명 · 시리즈 · 레벨 검색"
-                      value={textbookSearch}
-                      onChange={(e) => setTextbookSearch(e.target.value)}
-                      className="flex-1 rounded-lg border border-input px-3 py-1.5 text-sm text-foreground placeholder-muted-foreground bg-background"
-                    />
-                  </div>
-
-                  {/* 교재 목록 */}
-                  <div className="rounded-xl border-2 border-dashed border-blue-200 bg-blue-50/30 min-h-[200px] p-2">
-                    {!targetTextbooksLoaded ? (
-                      <div className="flex items-center justify-center h-[180px]">
+                  <div className="max-h-[calc(100vh-360px)] overflow-y-auto space-y-0.5 rounded-xl border border-muted p-1.5">
+                    {!allTextbooksLoaded ? (
+                      <div className="flex items-center justify-center py-8">
                         <p className="text-sm text-muted-foreground">불러오는 중…</p>
                       </div>
-                    ) : filteredTargetTextbooks.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center h-[180px] text-center">
+                    ) : filteredRightTextbooks.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-8 text-center">
                         <svg className="size-8 text-muted-foreground/30 mb-2" fill="none" viewBox="0 0 24 24" strokeWidth={1} stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
                         </svg>
                         <p className="text-sm text-muted-foreground">
-                          {textbookSearch.trim()
-                            ? "검색 결과가 없습니다."
-                            : "배정된 교재가 없습니다."}
+                          {rightSearch.trim() ? "검색 결과가 없습니다." : "등록된 교재가 없습니다."}
                         </p>
-                        {!textbookSearch.trim() && (
-                          <p className="text-xs text-muted-foreground mt-1">
-                            위의 &quot;+ 교재 배정&quot; 버튼으로 교재를 추가하세요
-                          </p>
-                        )}
                       </div>
                     ) : (
-                      <ul className="space-y-1">
-                        {filteredTargetTextbooks.map((ct) => (
-                          <li
-                            key={ct.id}
-                            className="flex items-center justify-between gap-2 text-sm rounded-lg px-3 py-2 bg-card hover:bg-muted/50 transition-colors"
-                          >
-                            <div className="min-w-0 flex-1">
-                              <span className="text-foreground text-sm">
-                                {ct.textbook_title}
+                      filteredRightTextbooks.map((t) => (
+                        <div
+                          key={t.id}
+                          draggable
+                          onDragStart={(e) => {
+                            e.dataTransfer.effectAllowed = "move";
+                            e.dataTransfer.setData(
+                              "application/json",
+                              JSON.stringify({ type: "textbook", textbookId: t.id })
+                            );
+                          }}
+                          className="flex items-center gap-2 text-sm cursor-grab active:cursor-grabbing rounded-lg px-2.5 py-1.5 hover:bg-muted/50 transition-colors"
+                        >
+                          <svg className="w-3 h-3 text-muted-foreground/40 shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                            <circle cx="9" cy="5" r="1.5" /><circle cx="15" cy="5" r="1.5" />
+                            <circle cx="9" cy="12" r="1.5" /><circle cx="15" cy="12" r="1.5" />
+                            <circle cx="9" cy="19" r="1.5" /><circle cx="15" cy="19" r="1.5" />
+                          </svg>
+                          <span className="text-foreground text-xs min-w-0 truncate">{t.title}</span>
+                          <div className="flex items-center gap-1.5 ml-auto shrink-0">
+                            {t.series && (
+                              <span className="text-[10px] text-muted-foreground">{t.series}</span>
+                            )}
+                            {t.level && (
+                              <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-medium text-blue-700">
+                                Lv.{t.level}
                               </span>
-                              <div className="flex items-center gap-2 mt-0.5">
-                                {ct.textbook_series && (
-                                  <span className="text-xs text-muted-foreground">
-                                    {ct.textbook_series}
-                                  </span>
-                                )}
-                                {ct.textbook_level && (
-                                  <span className="rounded bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">
-                                    Lv.{ct.textbook_level}
-                                  </span>
-                                )}
-                                <span className="text-xs text-muted-foreground/70">
-                                  {ct.total_units}단원
-                                </span>
-                              </div>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveTextbookFromTarget(ct.textbook_id)}
-                              className="rounded bg-destructive/10 px-2 py-0.5 text-xs text-destructive hover:bg-destructive/20 shrink-0"
-                            >
-                              제거
-                            </button>
-                          </li>
-                        ))}
-                      </ul>
+                            )}
+                            <span className="text-[10px] text-muted-foreground/70">
+                              {t.total_units}단원
+                            </span>
+                          </div>
+                        </div>
+                      ))
                     )}
                   </div>
                 </>
@@ -644,7 +613,6 @@ export function ClassesManager({
           onConfirm={async () => {
             await deleteClass(deleteTarget.id);
             setDeleteTarget(null);
-            if (targetClassId === deleteTarget.id) setTargetClassId("");
             router.refresh();
           }}
         />
@@ -663,17 +631,6 @@ export function ClassesManager({
           }}
         />
       )}
-      {addTextbookToTarget && targetClassId && (
-        <AddTextbookToClassModal
-          classId={targetClassId}
-          onClose={() => setAddTextbookToTarget(false)}
-          onSuccess={() => {
-            setAddTextbookToTarget(false);
-            loadTargetTextbooks(targetClassId);
-            router.refresh();
-          }}
-        />
-      )}
     </div>
   );
 }
@@ -682,71 +639,50 @@ export function ClassesManager({
 function ClassCard({
   classRow,
   students,
-  isTarget,
+  globalMode,
+  textbooks,
+  textbooksLoaded,
   onEdit,
   onDelete,
-  onAddStudent,
   onRemoveStudent,
-  onSelectAsTarget,
-  isCardDropTarget,
-  onCardDragOver,
-  onCardDragLeave,
-  onCardDrop,
+  onRemoveTextbook,
+  isDropTarget,
+  onDragOver,
+  onDragLeave,
+  onDrop,
 }: {
   classRow: ClassWithDetails;
   students: ClassStudentRow[];
-  isTarget: boolean;
+  globalMode: "students" | "textbooks";
+  textbooks: ClassTextbook[];
+  textbooksLoaded: boolean;
   onEdit: () => void;
   onDelete: () => void;
-  onAddStudent: () => void;
   onRemoveStudent: (row: ClassStudentRow) => void;
-  onSelectAsTarget: () => void;
-  isCardDropTarget: boolean;
-  onCardDragOver: () => void;
-  onCardDragLeave: () => void;
-  onCardDrop: (e: React.DragEvent) => void;
+  onRemoveTextbook: (textbookId: string) => void;
+  isDropTarget: boolean;
+  onDragOver: () => void;
+  onDragLeave: () => void;
+  onDrop: (e: React.DragEvent) => void;
 }) {
-  const router = useRouter();
-  const [activeTab, setActiveTab] = useState<"students" | "textbooks">("students");
-  const [textbooks, setTextbooks] = useState<ClassTextbook[]>([]);
-  const [textbooksLoaded, setTextbooksLoaded] = useState(false);
-  const [addTextbookOpen, setAddTextbookOpen] = useState(false);
-
-  const loadTextbooks = useCallback(async () => {
-    const data = await listClassTextbooks(classRow.id);
-    setTextbooks(data);
-    setTextbooksLoaded(true);
-  }, [classRow.id]);
-
-  useEffect(() => {
-    if (activeTab === "textbooks" && !textbooksLoaded) {
-      loadTextbooks();
-    }
-  }, [activeTab, textbooksLoaded, loadTextbooks]);
-
-  const handleRemoveTextbook = async (textbookId: string) => {
-    await removeTextbookFromClass(classRow.id, textbookId);
-    loadTextbooks();
-    router.refresh();
-  };
-
   return (
     <div
       className={`rounded-xl border-2 bg-card overflow-hidden transition-all ${
-        isTarget
-          ? "border-primary/50 ring-2 ring-primary/20"
-          : isCardDropTarget
-          ? "border-emerald-400 bg-emerald-50/30 shadow-md"
+        isDropTarget
+          ? globalMode === "students"
+            ? "border-emerald-400 bg-emerald-50/30 shadow-md"
+            : "border-blue-400 bg-blue-50/30 shadow-md"
           : "border-border"
       }`}
       onDragOver={(e) => {
         e.preventDefault();
-        onCardDragOver();
+        e.dataTransfer.dropEffect = "move";
+        onDragOver();
       }}
-      onDragLeave={() => onCardDragLeave()}
+      onDragLeave={() => onDragLeave()}
       onDrop={(e) => {
         e.preventDefault();
-        onCardDrop(e);
+        onDrop(e);
       }}
     >
       {/* 헤더 */}
@@ -756,22 +692,18 @@ function ClassCard({
           <span className="rounded-full bg-violet-100 px-2 py-0.5 text-xs font-medium text-violet-700">
             {classRow.student_count}명
           </span>
-          {isCardDropTarget && (
-            <span className="text-xs text-emerald-600 font-medium">여기에 놓기</span>
+          {isDropTarget && (
+            <span className={`text-xs font-medium animate-pulse ${
+              globalMode === "students" ? "text-emerald-600" : "text-blue-600"
+            }`}>
+              여기에 놓기
+            </span>
           )}
         </div>
         <div className="flex items-center gap-1.5">
           <span className="text-xs text-muted-foreground mr-1">
-            담당: {classRow.teacher_name ?? "—"}
+            담당: <TeacherBadges teachers={classRow.teachers} />
           </span>
-          <button
-            type="button"
-            onClick={onSelectAsTarget}
-            className="rounded-lg bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary hover:bg-primary/20"
-            title="오른쪽 대상 반으로 선택"
-          >
-            대상
-          </button>
           <button
             type="button"
             onClick={onEdit}
@@ -789,247 +721,80 @@ function ClassCard({
         </div>
       </div>
 
-      {/* 탭 */}
-      <div className="flex border-b">
-        <button
-          type="button"
-          onClick={() => setActiveTab("students")}
-          className={`flex-1 px-4 py-1.5 text-xs font-medium transition-colors ${
-            activeTab === "students"
-              ? "text-foreground border-b-2 border-primary bg-card"
-              : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
-          }`}
-        >
-          학생 ({students.length})
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab("textbooks")}
-          className={`flex-1 px-4 py-1.5 text-xs font-medium transition-colors ${
-            activeTab === "textbooks"
-              ? "text-foreground border-b-2 border-primary bg-card"
-              : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
-          }`}
-        >
-          교재 ({textbooksLoaded ? textbooks.length : "…"})
-        </button>
-      </div>
-
-      {/* 콘텐츠 */}
+      {/* 콘텐츠 - globalMode에 따라 학생 또는 교재 표시 */}
       <div className="px-4 py-2.5">
-        {activeTab === "students" ? (
-          <>
-            <div className="flex justify-end mb-1.5">
-              <button
-                type="button"
-                onClick={onAddStudent}
-                className="rounded-lg bg-emerald-600 px-2 py-0.5 text-xs font-medium text-white hover:bg-emerald-500"
-              >
-                + 학생 추가
-              </button>
-            </div>
-            {students.length === 0 ? (
-              <p className="text-xs text-muted-foreground py-2">소속 학생 없음</p>
-            ) : (
-              <ul className="space-y-1">
-                {students.map((s) => (
-                  <li
-                    key={s.id}
-                    draggable
-                    onDragStart={(e) => {
-                      e.dataTransfer.effectAllowed = "move";
-                      e.dataTransfer.setData(
-                        "application/json",
-                        JSON.stringify({
-                          studentProfileId: s.student_profile_id,
-                          fromClassId: classRow.id,
-                          classStudentId: s.id,
-                        })
-                      );
-                    }}
-                    className="flex items-center justify-between gap-2 text-sm cursor-grab active:cursor-grabbing rounded-lg px-2 py-1 -mx-1 hover:bg-muted/50 transition-colors"
-                  >
-                    <span className="text-foreground flex items-center gap-1.5">
-                      <svg className="w-3 h-3 text-muted-foreground/50 shrink-0" fill="currentColor" viewBox="0 0 24 24">
-                        <circle cx="9" cy="5" r="1.5" /><circle cx="15" cy="5" r="1.5" />
-                        <circle cx="9" cy="12" r="1.5" /><circle cx="15" cy="12" r="1.5" />
-                        <circle cx="9" cy="19" r="1.5" /><circle cx="15" cy="19" r="1.5" />
-                      </svg>
-                      <span className="text-xs">
-                        {[s.korean_name, s.english_name].filter(Boolean).join(" / ") || "—"}
+        {globalMode === "students" ? (
+          students.length === 0 ? (
+            <p className="text-xs text-muted-foreground py-2 text-center">
+              {isDropTarget ? "여기에 학생을 놓으세요" : "소속 학생 없음"}
+            </p>
+          ) : (
+            <ul className="space-y-1">
+              {students.map((s) => (
+                <li
+                  key={s.id}
+                  className="flex items-center justify-between gap-2 text-sm rounded-lg px-2 py-1 hover:bg-muted/50 transition-colors"
+                >
+                  <span className="text-foreground text-xs">
+                    {[s.korean_name, s.english_name].filter(Boolean).join(" / ") || "—"}
+                    {s.student_number && (
+                      <span className="ml-1.5 font-mono text-muted-foreground text-xs">
+                        {s.student_number}
                       </span>
-                      {s.student_number && (
-                        <span className="font-mono text-muted-foreground text-xs">
-                          {s.student_number}
-                        </span>
-                      )}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => onRemoveStudent(s)}
-                      className="rounded bg-destructive/10 px-1.5 py-0.5 text-xs text-destructive hover:bg-destructive/20"
-                    >
-                      제외
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </>
+                    )}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => onRemoveStudent(s)}
+                    className="rounded bg-destructive/10 px-1.5 py-0.5 text-xs text-destructive hover:bg-destructive/20"
+                  >
+                    제외
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )
+        ) : !textbooksLoaded ? (
+          <p className="text-xs text-muted-foreground py-2 text-center">불러오는 중…</p>
+        ) : textbooks.length === 0 ? (
+          <p className="text-xs text-muted-foreground py-2 text-center">
+            {isDropTarget ? "여기에 교재를 놓으세요" : "배정된 교재 없음"}
+          </p>
         ) : (
-          <>
-            <div className="flex justify-end mb-1.5">
-              <button
-                type="button"
-                onClick={() => setAddTextbookOpen(true)}
-                className="rounded-lg bg-emerald-600 px-2 py-0.5 text-xs font-medium text-white hover:bg-emerald-500"
+          <ul className="space-y-1">
+            {textbooks.map((ct) => (
+              <li
+                key={ct.id}
+                className="flex items-center justify-between gap-2 text-sm rounded-lg px-2 py-1 hover:bg-muted/50 transition-colors"
               >
-                + 교재 배정
-              </button>
-            </div>
-            {!textbooksLoaded ? (
-              <p className="text-xs text-muted-foreground py-2">불러오는 중…</p>
-            ) : textbooks.length === 0 ? (
-              <p className="text-xs text-muted-foreground py-2">배정된 교재 없음</p>
-            ) : (
-              <ul className="space-y-1">
-                {textbooks.map((ct) => (
-                  <li
-                    key={ct.id}
-                    className="flex items-center justify-between gap-2 text-sm"
-                  >
-                    <span className="text-foreground text-xs">
-                      {ct.textbook_title}
-                      {ct.textbook_level && (
-                        <span className="ml-1.5 text-muted-foreground">
-                          Lv.{ct.textbook_level}
-                        </span>
-                      )}
-                      <span className="ml-1.5 text-muted-foreground/70">
-                        {ct.total_units}단원
-                      </span>
+                <span className="text-foreground text-xs">
+                  {ct.textbook_title}
+                  {ct.textbook_level && (
+                    <span className="ml-1.5 text-muted-foreground">
+                      Lv.{ct.textbook_level}
                     </span>
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveTextbook(ct.textbook_id)}
-                      className="rounded bg-destructive/10 px-1.5 py-0.5 text-xs text-destructive hover:bg-destructive/20"
-                    >
-                      제거
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </>
+                  )}
+                  <span className="ml-1.5 text-muted-foreground/70">
+                    {ct.total_units}단원
+                  </span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => onRemoveTextbook(ct.textbook_id)}
+                  className="rounded bg-destructive/10 px-1.5 py-0.5 text-xs text-destructive hover:bg-destructive/20"
+                >
+                  제거
+                </button>
+              </li>
+            ))}
+          </ul>
         )}
       </div>
-
-      {addTextbookOpen && (
-        <AddTextbookToClassModal
-          classId={classRow.id}
-          onClose={() => setAddTextbookOpen(false)}
-          onSuccess={() => {
-            setAddTextbookOpen(false);
-            loadTextbooks();
-            router.refresh();
-          }}
-        />
-      )}
     </div>
   );
 }
 
 /* ===== 모달 컴포넌트들 ===== */
-
-function AddTextbookToClassModal({
-  classId,
-  onClose,
-  onSuccess,
-}: {
-  classId: string;
-  onClose: () => void;
-  onSuccess: () => void;
-}) {
-  const [options, setOptions] = useState<Textbook[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedId, setSelectedId] = useState("");
-  const [search, setSearch] = useState("");
-  const [pending, setPending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    listTextbooksNotInClass(classId).then((list) => {
-      setOptions(list);
-      setLoading(false);
-    });
-  }, [classId]);
-
-  const filtered = search.trim()
-    ? options.filter(
-        (t) =>
-          t.title.toLowerCase().includes(search.toLowerCase()) ||
-          (t.series && t.series.toLowerCase().includes(search.toLowerCase()))
-      )
-    : options;
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedId) return;
-    setPending(true);
-    setError(null);
-    const result = await assignTextbookToClass(classId, selectedId);
-    setPending(false);
-    if (result?.error) {
-      setError(result.error);
-      return;
-    }
-    onSuccess();
-  };
-
-  return (
-    <Modal title="교재 배정" onClose={onClose}>
-      {loading ? (
-        <p className="py-4 text-center text-sm text-muted-foreground">불러오는 중…</p>
-      ) : options.length === 0 ? (
-        <p className="py-4 text-center text-sm text-muted-foreground">
-          배정 가능한 교재가 없습니다. 먼저 교재 관리에서 교재를 등록하세요.
-        </p>
-      ) : (
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {error && <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
-          <input
-            type="search"
-            placeholder="교재명 검색"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full rounded-lg border border-input px-3 py-2 text-sm text-foreground placeholder-muted-foreground bg-background"
-          />
-          <select
-            value={selectedId}
-            onChange={(e) => setSelectedId(e.target.value)}
-            className="w-full rounded-lg border border-input px-3 py-2 text-sm text-foreground bg-background"
-            required
-          >
-            <option value="">교재를 선택하세요</option>
-            {filtered.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.title} {t.level ? `(Lv.${t.level})` : ""} — {t.total_units}단원
-              </option>
-            ))}
-          </select>
-          <div className="flex justify-end gap-2 pt-2">
-            <button type="button" onClick={onClose} className="rounded-lg bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground hover:bg-secondary/80">
-              취소
-            </button>
-            <button type="submit" disabled={pending} className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500 disabled:opacity-50">
-              {pending ? "배정 중…" : "배정"}
-            </button>
-          </div>
-        </form>
-      )}
-    </Modal>
-  );
-}
 
 function AddClassModal({
   teachers,
@@ -1041,15 +806,28 @@ function AddClassModal({
   onSuccess: () => void;
 }) {
   const [name, setName] = useState("");
-  const [teacherId, setTeacherId] = useState("");
+  const [selectedTeacherIds, setSelectedTeacherIds] = useState<string[]>([]);
+  const [teacherSearch, setTeacherSearch] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const toggleTeacher = (id: string) => {
+    setSelectedTeacherIds((prev) =>
+      prev.includes(id) ? prev.filter((t) => t !== id) : prev.length < 2 ? [...prev, id] : prev
+    );
+  };
+
+  const filteredTeachers = useMemo(() => {
+    if (!teacherSearch.trim()) return teachers;
+    const q = teacherSearch.trim().toLowerCase();
+    return teachers.filter((t) => t.name.toLowerCase().includes(q));
+  }, [teachers, teacherSearch]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setPending(true);
     setError(null);
-    const result = await createClass(name.trim(), teacherId || null);
+    const result = await createClass(name.trim(), selectedTeacherIds);
     setPending(false);
     if (result?.error) {
       setError(result.error);
@@ -1080,21 +858,46 @@ function AddClassModal({
           />
         </div>
         <div>
-          <label className="mb-1 block text-sm font-medium text-foreground">
-            담당 선생님
+          <label className="mb-2 block text-sm font-medium text-foreground">
+            담당 선생님 <span className="text-muted-foreground font-normal">(최대 2명)</span>
           </label>
-          <select
-            value={teacherId}
-            onChange={(e) => setTeacherId(e.target.value)}
-            className="w-full rounded-lg border border-input px-3 py-2 text-foreground bg-background"
-          >
-            <option value="">선택 안 함</option>
-            {teachers.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.name}
-              </option>
+          <input
+            type="search"
+            placeholder="선생님 이름 검색"
+            value={teacherSearch}
+            onChange={(e) => setTeacherSearch(e.target.value)}
+            className="w-full rounded-lg border border-input px-3 py-1.5 text-sm text-foreground placeholder-muted-foreground bg-background mb-2"
+          />
+          <div className="space-y-1.5 max-h-48 overflow-y-auto rounded-lg border border-input p-2">
+            {filteredTeachers.map((t) => (
+              <label
+                key={t.id}
+                className={`flex items-center gap-2 rounded-lg px-2 py-1.5 cursor-pointer transition-colors ${
+                  selectedTeacherIds.includes(t.id) ? "bg-primary/10" : "hover:bg-muted/50"
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  checked={selectedTeacherIds.includes(t.id)}
+                  onChange={() => toggleTeacher(t.id)}
+                  disabled={!selectedTeacherIds.includes(t.id) && selectedTeacherIds.length >= 2}
+                  className="rounded"
+                />
+                <span className="text-sm text-foreground">{t.name}</span>
+                <span className={`ml-auto rounded px-1.5 py-0.5 text-xs font-medium ${
+                  t.teacher_type === "native" ? "bg-blue-100 text-blue-700" : "bg-emerald-100 text-emerald-700"
+                }`}>
+                  {t.teacher_type === "native" ? "원어민" : "한국인"}
+                </span>
+              </label>
             ))}
-          </select>
+            {teachers.length === 0 && (
+              <p className="text-xs text-muted-foreground py-2 text-center">등록된 교사가 없습니다.</p>
+            )}
+            {teachers.length > 0 && filteredTeachers.length === 0 && (
+              <p className="text-xs text-muted-foreground py-2 text-center">검색 결과 없음</p>
+            )}
+          </div>
         </div>
         <div className="flex justify-end gap-2 pt-2">
           <button
@@ -1129,9 +932,24 @@ function EditClassModal({
   onSuccess: () => void;
 }) {
   const [name, setName] = useState(classRow.name);
-  const [teacherId, setTeacherId] = useState(classRow.teacher_profile_id ?? "");
+  const [selectedTeacherIds, setSelectedTeacherIds] = useState<string[]>(
+    classRow.teachers.map((t) => t.profile_id)
+  );
+  const [teacherSearch, setTeacherSearch] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const toggleTeacher = (id: string) => {
+    setSelectedTeacherIds((prev) =>
+      prev.includes(id) ? prev.filter((t) => t !== id) : prev.length < 2 ? [...prev, id] : prev
+    );
+  };
+
+  const filteredTeachers = useMemo(() => {
+    if (!teacherSearch.trim()) return teachers;
+    const q = teacherSearch.trim().toLowerCase();
+    return teachers.filter((t) => t.name.toLowerCase().includes(q));
+  }, [teachers, teacherSearch]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1140,7 +958,7 @@ function EditClassModal({
     const result = await updateClass(
       classRow.id,
       name.trim(),
-      teacherId || null
+      selectedTeacherIds
     );
     setPending(false);
     if (result?.error) {
@@ -1171,21 +989,43 @@ function EditClassModal({
           />
         </div>
         <div>
-          <label className="mb-1 block text-sm font-medium text-foreground">
-            담당 선생님
+          <label className="mb-2 block text-sm font-medium text-foreground">
+            담당 선생님 <span className="text-muted-foreground font-normal">(최대 2명)</span>
           </label>
-          <select
-            value={teacherId}
-            onChange={(e) => setTeacherId(e.target.value)}
-            className="w-full rounded-lg border border-input px-3 py-2 text-foreground bg-background"
-          >
-            <option value="">선택 안 함</option>
-            {teachers.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.name}
-              </option>
+          <input
+            type="search"
+            placeholder="선생님 이름 검색"
+            value={teacherSearch}
+            onChange={(e) => setTeacherSearch(e.target.value)}
+            className="w-full rounded-lg border border-input px-3 py-1.5 text-sm text-foreground placeholder-muted-foreground bg-background mb-2"
+          />
+          <div className="space-y-1.5 max-h-48 overflow-y-auto rounded-lg border border-input p-2">
+            {filteredTeachers.map((t) => (
+              <label
+                key={t.id}
+                className={`flex items-center gap-2 rounded-lg px-2 py-1.5 cursor-pointer transition-colors ${
+                  selectedTeacherIds.includes(t.id) ? "bg-primary/10" : "hover:bg-muted/50"
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  checked={selectedTeacherIds.includes(t.id)}
+                  onChange={() => toggleTeacher(t.id)}
+                  disabled={!selectedTeacherIds.includes(t.id) && selectedTeacherIds.length >= 2}
+                  className="rounded"
+                />
+                <span className="text-sm text-foreground">{t.name}</span>
+                <span className={`ml-auto rounded px-1.5 py-0.5 text-xs font-medium ${
+                  t.teacher_type === "native" ? "bg-blue-100 text-blue-700" : "bg-emerald-100 text-emerald-700"
+                }`}>
+                  {t.teacher_type === "native" ? "원어민" : "한국인"}
+                </span>
+              </label>
             ))}
-          </select>
+            {teachers.length > 0 && filteredTeachers.length === 0 && (
+              <p className="text-xs text-muted-foreground py-2 text-center">검색 결과 없음</p>
+            )}
+          </div>
         </div>
         <div className="flex justify-end gap-2 pt-2">
           <button

@@ -3,6 +3,7 @@ export type {
   DashboardStats,
   ReportCard,
   ReportCardListItem,
+  ClassTeacherInfo,
   ClassWithDetails,
   ClassStudentRow,
   StudentProfile,

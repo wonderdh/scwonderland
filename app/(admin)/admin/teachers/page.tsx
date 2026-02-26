@@ -1,6 +1,7 @@
 import {
   deleteUserById,
   listUsersByRole,
+  listClassesWithDetails,
   updateTeacherProfile,
 } from "../actions";
 import { AdminListSidebar } from "../components/AdminListSidebar";
@@ -23,7 +24,10 @@ export default async function AdminTeachersPage({
 }: {
   searchParams: Promise<{ section?: string; selected?: string; tab?: string }>;
 }) {
-  const users = await listUsersByRole("teacher");
+  const [users, classes] = await Promise.all([
+    listUsersByRole("teacher"),
+    listClassesWithDetails(),
+  ]);
   const { section, selected, tab } = await searchParams;
   const selectedUser = selected ? users.find((u) => u.id === selected) : null;
   const currentTab = parseTab(tab);
@@ -57,7 +61,7 @@ export default async function AdminTeachersPage({
                 <TeacherInfoCard user={selectedUser} onUpdate={updateTeacherProfile} />
               )}
               {currentTab === "classes" && (
-                <TeacherClassesTab teacherProfileId={selectedUser.id} />
+                <TeacherClassesTab teacherProfileId={selectedUser.id} classes={classes} />
               )}
             </div>
           </>

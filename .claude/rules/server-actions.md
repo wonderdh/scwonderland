@@ -4,11 +4,11 @@
 
 **user-actions.ts — 사용자 관리:**
 - `createStudent(formData)` — 학생 계정 생성 (AdminClient, email_confirm: true)
-- `createTeacher(formData)` — 교사 계정 생성
+- `createTeacher(formData)` — 교사 계정 생성 (teacher_type: korean/native)
 - `listUsersByRole(role)` — 역할별 사용자 목록 (profiles + auth + students/teachers 조인)
 - `deleteUserById(formData)` — 사용자 삭제 (cascade)
 - `updateStudentProfile(formData)` — 학생 이름 수정 (profiles + students 테이블)
-- `updateTeacherProfile(formData)` — 교사 이름 수정
+- `updateTeacherProfile(formData)` — 교사 이름/유형 수정
 - `resetUserPassword(userId, newPassword)` — 비밀번호 초기화
 - `listAllStudents()` — 전체 학생 목록
 
@@ -22,12 +22,12 @@
 - `listClassesWithDetails()` — 전체 반 목록 (교사명, 학생 수 포함)
 - `getClassWithStudents(classId)` — 반 상세 + 학생 목록
 - `getAllClassStudentsFlat()` — 전체 반-학생 매핑 (flat)
-- `createClass(name, teacherProfileId)` — 반 생성
-- `updateClass(classId, name, teacherProfileId)` — 반 수정
+- `createClass(name, teacherProfileIds[])` — 반 생성 (교사 최대 2명)
+- `updateClass(classId, name, teacherProfileIds[])` — 반 수정 (교사 재배정)
 - `deleteClass(classId)` — 반 삭제
 - `addStudentToClass(classId, studentProfileId)` — 학생 등록
 - `removeStudentFromClass(classStudentId)` — 학생 제거
-- `listTeachersForSelect()` — 교사 드롭다운 목록
+- `listTeachersForSelect()` — 교사 목록 (id, name, teacher_type)
 - `listStudentsNotInClass(classId)` — 반에 미등록 학생 목록
 
 **dashboard-actions.ts:** `getDashboardStats()` — 대시보드 통계 (학생, 교사, 반, 리포트카드, 공지사항)

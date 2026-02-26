@@ -7,9 +7,10 @@ Supabase Auth Users
     │
     ├── profiles (id, role: "admin"|"student"|"teacher", first_name, last_name)
     │   ├── students (profile_id FK, korean_name, english_name, student_number [auto])
-    │   └── teachers (profile_id FK, name, teacher_number [auto])
+    │   └── teachers (profile_id FK, name, teacher_number [auto], teacher_type: "korean"|"native")
     │
-    ├── classes (id, name, teacher_profile_id FK nullable)
+    ├── classes (id, name)
+    │   ├── class_teachers (class_id FK, teacher_profile_id FK) [junction, 최대 2명]
     │   └── class_students (class_id FK, student_profile_id FK) [junction]
     │
     ├── report_cards (student_profile_id FK, author_id FK, year, month, content, reply)

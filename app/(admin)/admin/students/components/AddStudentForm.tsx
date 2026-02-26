@@ -1,21 +1,31 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { createStudent } from "../../actions";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 
+type FormState = { error?: string; success?: string } | null;
+
 export function AddStudentForm() {
+  const formRef = useRef<HTMLFormElement>(null);
+  const router = useRouter();
   const [state, formAction] = useActionState(
-    async (_: { error?: string } | null, formData: FormData) => {
-      return createStudent(formData);
+    async (_: FormState, formData: FormData) => {
+      const result = await createStudent(formData);
+      if (result.error) return { error: result.error };
+      formRef.current?.reset();
+      router.refresh();
+      return { success: "학생이 추가되었습니다." };
     },
-    null as { error?: string } | null
+    null as FormState
   );
 
   return (
     <form
+      ref={formRef}
       action={formAction}
       className="flex flex-wrap items-end gap-3 p-4 rounded-xl border bg-card"
     >
@@ -75,6 +85,11 @@ export function AddStudentForm() {
       {state?.error && (
         <p className="w-full text-sm text-destructive" role="alert">
           {state.error}
+        </p>
+      )}
+      {state?.success && (
+        <p className="w-full text-sm text-green-600" role="status">
+          {state.success}
         </p>
       )}
     </form>

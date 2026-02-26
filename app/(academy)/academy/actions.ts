@@ -34,7 +34,7 @@ export async function getCurrentStudentProfile(): Promise<StudentProfile | null>
   };
 }
 
-/** 로그인한 학생 본인이 소속된 반 목록 (반 이름, 담당 선생). 학생이 아니면 []. */
+/** 로그인한 학생 본인이 소속된 반 목록 (반 이름, 담당 선생들). 학생이 아니면 []. */
 export async function getCurrentStudentClasses(): Promise<StudentClassItem[]> {
   const supabase = await createClient();
   const {
@@ -59,31 +59,41 @@ export async function getCurrentStudentClasses(): Promise<StudentClassItem[]> {
   const classIds = members.map((m) => m.class_id);
   const { data: classes } = await admin
     .from("classes")
-    .select("id, name, teacher_profile_id")
+    .select("id, name")
     .in("id", classIds);
   if (!classes?.length) return [];
 
+  // class_teachers 중간 테이블에서 교사 매핑 조회
+  const { data: classTeachers } = await admin
+    .from("class_teachers")
+    .select("class_id, teacher_profile_id")
+    .in("class_id", classIds);
+
   const teacherIds = [
-    ...new Set(
-      (classes as { teacher_profile_id: string | null }[])
-        .map((c) => c.teacher_profile_id)
-        .filter(Boolean) as string[]
-    ),
+    ...new Set((classTeachers ?? []).map((ct) => ct.teacher_profile_id)),
   ];
-  let teacherMap = new Map<string, string>();
+  let teacherMap = new Map<string, { name: string; teacher_type: string }>();
   if (teacherIds.length > 0) {
     const { data: teachers } = await admin
       .from("teachers")
-      .select("profile_id, name")
+      .select("profile_id, name, teacher_type")
       .in("profile_id", teacherIds);
-    teacherMap = new Map((teachers ?? []).map((t) => [t.profile_id, t.name ?? ""]));
+    teacherMap = new Map(
+      (teachers ?? []).map((t) => [t.profile_id, { name: t.name ?? "", teacher_type: t.teacher_type ?? "korean" }])
+    );
   }
 
   return classes.map((c) => ({
     class_name: c.name,
-    teacher_name: c.teacher_profile_id
-      ? teacherMap.get(c.teacher_profile_id) ?? null
-      : null,
+    teachers: (classTeachers ?? [])
+      .filter((ct) => ct.class_id === c.id)
+      .map((ct) => {
+        const t = teacherMap.get(ct.teacher_profile_id);
+        return {
+          name: t?.name ?? null,
+          teacher_type: (t?.teacher_type ?? "korean") as "korean" | "native",
+        };
+      }),
   }));
 }
 
@@ -106,7 +116,7 @@ export async function getCurrentTeacherProfile(): Promise<TeacherProfile | null>
   const admin = createAdminClient();
   const { data: teacher } = await admin
     .from("teachers")
-    .select("profile_id, name, teacher_number")
+    .select("profile_id, name, teacher_number, teacher_type")
     .eq("profile_id", user.id)
     .single();
 
@@ -115,6 +125,7 @@ export async function getCurrentTeacherProfile(): Promise<TeacherProfile | null>
     email: user.email ?? "",
     name: teacher?.name ?? profile?.first_name ?? null,
     teacher_number: teacher?.teacher_number ?? null,
+    teacher_type: (teacher?.teacher_type ?? "korean") as "korean" | "native",
   };
 }
 
@@ -134,14 +145,21 @@ export async function getTeacherClasses(): Promise<TeacherClassWithStudents[]> {
   if (profile?.role !== "teacher") return [];
 
   const admin = createAdminClient();
+  // class_teachers 중간 테이블에서 담당 반 조회
+  const { data: classTeacherRows } = await admin
+    .from("class_teachers")
+    .select("class_id")
+    .eq("teacher_profile_id", user.id);
+  if (!classTeacherRows?.length) return [];
+
+  const classIds = classTeacherRows.map((ct) => ct.class_id);
   const { data: classes } = await admin
     .from("classes")
     .select("id, name")
-    .eq("teacher_profile_id", user.id)
+    .in("id", classIds)
     .order("name");
   if (!classes?.length) return [];
 
-  const classIds = classes.map((c) => c.id);
   const { data: members } = await admin
     .from("class_students")
     .select("class_id, student_profile_id")
@@ -284,7 +302,7 @@ export async function getCurrentStudentTextbooks(): Promise<StudentTextbookItem[
   const textbookIds = [...new Set(progress.map((p) => p.textbook_id))];
   const { data: textbooks } = await admin
     .from("textbooks")
-    .select("id, title, series, level, category, total_units")
+    .select("id, title, series, level, category, total_units, cover_image")
     .in("id", textbookIds)
     .eq("is_active", true);
   const textbookMap = new Map((textbooks ?? []).map((t) => [t.id, t]));
@@ -310,6 +328,7 @@ export async function getCurrentStudentTextbooks(): Promise<StudentTextbookItem[
         textbook_series: t.series ?? null,
         textbook_level: t.level ?? null,
         textbook_category: t.category ?? "general",
+        textbook_cover_image: t.cover_image ?? null,
         total_units: t.total_units ?? 0,
         source_type: p.source_type as "class" | "individual",
         source_class_name: p.source_class_id ? classMap.get(p.source_class_id) ?? null : null,

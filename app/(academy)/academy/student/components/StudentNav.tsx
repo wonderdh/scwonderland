@@ -59,14 +59,14 @@ export function StudentNav() {
           <Link
             key={href}
             href={href}
-            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-all ${
+            className={`inline-flex items-center gap-1 sm:gap-1.5 rounded-lg px-2 sm:px-3 py-2 text-xs sm:text-sm font-medium transition-all ${
               isActive
                 ? activeColor
                 : "text-muted-foreground hover:bg-muted hover:text-foreground"
             }`}
           >
             {icon}
-            <span className="hidden sm:inline">{label}</span>
+            <span>{label}</span>
           </Link>
         );
       })}

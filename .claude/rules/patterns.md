@@ -52,7 +52,9 @@ normalizeEmail("user@gmail.com")  // → "user@gmail.com"
 - 외부 이미지: Unsplash + Supabase Storage 허용 (`next.config.ts` remotePatterns)
 - SideBar 외부 링크: Firebase 리포트카드, 레벨테스트, YouTube, Facebook
 - Admin 삭제 시 cascade (DB 제약조건으로 관련 데이터 자동 삭제)
-- 리포트카드: 교사가 content 작성 → 학생이 reply 작성 (본인만)
+- 리포트카드: 원어민(native) 교사가 content 작성 → 학생이 reply 작성 (본인만)
+- 교사 유형: `korean`(한국인) / `native`(원어민), teachers.teacher_type으로 구분
+- 반당 담당 교사 최대 2명 (class_teachers 중간 테이블), 생성/수정 시 체크박스로 선택
 - `router.refresh()`로 Server Component 데이터 갱신 (mutation 후)
 - 교재 삭제는 soft delete (`is_active = false`) — 진도 데이터 보존, Storage 커버 이미지는 삭제
 - 교재 반 배정 시 해당 반 학생들에게 자동으로 `student_textbook_progress` 생성

@@ -74,9 +74,27 @@ export default async function StudentInfoPage() {
                   className="flex items-center justify-between rounded-lg border border-green-100 bg-gradient-to-r from-green-50/80 to-transparent px-4 py-3"
                 >
                   <span className="font-medium">{item.class_name}</span>
-                  <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
-                    담당: {item.teacher_name ?? "미지정"}
-                  </Badge>
+                  <div className="flex items-center gap-1.5">
+                    {item.teachers.length === 0 ? (
+                      <Badge variant="outline" className="bg-gray-50 text-gray-500 border-gray-200">
+                        담당: 미지정
+                      </Badge>
+                    ) : (
+                      item.teachers.map((t, ti) => (
+                        <Badge
+                          key={ti}
+                          variant="outline"
+                          className={
+                            t.teacher_type === "native"
+                              ? "bg-blue-50 text-blue-700 border-blue-200"
+                              : "bg-emerald-50 text-emerald-700 border-emerald-200"
+                          }
+                        >
+                          {t.name ?? "—"} ({t.teacher_type === "native" ? "원어민" : "한국인"})
+                        </Badge>
+                      ))
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
