@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
 import { TeacherNav } from "./components/TeacherNav";
 
@@ -26,9 +27,18 @@ export default async function TeacherLayout({
     redirect("/academy/dashboard");
   }
 
+  const admin = createAdminClient();
+  const { data: teacher } = await admin
+    .from("teachers")
+    .select("teacher_type")
+    .eq("profile_id", user.id)
+    .single();
+
+  const teacherType = (teacher?.teacher_type ?? "korean") as "korean" | "native";
+
   return (
     <div className="mx-auto max-w-4xl">
-      <TeacherNav />
+      <TeacherNav teacherType={teacherType} />
       {children}
     </div>
   );

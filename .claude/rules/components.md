@@ -42,6 +42,7 @@
 | `LoginForm` | `login/` | 이메일/비밀번호 로그인 (에러 코드별 한국어 메시지) |
 | `StudentNav` | `student/components/` | 학생 포털 탭 (내 정보/리포트카드/교재/숙제) |
 | `ReportCardReplyForm` | `student/components/` | 학생 리포트카드 답변 작성 폼 |
-| `TeacherNav` | `teacher/components/` | 교사 포털 탭 (대시보드/리포트카드/교재) |
-| `TeacherReportClient` | `teacher/components/` | 교사 리포트카드 작성/관리 |
-| `TeacherTextbookClient` | `teacher/components/` | 교사 반별 교재 현황 조회 |
+| `StudentTextbooksClient` | `student/textbooks/` | 학생 교재 카드 UI (진행 중/완료 분리, 커버 이미지, 진도 바) |
+| `TeacherNav` | `teacher/components/` | 교사 포털 탭 (teacherType별 분기: 한국인 4탭/원어민 3탭 영어) |
+| `TeacherReportClient` | `teacher/components/` | 교사 리포트카드 작성/관리 (teacherType별 라벨) |
+| `TeacherTextbookClient` | `teacher/components/` | 교사 반별 교재 현황 조회 (teacherType별 라벨) |

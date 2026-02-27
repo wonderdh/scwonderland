@@ -1,4 +1,4 @@
-import { getTeacherClasses, getClassTextbooks } from "../../actions";
+import { getCurrentTeacherProfile, getTeacherClasses, getClassTextbooks } from "../../actions";
 import { TeacherTextbookClient } from "../components/TeacherTextbookClient";
 
 export default async function TeacherTextbooksPage({
@@ -6,7 +6,8 @@ export default async function TeacherTextbooksPage({
 }: {
   searchParams: Promise<{ class?: string }>;
 }) {
-  const [classes, params] = await Promise.all([
+  const [profile, classes, params] = await Promise.all([
+    getCurrentTeacherProfile(),
     getTeacherClasses(),
     searchParams,
   ]);
@@ -22,6 +23,7 @@ export default async function TeacherTextbooksPage({
       classes={classes}
       initialClassId={initialClassId}
       initialTextbooks={initialTextbooks}
+      teacherType={profile?.teacher_type ?? "korean"}
     />
   );
 }

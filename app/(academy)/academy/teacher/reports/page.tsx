@@ -1,4 +1,5 @@
-import { getTeacherClasses } from "../../actions";
+import { getCurrentTeacherProfile, getTeacherClasses } from "../../actions";
+import { redirect } from "next/navigation";
 import { TeacherReportClient } from "../components/TeacherReportClient";
 
 export default async function TeacherReportsPage({
@@ -6,15 +7,21 @@ export default async function TeacherReportsPage({
 }: {
   searchParams: Promise<{ class?: string }>;
 }) {
-  const [classes, params] = await Promise.all([
+  const [profile, classes, params] = await Promise.all([
+    getCurrentTeacherProfile(),
     getTeacherClasses(),
     searchParams,
   ]);
+
+  if (profile?.teacher_type === "korean") {
+    redirect("/academy/teacher");
+  }
 
   return (
     <TeacherReportClient
       classes={classes}
       initialClassId={params.class ?? null}
+      teacherType={profile?.teacher_type ?? "native"}
     />
   );
 }

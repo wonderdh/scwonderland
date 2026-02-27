@@ -642,6 +642,81 @@ export async function listTextbooksNotInClass(classId: string): Promise<Textbook
   return allTextbooks.filter((t) => !assignedIds.has(t.id));
 }
 
+// 반 전체 학생의 교재 진도를 일괄 업데이트
+export async function batchUpdateProgress(
+  classId: string,
+  textbookId: string,
+  completedUnits: number,
+  excludeStudentIds: string[]
+): Promise<{ error?: string; updatedCount?: number }> {
+  const supabase = createAdminClient();
+
+  // 교재의 total_units 조회
+  const { data: textbook } = await supabase
+    .from("textbooks")
+    .select("total_units")
+    .eq("id", textbookId)
+    .single();
+
+  if (!textbook) return { error: "교재를 찾을 수 없습니다." };
+
+  const totalUnits = textbook.total_units ?? 999;
+  const units = Math.max(0, Math.min(completedUnits, totalUnits));
+
+  // 해당 반+교재의 진도 레코드 조회
+  const { data: progressRows } = await supabase
+    .from("student_textbook_progress")
+    .select("id, student_profile_id")
+    .eq("textbook_id", textbookId)
+    .eq("source_class_id", classId);
+
+  if (!progressRows?.length) return { error: "업데이트할 진도 기록이 없습니다." };
+
+  // 제외 목록에 없는 학생만 필터
+  const excludeSet = new Set(excludeStudentIds);
+  const targetRows = progressRows.filter(
+    (r) => !excludeSet.has(r.student_profile_id)
+  );
+
+  if (targetRows.length === 0) return { error: "업데이트할 학생이 없습니다." };
+
+  // 상태 결정
+  let status: "not_started" | "in_progress" | "completed" = "not_started";
+  let started_at: string | null = null;
+  let completed_at: string | null = null;
+
+  if (units >= totalUnits) {
+    status = "completed";
+    started_at = new Date().toISOString();
+    completed_at = new Date().toISOString();
+  } else if (units > 0) {
+    status = "in_progress";
+    started_at = new Date().toISOString();
+  }
+
+  const updateData: Record<string, unknown> = {
+    completed_units: units,
+    status,
+    updated_at: new Date().toISOString(),
+  };
+  if (started_at) updateData.started_at = started_at;
+  if (completed_at) updateData.completed_at = completed_at;
+
+  // 대상 진도 ID로 일괄 업데이트
+  const targetIds = targetRows.map((r) => r.id);
+  const { error } = await supabase
+    .from("student_textbook_progress")
+    .update(updateData)
+    .in("id", targetIds);
+
+  if (error) {
+    console.error("[batchUpdateProgress]", error.message);
+    return { error: error.message };
+  }
+
+  return { updatedCount: targetIds.length };
+}
+
 // 학생에게 배정되지 않은 교재 목록
 export async function listTextbooksNotAssignedToStudent(
   studentProfileId: string

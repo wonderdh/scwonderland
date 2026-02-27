@@ -9,12 +9,13 @@ import { UserList } from "../components/UserList";
 import { AddStudentForm } from "./components/AddStudentForm";
 import { StudentInfoCard } from "./components/StudentSelectedView";
 import { StudentTabNav, type StudentTabId } from "./components/StudentTabNav";
-import { StudentComingTab } from "./components/StudentComingTab";
+import { StudentClassesView } from "./components/StudentClassesView";
 import { StudentLearningTab } from "./components/StudentLearningTab";
 import { StudentReportTab } from "./components/StudentReportTab";
 import { StudentTextbookTab } from "./components/StudentTextbookTab";
+import { StudentAttendanceTab } from "./components/StudentAttendanceTab";
 
-const VALID_TABS: StudentTabId[] = ["info", "learning", "report", "textbook", "coming"];
+const VALID_TABS: StudentTabId[] = ["info", "learning", "report", "textbook", "attendance"];
 
 function parseTab(tab: string | undefined): StudentTabId {
   if (tab && VALID_TABS.includes(tab as StudentTabId)) return tab as StudentTabId;
@@ -57,16 +58,19 @@ export default async function AdminStudentsPage({
             <StudentTabNav selectedId={selectedUser.id} currentTab={currentTab} />
             <div className="rounded-b-xl border border-t-0 border-slate-200 bg-white p-6 flex-1">
               {currentTab === "info" && (
-                <StudentInfoCard user={selectedUser} onUpdate={updateStudentProfile} />
+                <div className="space-y-8">
+                  <StudentInfoCard user={selectedUser} onUpdate={updateStudentProfile} />
+                  <StudentClassesView studentProfileId={selectedUser.id} />
+                </div>
               )}
-              {currentTab === "learning" && <StudentLearningTab />}
+              {currentTab === "learning" && <StudentLearningTab studentProfileId={selectedUser.id} />}
               {currentTab === "report" && selectedUser && (
                 <StudentReportTab studentProfileId={selectedUser.id} />
               )}
               {currentTab === "textbook" && selectedUser && (
                 <StudentTextbookTab studentProfileId={selectedUser.id} />
               )}
-              {currentTab === "coming" && <StudentComingTab />}
+              {currentTab === "attendance" && <StudentAttendanceTab studentProfileId={selectedUser.id} />}
             </div>
           </>
         ) : (

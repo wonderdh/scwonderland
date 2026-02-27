@@ -7,6 +7,13 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { dashboardLabels } from "@/lib/teacher-labels";
+
+const arrowIcon = (
+  <svg className="size-3" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
+  </svg>
+);
 
 export default async function TeacherMainPage() {
   const [profile, classes] = await Promise.all([
@@ -15,6 +22,8 @@ export default async function TeacherMainPage() {
   ]);
   if (!profile) return null;
 
+  const isNative = profile.teacher_type === "native";
+  const L = dashboardLabels[profile.teacher_type];
   const totalStudents = classes.reduce((sum, c) => sum + c.students.length, 0);
 
   return (
@@ -29,11 +38,11 @@ export default async function TeacherMainPage() {
                 {(profile.name ?? "T")[0]}
               </div>
               <div className="pb-1">
-                <h1 className="text-xl font-bold">{profile.name ?? "선생님"}</h1>
+                <h1 className="text-xl font-bold">{profile.name ?? (isNative ? "Teacher" : "선생님")}</h1>
                 <p className="text-sm text-muted-foreground">
                   {profile.teacher_number && (
                     <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                      교번 {profile.teacher_number}
+                      {L.teacherNumber} {profile.teacher_number}
                     </Badge>
                   )}
                 </p>
@@ -42,11 +51,11 @@ export default async function TeacherMainPage() {
             <div className="flex gap-6 text-center pb-1">
               <div className="rounded-lg bg-orange-50 border border-orange-100 px-4 py-2">
                 <p className="text-2xl font-bold text-orange-700">{classes.length}</p>
-                <p className="text-xs text-orange-600 font-medium">담당 반</p>
+                <p className="text-xs text-orange-600 font-medium">{L.classes}</p>
               </div>
               <div className="rounded-lg bg-green-50 border border-green-100 px-4 py-2">
                 <p className="text-2xl font-bold text-green-700">{totalStudents}</p>
-                <p className="text-xs text-green-600 font-medium">학생 수</p>
+                <p className="text-xs text-green-600 font-medium">{L.studentCount}</p>
               </div>
             </div>
           </div>
@@ -57,8 +66,8 @@ export default async function TeacherMainPage() {
       {classes.length === 0 ? (
         <Card className="py-12">
           <CardContent className="text-center">
-            <p className="text-sm text-muted-foreground">담당 반이 없습니다.</p>
-            <p className="mt-1 text-xs text-muted-foreground">관리자에게 반 배정을 요청하세요.</p>
+            <p className="text-sm text-muted-foreground">{L.noClasses}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{L.contactAdmin}</p>
           </CardContent>
         </Card>
       ) : (
@@ -69,13 +78,13 @@ export default async function TeacherMainPage() {
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-base">{cls.name}</CardTitle>
                   <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
-                    {cls.students.length}명
+                    {cls.students.length}{isNative ? ` ${L.students}` : L.students}
                   </Badge>
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">
                 {cls.students.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">등록된 학생이 없습니다.</p>
+                  <p className="text-sm text-muted-foreground">{L.noStudents}</p>
                 ) : (
                   <ul className="space-y-1.5">
                     {cls.students.map((s) => (
@@ -84,11 +93,24 @@ export default async function TeacherMainPage() {
                         className="flex items-center justify-between text-sm rounded-md px-3 py-1.5 bg-gradient-to-r from-muted/80 to-transparent"
                       >
                         <span className="font-medium">
-                          {s.korean_name ?? "—"}
-                          {s.english_name && (
-                            <span className="text-muted-foreground font-normal ml-1">
-                              ({s.english_name})
-                            </span>
+                          {isNative ? (
+                            <>
+                              {s.english_name ?? s.korean_name ?? "—"}
+                              {s.korean_name && (
+                                <span className="text-muted-foreground font-normal ml-1">
+                                  ({s.korean_name})
+                                </span>
+                              )}
+                            </>
+                          ) : (
+                            <>
+                              {s.korean_name ?? "—"}
+                              {s.english_name && (
+                                <span className="text-muted-foreground font-normal ml-1">
+                                  ({s.english_name})
+                                </span>
+                              )}
+                            </>
                           )}
                         </span>
                         {s.student_number && (
@@ -101,24 +123,34 @@ export default async function TeacherMainPage() {
                   </ul>
                 )}
                 <div className="flex gap-2 pt-1 border-t">
-                  <Link
-                    href={`/academy/teacher/reports?class=${cls.id}`}
-                    className="text-xs font-medium text-red-600 hover:text-red-800 transition-colors inline-flex items-center gap-1"
-                  >
-                    리포트카드
-                    <svg className="size-3" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
-                    </svg>
-                  </Link>
-                  <Link
-                    href={`/academy/teacher/textbooks?class=${cls.id}`}
-                    className="text-xs font-medium text-blue-600 hover:text-blue-800 transition-colors ml-auto inline-flex items-center gap-1"
-                  >
-                    교재
-                    <svg className="size-3" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
-                    </svg>
-                  </Link>
+                  {isNative ? (
+                    <>
+                      <Link
+                        href={`/academy/teacher/reports?class=${cls.id}`}
+                        className="text-xs font-medium text-red-600 hover:text-red-800 transition-colors inline-flex items-center gap-1"
+                      >
+                        Report Cards
+                        {arrowIcon}
+                      </Link>
+                      <Link
+                        href={`/academy/teacher/textbooks?class=${cls.id}`}
+                        className="text-xs font-medium text-blue-600 hover:text-blue-800 transition-colors ml-auto inline-flex items-center gap-1"
+                      >
+                        Textbooks
+                        {arrowIcon}
+                      </Link>
+                    </>
+                  ) : (
+                    <>
+                      <Link
+                        href={`/academy/teacher/textbooks?class=${cls.id}`}
+                        className="text-xs font-medium text-blue-600 hover:text-blue-800 transition-colors ml-auto inline-flex items-center gap-1"
+                      >
+                        교재
+                        {arrowIcon}
+                      </Link>
+                    </>
+                  )}
                 </div>
               </CardContent>
             </Card>

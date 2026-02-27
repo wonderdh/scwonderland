@@ -129,7 +129,169 @@ export type StudentTextbookItem = {
   completed_units: number;
 };
 
-// ── 공지사항 타입 ──
+// ── 교재 진도 타입 ──
+
+export type ClassTextbookProgressRow = {
+  student_profile_id: string;
+  korean_name: string | null;
+  english_name: string | null;
+  student_number: string | null;
+  progress_id: string | null;
+  status: "not_started" | "in_progress" | "completed";
+  completed_units: number;
+  note: string | null;
+};
+
+// ── Admin 학생 반 조회 타입 ──
+
+export type AdminStudentClassItem = {
+  id: string;
+  name: string;
+  teachers: { name: string | null; teacher_type: "korean" | "native" }[];
+};
+
+// ── 학습관리 타입 ──
+
+export type LearningRecord = {
+  id: string;
+  student_profile_id: string;
+  record_date: string;
+  category: "test" | "assessment" | "note" | "level_change";
+  title: string;
+  content: string | null;
+  score: number | null;
+  max_score: number | null;
+  author_id: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+// ── 출결 타입 ──
+
+export type AttendanceRecord = {
+  id: string;
+  student_profile_id: string;
+  class_id: string;
+  class_name?: string;
+  attendance_date: string;
+  status: "present" | "absent" | "late" | "excused";
+  note: string | null;
+  recorded_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type AttendanceStats = {
+  total: number;
+  present: number;
+  absent: number;
+  late: number;
+  excused: number;
+};
+
+// ── 반별 공지 타입 ──
+
+export type ClassNotice = {
+  id: string;
+  class_id: string;
+  class_name?: string;
+  author_id: string;
+  author_name?: string;
+  title: string;
+  content: string | null;
+  is_pinned: boolean;
+  created_at: string;
+  updated_at: string;
+  attachment_count?: number;
+};
+
+export type ClassNoticeAttachment = {
+  id: string;
+  class_notice_id: string;
+  storage_path: string;
+  public_url: string;
+  original_filename: string;
+  mime_type: string;
+  file_size: number;
+  file_type: string;
+  sort_order: number;
+  created_at: string;
+};
+
+// ── Academy 공지 타입 ──
+
+export type AcademyNotice = {
+  id: string;
+  title: string;
+  content: string | null;
+  excerpt: string | null;
+  author_id: string | null;
+  is_published: boolean;
+  is_pinned: boolean;
+  published_at: string;
+  created_at: string;
+  updated_at: string;
+  image_count?: number;
+  attachment_count?: number;
+};
+
+export type AcademyNoticeAttachment = {
+  id: string;
+  academy_notice_id: string;
+  storage_path: string;
+  public_url: string;
+  original_filename: string;
+  mime_type: string;
+  file_size: number;
+  file_type: string;
+  sort_order: number;
+  created_at: string;
+};
+
+// ── 숙제 타입 ──
+
+export type HomeworkAssignment = {
+  id: string;
+  class_id: string;
+  class_name?: string;
+  teacher_id: string;
+  title: string;
+  description: string | null;
+  due_date: string | null;
+  created_at: string;
+  updated_at: string;
+  submission_count?: number;
+  total_students?: number;
+};
+
+export type HomeworkSubmission = {
+  id: string;
+  assignment_id: string;
+  student_profile_id: string;
+  student_name?: string;
+  status: "pending" | "submitted" | "reviewed";
+  text_content: string | null;
+  submitted_at: string | null;
+  teacher_feedback: string | null;
+  reviewed_at: string | null;
+  reviewed_by: string | null;
+  created_at: string;
+  updated_at: string;
+  files?: HomeworkSubmissionFile[];
+};
+
+export type HomeworkSubmissionFile = {
+  id: string;
+  submission_id: string;
+  storage_path: string;
+  original_filename: string;
+  mime_type: string;
+  file_size: number;
+  created_at: string;
+  signed_url?: string;
+};
+
+// ── 공지사항 타입 (사이트 공개) ──
 
 export type Notice = {
   id: string;

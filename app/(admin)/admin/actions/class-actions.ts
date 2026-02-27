@@ -1,7 +1,7 @@
 "use server";
 
 import { createAdminClient } from "@/lib/supabase/admin";
-import type { ClassWithDetails, ClassStudentRow, ClassTeacherInfo } from "@/lib/types";
+import type { ClassWithDetails, ClassStudentRow, ClassTeacherInfo, AdminStudentClassItem } from "@/lib/types";
 
 export async function listClassesWithDetails(): Promise<ClassWithDetails[]> {
   const supabase = createAdminClient();
@@ -109,6 +109,67 @@ export async function getClassWithStudents(
     };
   });
   return { class: classRow, students: studentsList };
+}
+
+/** 특정 학생의 소속 반 목록 (반 이름 + 담당 교사 정보) */
+export async function getStudentClasses(
+  studentProfileId: string
+): Promise<{ classes: AdminStudentClassItem[]; error?: string }> {
+  const supabase = createAdminClient();
+
+  const { data: members, error: membersError } = await supabase
+    .from("class_students")
+    .select("class_id")
+    .eq("student_profile_id", studentProfileId);
+  if (membersError) {
+    console.error("[getStudentClasses]", membersError.message);
+    return { classes: [], error: membersError.message };
+  }
+  if (!members?.length) return { classes: [] };
+
+  const classIds = members.map((m) => m.class_id);
+  const { data: classes } = await supabase
+    .from("classes")
+    .select("id, name")
+    .in("id", classIds)
+    .order("name");
+  if (!classes?.length) return { classes: [] };
+
+  // class_teachers 중간 테이블에서 교사 매핑 조회
+  const { data: classTeachers } = await supabase
+    .from("class_teachers")
+    .select("class_id, teacher_profile_id")
+    .in("class_id", classIds);
+
+  const teacherIds = [
+    ...new Set((classTeachers ?? []).map((ct) => ct.teacher_profile_id)),
+  ];
+  let teacherMap = new Map<string, { name: string; teacher_type: string }>();
+  if (teacherIds.length > 0) {
+    const { data: teachers } = await supabase
+      .from("teachers")
+      .select("profile_id, name, teacher_type")
+      .in("profile_id", teacherIds);
+    teacherMap = new Map(
+      (teachers ?? []).map((t) => [t.profile_id, { name: t.name ?? "", teacher_type: t.teacher_type ?? "korean" }])
+    );
+  }
+
+  return {
+    classes: classes.map((c) => ({
+      id: c.id,
+      name: c.name,
+      teachers: (classTeachers ?? [])
+        .filter((ct) => ct.class_id === c.id)
+        .map((ct) => {
+          const t = teacherMap.get(ct.teacher_profile_id);
+          return {
+            name: t?.name ?? null,
+            teacher_type: (t?.teacher_type ?? "korean") as "korean" | "native",
+          };
+        }),
+    })),
+  };
 }
 
 /** 모든 반의 소속 학생 목록 (class_id별 그룹용). 반 검색 시 학생 이름으로도 찾을 수 있게. */

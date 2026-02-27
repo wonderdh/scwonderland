@@ -92,9 +92,11 @@ CategoryLayout (menuId로 라우팅)
 | `/academy/student/reports` | 리포트카드 | 년/월별 조회, 학생 답변 작성 |
 | `/academy/student/textbooks` | 교재 진도 | 본인 교재 목록 및 진도 조회 |
 | `/academy/student/homework` | 숙제 | 🔲 준비 중 |
-| `/academy/teacher` | 교사 대시보드 | 담당 반 목록 조회 |
-| `/academy/teacher/reports` | 리포트카드 작성 | 반별 학생 리포트카드 작성/관리 |
-| `/academy/teacher/textbooks` | 교재 현황 | 반별 배정 교재 목록 조회 |
+| `/academy/teacher` | 교사 대시보드 | 담당 반 목록 조회 (teacher_type별 라벨/링크 분기) |
+| `/academy/teacher/reports` | 리포트카드 작성 | 원어민 전용 (한국인→redirect), 영어 UI |
+| `/academy/teacher/textbooks` | 교재 현황 | 반별 배정 교재 목록 (teacher_type별 라벨) |
+| `/academy/teacher/notices` | 공지사항 | 한국인 전용 (원어민→redirect), 🔲 placeholder |
+| `/academy/teacher/classes` | 반 관리 | 한국인 전용 (원어민→redirect), 읽기 전용 조회 |
 
 ## Public Directory
 
@@ -126,3 +128,4 @@ public/
 | `docs/*.sql` | DB 스키마 및 마이그레이션 |
 | `docs/storage-implementation-plan.md` | Supabase Storage 전체 구현 계획 (반별 공지, 숙제 등) |
 | `docs/textbook-cover-image.md` | 교재 커버 이미지 기능 상세 문서 |
+| `lib/teacher-labels.ts` | 교사 포털 한국어/영어 라벨 맵 (teacher_type별) |

@@ -2,14 +2,14 @@
 
 import Link from "next/link";
 
-export type StudentTabId = "info" | "learning" | "report" | "textbook" | "coming";
+export type StudentTabId = "info" | "learning" | "report" | "textbook" | "attendance";
 
 const TABS: { id: StudentTabId; label: string }[] = [
   { id: "info", label: "학생정보" },
   { id: "learning", label: "학습관리" },
   { id: "report", label: "리포트카드" },
   { id: "textbook", label: "교재" },
-  { id: "coming", label: "준비중" },
+  { id: "attendance", label: "출결" },
 ];
 
 export function StudentTabNav({

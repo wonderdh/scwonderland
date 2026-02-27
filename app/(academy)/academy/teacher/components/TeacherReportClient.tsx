@@ -8,6 +8,7 @@ import {
   upsertReportCard,
 } from "@/app/(admin)/admin/actions";
 import type { ReportCard } from "@/lib/types";
+import { reportLabels, ENGLISH_MONTHS } from "@/lib/teacher-labels";
 
 const MONTHS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
@@ -19,10 +20,15 @@ function getDefaultYearMonth() {
 export function TeacherReportClient({
   classes,
   initialClassId,
+  teacherType,
 }: {
   classes: TeacherClassWithStudents[];
   initialClassId: string | null;
+  teacherType: "korean" | "native";
 }) {
+  const L = reportLabels[teacherType];
+  const isNative = teacherType === "native";
+
   const [selectedClassId, setSelectedClassId] = useState(
     initialClassId ?? classes[0]?.id ?? ""
   );
@@ -31,7 +37,6 @@ export function TeacherReportClient({
   const [statusList, setStatusList] = useState<ReportCardStatus[]>([]);
   const [statusLoading, setStatusLoading] = useState(false);
 
-  // 선택된 학생의 리포트카드 편집
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
   const [report, setReport] = useState<ReportCard | null>(null);
   const [content, setContent] = useState("");
@@ -44,7 +49,6 @@ export function TeacherReportClient({
 
   const selectedClass = classes.find((c) => c.id === selectedClassId);
 
-  // 반 + 년/월 변경 시 작성 현황 로드
   const loadStatus = useCallback(async () => {
     if (!selectedClassId) return;
     setStatusLoading(true);
@@ -60,7 +64,6 @@ export function TeacherReportClient({
     setContent("");
   }, [loadStatus]);
 
-  // 학생 선택 시 리포트카드 로드
   const loadReport = useCallback(async () => {
     if (!selectedStudentId) return;
     setReportLoading(true);
@@ -85,7 +88,7 @@ export function TeacherReportClient({
       setSaveMessage({ type: "error", text: result.error });
       return;
     }
-    setSaveMessage({ type: "success", text: "저장되었습니다." });
+    setSaveMessage({ type: "success", text: L.saved });
     await loadReport();
     await loadStatus();
     setTimeout(() => setSaveMessage(null), 2000);
@@ -95,17 +98,47 @@ export function TeacherReportClient({
     (s) => s.student_profile_id === selectedStudentId
   );
 
+  const formatStudentName = (s: { korean_name: string | null; english_name: string | null }) => {
+    if (isNative) {
+      return (
+        <>
+          {s.english_name ?? s.korean_name ?? "—"}
+          {s.korean_name && (
+            <span className="text-slate-400 font-normal ml-1">
+              ({s.korean_name})
+            </span>
+          )}
+        </>
+      );
+    }
+    return (
+      <>
+        {s.korean_name ?? "—"}
+        {s.english_name && (
+          <span className="text-slate-400 font-normal ml-1">
+            ({s.english_name})
+          </span>
+        )}
+      </>
+    );
+  };
+
+  const formatYearMonth = () => {
+    if (isNative) return `${ENGLISH_MONTHS[month]} ${year}`;
+    return `${year}년 ${month}월`;
+  };
+
   if (classes.length === 0) {
     return (
       <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50/50 p-8 text-center">
-        <p className="text-sm text-slate-500">담당 반이 없습니다.</p>
+        <p className="text-sm text-slate-500">{L.noClasses}</p>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <h1 className="text-lg font-semibold text-slate-800">리포트카드 작성</h1>
+      <h1 className="text-lg font-semibold text-slate-800">{L.title}</h1>
 
       {/* 반 / 년월 선택 */}
       <div className="flex flex-wrap items-center gap-3">
@@ -116,7 +149,7 @@ export function TeacherReportClient({
         >
           {classes.map((c) => (
             <option key={c.id} value={c.id}>
-              {c.name} ({c.students.length}명)
+              {c.name} ({c.students.length}{isNative ? " students" : "명"})
             </option>
           ))}
         </select>
@@ -126,7 +159,7 @@ export function TeacherReportClient({
           className="min-h-[44px] rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800"
         >
           {yearOptions.map((y) => (
-            <option key={y} value={y}>{y}년</option>
+            <option key={y} value={y}>{y}{L.year}</option>
           ))}
         </select>
         <select
@@ -135,7 +168,7 @@ export function TeacherReportClient({
           className="min-h-[44px] rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800"
         >
           {MONTHS.map((m) => (
-            <option key={m} value={m}>{m}월</option>
+            <option key={m} value={m}>{isNative ? ENGLISH_MONTHS[m] : `${m}월`}</option>
           ))}
         </select>
       </div>
@@ -145,13 +178,13 @@ export function TeacherReportClient({
         <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
           <div className="border-b border-slate-100 bg-slate-50/80 px-4 py-3">
             <h2 className="text-sm font-medium text-slate-600">
-              {selectedClass?.name ?? "반"} — {year}년 {month}월
+              {selectedClass?.name ?? (isNative ? "Class" : "반")} — {formatYearMonth()}
             </h2>
           </div>
           {statusLoading ? (
-            <p className="px-4 py-6 text-sm text-slate-400 text-center">불러오는 중…</p>
+            <p className="px-4 py-6 text-sm text-slate-400 text-center">{L.loading}</p>
           ) : statusList.length === 0 ? (
-            <p className="px-4 py-6 text-sm text-slate-400 text-center">학생이 없습니다.</p>
+            <p className="px-4 py-6 text-sm text-slate-400 text-center">{L.noStudents}</p>
           ) : (
             <ul className="divide-y divide-slate-100 max-h-[480px] overflow-y-auto">
               {statusList.map((s) => {
@@ -169,12 +202,7 @@ export function TeacherReportClient({
                     >
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-slate-800 truncate">
-                          {s.korean_name ?? "—"}
-                          {s.english_name && (
-                            <span className="text-slate-400 font-normal ml-1">
-                              ({s.english_name})
-                            </span>
-                          )}
+                          {formatStudentName(s)}
                         </p>
                         {s.student_number && (
                           <p className="text-xs text-slate-400 font-mono">{s.student_number}</p>
@@ -186,16 +214,16 @@ export function TeacherReportClient({
                             <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                               <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                             </svg>
-                            작성
+                            {L.written}
                           </span>
                         ) : (
                           <span className="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-700">
-                            미작성
+                            {L.notWritten}
                           </span>
                         )}
                         {s.has_reply && (
                           <span className="inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-medium text-blue-700">
-                            답변
+                            {L.reply}
                           </span>
                         )}
                       </div>
@@ -209,10 +237,10 @@ export function TeacherReportClient({
           {!statusLoading && statusList.length > 0 && (
             <div className="border-t border-slate-100 px-4 py-2.5 bg-slate-50/50 flex gap-4 text-xs text-slate-500">
               <span>
-                작성: {statusList.filter((s) => s.has_report).length}/{statusList.length}
+                {L.writtenCount}: {statusList.filter((s) => s.has_report).length}/{statusList.length}
               </span>
               <span>
-                답변: {statusList.filter((s) => s.has_reply).length}/{statusList.length}
+                {L.replyCount}: {statusList.filter((s) => s.has_reply).length}/{statusList.length}
               </span>
             </div>
           )}
@@ -222,16 +250,25 @@ export function TeacherReportClient({
         <div>
           {!selectedStudentId ? (
             <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/50 p-8 text-center flex-1">
-              <p className="text-sm text-slate-400">왼쪽 목록에서 학생을 선택하세요.</p>
+              <p className="text-sm text-slate-400">{L.selectStudent}</p>
             </div>
           ) : (
             <div className="space-y-4">
               <div className="flex items-center gap-3">
                 <h3 className="text-base font-semibold text-slate-800">
-                  {selectedStudent?.korean_name ?? "—"}
+                  {selectedStudent ? (
+                    isNative
+                      ? (selectedStudent.english_name ?? selectedStudent.korean_name ?? "—")
+                      : (selectedStudent.korean_name ?? "—")
+                  ) : "—"}
                 </h3>
+                {selectedStudent && isNative && selectedStudent.korean_name && (
+                  <span className="text-sm text-slate-400">
+                    ({selectedStudent.korean_name})
+                  </span>
+                )}
                 <span className="text-sm text-slate-500">
-                  {year}년 {month}월
+                  {formatYearMonth()}
                 </span>
               </div>
 
@@ -249,19 +286,19 @@ export function TeacherReportClient({
               <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
                 <div className="border-b border-slate-200 bg-slate-100 px-4 py-2.5">
                   <span className="text-xs font-semibold uppercase tracking-wider text-slate-600">
-                    선생님 코멘트 (본문)
+                    {L.teacherComment}
                   </span>
                 </div>
                 <div className="p-4">
                   {reportLoading ? (
-                    <p className="text-sm text-slate-400">불러오는 중…</p>
+                    <p className="text-sm text-slate-400">{L.loading}</p>
                   ) : (
                     <>
                       <textarea
                         value={content}
                         onChange={(e) => setContent(e.target.value)}
                         rows={8}
-                        placeholder="이 달의 학습·생활 내용을 작성하세요."
+                        placeholder={L.placeholder}
                         className="w-full rounded-lg border border-slate-200 px-3 py-3 text-base text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400 sm:text-sm"
                       />
                       <div className="mt-3 flex justify-end">
@@ -271,7 +308,7 @@ export function TeacherReportClient({
                           disabled={saving}
                           className="min-h-[44px] rounded-lg bg-slate-800 px-5 py-2.5 text-base font-medium text-white hover:bg-slate-700 disabled:opacity-50 sm:min-h-[40px] sm:text-sm"
                         >
-                          {saving ? "저장 중…" : "저장"}
+                          {saving ? L.saving : L.save}
                         </button>
                       </div>
                     </>
@@ -283,18 +320,18 @@ export function TeacherReportClient({
               <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
                 <div className="border-b border-slate-200 bg-emerald-50 px-4 py-2.5">
                   <span className="text-xs font-semibold uppercase tracking-wider text-emerald-700">
-                    학생 답글
+                    {L.studentReply}
                   </span>
                 </div>
                 <div className="p-4">
                   {reportLoading ? (
-                    <p className="text-sm text-slate-400">불러오는 중…</p>
+                    <p className="text-sm text-slate-400">{L.loading}</p>
                   ) : report?.reply != null && report.reply.trim() !== "" ? (
                     <p className="whitespace-pre-wrap text-sm text-slate-800">
                       {report.reply}
                     </p>
                   ) : (
-                    <p className="text-sm text-slate-400">아직 답글이 없습니다.</p>
+                    <p className="text-sm text-slate-400">{L.noReply}</p>
                   )}
                 </div>
               </section>

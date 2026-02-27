@@ -46,9 +46,25 @@ normalizeEmail("user@gmail.com")  // → "user@gmail.com"
 
 `"use server"` 파일에서는 `export type`이 불가능 (런타임에 제거됨). 공유 타입은 `lib/types/`에 정의하고, 컴포넌트에서 직접 `import type { ... } from "@/lib/types"` 사용.
 
+## Teacher Type Differentiation (lib/teacher-labels.ts)
+
+교사 포털은 `teacher_type`에 따라 UI/라벨/탭이 다름:
+
+```
+teacher/layout.tsx → teachers 테이블에서 teacher_type 조회 (Admin Client)
+                   → TeacherNav에 teacherType prop 전달
+각 page.tsx → getCurrentTeacherProfile()로 teacher_type 조회
+            → 라우트 보호 (redirect) + Client Component에 teacherType 전달
+```
+
+- **한국인 교사 (korean):** 한국어 UI, 4탭 (담당 반/공지사항/반 관리/교재), reports 접근 차단
+- **원어민 교사 (native):** 영어 UI (학생 한글 이름 제외), 3탭 (My Classes/Report Cards/Textbooks), notices·classes 접근 차단
+- 라벨 맵: `dashboardLabels`, `reportLabels`, `textbookLabels` — 각각 `[teacherType]`로 접근
+- i18n 라이브러리 없이 단순 객체 맵으로 구현 (교사 포털만 영어 필요)
+
 ## Notes
 
-- 한국어 사용자 대상 (UI 텍스트, 에러 메시지 모두 한국어)
+- 한국어 사용자 대상 (UI 텍스트, 에러 메시지 모두 한국어). 단, 원어민 교사 포털은 영어 UI
 - 외부 이미지: Unsplash + Supabase Storage 허용 (`next.config.ts` remotePatterns)
 - SideBar 외부 링크: Firebase 리포트카드, 레벨테스트, YouTube, Facebook
 - Admin 삭제 시 cascade (DB 제약조건으로 관련 데이터 자동 삭제)
@@ -58,11 +74,13 @@ normalizeEmail("user@gmail.com")  // → "user@gmail.com"
 - `router.refresh()`로 Server Component 데이터 갱신 (mutation 후)
 - 교재 삭제는 soft delete (`is_active = false`) — 진도 데이터 보존, Storage 커버 이미지는 삭제
 - 교재 반 배정 시 해당 반 학생들에게 자동으로 `student_textbook_progress` 생성
+- 학생 교재 페이지: 진행 중/완료 분리, 카드 UI (커버 이미지 170x190, 진도 바, 카테고리 배지)
 - 공지사항 삭제는 hard delete (진도 데이터 없음) — Storage 파일 먼저 삭제 → DB CASCADE 삭제
 - 공지사항 이미지는 원본 크기로 표시 (`max-w-full`, 컨테이너보다 클 때만 축소)
 
 ## Planned Features (docs/storage-implementation-plan.md)
 
-- **Phase 2:** 반별 공지 (교사+Admin 작성 → 학생 조회, 첨부파일/이미지)
+- **Phase 2:** 반별 공지 (교사+Admin 작성 → 학생 조회, 첨부파일/이미지, DB 마이그레이션 필요)
+- **Phase 2:** 교사 교재 진행도 일괄 업데이트 (특정 학생 예외 가능)
 - **Phase 3:** Academy 포털 공지사항 게시판 (Admin 관리, 내부 공지)
 - **Phase 4:** 숙제 시스템 (AudioRecorder, 음성파일 제출, 교사 리뷰)
