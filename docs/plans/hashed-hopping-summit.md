@@ -38,7 +38,7 @@ bus_time_slots (시간대)
 student_bus_defaults (학생별 주간 기본 배정)
 ├── id (PK, UUID)
 ├── student_profile_id (FK → profiles, CASCADE)
-├── day_of_week (0~6, JS Date.getDay() 호환)
+├── day_of_week (1~5, 1=월 ~ 5=금)
 ├── direction ("pickup" | "dropoff")
 ├── bus_time_slot_id (FK → bus_time_slots, RESTRICT)
 ├── bus_number_id (FK → bus_numbers, RESTRICT)
@@ -57,7 +57,6 @@ bus_change_requests (날짜별 변경 요청)
 ├── status ("pending" | "approved" | "rejected")
 ├── reviewed_by (FK → profiles, SET NULL)
 ├── reviewed_at, review_note
-├── requested_at
 ├── UNIQUE(student_profile_id, request_date, direction)
 ├── CHECK: no_ride이면 new 필드 null 가능, change이면 필수
 └── created_at, updated_at
@@ -83,7 +82,7 @@ bus_change_requests (날짜별 변경 요청)
          ├──│ bus_number_id (FK)                     │
             │ bus_time_slot_id (FK) ────────────────┤
             │ student_profile_id (FK → profiles)    │
-            │ day_of_week (0~6)                     │
+            │ day_of_week (1~5, 월~금)               │
             │ direction ("pickup"|"dropoff")         │
             │ UNIQUE(student, day, direction)        │
             └──────────────┬────────────────────────┘
@@ -106,7 +105,12 @@ bus_change_requests (날짜별 변경 요청)
 ### SQL 마이그레이션
 
 ```sql
--- bus_numbers
+-- ============================================
+-- 승하차(버스) 시스템 테이블
+-- Supabase SQL Editor에서 직접 실행
+-- ============================================
+
+-- 1. bus_numbers (호차)
 CREATE TABLE public.bus_numbers (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   label TEXT NOT NULL,
@@ -117,7 +121,7 @@ CREATE TABLE public.bus_numbers (
 );
 CREATE UNIQUE INDEX uq_bus_numbers_label ON public.bus_numbers (label) WHERE is_active = true;
 
--- bus_time_slots
+-- 2. bus_time_slots (시간대)
 CREATE TABLE public.bus_time_slots (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   direction TEXT NOT NULL CHECK (direction IN ('pickup', 'dropoff')),
@@ -130,11 +134,11 @@ CREATE TABLE public.bus_time_slots (
 );
 CREATE UNIQUE INDEX uq_bus_time_slots ON public.bus_time_slots (direction, slot_time) WHERE is_active = true;
 
--- student_bus_defaults
+-- 3. student_bus_defaults (학생별 주간 기본 배정)
 CREATE TABLE public.student_bus_defaults (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   student_profile_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
-  day_of_week INT NOT NULL CHECK (day_of_week BETWEEN 0 AND 6),
+  day_of_week INT NOT NULL CHECK (day_of_week BETWEEN 1 AND 5),  -- 1=월 ~ 5=금 (ISO 8601)
   direction TEXT NOT NULL CHECK (direction IN ('pickup', 'dropoff')),
   bus_time_slot_id UUID NOT NULL REFERENCES public.bus_time_slots(id) ON DELETE RESTRICT,
   bus_number_id UUID NOT NULL REFERENCES public.bus_numbers(id) ON DELETE RESTRICT,
@@ -142,8 +146,10 @@ CREATE TABLE public.student_bus_defaults (
   updated_at TIMESTAMPTZ DEFAULT now(),
   UNIQUE (student_profile_id, day_of_week, direction)
 );
+CREATE INDEX idx_sbd_student ON public.student_bus_defaults (student_profile_id);
+CREATE INDEX idx_sbd_day_direction ON public.student_bus_defaults (day_of_week, direction);
 
--- bus_change_requests
+-- 4. bus_change_requests (날짜별 변경 요청)
 CREATE TABLE public.bus_change_requests (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   student_profile_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
@@ -157,7 +163,6 @@ CREATE TABLE public.bus_change_requests (
   reviewed_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
   reviewed_at TIMESTAMPTZ,
   review_note TEXT,
-  requested_at TIMESTAMPTZ DEFAULT now(),
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now(),
   CONSTRAINT chk_change_refs CHECK (
@@ -165,6 +170,61 @@ CREATE TABLE public.bus_change_requests (
   ),
   UNIQUE (student_profile_id, request_date, direction)
 );
+CREATE INDEX idx_bcr_date_direction ON public.bus_change_requests (request_date, direction);
+CREATE INDEX idx_bcr_pending ON public.bus_change_requests (status) WHERE status = 'pending';
+CREATE INDEX idx_bcr_student ON public.bus_change_requests (student_profile_id);
+
+-- 5. RLS 정책
+ALTER TABLE public.bus_numbers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.bus_time_slots ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.student_bus_defaults ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.bus_change_requests ENABLE ROW LEVEL SECURITY;
+
+-- bus_numbers: 인증 사용자 읽기, admin 전체
+CREATE POLICY "bus_numbers_auth_read" ON public.bus_numbers
+  FOR SELECT USING (auth.uid() IS NOT NULL);
+CREATE POLICY "bus_numbers_admin_all" ON public.bus_numbers
+  FOR ALL USING (
+    auth.uid() IN (SELECT id FROM public.profiles WHERE role = 'admin')
+  );
+
+-- bus_time_slots: 인증 사용자 읽기, admin 전체
+CREATE POLICY "bus_time_slots_auth_read" ON public.bus_time_slots
+  FOR SELECT USING (auth.uid() IS NOT NULL);
+CREATE POLICY "bus_time_slots_admin_all" ON public.bus_time_slots
+  FOR ALL USING (
+    auth.uid() IN (SELECT id FROM public.profiles WHERE role = 'admin')
+  );
+
+-- student_bus_defaults: 본인 읽기, admin 전체, 한국인 교사 읽기
+CREATE POLICY "sbd_self_read" ON public.student_bus_defaults
+  FOR SELECT USING (auth.uid() = student_profile_id);
+CREATE POLICY "sbd_admin_all" ON public.student_bus_defaults
+  FOR ALL USING (
+    auth.uid() IN (SELECT id FROM public.profiles WHERE role = 'admin')
+  );
+CREATE POLICY "sbd_korean_teacher_read" ON public.student_bus_defaults
+  FOR SELECT USING (
+    auth.uid() IN (
+      SELECT profile_id FROM public.teachers WHERE teacher_type = 'korean'
+    )
+  );
+
+-- bus_change_requests: 본인 읽기/생성, admin 전체, 한국인 교사 읽기
+CREATE POLICY "bcr_self_read" ON public.bus_change_requests
+  FOR SELECT USING (auth.uid() = student_profile_id);
+CREATE POLICY "bcr_self_insert" ON public.bus_change_requests
+  FOR INSERT WITH CHECK (auth.uid() = student_profile_id);
+CREATE POLICY "bcr_admin_all" ON public.bus_change_requests
+  FOR ALL USING (
+    auth.uid() IN (SELECT id FROM public.profiles WHERE role = 'admin')
+  );
+CREATE POLICY "bcr_korean_teacher_read" ON public.bus_change_requests
+  FOR SELECT USING (
+    auth.uid() IN (
+      SELECT profile_id FROM public.teachers WHERE teacher_type = 'korean'
+    )
+  );
 ```
 
 ---
@@ -184,7 +244,7 @@ CREATE TABLE public.bus_change_requests (
 
 특정 날짜의 버스별 학생 목록 생성:
 
-1. 날짜에서 `day_of_week` 추출
+1. 날짜에서 `day_of_week` 추출 (ISO 8601: 1=월 ~ 5=금. JS `getDay()`는 0=일요일이므로 변환 필요: `getDay() || 7` 또는 직접 매핑)
 2. `student_bus_defaults`에서 해당 요일+방향의 기본 배정 조회
 3. `bus_change_requests`에서 해당 날짜+방향의 승인된 변경 조회
 4. TypeScript에서 병합:
