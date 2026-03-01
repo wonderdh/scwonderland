@@ -2,7 +2,7 @@
 
 import type { UserWithProfile } from "@/lib/types";
 import type { updateTeacherProfile } from "../../actions";
-import { resetUserPassword } from "../../actions";
+import { resetUserPassword, getTeacherAssignmentCounts } from "../../actions";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
@@ -13,9 +13,11 @@ import { Separator } from "@/components/ui/separator";
 export function TeacherInfoCard({
   user,
   onUpdate,
+  onDelete,
 }: {
   user: UserWithProfile;
   onUpdate: typeof updateTeacherProfile;
+  onDelete: (formData: FormData) => Promise<{ error?: string }>;
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
@@ -26,6 +28,13 @@ export function TeacherInfoCard({
   const [newPassword, setNewPassword] = useState("");
   const [pwPending, setPwPending] = useState(false);
   const [pwMessage, setPwMessage] = useState<{ type: "error" | "success"; text: string } | null>(null);
+  const [delPending, setDelPending] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<{ type: "error" | "success"; text: string } | null>(null);
+  const [deleteModal, setDeleteModal] = useState<{
+    classCount: number;
+    scheduleCount: number;
+  } | null>(null);
+  const [deleteModalLoading, setDeleteModalLoading] = useState(false);
 
   const handleStartEdit = () => {
     setName(user.name ?? user.first_name ?? "");
@@ -56,6 +65,8 @@ export function TeacherInfoCard({
       return;
     }
     setEditing(false);
+    setSaveMessage({ type: "success", text: "저장되었습니다." });
+    setTimeout(() => setSaveMessage(null), 3000);
     router.refresh();
   };
 
@@ -84,6 +95,31 @@ export function TeacherInfoCard({
     }, 2000);
   };
 
+  const handleDelete = async () => {
+    setDeleteModalLoading(true);
+    const counts = await getTeacherAssignmentCounts(user.id);
+    setDeleteModalLoading(false);
+    setDeleteModal(counts);
+  };
+
+  const handleDeleteConfirm = async () => {
+    setDelPending(true);
+    const form = new FormData();
+    form.set("id", user.id);
+    const result = await onDelete(form);
+    setDelPending(false);
+    setDeleteModal(null);
+    if (result?.error) {
+      setError(result.error);
+      return;
+    }
+    setSaveMessage({ type: "success", text: "휴지통으로 이동되었습니다." });
+    setTimeout(() => {
+      router.push("/admin/teachers");
+      router.refresh();
+    }, 1500);
+  };
+
   return (
     <div className="max-w-lg">
       <div className="flex items-center justify-between gap-4 mb-4">
@@ -106,6 +142,15 @@ export function TeacherInfoCard({
 
       {error && (
         <p className="mb-3 text-sm text-destructive bg-destructive/10 px-3 py-2 rounded-lg">{error}</p>
+      )}
+      {saveMessage && (
+        <p className={`mb-3 text-sm px-3 py-2 rounded-lg ${
+          saveMessage.type === "success"
+            ? "text-emerald-700 bg-emerald-50"
+            : "text-destructive bg-destructive/10"
+        }`}>
+          {saveMessage.text}
+        </p>
       )}
 
       <dl className="divide-y divide-border">
@@ -140,16 +185,27 @@ export function TeacherInfoCard({
 
       <Separator className="my-4" />
 
-      <div>
+      <div className="flex items-center gap-3">
         {!showPwReset ? (
-          <Button
-            variant="outline"
-            size="sm"
-            className="text-amber-700 border-amber-200 hover:bg-amber-50"
-            onClick={() => { setShowPwReset(true); setPwMessage(null); setNewPassword(""); }}
-          >
-            비밀번호 재설정
-          </Button>
+          <>
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-amber-700 border-amber-200 hover:bg-amber-50"
+              onClick={() => { setShowPwReset(true); setPwMessage(null); setNewPassword(""); }}
+            >
+              비밀번호 재설정
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-destructive border-destructive/30 hover:bg-destructive/10"
+              onClick={handleDelete}
+              disabled={delPending || deleteModalLoading}
+            >
+              {deleteModalLoading ? "확인 중…" : delPending ? "삭제 중…" : "삭제"}
+            </Button>
+          </>
         ) : (
           <div className="space-y-3">
             <Label>새 비밀번호</Label>
@@ -190,6 +246,45 @@ export function TeacherInfoCard({
           </div>
         )}
       </div>
+
+      {/* 삭제 확인 모달 */}
+      {deleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full mx-4">
+            <h3 className="text-base font-semibold text-foreground mb-2">교사 삭제</h3>
+            <p className="text-sm text-muted-foreground mb-1">
+              <span className="font-medium text-foreground">{user.name ?? user.first_name}</span> 선생님은 현재
+            </p>
+            <ul className="text-sm mb-4 space-y-1">
+              {deleteModal.classCount > 0 && (
+                <li className="text-amber-700">• 반 담임 <strong>{deleteModal.classCount}개</strong></li>
+              )}
+              {deleteModal.scheduleCount > 0 && (
+                <li className="text-amber-700">• 수업 배정 <strong>{deleteModal.scheduleCount}건</strong></li>
+              )}
+              {deleteModal.classCount === 0 && deleteModal.scheduleCount === 0 && (
+                <li className="text-muted-foreground">• 배정된 반/수업 없음</li>
+              )}
+            </ul>
+            <p className="text-sm text-muted-foreground mb-4">
+              삭제 시 모든 배정이 해제됩니다. 계속하시겠습니까?
+            </p>
+            <div className="flex justify-end gap-2">
+              <Button variant="ghost" size="sm" onClick={() => setDeleteModal(null)} disabled={delPending}>
+                취소
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={handleDeleteConfirm}
+                disabled={delPending}
+              >
+                {delPending ? "삭제 중…" : "삭제"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
