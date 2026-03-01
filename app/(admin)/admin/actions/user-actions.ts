@@ -96,7 +96,8 @@ export async function listUsersByRole(
   const { data: profiles, error: profilesError } = await supabase
     .from("profiles")
     .select("id, first_name, last_name")
-    .eq("role", role);
+    .eq("role", role)
+    .is("deleted_at", null);
 
   if (profilesError) {
     console.error("[listUsersByRole]", profilesError.message, { role });
@@ -157,6 +158,30 @@ export async function listUsersByRole(
   });
 }
 
+/** 삭제 전 경고용: 교사의 반 담임 + 수업 배정 건수 조회 */
+export async function getTeacherAssignmentCounts(
+  userId: string
+): Promise<{ classCount: number; scheduleCount: number }> {
+  const supabase = createAdminClient();
+
+  const [{ count: classCount }, { count: scheduleCount }] = await Promise.all([
+    supabase
+      .from("class_teachers")
+      .select("*", { count: "exact", head: true })
+      .eq("teacher_profile_id", userId),
+    supabase
+      .from("class_schedules")
+      .select("*", { count: "exact", head: true })
+      .eq("teacher_profile_id", userId),
+  ]);
+
+  return {
+    classCount: classCount ?? 0,
+    scheduleCount: scheduleCount ?? 0,
+  };
+}
+
+/** 소프트 삭제: deleted_at 설정 + Auth ban */
 export async function deleteUserById(
   formData: FormData
 ): Promise<{ error?: string }> {
@@ -164,12 +189,149 @@ export async function deleteUserById(
   if (!id) return { error: "id가 없습니다." };
 
   const supabase = createAdminClient();
-  const { error } = await supabase.auth.admin.deleteUser(id);
+
+  // 1. 반 담임 배정 삭제
+  const { error: classTeacherError } = await supabase
+    .from("class_teachers")
+    .delete()
+    .eq("teacher_profile_id", id);
+  if (classTeacherError) {
+    console.error("[deleteUserById:class_teachers]", classTeacherError.message, { id });
+  }
+
+  // 2. 수업 배정 삭제
+  const { error: scheduleError } = await supabase
+    .from("class_schedules")
+    .delete()
+    .eq("teacher_profile_id", id);
+  if (scheduleError) {
+    console.error("[deleteUserById:class_schedules]", scheduleError.message, { id });
+  }
+
+  const { error: profileError } = await supabase
+    .from("profiles")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", id);
+  if (profileError) {
+    console.error("[deleteUserById:profile]", profileError.message, { id });
+    return { error: profileError.message };
+  }
+
+  const { error: banError } = await supabase.auth.admin.updateUserById(id, {
+    ban_duration: "876000h",
+  });
+  if (banError) {
+    console.error("[deleteUserById:ban]", banError.message, { id });
+  }
+
+  return {};
+}
+
+/** 복구: deleted_at 초기화 + Auth unban */
+export async function restoreUser(
+  userId: string
+): Promise<{ error?: string }> {
+  if (!userId) return { error: "id가 없습니다." };
+
+  const supabase = createAdminClient();
+
+  const { error: profileError } = await supabase
+    .from("profiles")
+    .update({ deleted_at: null })
+    .eq("id", userId);
+  if (profileError) {
+    console.error("[restoreUser:profile]", profileError.message, { userId });
+    return { error: profileError.message };
+  }
+
+  const { error: unbanError } = await supabase.auth.admin.updateUserById(userId, {
+    ban_duration: "none",
+  });
+  if (unbanError) {
+    console.error("[restoreUser:unban]", unbanError.message, { userId });
+  }
+
+  return {};
+}
+
+/** 영구 삭제: Auth 유저 삭제 (DB CASCADE) */
+export async function permanentlyDeleteUser(
+  userId: string
+): Promise<{ error?: string }> {
+  if (!userId) return { error: "id가 없습니다." };
+
+  const supabase = createAdminClient();
+  const { error } = await supabase.auth.admin.deleteUser(userId);
   if (error) {
-    console.error("[deleteUserById]", error.message, { id });
+    console.error("[permanentlyDeleteUser]", error.message, { userId });
     return { error: error.message };
   }
   return {};
+}
+
+/** 삭제된 유저 목록 조회 */
+export async function listDeletedUsers(
+  role: "student" | "teacher"
+): Promise<UserWithProfile[]> {
+  const supabase = createAdminClient();
+
+  const { data: profiles, error: profilesError } = await supabase
+    .from("profiles")
+    .select("id, first_name, last_name, deleted_at")
+    .eq("role", role)
+    .not("deleted_at", "is", null);
+
+  if (profilesError || !profiles?.length) return [];
+
+  const ids = profiles.map((p) => p.id);
+  const { data: users } = await supabase.auth.admin.listUsers();
+  const userMap = new Map(
+    (users?.users ?? []).filter((u) => ids.includes(u.id)).map((u) => [u.id, u])
+  );
+
+  if (role === "student") {
+    const { data: students } = await supabase
+      .from("students")
+      .select("profile_id, korean_name, english_name, student_number")
+      .in("profile_id", ids);
+    const studentMap = new Map(
+      (students ?? []).map((s) => [s.profile_id, s])
+    );
+    return profiles.map((p) => {
+      const u = userMap.get(p.id);
+      const s = studentMap.get(p.id);
+      return {
+        id: p.id,
+        email: u?.email ?? "",
+        first_name: p.first_name,
+        last_name: p.last_name,
+        korean_name: s?.korean_name ?? p.first_name,
+        english_name: s?.english_name ?? p.last_name,
+        student_number: s?.student_number ?? null,
+      };
+    });
+  }
+
+  const { data: teachers } = await supabase
+    .from("teachers")
+    .select("profile_id, name, teacher_number, teacher_type")
+    .in("profile_id", ids);
+  const teacherMap = new Map(
+    (teachers ?? []).map((t) => [t.profile_id, t])
+  );
+  return profiles.map((p) => {
+    const u = userMap.get(p.id);
+    const t = teacherMap.get(p.id);
+    return {
+      id: p.id,
+      email: u?.email ?? "",
+      first_name: p.first_name,
+      last_name: p.last_name,
+      name: t?.name ?? p.first_name,
+      teacher_number: t?.teacher_number ?? null,
+      teacher_type: (t?.teacher_type ?? "korean") as "korean" | "native",
+    };
+  });
 }
 
 export async function updateStudentProfile(

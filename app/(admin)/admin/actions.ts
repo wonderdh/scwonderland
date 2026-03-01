@@ -6,7 +6,11 @@ export {
   createStudent,
   createTeacher,
   listUsersByRole,
+  getTeacherAssignmentCounts,
   deleteUserById,
+  restoreUser,
+  permanentlyDeleteUser,
+  listDeletedUsers,
   updateStudentProfile,
   updateTeacherProfile,
   resetUserPassword,
@@ -96,6 +100,8 @@ export {
   addClassScheduleBatch,
   deleteClassSchedule,
   getStudentTimetable,
+  getGroupTimetableGrid,
+  addSingleClassSchedule,
 } from "./actions/schedule-actions";
 
 export {
