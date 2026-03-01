@@ -13,9 +13,11 @@ import { Separator } from "@/components/ui/separator";
 export function StudentInfoCard({
   user,
   onUpdate,
+  onDelete,
 }: {
   user: UserWithProfile;
   onUpdate: typeof updateStudentProfile;
+  onDelete: (formData: FormData) => Promise<{ error?: string }>;
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
@@ -27,6 +29,9 @@ export function StudentInfoCard({
   const [newPassword, setNewPassword] = useState("");
   const [pwPending, setPwPending] = useState(false);
   const [pwMessage, setPwMessage] = useState<{ type: "error" | "success"; text: string } | null>(null);
+  const [delPending, setDelPending] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<{ type: "error" | "success"; text: string } | null>(null);
+  const [deleteModal, setDeleteModal] = useState(false);
 
   const handleStartEdit = () => {
     setKoreanName(user.korean_name ?? user.first_name ?? "");
@@ -60,6 +65,8 @@ export function StudentInfoCard({
       return;
     }
     setEditing(false);
+    setSaveMessage({ type: "success", text: "저장되었습니다." });
+    setTimeout(() => setSaveMessage(null), 3000);
     router.refresh();
   };
 
@@ -88,6 +95,28 @@ export function StudentInfoCard({
     }, 2000);
   };
 
+  const handleDelete = () => {
+    setDeleteModal(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    setDelPending(true);
+    const form = new FormData();
+    form.set("id", user.id);
+    const result = await onDelete(form);
+    setDelPending(false);
+    setDeleteModal(false);
+    if (result?.error) {
+      setError(result.error);
+      return;
+    }
+    setSaveMessage({ type: "success", text: "휴지통으로 이동되었습니다." });
+    setTimeout(() => {
+      router.push("/admin/students");
+      router.refresh();
+    }, 1500);
+  };
+
   return (
     <div className="max-w-lg">
       <div className="flex items-center justify-between gap-4 mb-4">
@@ -110,6 +139,15 @@ export function StudentInfoCard({
 
       {error && (
         <p className="mb-3 text-sm text-destructive bg-destructive/10 px-3 py-2 rounded-lg">{error}</p>
+      )}
+      {saveMessage && (
+        <p className={`mb-3 text-sm px-3 py-2 rounded-lg ${
+          saveMessage.type === "success"
+            ? "text-emerald-700 bg-emerald-50"
+            : "text-destructive bg-destructive/10"
+        }`}>
+          {saveMessage.text}
+        </p>
       )}
 
       <dl className="divide-y divide-border">
@@ -159,16 +197,27 @@ export function StudentInfoCard({
 
       <Separator className="my-4" />
 
-      <div>
+      <div className="flex items-center gap-3">
         {!showPwReset ? (
-          <Button
-            variant="outline"
-            size="sm"
-            className="text-amber-700 border-amber-200 hover:bg-amber-50"
-            onClick={() => { setShowPwReset(true); setPwMessage(null); setNewPassword(""); }}
-          >
-            비밀번호 재설정
-          </Button>
+          <>
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-amber-700 border-amber-200 hover:bg-amber-50"
+              onClick={() => { setShowPwReset(true); setPwMessage(null); setNewPassword(""); }}
+            >
+              비밀번호 재설정
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-destructive border-destructive/30 hover:bg-destructive/10"
+              onClick={handleDelete}
+              disabled={delPending}
+            >
+              {delPending ? "삭제 중…" : "삭제"}
+            </Button>
+          </>
         ) : (
           <div className="space-y-3">
             <Label>새 비밀번호</Label>
@@ -209,6 +258,28 @@ export function StudentInfoCard({
           </div>
         )}
       </div>
+
+      {/* 삭제 확인 모달 */}
+      {deleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full mx-4">
+            <h3 className="text-base font-semibold text-foreground mb-2">학생 삭제</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              <span className="font-medium text-foreground">
+                {user.korean_name ?? user.first_name}
+              </span> 학생을 휴지통으로 이동합니다. 계속하시겠습니까?
+            </p>
+            <div className="flex justify-end gap-2">
+              <Button variant="ghost" size="sm" onClick={() => setDeleteModal(false)} disabled={delPending}>
+                취소
+              </Button>
+              <Button variant="destructive" size="sm" onClick={handleDeleteConfirm} disabled={delPending}>
+                {delPending ? "삭제 중…" : "삭제"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
