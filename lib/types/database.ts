@@ -48,6 +48,7 @@ export type ClassTeacherInfo = {
 export type ClassWithDetails = {
   id: string;
   name: string;
+  group_label: "유치부" | "방과후" | "오후반" | null;
   teachers: ClassTeacherInfo[];
   student_count: number;
   created_at: string;
@@ -401,7 +402,8 @@ export type ClassSchedule = {
   class_id: string;
   academy_period_id: string;
   day_of_week: number; // 1=월 ~ 5=금
-  teacher_profile_id: string;
+  teacher_profile_id: string | null;
+  label: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -411,7 +413,9 @@ export type ClassScheduleWithDetails = {
   class_id: string;
   academy_period_id: string;
   day_of_week: number;
-  teacher_profile_id: string;
+  teacher_profile_id: string | null;
+  label: string | null;
+  textbook_id: string | null;
   period_name: string;
   period_start_time: string;
   period_end_time: string;
@@ -422,6 +426,7 @@ export type ClassScheduleWithDetails = {
 export type StudentTimetableCell = {
   class_id: string;
   class_name: string;
+  label: string | null;
   teacher_name: string | null;
   teacher_type: "korean" | "native";
 };

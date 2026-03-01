@@ -9,6 +9,123 @@ import type {
 
 const DAY_RANGE = [1, 2, 3, 4, 5];
 
+// ── 그룹별 시간표 그리드 데이터 조회 ──
+
+export type GroupTimetableData = {
+  periods: { id: string; name: string; start_time: string; end_time: string }[];
+  classes: { id: string; name: string }[];
+  /** key: `${classId}_${periodId}_${dayOfWeek}` */
+  cells: Record<string, { scheduleId: string; label: string | null; teacherId: string | null; teacherName: string | null; teacherType: "korean" | "native" }>;
+  teachers: { id: string; name: string; teacher_type: "korean" | "native" }[];
+};
+
+export async function getGroupTimetableGrid(
+  groupLabel: string,
+): Promise<GroupTimetableData> {
+  const supabase = createAdminClient();
+
+  // 1. 해당 그룹의 교시 목록
+  const { data: periods } = await supabase
+    .from("academy_periods")
+    .select("id, name, start_time, end_time")
+    .eq("group_label", groupLabel)
+    .eq("is_active", true)
+    .order("start_time");
+
+  if (!periods?.length) return { periods: [], classes: [], cells: {}, teachers: [] };
+
+  const periodIds = periods.map((p) => p.id);
+
+  // 2. 해당 그룹의 반 목록 (group_label로 직접 조회)
+  const { data: classRows } = await supabase
+    .from("classes")
+    .select("id, name")
+    .eq("group_label", groupLabel)
+    .order("name");
+  const classes = classRows ?? [];
+
+  // 3. 해당 교시에 배정된 수업 시간표 전체
+  const { data: schedules } = await supabase
+    .from("class_schedules")
+    .select("id, class_id, academy_period_id, day_of_week, teacher_profile_id, label")
+    .in("academy_period_id", periodIds);
+
+  // 4. 관련 교사 목록
+  const teacherIds = [...new Set((schedules ?? []).map((s) => s.teacher_profile_id).filter(Boolean))];
+  let teacherRows: { profile_id: string; name: string; teacher_type: string }[] = [];
+  if (teacherIds.length > 0) {
+    const { data } = await supabase
+      .from("teachers")
+      .select("profile_id, name, teacher_type")
+      .in("profile_id", teacherIds);
+    teacherRows = data ?? [];
+  }
+  const teacherMap = new Map(teacherRows.map((t) => [t.profile_id, t]));
+
+  // 5. 전체 교사 목록 (추가용)
+  const { data: allTeachers } = await supabase
+    .from("teachers")
+    .select("profile_id, name, teacher_type")
+    .order("name");
+
+  // 6. 셀 맵 구성
+  const cells: GroupTimetableData["cells"] = {};
+  for (const s of schedules ?? []) {
+    const teacher = s.teacher_profile_id ? teacherMap.get(s.teacher_profile_id) : null;
+    cells[`${s.class_id}_${s.academy_period_id}_${s.day_of_week}`] = {
+      scheduleId: s.id,
+      label: s.label ?? null,
+      teacherId: s.teacher_profile_id ?? null,
+      teacherName: teacher?.name ?? null,
+      teacherType: (teacher?.teacher_type ?? "korean") as "korean" | "native",
+    };
+  }
+
+  return {
+    periods,
+    classes,
+    cells,
+    teachers: (allTeachers ?? []).map((t) => ({
+      id: t.profile_id,
+      name: t.name,
+      teacher_type: t.teacher_type as "korean" | "native",
+    })),
+  };
+}
+
+// ── 단일 수업 배정 추가 ──
+
+export async function addSingleClassSchedule(
+  classId: string,
+  academyPeriodId: string,
+  dayOfWeek: number,
+  teacherProfileId: string | null,
+  label: string | null,
+): Promise<{ error?: string }> {
+  if (!classId || !academyPeriodId) {
+    return { error: "반과 교시를 선택해 주세요." };
+  }
+  if (dayOfWeek < 1 || dayOfWeek > 5) return { error: "요일이 올바르지 않습니다." };
+
+  const supabase = createAdminClient();
+  const { error } = await supabase.from("class_schedules").upsert(
+    {
+      class_id: classId,
+      academy_period_id: academyPeriodId,
+      day_of_week: dayOfWeek,
+      teacher_profile_id: teacherProfileId || null,
+      label: label || null,
+    },
+    { onConflict: "class_id,academy_period_id,day_of_week" },
+  );
+
+  if (error) {
+    console.error("[addSingleClassSchedule]", error.message);
+    return { error: error.message };
+  }
+  return {};
+}
+
 // ── 반별 수업 시간표 조회 ──
 
 export async function listClassSchedules(
@@ -18,7 +135,7 @@ export async function listClassSchedules(
 
   const { data: schedules, error } = await supabase
     .from("class_schedules")
-    .select("id, class_id, academy_period_id, day_of_week, teacher_profile_id")
+    .select("id, class_id, academy_period_id, day_of_week, teacher_profile_id, label, textbook_id")
     .eq("class_id", classId);
 
   if (error || !schedules?.length) return [];
@@ -34,25 +151,30 @@ export async function listClassSchedules(
   );
 
   // 교사 정보
-  const teacherIds = [...new Set(schedules.map((s) => s.teacher_profile_id))];
-  const { data: teachers } = await supabase
-    .from("teachers")
-    .select("profile_id, name, teacher_type")
-    .in("profile_id", teacherIds);
-  const teacherMap = new Map(
-    (teachers ?? []).map((t) => [t.profile_id, t]),
-  );
+  const teacherIds = [...new Set(schedules.map((s) => s.teacher_profile_id).filter(Boolean))];
+  let teacherMap = new Map<string, { profile_id: string; name: string; teacher_type: string }>();
+  if (teacherIds.length > 0) {
+    const { data: teachers } = await supabase
+      .from("teachers")
+      .select("profile_id, name, teacher_type")
+      .in("profile_id", teacherIds);
+    teacherMap = new Map(
+      (teachers ?? []).map((t) => [t.profile_id, t]),
+    );
+  }
 
   return schedules
     .map((s) => {
       const period = periodMap.get(s.academy_period_id);
-      const teacher = teacherMap.get(s.teacher_profile_id);
+      const teacher = s.teacher_profile_id ? teacherMap.get(s.teacher_profile_id) : null;
       return {
         id: s.id,
         class_id: s.class_id,
         academy_period_id: s.academy_period_id,
         day_of_week: s.day_of_week,
         teacher_profile_id: s.teacher_profile_id,
+        label: s.label ?? null,
+        textbook_id: s.textbook_id ?? null,
         period_name: period?.name ?? "",
         period_start_time: period?.start_time ?? "",
         period_end_time: period?.end_time ?? "",
@@ -72,11 +194,12 @@ export async function addClassScheduleBatch(
   classId: string,
   academyPeriodId: string,
   dayOfWeeks: number[],
-  teacherProfileId: string,
+  teacherProfileId: string | null,
+  label: string | null,
 ): Promise<{ error?: string }> {
   if (dayOfWeeks.length === 0) return { error: "요일을 하나 이상 선택해 주세요." };
-  if (!classId || !academyPeriodId || !teacherProfileId) {
-    return { error: "모든 항목을 선택해 주세요." };
+  if (!classId || !academyPeriodId) {
+    return { error: "반과 교시를 선택해 주세요." };
   }
   for (const d of dayOfWeeks) {
     if (!DAY_RANGE.includes(d)) return { error: "요일이 올바르지 않습니다." };
@@ -88,7 +211,8 @@ export async function addClassScheduleBatch(
     class_id: classId,
     academy_period_id: academyPeriodId,
     day_of_week: dow,
-    teacher_profile_id: teacherProfileId,
+    teacher_profile_id: teacherProfileId || null,
+    label: label || null,
   }));
 
   const { error } = await supabase.from("class_schedules").insert(rows);
@@ -148,14 +272,14 @@ export async function getStudentTimetable(
   // 3. 해당 반들의 수업 시간표
   const { data: schedules } = await supabase
     .from("class_schedules")
-    .select("id, class_id, academy_period_id, day_of_week, teacher_profile_id")
+    .select("id, class_id, academy_period_id, day_of_week, teacher_profile_id, label")
     .in("class_id", classIds);
 
   if (!schedules?.length) return [];
 
   // 4. period + teacher 정보
   const periodIds = [...new Set(schedules.map((s) => s.academy_period_id))];
-  const teacherIds = [...new Set(schedules.map((s) => s.teacher_profile_id))];
+  const teacherIds = [...new Set(schedules.map((s) => s.teacher_profile_id).filter(Boolean))];
 
   const [{ data: periods }, { data: teachers }] = await Promise.all([
     supabase
@@ -163,10 +287,12 @@ export async function getStudentTimetable(
       .select("id, name, start_time, end_time")
       .in("id", periodIds)
       .eq("is_active", true),
-    supabase
-      .from("teachers")
-      .select("profile_id, name, teacher_type")
-      .in("profile_id", teacherIds),
+    teacherIds.length > 0
+      ? supabase
+          .from("teachers")
+          .select("profile_id, name, teacher_type")
+          .in("profile_id", teacherIds)
+      : Promise.resolve({ data: [] as { profile_id: string; name: string; teacher_type: string }[] }),
   ]);
 
   const teacherMap = new Map(
@@ -186,10 +312,11 @@ export async function getStudentTimetable(
         (s) => s.academy_period_id === period.id && s.day_of_week === day,
       );
       if (schedule) {
-        const teacher = teacherMap.get(schedule.teacher_profile_id);
+        const teacher = schedule.teacher_profile_id ? teacherMap.get(schedule.teacher_profile_id) : null;
         cells[day] = {
           class_id: schedule.class_id,
           class_name: classMap.get(schedule.class_id) ?? "",
+          label: schedule.label ?? null,
           teacher_name: teacher?.name ?? null,
           teacher_type: (teacher?.teacher_type ?? "korean") as "korean" | "native",
         };
