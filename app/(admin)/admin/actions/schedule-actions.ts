@@ -15,8 +15,16 @@ export type GroupTimetableData = {
   periods: { id: string; name: string; start_time: string; end_time: string }[];
   classes: { id: string; name: string }[];
   /** key: `${classId}_${periodId}_${dayOfWeek}` */
-  cells: Record<string, { scheduleId: string; label: string | null; teacherId: string | null; teacherName: string | null; teacherType: "korean" | "native" }>;
+  cells: Record<string, {
+    scheduleId: string;
+    label: string | null;
+    teacherId: string | null;
+    teacherName: string | null;
+    teacherType: "korean" | "native";
+    textbookId: string | null;
+  }>;
   teachers: { id: string; name: string; teacher_type: "korean" | "native" }[];
+  textbooks: { id: string; title: string; series: string | null }[];
 };
 
 export async function getGroupTimetableGrid(
@@ -32,7 +40,7 @@ export async function getGroupTimetableGrid(
     .eq("is_active", true)
     .order("start_time");
 
-  if (!periods?.length) return { periods: [], classes: [], cells: {}, teachers: [] };
+  if (!periods?.length) return { periods: [], classes: [], cells: {}, teachers: [], textbooks: [] };
 
   const periodIds = periods.map((p) => p.id);
 
@@ -47,7 +55,7 @@ export async function getGroupTimetableGrid(
   // 3. 해당 교시에 배정된 수업 시간표 전체
   const { data: schedules } = await supabase
     .from("class_schedules")
-    .select("id, class_id, academy_period_id, day_of_week, teacher_profile_id, label")
+    .select("id, class_id, academy_period_id, day_of_week, teacher_profile_id, label, textbook_id")
     .in("academy_period_id", periodIds);
 
   // 4. 관련 교사 목록
@@ -68,7 +76,14 @@ export async function getGroupTimetableGrid(
     .select("profile_id, name, teacher_type")
     .order("name");
 
-  // 6. 셀 맵 구성
+  // 6. 전체 교재 목록 (배정용)
+  const { data: allTextbooks } = await supabase
+    .from("textbooks")
+    .select("id, title, series")
+    .eq("is_active", true)
+    .order("title");
+
+  // 7. 셀 맵 구성
   const cells: GroupTimetableData["cells"] = {};
   for (const s of schedules ?? []) {
     const teacher = s.teacher_profile_id ? teacherMap.get(s.teacher_profile_id) : null;
@@ -78,6 +93,7 @@ export async function getGroupTimetableGrid(
       teacherId: s.teacher_profile_id ?? null,
       teacherName: teacher?.name ?? null,
       teacherType: (teacher?.teacher_type ?? "korean") as "korean" | "native",
+      textbookId: s.textbook_id ?? null,
     };
   }
 
@@ -90,6 +106,11 @@ export async function getGroupTimetableGrid(
       name: t.name,
       teacher_type: t.teacher_type as "korean" | "native",
     })),
+    textbooks: (allTextbooks ?? []).map((tb) => ({
+      id: tb.id,
+      title: tb.title,
+      series: tb.series ?? null,
+    })),
   };
 }
 
@@ -101,6 +122,7 @@ export async function addSingleClassSchedule(
   dayOfWeek: number,
   teacherProfileId: string | null,
   label: string | null,
+  textbookId: string | null = null,
 ): Promise<{ error?: string }> {
   if (!classId || !academyPeriodId) {
     return { error: "반과 교시를 선택해 주세요." };
@@ -115,6 +137,7 @@ export async function addSingleClassSchedule(
       day_of_week: dayOfWeek,
       teacher_profile_id: teacherProfileId || null,
       label: label || null,
+      textbook_id: textbookId || null,
     },
     { onConflict: "class_id,academy_period_id,day_of_week" },
   );
