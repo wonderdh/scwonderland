@@ -70,11 +70,23 @@ export async function getGroupTimetableGrid(
   }
   const teacherMap = new Map(teacherRows.map((t) => [t.profile_id, t]));
 
-  // 5. 전체 교사 목록 (추가용)
-  const { data: allTeachers } = await supabase
-    .from("teachers")
-    .select("profile_id, name, teacher_type")
-    .order("name");
+  // 5. 전체 교사 목록 (삭제되지 않은 교사만, 배정용)
+  const { data: activeProfiles } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("role", "teacher")
+    .is("deleted_at", null);
+  const activeTeacherIds = (activeProfiles ?? []).map((p) => p.id);
+
+  let allTeachersRaw: { profile_id: string; name: string; teacher_type: string }[] = [];
+  if (activeTeacherIds.length > 0) {
+    const { data } = await supabase
+      .from("teachers")
+      .select("profile_id, name, teacher_type")
+      .in("profile_id", activeTeacherIds)
+      .order("name");
+    allTeachersRaw = data ?? [];
+  }
 
   // 6. 전체 교재 목록 (배정용)
   const { data: allTextbooks } = await supabase
@@ -101,7 +113,7 @@ export async function getGroupTimetableGrid(
     periods,
     classes,
     cells,
-    teachers: (allTeachers ?? []).map((t) => ({
+    teachers: allTeachersRaw.map((t) => ({
       id: t.profile_id,
       name: t.name,
       teacher_type: t.teacher_type as "korean" | "native",
