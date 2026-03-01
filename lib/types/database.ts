@@ -318,3 +318,137 @@ export type NoticeAttachment = {
   sort_order: number;
   created_at: string;
 };
+
+// ── 승하차(버스) 타입 ──
+
+export type BusNumber = {
+  id: string;
+  label: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type AcademyPeriod = {
+  id: string;
+  name: string;
+  start_time: string;
+  end_time: string;
+  has_pickup: boolean;
+  has_dropoff: boolean;
+  group_label: "유치부" | "방과후" | "오후반" | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type StudentBusDefault = {
+  id: string;
+  student_profile_id: string;
+  day_of_week: number;
+  direction: "pickup" | "dropoff";
+  academy_period_id: string;
+  bus_number_id: string;
+  estimated_time?: string | null;
+  note?: string | null;
+  period_name?: string;
+  period_time?: string;
+  bus_label?: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type BusChangeRequest = {
+  id: string;
+  student_profile_id: string;
+  request_date: string;
+  direction: "pickup" | "dropoff";
+  change_type: "change" | "no_ride";
+  new_academy_period_id: string | null;
+  new_bus_number_id: string | null;
+  reason: string | null;
+  status: "pending" | "approved" | "rejected";
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  review_note: string | null;
+  requested_at: string;
+  new_period_name?: string;
+  new_period_time?: string;
+  new_bus_label?: string;
+  korean_name?: string | null;
+  english_name?: string | null;
+  student_number?: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type BusManifestEntry = {
+  student_profile_id: string;
+  korean_name: string | null;
+  english_name: string | null;
+  student_number: string | null;
+  is_changed: boolean;
+  estimated_time?: string | null;
+  note?: string | null;
+  original_period_time?: string;
+  original_bus_label?: string;
+};
+
+// ── 수업 시간표(class_schedules) 타입 ──
+
+export type ClassSchedule = {
+  id: string;
+  class_id: string;
+  academy_period_id: string;
+  day_of_week: number; // 1=월 ~ 5=금
+  teacher_profile_id: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ClassScheduleWithDetails = {
+  id: string;
+  class_id: string;
+  academy_period_id: string;
+  day_of_week: number;
+  teacher_profile_id: string;
+  period_name: string;
+  period_start_time: string;
+  period_end_time: string;
+  teacher_name: string | null;
+  teacher_type: "korean" | "native";
+};
+
+export type StudentTimetableCell = {
+  class_id: string;
+  class_name: string;
+  teacher_name: string | null;
+  teacher_type: "korean" | "native";
+};
+
+export type StudentTimetableRow = {
+  academy_period_id: string;
+  period_name: string;
+  start_time: string;
+  end_time: string;
+  cells: Record<number, StudentTimetableCell | null>; // day_of_week 1~5
+};
+
+export type BusManifestGroup = {
+  academy_period_id: string;
+  period_time: string;
+  period_name: string;
+  bus_number_id: string;
+  bus_label: string;
+  students: BusManifestEntry[];
+};
+
+export type NoRideEntry = {
+  student_profile_id: string;
+  korean_name: string | null;
+  english_name: string | null;
+  student_number: string | null;
+  direction: "pickup" | "dropoff";
+  original_period_time?: string;
+  original_bus_label?: string;
+};

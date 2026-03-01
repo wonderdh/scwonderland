@@ -86,6 +86,16 @@ const koreanLinks: LinkItem[] = [
     activeColor: "bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-md",
     icon: ICONS.homework,
   },
+  {
+    href: "/academy/teacher/bus",
+    label: "승하차",
+    activeColor: "bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-md",
+    icon: (
+      <svg className="size-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M8 17a2 2 0 100-4 2 2 0 000 4zm8 0a2 2 0 100-4 2 2 0 000 4zM6 3h12a2 2 0 012 2v10a2 2 0 01-2 2H6a2 2 0 01-2-2V5a2 2 0 012-2zm0 4h12M7 21h2m6 0h2" />
+      </svg>
+    ),
+  },
 ];
 
 const nativeLinks: LinkItem[] = [

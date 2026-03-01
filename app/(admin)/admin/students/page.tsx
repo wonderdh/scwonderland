@@ -14,8 +14,10 @@ import { StudentLearningTab } from "./components/StudentLearningTab";
 import { StudentReportTab } from "./components/StudentReportTab";
 import { StudentTextbookTab } from "./components/StudentTextbookTab";
 import { StudentAttendanceTab } from "./components/StudentAttendanceTab";
+import { StudentBusTab } from "./components/StudentBusTab";
+import { StudentTimetableTab } from "./components/StudentTimetableTab";
 
-const VALID_TABS: StudentTabId[] = ["info", "learning", "report", "textbook", "attendance"];
+const VALID_TABS: StudentTabId[] = ["info", "learning", "report", "textbook", "timetable", "attendance", "bus"];
 
 function parseTab(tab: string | undefined): StudentTabId {
   if (tab && VALID_TABS.includes(tab as StudentTabId)) return tab as StudentTabId;
@@ -70,7 +72,9 @@ export default async function AdminStudentsPage({
               {currentTab === "textbook" && selectedUser && (
                 <StudentTextbookTab studentProfileId={selectedUser.id} />
               )}
+              {currentTab === "timetable" && <StudentTimetableTab studentProfileId={selectedUser.id} />}
               {currentTab === "attendance" && <StudentAttendanceTab studentProfileId={selectedUser.id} />}
+              {currentTab === "bus" && <StudentBusTab studentProfileId={selectedUser.id} />}
             </div>
           </>
         ) : (

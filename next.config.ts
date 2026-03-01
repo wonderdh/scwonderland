@@ -6,6 +6,7 @@ const supabaseHostname = supabaseUrl
   : "";
 
 const nextConfig: NextConfig = {
+  allowedDevOrigins: ["192.168.45.127"],
   images: {
     remotePatterns: [
       {
