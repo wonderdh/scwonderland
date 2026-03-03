@@ -13,6 +13,41 @@ import type { StudentTimetableEditData } from "../../actions/schedule-actions";
 
 const DAY_NAMES = ["월", "화", "수", "목", "금"];
 
+// IMPORTANT: All strings must be complete Tailwind class names (no dynamic concat) for purging to work.
+const TEACHER_COLOR_PALETTE: { bg: string; text: string }[] = [
+  { bg: "bg-blue-200",    text: "text-blue-800"    },
+  { bg: "bg-emerald-200", text: "text-emerald-800"  },
+  { bg: "bg-violet-200",  text: "text-violet-800"   },
+  { bg: "bg-rose-200",    text: "text-rose-800"     },
+  { bg: "bg-amber-200",   text: "text-amber-800"    },
+  { bg: "bg-cyan-200",    text: "text-cyan-800"     },
+  { bg: "bg-pink-200",    text: "text-pink-800"     },
+  { bg: "bg-orange-200",  text: "text-orange-800"   },
+  { bg: "bg-teal-200",    text: "text-teal-800"     },
+  { bg: "bg-indigo-200",  text: "text-indigo-800"   },
+  { bg: "bg-lime-200",    text: "text-lime-800"     },
+  { bg: "bg-sky-200",     text: "text-sky-800"      },
+];
+
+function buildTeacherColorMap(
+  rows: StudentTimetableRow[],
+): Map<string, { bg: string; text: string }> {
+  const seen = new Map<string, string>(); // id → name
+  for (const row of rows) {
+    for (const cell of Object.values(row.cells)) {
+      if (cell?.teacher_profile_id && cell.teacher_name && !seen.has(cell.teacher_profile_id)) {
+        seen.set(cell.teacher_profile_id, cell.teacher_name);
+      }
+    }
+  }
+  const sorted = [...seen.entries()].sort((a, b) => a[1].localeCompare(b[1]));
+  const map = new Map<string, { bg: string; text: string }>();
+  sorted.forEach(([id], i) => {
+    map.set(id, TEACHER_COLOR_PALETTE[i % TEACHER_COLOR_PALETTE.length]);
+  });
+  return map;
+}
+
 type GroupKey = "유치부" | "오후반" | "방과후";
 
 const GROUP_TABS: { key: GroupKey; label: string }[] = [
@@ -64,6 +99,9 @@ export function StudentTimetableTab({
   useEffect(() => {
     load();
   }, [load]);
+
+  // Teacher color map built from all rows
+  const teacherColorMap = useMemo(() => buildTeacherColorMap(rows), [rows]);
 
   // Filter class-based rows (source === "class")
   const classRows = useMemo(() => {
@@ -212,28 +250,25 @@ export function StudentTimetableTab({
                         );
                       }
 
-                      // 셀 배경: 원어민=blue, 한국인=emerald, 교사 없음(Art/중국어 등)=amber
-                      const cellBg = cell.teacher_name
-                        ? cell.teacher_type === "native"
-                          ? "bg-blue-50 border-blue-200"
-                          : "bg-emerald-50 border-emerald-200"
-                        : "bg-amber-50 border-amber-200";
+                      const color = cell.teacher_profile_id
+                        ? teacherColorMap.get(cell.teacher_profile_id)
+                        : null;
 
                       return (
                         <td key={day} className="py-2 px-2 text-center">
-                          <div className={`rounded-lg border p-2 ${cellBg}`}>
+                          <div className={`rounded-lg p-2 ${
+                            color
+                              ? `${color.bg} ${color.text}`
+                              : "bg-amber-100 text-amber-800"
+                          }`}>
                             {cell.teacher_name && (
-                              <div className={`text-xs font-semibold ${
-                                cell.teacher_type === "native"
-                                  ? "text-blue-700"
-                                  : "text-emerald-700"
-                              }`}>
+                              <div className="text-xs font-semibold">
                                 {cell.teacher_name}
                               </div>
                             )}
                             {cell.label && (
                               <div className={`text-[10px] font-medium ${
-                                cell.teacher_name ? "mt-0.5 text-slate-500" : "text-amber-700"
+                                cell.teacher_name ? "opacity-70" : ""
                               }`}>
                                 {cell.label}
                               </div>

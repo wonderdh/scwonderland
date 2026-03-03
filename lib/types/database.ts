@@ -430,6 +430,7 @@ export type StudentTimetableCell = {
   class_id: string | null;
   class_name: string | null;
   label: string | null;
+  teacher_profile_id: string | null;
   teacher_name: string | null;
   teacher_type: "korean" | "native";
   textbook_id: string | null;

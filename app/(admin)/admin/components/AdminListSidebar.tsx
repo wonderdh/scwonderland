@@ -40,7 +40,7 @@ export function AdminListSidebar({
   const searchPlaceholder = "이름, 아이디 검색";
 
   return (
-    <aside className="w-52 min-h-screen bg-sidebar flex flex-col shrink-0 border-r border-sidebar-border">
+    <aside className="w-52 sticky top-0 h-screen bg-sidebar flex flex-col shrink-0 border-r border-sidebar-border">
       <div className="p-3 border-b border-sidebar-border flex items-center justify-between gap-2">
         <span className="text-sidebar-foreground font-medium text-xs">{title}</span>
         <Button asChild size="sm" className="h-6 px-2 text-xs">
