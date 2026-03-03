@@ -1,10 +1,14 @@
+import { containsKorean, koreanToEnglish } from "./korean-to-english";
+
 const EMAIL_DOMAIN =
   process.env.NEXT_PUBLIC_EMAIL_DOMAIN ?? "scwonderland.com";
 
 export function normalizeEmail(raw: string): string {
   const s = raw.trim();
   if (!s) return "";
-  return s.includes("@") ? s : `${s}@${EMAIL_DOMAIN}`;
+  // 한글 입력 → 영타 키보드 매핑 자동 변환
+  const converted = containsKorean(s) ? koreanToEnglish(s) : s;
+  return converted.includes("@") ? converted : `${converted}@${EMAIL_DOMAIN}`;
 }
 
 export function getAuthErrorMessage(err: {

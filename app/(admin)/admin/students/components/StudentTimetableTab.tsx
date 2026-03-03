@@ -204,35 +204,41 @@ export function StudentTimetableTab({
                     </td>
                     {[1, 2, 3, 4, 5].map((day) => {
                       const cell = row.cells[day];
+                      if (!cell) {
+                        return (
+                          <td key={day} className="py-2 px-2 text-center">
+                            <span className="text-muted-foreground/30">-</span>
+                          </td>
+                        );
+                      }
+
+                      // 셀 배경: 원어민=blue, 한국인=emerald, 교사 없음(Art/중국어 등)=amber
+                      const cellBg = cell.teacher_name
+                        ? cell.teacher_type === "native"
+                          ? "bg-blue-50 border-blue-200"
+                          : "bg-emerald-50 border-emerald-200"
+                        : "bg-amber-50 border-amber-200";
+
                       return (
                         <td key={day} className="py-2 px-2 text-center">
-                          {cell ? (
-                            <div className="rounded-lg bg-primary/5 border border-primary/20 p-2">
-                              <div className="font-medium text-foreground text-xs">
-                                {cell.class_name}
+                          <div className={`rounded-lg border p-2 ${cellBg}`}>
+                            {cell.teacher_name && (
+                              <div className={`text-xs font-semibold ${
+                                cell.teacher_type === "native"
+                                  ? "text-blue-700"
+                                  : "text-emerald-700"
+                              }`}>
+                                {cell.teacher_name}
                               </div>
-                              {cell.label && (
-                                <div className="text-[10px] text-muted-foreground">
-                                  {cell.label}
-                                </div>
-                              )}
-                              {cell.teacher_name && (
-                                <div className="mt-0.5">
-                                  <span
-                                    className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium ${
-                                      cell.teacher_type === "native"
-                                        ? "bg-blue-100 text-blue-700"
-                                        : "bg-emerald-100 text-emerald-700"
-                                    }`}
-                                  >
-                                    {cell.teacher_name}
-                                  </span>
-                                </div>
-                              )}
-                            </div>
-                          ) : (
-                            <span className="text-muted-foreground/30">-</span>
-                          )}
+                            )}
+                            {cell.label && (
+                              <div className={`text-[10px] font-medium ${
+                                cell.teacher_name ? "mt-0.5 text-slate-500" : "text-amber-700"
+                              }`}>
+                                {cell.label}
+                              </div>
+                            )}
+                          </div>
                         </td>
                       );
                     })}
