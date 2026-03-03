@@ -151,6 +151,10 @@ export function StudentInfoCard({
       )}
 
       <dl className="divide-y divide-border">
+        <div className="py-3 flex gap-4">
+          <dt className="w-28 shrink-0 text-muted-foreground text-sm">아이디</dt>
+          <dd className="text-foreground font-mono">{user.email?.split("@")[0] || "—"}</dd>
+        </div>
         <div className="py-3 flex gap-4 items-center">
           <dt className="w-28 shrink-0 text-muted-foreground text-sm">한글 이름</dt>
           <dd className="text-foreground flex-1 min-w-0">
@@ -180,18 +184,6 @@ export function StudentInfoCard({
               (user.english_name ?? user.last_name) || "—"
             )}
           </dd>
-        </div>
-        <div className="py-3 flex gap-4">
-          <dt className="w-28 shrink-0 text-muted-foreground text-sm">학번</dt>
-          <dd className="text-foreground font-mono">{user.student_number ?? "—"}</dd>
-        </div>
-        <div className="py-3 flex gap-4">
-          <dt className="w-28 shrink-0 text-muted-foreground text-sm">아이디</dt>
-          <dd className="text-foreground font-mono">{user.email?.split("@")[0] || "—"}</dd>
-        </div>
-        <div className="py-3 flex gap-4">
-          <dt className="w-28 shrink-0 text-muted-foreground text-sm">이메일</dt>
-          <dd className="text-foreground break-all">{user.email || "—"}</dd>
         </div>
       </dl>
 

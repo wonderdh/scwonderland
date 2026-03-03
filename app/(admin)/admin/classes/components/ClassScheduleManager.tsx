@@ -2,19 +2,31 @@
 
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
 import type {
   ClassWithDetails,
   AcademyPeriod,
-  ClassScheduleWithDetails,
 } from "@/lib/types";
 import {
-  listClassSchedules,
-  addClassScheduleBatch,
+  addSingleClassSchedule,
   deleteClassSchedule,
+  listClassSchedules,
 } from "../../actions";
 
-const DAY_LABELS = ["", "월", "화", "수", "목", "금"];
+const DAY_LABELS = ["월", "화", "수", "목", "금"];
+
+const GROUP_ORDER = ["유치부", "오후반", "방과후", ""] as const;
+
+const SCHEDULE_GROUP_STYLE: Record<string, {
+  icon: string;
+  sectionBg: string;
+  sectionText: string;
+  countBg: string;
+}> = {
+  유치부: { icon: "🌅", sectionBg: "bg-amber-100", sectionText: "text-amber-800", countBg: "bg-amber-200 text-amber-800" },
+  오후반: { icon: "☁️", sectionBg: "bg-sky-100", sectionText: "text-sky-800", countBg: "bg-sky-200 text-sky-800" },
+  방과후: { icon: "🌙", sectionBg: "bg-violet-100", sectionText: "text-violet-800", countBg: "bg-violet-200 text-violet-800" },
+  "": { icon: "📋", sectionBg: "bg-slate-100", sectionText: "text-slate-600", countBg: "bg-slate-200 text-slate-600" },
+};
 
 type TeacherOption = {
   id: string;
@@ -22,40 +34,113 @@ type TeacherOption = {
   teacher_type: "korean" | "native";
 };
 
+type TextbookOption = {
+  id: string;
+  title: string;
+  series: string | null;
+};
+
+type PendingCell = {
+  teacherId: string | null;
+  label: string | null;
+  textbookId: string | null;
+};
+
+type ScheduleCell = {
+  scheduleId: string;
+  teacherId: string | null;
+  teacherName: string | null;
+  teacherType: "korean" | "native";
+  label: string | null;
+  textbookId: string | null;
+};
+
 export function ClassScheduleManager({
   classes,
   teachers,
   periods,
+  textbooks,
 }: {
   classes: ClassWithDetails[];
   teachers: TeacherOption[];
   periods: AcademyPeriod[];
+  textbooks: TextbookOption[];
 }) {
   const router = useRouter();
   const [search, setSearch] = useState("");
+  const [groupFilter, setGroupFilter] = useState("all");
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
-  const [schedules, setSchedules] = useState<ClassScheduleWithDetails[]>([]);
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  // 추가 폼 state
-  const [selectedDays, setSelectedDays] = useState<number[]>([]);
-  const [selectedPeriodId, setSelectedPeriodId] = useState("");
-  const [selectedTeacherId, setSelectedTeacherId] = useState("");
-  const [saving, setSaving] = useState(false);
+  // Toolbar state
+  const [toolTeacherId, setToolTeacherId] = useState("");
+  const [toolLabel, setToolLabel] = useState("");
+  const [toolTextbookId, setToolTextbookId] = useState("");
+
+  // Pending changes: key = `${periodId}|${day}`
+  const [pendingChanges, setPendingChanges] = useState<Map<string, PendingCell>>(new Map());
+
+  // Existing schedules: key = `${periodId}_${day}`
+  const [existingCells, setExistingCells] = useState<Map<string, ScheduleCell>>(new Map());
 
   const selectedClass = classes.find((c) => c.id === selectedClassId) ?? null;
 
+  // Filter periods by group of selected class
+  const classPeriods = useMemo(() => {
+    if (!selectedClass) return [];
+    const gl = selectedClass.group_label ?? "";
+    return periods
+      .filter((p) => p.group_label === gl && p.is_active)
+      .sort((a, b) => a.start_time.localeCompare(b.start_time));
+  }, [selectedClass, periods]);
+
   const filteredClasses = useMemo(() => {
-    if (!search.trim()) return classes;
+    let result =
+      groupFilter === "all"
+        ? classes
+        : classes.filter((c) => (c.group_label ?? "") === groupFilter);
+    if (!search.trim()) return result;
     const q = search.trim().toLowerCase();
-    return classes.filter((c) => c.name.toLowerCase().includes(q));
-  }, [classes, search]);
+    return result.filter(
+      (c) =>
+        c.name.toLowerCase().includes(q) ||
+        (c.group_label && c.group_label.toLowerCase().includes(q)),
+    );
+  }, [classes, search, groupFilter]);
+
+  const groupedFilteredClasses = useMemo(() => {
+    const map = new Map<string, ClassWithDetails[]>([
+      ["유치부", []],
+      ["오후반", []],
+      ["방과후", []],
+      ["", []],
+    ]);
+    for (const c of filteredClasses) {
+      map.get(c.group_label ?? "")!.push(c);
+    }
+    return map;
+  }, [filteredClasses]);
+
+  const nativeTeachers = teachers.filter((t) => t.teacher_type === "native");
+  const koreanTeachers = teachers.filter((t) => t.teacher_type === "korean");
 
   const loadSchedules = useCallback(async (classId: string) => {
     setLoading(true);
     const data = await listClassSchedules(classId);
-    setSchedules(data);
+    const map = new Map<string, ScheduleCell>();
+    for (const s of data) {
+      map.set(`${s.academy_period_id}_${s.day_of_week}`, {
+        scheduleId: s.id,
+        teacherId: s.teacher_profile_id,
+        teacherName: s.teacher_name,
+        teacherType: s.teacher_type,
+        label: s.label,
+        textbookId: s.textbook_id,
+      });
+    }
+    setExistingCells(map);
     setLoading(false);
   }, []);
 
@@ -68,41 +153,57 @@ export function ClassScheduleManager({
   function handleSelectClass(classId: string) {
     setSelectedClassId(classId);
     setError("");
-    setSelectedDays([]);
-    setSelectedPeriodId("");
-    setSelectedTeacherId("");
+    setPendingChanges(new Map());
   }
 
-  function toggleDay(day: number) {
-    setSelectedDays((prev) =>
-      prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day],
-    );
+  function handleCellToggle(periodId: string, day: number) {
+    const key = `${periodId}|${day}`;
+    setPendingChanges((prev) => {
+      const next = new Map(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.set(key, {
+          teacherId: toolTeacherId || null,
+          label: toolLabel || null,
+          textbookId: toolTextbookId || null,
+        });
+      }
+      return next;
+    });
   }
 
-  async function handleAdd() {
-    if (!selectedClassId) return;
+  async function handleSave() {
+    if (pendingChanges.size === 0 || !selectedClassId) return;
     setSaving(true);
     setError("");
-    const result = await addClassScheduleBatch(
-      selectedClassId,
-      selectedPeriodId,
-      selectedDays,
-      selectedTeacherId,
-    );
-    setSaving(false);
-    if (result.error) {
-      setError(result.error);
-      return;
+    let hasError = false;
+    for (const [key, pending] of pendingChanges) {
+      const [periodId, dayStr] = key.split("|");
+      const result = await addSingleClassSchedule(
+        selectedClassId,
+        periodId,
+        parseInt(dayStr, 10),
+        pending.teacherId,
+        pending.label,
+        pending.textbookId,
+      );
+      if (result.error) {
+        setError(result.error);
+        hasError = true;
+        break;
+      }
     }
-    setSelectedDays([]);
-    setSelectedPeriodId("");
-    setSelectedTeacherId("");
-    await loadSchedules(selectedClassId);
-    router.refresh();
+    if (!hasError) {
+      setPendingChanges(new Map());
+      await loadSchedules(selectedClassId);
+      router.refresh();
+    }
+    setSaving(false);
   }
 
-  async function handleDelete(scheduleId: string) {
-    if (!confirm("이 수업 배정을 삭제하시겠습니까?")) return;
+  async function handleDeleteCell(scheduleId: string) {
+    if (!confirm("이 배정을 삭제하시겠습니까?")) return;
     setError("");
     const result = await deleteClassSchedule(scheduleId);
     if (result.error) {
@@ -115,254 +216,275 @@ export function ClassScheduleManager({
     }
   }
 
-  // 캘린더용: 사용된 교시 목록 (periods 기준, start_time 순)
-  const usedPeriodIds = useMemo(
-    () => new Set(schedules.map((s) => s.academy_period_id)),
-    [schedules],
-  );
-
-  const calendarPeriods = useMemo(() => {
-    return periods
-      .filter((p) => usedPeriodIds.has(p.id))
-      .sort((a, b) => a.start_time.localeCompare(b.start_time));
-  }, [periods, usedPeriodIds]);
-
-  // (period_id, day) → schedule
-  const scheduleMap = useMemo(() => {
-    const map = new Map<string, ClassScheduleWithDetails>();
-    for (const s of schedules) {
-      map.set(`${s.academy_period_id}_${s.day_of_week}`, s);
-    }
-    return map;
-  }, [schedules]);
-
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-      {/* 왼쪽: 반 목록 */}
-      <div className="space-y-3">
-        <input
-          type="search"
-          placeholder="반 이름 검색"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full rounded-lg border border-input px-3 py-2 text-sm bg-background"
-        />
-        <div className="max-h-[calc(100vh-260px)] overflow-y-auto space-y-1 rounded-xl border p-2">
-          {filteredClasses.length === 0 && (
-            <p className="text-xs text-muted-foreground text-center py-4">
-              검색 결과가 없습니다.
-            </p>
-          )}
-          {filteredClasses.map((c) => (
-            <button
-              key={c.id}
-              type="button"
-              onClick={() => handleSelectClass(c.id)}
-              className={`w-full text-left rounded-lg px-3 py-2.5 text-sm transition-colors ${
-                selectedClassId === c.id
-                  ? "bg-primary text-primary-foreground"
-                  : "hover:bg-muted/50 text-foreground"
-              }`}
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
+        {/* 왼쪽: 반 목록 */}
+        <div className="space-y-2">
+          <div className="flex gap-2">
+            <input
+              type="search"
+              placeholder="반 이름 검색"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="flex-1 min-w-0 rounded-lg border border-input px-3 py-2 text-sm bg-background"
+            />
+            <select
+              value={groupFilter}
+              onChange={(e) => setGroupFilter(e.target.value)}
+              className="rounded-lg border border-input px-2.5 py-2 text-sm text-foreground bg-background shrink-0"
             >
-              <span className="font-medium">{c.name}</span>
-              <span className="ml-2 text-xs opacity-70">
-                {c.student_count}명
-              </span>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* 오른쪽: 캘린더 시간표 + 추가 폼 */}
-      <div className="lg:col-span-2 space-y-4">
-        {!selectedClass ? (
-          <div className="rounded-xl border border-dashed bg-slate-50/50 p-12 text-center text-sm text-slate-400">
-            왼쪽에서 반을 선택하세요.
+              <option value="all">전체</option>
+              <option value="유치부">유치부</option>
+              <option value="오후반">오후반</option>
+              <option value="방과후">방과후</option>
+              <option value="">미지정</option>
+            </select>
           </div>
-        ) : (
-          <>
-            <h3 className="text-base font-semibold text-foreground">
-              {selectedClass.name}
-              <span className="ml-2 text-sm font-normal text-muted-foreground">
-                수업 시간표
-              </span>
-            </h3>
-
-            {error && (
-              <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
-                {error}
-              </p>
-            )}
-
-            {/* 캘린더 형식 시간표 */}
-            {loading ? (
-              <p className="text-sm text-muted-foreground py-4">
-                불러오는 중...
-              </p>
-            ) : schedules.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-4">
-                배정된 수업이 없습니다.
+          <div className="max-h-[32rem] overflow-y-auto space-y-1.5 rounded-xl border p-2">
+            {filteredClasses.length === 0 ? (
+              <p className="text-xs text-muted-foreground text-center py-4">
+                검색 결과가 없습니다.
               </p>
             ) : (
-              <div className="overflow-x-auto rounded-xl border shadow-sm">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="bg-muted/50 border-b">
-                      <th className="py-3 px-3 text-left text-xs font-medium text-muted-foreground w-28">
-                        교시
-                      </th>
-                      {[1, 2, 3, 4, 5].map((day) => (
-                        <th
-                          key={day}
-                          className="py-3 px-3 text-center text-xs font-medium text-muted-foreground"
-                        >
-                          {DAY_LABELS[day]}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {calendarPeriods.map((period) => (
-                      <tr key={period.id} className="border-b">
-                        <td className="py-3 px-3 border-r">
-                          <div className="font-medium text-foreground">
-                            {period.name}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            {period.start_time.slice(0, 5)}~
-                            {period.end_time.slice(0, 5)}
-                          </div>
-                        </td>
-                        {[1, 2, 3, 4, 5].map((day) => {
-                          const s = scheduleMap.get(`${period.id}_${day}`);
-                          return (
-                            <td
-                              key={day}
-                              className="py-2 px-2 text-center align-middle"
-                            >
-                              {s ? (
-                                <div className="rounded-lg bg-primary/5 border border-primary/20 p-2 relative group">
-                                  <span
-                                    className={`inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium ${
-                                      s.teacher_type === "native"
-                                        ? "bg-blue-100 text-blue-700"
-                                        : "bg-emerald-100 text-emerald-700"
-                                    }`}
-                                  >
-                                    {s.teacher_name ?? "—"}
-                                  </span>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleDelete(s.id)}
-                                    className="absolute -top-1.5 -right-1.5 hidden group-hover:flex items-center justify-center w-5 h-5 rounded-full bg-red-500 text-white text-[10px] hover:bg-red-600 shadow-sm"
-                                    title="삭제"
-                                  >
-                                    ×
-                                  </button>
-                                </div>
-                              ) : (
-                                <span className="text-muted-foreground/30">
-                                  -
-                                </span>
-                              )}
-                            </td>
-                          );
-                        })}
-                      </tr>
+              GROUP_ORDER.map((group) => {
+                const groupClasses = groupedFilteredClasses.get(group) ?? [];
+                if (groupClasses.length === 0) return null;
+                const style = SCHEDULE_GROUP_STYLE[group];
+                const label = group || "미지정";
+                return (
+                  <div key={group}>
+                    <div className={`flex items-center gap-1.5 rounded px-2 py-1 mb-1 ${style.sectionBg}`}>
+                      <span className="text-xs leading-none">{style.icon}</span>
+                      <span className={`text-[11px] font-semibold ${style.sectionText}`}>{label}</span>
+                      <span className={`ml-auto rounded-full px-1.5 py-0.5 text-[10px] font-medium ${style.countBg}`}>
+                        {groupClasses.length}
+                      </span>
+                    </div>
+                    {groupClasses.map((c) => (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => handleSelectClass(c.id)}
+                        className={`w-full text-left rounded-lg px-3 py-2 text-sm transition-colors ${
+                          selectedClassId === c.id
+                            ? "bg-primary text-primary-foreground"
+                            : "hover:bg-muted/50 text-foreground"
+                        }`}
+                      >
+                        <span className="font-medium">{c.name}</span>
+                        <span className="ml-2 text-xs opacity-70">
+                          {c.student_count}명
+                        </span>
+                      </button>
                     ))}
-                  </tbody>
-                </table>
-              </div>
+                  </div>
+                );
+              })
             )}
+          </div>
+        </div>
 
-            {/* 추가 폼 */}
-            <div className="rounded-xl border bg-card p-4 space-y-4">
-              <h4 className="text-sm font-semibold text-foreground">
-                수업 추가
-              </h4>
-
-              {/* 요일 선택 */}
-              <div>
-                <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
-                  요일 선택
-                </label>
-                <div className="flex gap-2">
-                  {[1, 2, 3, 4, 5].map((day) => (
-                    <button
-                      key={day}
-                      type="button"
-                      onClick={() => toggleDay(day)}
-                      className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-                        selectedDays.includes(day)
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-muted text-muted-foreground hover:bg-muted/80"
-                      }`}
-                    >
-                      {DAY_LABELS[day]}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {/* 교시 선택 */}
-                <div>
-                  <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
-                    교시
-                  </label>
-                  <select
-                    value={selectedPeriodId}
-                    onChange={(e) => setSelectedPeriodId(e.target.value)}
-                    className="w-full rounded-lg border border-input px-3 py-2 text-sm bg-background"
-                  >
-                    <option value="">선택하세요</option>
-                    {periods.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name} ({p.start_time.slice(0, 5)}~
-                        {p.end_time.slice(0, 5)})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* 교사 선택 */}
-                <div>
-                  <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
-                    담당 교사
-                  </label>
-                  <select
-                    value={selectedTeacherId}
-                    onChange={(e) => setSelectedTeacherId(e.target.value)}
-                    className="w-full rounded-lg border border-input px-3 py-2 text-sm bg-background"
-                  >
-                    <option value="">선택하세요</option>
-                    {teachers.map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.name} (
-                        {t.teacher_type === "native" ? "원어민" : "한국인"})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="flex justify-end">
-                <Button
-                  size="sm"
-                  onClick={handleAdd}
-                  disabled={
-                    saving ||
-                    selectedDays.length === 0 ||
-                    !selectedPeriodId ||
-                    !selectedTeacherId
-                  }
-                >
-                  {saving ? "추가 중..." : "추가"}
-                </Button>
-              </div>
+        {/* 오른쪽: 툴바 + 그리드 */}
+        <div className="lg:col-span-3">
+          {!selectedClass ? (
+            <div className="rounded-xl border border-dashed bg-slate-50/50 p-12 text-center text-sm text-slate-400">
+              왼쪽에서 반을 선택하세요.
             </div>
-          </>
-        )}
+          ) : (
+            <div className="space-y-4">
+              <h3 className="text-base font-semibold text-foreground">
+                {selectedClass.name}
+                <span className="ml-2 text-sm font-normal text-muted-foreground">
+                  수업 시간표
+                </span>
+              </h3>
+
+              {error && (
+                <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>
+              )}
+
+              {/* 배정 툴바 */}
+              <div className="flex flex-wrap items-center gap-3 p-3 bg-slate-50 rounded-xl border">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs text-muted-foreground font-medium shrink-0">선생님</span>
+                  <select
+                    value={toolTeacherId}
+                    onChange={(e) => setToolTeacherId(e.target.value)}
+                    className="text-xs border rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-primary"
+                  >
+                    <option value="">없음</option>
+                    {nativeTeachers.length > 0 && (
+                      <optgroup label="원어민">
+                        {nativeTeachers.map((t) => (
+                          <option key={t.id} value={t.id}>{t.name}</option>
+                        ))}
+                      </optgroup>
+                    )}
+                    {koreanTeachers.length > 0 && (
+                      <optgroup label="한국인">
+                        {koreanTeachers.map((t) => (
+                          <option key={t.id} value={t.id}>{t.name}</option>
+                        ))}
+                      </optgroup>
+                    )}
+                  </select>
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs text-muted-foreground font-medium shrink-0">과목</span>
+                  <input
+                    type="text"
+                    placeholder="과목명"
+                    value={toolLabel}
+                    onChange={(e) => setToolLabel(e.target.value)}
+                    className="text-xs border rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-primary w-24"
+                  />
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs text-muted-foreground font-medium shrink-0">교재</span>
+                  <select
+                    value={toolTextbookId}
+                    onChange={(e) => setToolTextbookId(e.target.value)}
+                    className="text-xs border rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-primary max-w-40"
+                  >
+                    <option value="">없음</option>
+                    {textbooks.map((tb) => (
+                      <option key={tb.id} value={tb.id}>
+                        {tb.series ? `[${tb.series}] ` : ""}{tb.title}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex items-center gap-2 ml-auto">
+                  {pendingChanges.size > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setPendingChanges(new Map())}
+                      className="text-xs px-2.5 py-1.5 rounded-lg border text-muted-foreground hover:bg-muted/50 transition-colors"
+                    >
+                      전체해제
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={handleSave}
+                    disabled={pendingChanges.size === 0 || saving}
+                    className="text-xs px-3 py-1.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40 transition-colors font-medium"
+                  >
+                    {saving ? "저장 중…" : pendingChanges.size > 0 ? `저장 ${pendingChanges.size}건` : "저장"}
+                  </button>
+                </div>
+              </div>
+
+              {/* 시간표 그리드 */}
+              {loading ? (
+                <p className="text-sm text-muted-foreground py-4">불러오는 중...</p>
+              ) : classPeriods.length === 0 ? (
+                <div className="rounded-xl border border-dashed bg-slate-50/50 p-8 text-center text-sm text-muted-foreground">
+                  이 그룹에 등록된 교시가 없습니다.
+                </div>
+              ) : (
+                <div className="overflow-x-auto rounded-xl border shadow-sm">
+                  <table className="w-full text-sm border-collapse">
+                    <thead>
+                      <tr className="bg-muted/50 border-b">
+                        <th className="py-3 px-3 text-left text-xs font-medium text-muted-foreground w-28 border-r">
+                          교시
+                        </th>
+                        {DAY_LABELS.map((label, i) => (
+                          <th
+                            key={i}
+                            className="py-3 px-3 text-center text-xs font-medium text-muted-foreground border-r last:border-r-0"
+                          >
+                            {label}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {classPeriods.map((period) => (
+                        <tr key={period.id} className="border-b last:border-b-0">
+                          <td className="py-2 px-3 border-r align-middle">
+                            <div className="font-medium text-foreground text-xs">{period.name}</div>
+                            <div className="text-[10px] text-muted-foreground">
+                              {period.start_time.slice(0, 5)}~{period.end_time.slice(0, 5)}
+                            </div>
+                          </td>
+                          {[1, 2, 3, 4, 5].map((day) => {
+                            const cellKey = `${period.id}_${day}`;
+                            const pendingKey = `${period.id}|${day}`;
+                            const existing = existingCells.get(cellKey);
+                            const pending = pendingChanges.get(pendingKey);
+
+                            if (existing) {
+                              return (
+                                <td key={day} className="py-2 px-2 text-center align-middle border-r last:border-r-0">
+                                  <div
+                                    className={`relative group rounded-lg p-2 cursor-pointer transition-colors ${
+                                      pending ? "ring-2 ring-amber-400 ring-inset bg-amber-50" : "bg-primary/5 border border-primary/20"
+                                    }`}
+                                    onClick={() => handleCellToggle(period.id, day)}
+                                  >
+                                    {existing.label && (
+                                      <span className="block text-[10px] text-muted-foreground mb-0.5">
+                                        {existing.label}
+                                      </span>
+                                    )}
+                                    {existing.teacherName ? (
+                                      <span
+                                        className={`inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium ${
+                                          existing.teacherType === "native"
+                                            ? "bg-blue-100 text-blue-700"
+                                            : "bg-emerald-100 text-emerald-700"
+                                        }`}
+                                      >
+                                        {existing.teacherName}
+                                      </span>
+                                    ) : !existing.label ? (
+                                      <span className="text-xs text-muted-foreground">—</span>
+                                    ) : null}
+                                    <button
+                                      type="button"
+                                      onClick={(e) => { e.stopPropagation(); handleDeleteCell(existing.scheduleId); }}
+                                      className="absolute -top-1.5 -right-1.5 hidden group-hover:flex items-center justify-center w-5 h-5 rounded-full bg-red-500 text-white text-[10px] hover:bg-red-600 shadow-sm"
+                                      title="삭제"
+                                    >
+                                      ×
+                                    </button>
+                                  </div>
+                                </td>
+                              );
+                            }
+
+                            return (
+                              <td key={day} className="py-2 px-2 text-center align-middle border-r last:border-r-0">
+                                <button
+                                  type="button"
+                                  onClick={() => handleCellToggle(period.id, day)}
+                                  disabled={saving}
+                                  className={`w-full rounded-lg py-3 text-xs transition-colors ${
+                                    pending
+                                      ? "bg-emerald-100 text-emerald-700 font-medium"
+                                      : "text-muted-foreground/30 hover:bg-muted/50"
+                                  }`}
+                                >
+                                  {pending ? "✓" : "-"}
+                                </button>
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

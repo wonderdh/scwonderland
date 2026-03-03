@@ -41,14 +41,7 @@ export function UserRow({ user, variant, onUpdate, onDelete }: UserRowProps) {
     variant === "student"
       ? [user.korean_name, user.english_name].filter(Boolean).join(" / ") || user.first_name || "—"
       : user.name || user.first_name || "—";
-  const subLine =
-    variant === "student"
-      ? user.student_number
-        ? `학번 ${user.student_number}`
-        : user.email
-      : user.teacher_number
-        ? `교번 ${user.teacher_number} · ${user.email}`
-        : user.email;
+  const subLine = user.email?.split("@")[0] || user.email || "—";
 
   return (
     <li className="flex items-center gap-4 px-4 py-3 hover:bg-muted/50">

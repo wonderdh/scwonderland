@@ -39,13 +39,6 @@ export default async function TeacherMainPage() {
               </div>
               <div className="pb-1">
                 <h1 className="text-xl font-bold">{profile.name ?? (isNative ? "Teacher" : "선생님")}</h1>
-                <p className="text-sm text-muted-foreground">
-                  {profile.teacher_number && (
-                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                      {L.teacherNumber} {profile.teacher_number}
-                    </Badge>
-                  )}
-                </p>
               </div>
             </div>
             <div className="flex gap-6 text-center pb-1">
@@ -113,11 +106,6 @@ export default async function TeacherMainPage() {
                             </>
                           )}
                         </span>
-                        {s.student_number && (
-                          <span className="text-xs font-mono text-muted-foreground">
-                            {s.student_number}
-                          </span>
-                        )}
                       </li>
                     ))}
                   </ul>

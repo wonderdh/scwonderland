@@ -113,10 +113,10 @@ export function TeacherInfoCard({
       setError(result.error);
       return;
     }
+    router.refresh();
     setSaveMessage({ type: "success", text: "휴지통으로 이동되었습니다." });
     setTimeout(() => {
       router.push("/admin/teachers");
-      router.refresh();
     }, 1500);
   };
 
@@ -154,6 +154,10 @@ export function TeacherInfoCard({
       )}
 
       <dl className="divide-y divide-border">
+        <div className="py-3 flex gap-4">
+          <dt className="w-28 shrink-0 text-muted-foreground text-sm">아이디</dt>
+          <dd className="text-foreground font-mono">{user.email?.split("@")[0] || "—"}</dd>
+        </div>
         <div className="py-3 flex gap-4 items-center">
           <dt className="w-28 shrink-0 text-muted-foreground text-sm">이름</dt>
           <dd className="text-foreground flex-1 min-w-0">
@@ -168,18 +172,6 @@ export function TeacherInfoCard({
               (user.name ?? user.first_name) || "—"
             )}
           </dd>
-        </div>
-        <div className="py-3 flex gap-4">
-          <dt className="w-28 shrink-0 text-muted-foreground text-sm">교번</dt>
-          <dd className="text-foreground font-mono">{user.teacher_number ?? "—"}</dd>
-        </div>
-        <div className="py-3 flex gap-4">
-          <dt className="w-28 shrink-0 text-muted-foreground text-sm">아이디</dt>
-          <dd className="text-foreground font-mono">{user.email?.split("@")[0] || "—"}</dd>
-        </div>
-        <div className="py-3 flex gap-4">
-          <dt className="w-28 shrink-0 text-muted-foreground text-sm">이메일</dt>
-          <dd className="text-foreground break-all">{user.email || "—"}</dd>
         </div>
       </dl>
 

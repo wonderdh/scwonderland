@@ -399,7 +399,8 @@ export type BusManifestEntry = {
 
 export type ClassSchedule = {
   id: string;
-  class_id: string;
+  class_id: string | null;
+  student_profile_id: string | null;
   academy_period_id: string;
   day_of_week: number; // 1=월 ~ 5=금
   teacher_profile_id: string | null;
@@ -410,7 +411,8 @@ export type ClassSchedule = {
 
 export type ClassScheduleWithDetails = {
   id: string;
-  class_id: string;
+  class_id: string | null;
+  student_profile_id: string | null;
   academy_period_id: string;
   day_of_week: number;
   teacher_profile_id: string | null;
@@ -424,11 +426,14 @@ export type ClassScheduleWithDetails = {
 };
 
 export type StudentTimetableCell = {
-  class_id: string;
-  class_name: string;
+  schedule_id: string | null;
+  class_id: string | null;
+  class_name: string | null;
   label: string | null;
   teacher_name: string | null;
   teacher_type: "korean" | "native";
+  textbook_id: string | null;
+  source: "class" | "individual";
 };
 
 export type StudentTimetableRow = {

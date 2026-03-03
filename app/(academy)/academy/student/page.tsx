@@ -33,23 +33,8 @@ export default async function StudentInfoPage() {
                   </span>
                 )}
               </h1>
-              <p className="text-sm text-muted-foreground mt-0.5">
-                {profile.student_number && (
-                  <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">
-                    학번 {profile.student_number}
-                  </Badge>
-                )}
-              </p>
             </div>
           </div>
-        </CardContent>
-        <CardContent className="border-t pt-4">
-          <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-3 text-sm">
-            <dt className="text-muted-foreground">아이디</dt>
-            <dd className="font-mono">{profile.email?.split("@")[0] || "—"}</dd>
-            <dt className="text-muted-foreground">이메일</dt>
-            <dd className="break-all">{profile.email || "—"}</dd>
-          </dl>
         </CardContent>
       </Card>
 

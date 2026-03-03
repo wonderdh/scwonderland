@@ -21,6 +21,20 @@ import type { ClassTeacherInfo } from "@/lib/types";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+const GROUP_ORDER = ["유치부", "오후반", "방과후", ""] as const;
+
+const MANAGE_GROUP_STYLE: Record<string, {
+  icon: string;
+  sectionBg: string;
+  sectionText: string;
+  countBg: string;
+}> = {
+  유치부: { icon: "🌅", sectionBg: "bg-amber-100", sectionText: "text-amber-800", countBg: "bg-amber-200 text-amber-800" },
+  오후반: { icon: "☁️", sectionBg: "bg-sky-100", sectionText: "text-sky-800", countBg: "bg-sky-200 text-sky-800" },
+  방과후: { icon: "🌙", sectionBg: "bg-violet-100", sectionText: "text-violet-800", countBg: "bg-violet-200 text-violet-800" },
+  "": { icon: "📋", sectionBg: "bg-slate-100", sectionText: "text-slate-600", countBg: "bg-slate-200 text-slate-600" },
+};
+
 function formatTeachers(teachers: ClassTeacherInfo[]): string {
   if (teachers.length === 0) return "미지정";
   return teachers.map((t) => `${t.name ?? "—"}(${t.teacher_type === "native" ? "원어민" : "한국인"})`).join(", ");
@@ -77,6 +91,7 @@ export function ClassesManager({
 }) {
   const router = useRouter();
   const [search, setSearch] = useState("");
+  const [groupFilter, setGroupFilter] = useState("all");
   const [createOpen, setCreateOpen] = useState(false);
   const [editClass, setEditClass] = useState<ClassWithDetails | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ClassWithDetails | null>(null);
@@ -130,10 +145,15 @@ export function ClassesManager({
 
   // 왼쪽 패널 검색 필터
   const filteredClasses = useMemo(() => {
-    if (!search.trim()) return initialClasses;
+    let result =
+      groupFilter === "all"
+        ? initialClasses
+        : initialClasses.filter((c) => (c.group_label ?? "") === groupFilter);
+    if (!search.trim()) return result;
     const q = search.trim().toLowerCase();
-    return initialClasses.filter((c) => {
+    return result.filter((c) => {
       if (c.name.toLowerCase().includes(q)) return true;
+      if (c.group_label && c.group_label.toLowerCase().includes(q)) return true;
       const students = studentsByClassId[c.id] ?? [];
       return students.some(
         (s) =>
@@ -142,7 +162,21 @@ export function ClassesManager({
           (s.student_number && s.student_number.toLowerCase().includes(q))
       );
     });
-  }, [initialClasses, search, studentsByClassId]);
+  }, [initialClasses, search, groupFilter, studentsByClassId]);
+
+  const groupedFilteredClasses = useMemo(() => {
+    const map = new Map<string, ClassWithDetails[]>([
+      ["유치부", []],
+      ["오후반", []],
+      ["방과후", []],
+      ["", []],
+    ]);
+    for (const c of filteredClasses) {
+      const key = c.group_label ?? "";
+      map.get(key)!.push(c);
+    }
+    return map;
+  }, [filteredClasses]);
 
   // 오른쪽 패널: 학생 검색 필터
   const filteredRightStudents = useMemo(() => {
@@ -324,8 +358,8 @@ export function ClassesManager({
         {/* ===== 왼쪽 패널: 반 카드 목록 ===== */}
         <div className="space-y-3">
           <div className="rounded-xl border bg-card p-3">
-            <div className="flex items-center gap-2 mb-1">
-              <svg className="size-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+            <div className="flex items-center gap-2 mb-2">
+              <svg className="size-4 text-muted-foreground shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
               </svg>
               <input
@@ -333,8 +367,19 @@ export function ClassesManager({
                 placeholder="반 이름 · 학생 이름 · 학번 검색"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="flex-1 rounded-lg border border-input px-3 py-1.5 text-sm text-foreground placeholder-muted-foreground bg-background"
+                className="flex-1 min-w-0 rounded-lg border border-input px-3 py-1.5 text-sm text-foreground placeholder-muted-foreground bg-background"
               />
+              <select
+                value={groupFilter}
+                onChange={(e) => setGroupFilter(e.target.value)}
+                className="rounded-lg border border-input px-2.5 py-1.5 text-sm text-foreground bg-background shrink-0"
+              >
+                <option value="all">전체</option>
+                <option value="유치부">🌅 유치부</option>
+                <option value="오후반">☁️ 오후반</option>
+                <option value="방과후">🌙 방과후</option>
+                <option value="">미지정</option>
+              </select>
             </div>
             <p className="text-xs text-muted-foreground">
               {rightMode === "students"
@@ -343,38 +388,57 @@ export function ClassesManager({
             </p>
           </div>
 
-          <div className="space-y-3 max-h-[calc(100vh-240px)] overflow-y-auto pr-1">
-            {filteredClasses.map((c) => (
-              <ClassCard
-                key={c.id}
-                classRow={c}
-                students={studentsByClassId[c.id] ?? []}
-                globalMode={rightMode}
-                textbooks={cardTextbooks[c.id] ?? []}
-                textbooksLoaded={cardTextbooksLoaded[c.id] ?? false}
-                onEdit={() => setEditClass(c)}
-                onDelete={() => setDeleteTarget(c)}
-                onRemoveStudent={(row) =>
-                  setRemoveStudentTarget({ classId: c.id, row })
-                }
-                onRemoveTextbook={(textbookId) =>
-                  handleRemoveTextbookFromCard(c.id, textbookId)
-                }
-                isDropTarget={dropTargetClassId === c.id}
-                onDragOver={() => setDropTargetClassId(c.id)}
-                onDragLeave={() => setDropTargetClassId(null)}
-                onDrop={(e) =>
-                  rightMode === "students"
-                    ? handleDropStudentToCard(c.id, e)
-                    : handleDropTextbookToCard(c.id, e)
-                }
-              />
-            ))}
-
-            {filteredClasses.length === 0 && (
+          <div className="space-y-2 max-h-[calc(100vh-240px)] overflow-y-auto pr-1">
+            {filteredClasses.length === 0 ? (
               <div className="rounded-xl border bg-muted/30 p-8 text-center text-sm text-muted-foreground">
-                {search.trim() ? "검색 결과가 없습니다." : "등록된 반이 없습니다. 반 추가로 생성하세요."}
+                {search.trim() || groupFilter !== "all" ? "검색 결과가 없습니다." : "등록된 반이 없습니다. 반 추가로 생성하세요."}
               </div>
+            ) : (
+              GROUP_ORDER.map((group) => {
+                const groupClasses = groupedFilteredClasses.get(group) ?? [];
+                if (groupClasses.length === 0) return null;
+                const style = MANAGE_GROUP_STYLE[group];
+                const label = group || "미지정";
+                return (
+                  <div key={group} className="space-y-2">
+                    <div className={`flex items-center gap-2 rounded-lg px-3 py-1.5 ${style.sectionBg}`}>
+                      <span className="text-sm leading-none">{style.icon}</span>
+                      <span className={`text-xs font-semibold ${style.sectionText}`}>{label}</span>
+                      <span className={`ml-auto rounded-full px-2 py-0.5 text-[10px] font-medium ${style.countBg}`}>
+                        {groupClasses.length}개
+                      </span>
+                    </div>
+                    <div className="space-y-3 pl-1">
+                      {groupClasses.map((c) => (
+                        <ClassCard
+                          key={c.id}
+                          classRow={c}
+                          students={studentsByClassId[c.id] ?? []}
+                          globalMode={rightMode}
+                          textbooks={cardTextbooks[c.id] ?? []}
+                          textbooksLoaded={cardTextbooksLoaded[c.id] ?? false}
+                          onEdit={() => setEditClass(c)}
+                          onDelete={() => setDeleteTarget(c)}
+                          onRemoveStudent={(row) =>
+                            setRemoveStudentTarget({ classId: c.id, row })
+                          }
+                          onRemoveTextbook={(textbookId) =>
+                            handleRemoveTextbookFromCard(c.id, textbookId)
+                          }
+                          isDropTarget={dropTargetClassId === c.id}
+                          onDragOver={() => setDropTargetClassId(c.id)}
+                          onDragLeave={() => setDropTargetClassId(null)}
+                          onDrop={(e) =>
+                            rightMode === "students"
+                              ? handleDropStudentToCard(c.id, e)
+                              : handleDropTextbookToCard(c.id, e)
+                          }
+                        />
+                      ))}
+                    </div>
+                  </div>
+                );
+              })
             )}
           </div>
         </div>
@@ -806,6 +870,7 @@ function AddClassModal({
   onSuccess: () => void;
 }) {
   const [name, setName] = useState("");
+  const [groupLabel, setGroupLabel] = useState("");
   const [selectedTeacherIds, setSelectedTeacherIds] = useState<string[]>([]);
   const [teacherSearch, setTeacherSearch] = useState("");
   const [pending, setPending] = useState(false);
@@ -827,7 +892,7 @@ function AddClassModal({
     e.preventDefault();
     setPending(true);
     setError(null);
-    const result = await createClass(name.trim(), selectedTeacherIds);
+    const result = await createClass(name.trim(), selectedTeacherIds, groupLabel);
     setPending(false);
     if (result?.error) {
       setError(result.error);
@@ -844,18 +909,35 @@ function AddClassModal({
             {error}
           </p>
         )}
-        <div>
-          <label className="mb-1 block text-sm font-medium text-foreground">
-            반 이름
-          </label>
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="w-full rounded-lg border border-input px-3 py-2 text-foreground bg-background"
-            placeholder="예: 토요 1반"
-            required
-          />
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="mb-1 block text-sm font-medium text-foreground">
+              반 이름
+            </label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full rounded-lg border border-input px-3 py-2 text-foreground bg-background"
+              placeholder="예: 토요 1반"
+              required
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-foreground">
+              그룹
+            </label>
+            <select
+              value={groupLabel}
+              onChange={(e) => setGroupLabel(e.target.value)}
+              className="w-full rounded-lg border border-input px-3 py-2 text-foreground bg-background"
+            >
+              <option value="">미지정</option>
+              <option value="유치부">유치부</option>
+              <option value="방과후">방과후</option>
+              <option value="오후반">오후반</option>
+            </select>
+          </div>
         </div>
         <div>
           <label className="mb-2 block text-sm font-medium text-foreground">
@@ -932,6 +1014,7 @@ function EditClassModal({
   onSuccess: () => void;
 }) {
   const [name, setName] = useState(classRow.name);
+  const [groupLabel, setGroupLabel] = useState(classRow.group_label ?? "");
   const [selectedTeacherIds, setSelectedTeacherIds] = useState<string[]>(
     classRow.teachers.map((t) => t.profile_id)
   );
@@ -958,7 +1041,8 @@ function EditClassModal({
     const result = await updateClass(
       classRow.id,
       name.trim(),
-      selectedTeacherIds
+      selectedTeacherIds,
+      groupLabel,
     );
     setPending(false);
     if (result?.error) {
@@ -976,17 +1060,34 @@ function EditClassModal({
             {error}
           </p>
         )}
-        <div>
-          <label className="mb-1 block text-sm font-medium text-foreground">
-            반 이름
-          </label>
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="w-full rounded-lg border border-input px-3 py-2 text-foreground bg-background"
-            required
-          />
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="mb-1 block text-sm font-medium text-foreground">
+              반 이름
+            </label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full rounded-lg border border-input px-3 py-2 text-foreground bg-background"
+              required
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-foreground">
+              그룹
+            </label>
+            <select
+              value={groupLabel}
+              onChange={(e) => setGroupLabel(e.target.value)}
+              className="w-full rounded-lg border border-input px-3 py-2 text-foreground bg-background"
+            >
+              <option value="">미지정</option>
+              <option value="유치부">유치부</option>
+              <option value="방과후">방과후</option>
+              <option value="오후반">오후반</option>
+            </select>
+          </div>
         </div>
         <div>
           <label className="mb-2 block text-sm font-medium text-foreground">

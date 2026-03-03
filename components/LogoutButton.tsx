@@ -4,13 +4,32 @@ import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+type LogoutLabels = {
+  button?: string;
+  title?: string;
+  message?: string;
+  cancel?: string;
+  confirm?: string;
+  confirming?: string;
+};
+
 export function LogoutButton({
   className,
   children,
+  labels,
 }: {
   className?: string;
   children?: React.ReactNode;
+  labels?: LogoutLabels;
 } = {}) {
+  const L = {
+    button: labels?.button ?? "로그아웃",
+    title: labels?.title ?? "로그아웃",
+    message: labels?.message ?? "정말 로그아웃 하시겠습니까?",
+    cancel: labels?.cancel ?? "취소",
+    confirm: labels?.confirm ?? "로그아웃",
+    confirming: labels?.confirming ?? "로그아웃 중…",
+  };
   const router = useRouter();
   const [showConfirm, setShowConfirm] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
@@ -35,7 +54,7 @@ export function LogoutButton({
         }
       >
         {children}
-        <span>로그아웃</span>
+        <span>{L.button}</span>
       </button>
 
       {showConfirm && (
@@ -53,8 +72,8 @@ export function LogoutButton({
                 </svg>
               </div>
               <div>
-                <h3 className="text-base font-semibold text-foreground">로그아웃</h3>
-                <p className="mt-1 text-sm text-muted-foreground">정말 로그아웃 하시겠습니까?</p>
+                <h3 className="text-base font-semibold text-foreground">{L.title}</h3>
+                <p className="mt-1 text-sm text-muted-foreground">{L.message}</p>
               </div>
               <div className="flex gap-2 w-full mt-1">
                 <button
@@ -62,7 +81,7 @@ export function LogoutButton({
                   onClick={() => setShowConfirm(false)}
                   className="flex-1 rounded-lg bg-secondary px-4 py-2.5 text-sm font-medium text-secondary-foreground hover:bg-secondary/80 transition-colors cursor-pointer"
                 >
-                  취소
+                  {L.cancel}
                 </button>
                 <button
                   type="button"
@@ -70,7 +89,7 @@ export function LogoutButton({
                   disabled={loggingOut}
                   className="flex-1 rounded-lg bg-red-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50 transition-colors cursor-pointer"
                 >
-                  {loggingOut ? "로그아웃 중…" : "로그아웃"}
+                  {loggingOut ? L.confirming : L.confirm}
                 </button>
               </div>
             </div>

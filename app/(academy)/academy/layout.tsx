@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import Image from "next/image";
 import Link from "next/link";
 import { LogoutButton } from "@/components/LogoutButton";
@@ -12,6 +13,17 @@ export default async function AcademyLayout({
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
+  let isNative = false;
+  if (user) {
+    const admin = createAdminClient();
+    const { data: teacher } = await admin
+      .from("teachers")
+      .select("teacher_type")
+      .eq("profile_id", user.id)
+      .maybeSingle();
+    isNative = teacher?.teacher_type === "native";
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
@@ -33,19 +45,29 @@ export default async function AcademyLayout({
             href="/academy/dashboard"
             className="text-slate-600 hover:text-slate-900"
           >
-            대시보드
+            {isNative ? "Dashboard" : "대시보드"}
           </Link>
           <span className="text-slate-400">|</span>
           <Link
             href="/"
             className="text-slate-500 hover:text-slate-700"
           >
-            학원 소개 사이트
+            {isNative ? "School Website" : "학원 소개 사이트"}
           </Link>
           {user && (
             <>
               <span className="text-slate-400">|</span>
-              <LogoutButton className="text-muted-foreground hover:text-red-600 font-medium px-2 py-1 bg-transparent hover:bg-red-50 rounded-md" />
+              <LogoutButton
+                className="text-muted-foreground hover:text-red-600 font-medium px-2 py-1 bg-transparent hover:bg-red-50 rounded-md"
+                labels={isNative ? {
+                  button: "Logout",
+                  title: "Logout",
+                  message: "Are you sure you want to log out?",
+                  cancel: "Cancel",
+                  confirm: "Logout",
+                  confirming: "Logging out…",
+                } : undefined}
+              />
             </>
           )}
         </nav>

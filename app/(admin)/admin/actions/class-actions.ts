@@ -7,7 +7,7 @@ export async function listClassesWithDetails(): Promise<ClassWithDetails[]> {
   const supabase = createAdminClient();
   const { data: classes, error: classesError } = await supabase
     .from("classes")
-    .select("id, name, created_at, updated_at")
+    .select("id, name, group_label, created_at, updated_at")
     .order("name");
   if (classesError) {
     console.error("[listClassesWithDetails]", classesError.message);
@@ -67,6 +67,7 @@ export async function listClassesWithDetails(): Promise<ClassWithDetails[]> {
   return classes.map((c) => ({
     id: c.id,
     name: c.name,
+    group_label: (c.group_label ?? null) as "유치부" | "방과후" | "오후반" | null,
     teachers: teachersByClass.get(c.id) ?? [],
     student_count: countByClass[c.id] ?? 0,
     created_at: c.created_at,
@@ -204,14 +205,15 @@ export async function getAllClassStudentsFlat(): Promise<
 
 export async function createClass(
   name: string,
-  teacherProfileIds: string[]
+  teacherProfileIds: string[],
+  groupLabel?: string,
 ): Promise<{ error?: string; id?: string }> {
   const supabase = createAdminClient();
   const n = name?.trim();
   if (!n) return { error: "반 이름을 입력해 주세요." };
   const { data, error } = await supabase
     .from("classes")
-    .insert({ name: n })
+    .insert({ name: n, group_label: groupLabel || null })
     .select("id")
     .single();
   if (error) {
@@ -227,13 +229,41 @@ export async function createClass(
       console.error("[createClass:teachers]", ctError.message);
     }
   }
+
+  // 유치부 자동 배정: 모든 교시×요일 슬롯을 빈 상태로 생성
+  if (groupLabel === "유치부") {
+    const { data: kindergartenPeriods } = await supabase
+      .from("academy_periods")
+      .select("id")
+      .eq("group_label", "유치부")
+      .eq("is_active", true);
+
+    if (kindergartenPeriods?.length) {
+      const rows = kindergartenPeriods.flatMap((p) =>
+        [1, 2, 3, 4, 5].map((day) => ({
+          class_id: data.id,
+          academy_period_id: p.id,
+          day_of_week: day,
+          teacher_profile_id: null,
+          label: null,
+          textbook_id: null,
+        })),
+      );
+      const { error: autoErr } = await supabase.from("class_schedules").insert(rows);
+      if (autoErr && autoErr.code !== "23505") {
+        console.error("[createClass:autoAssign]", autoErr.message);
+      }
+    }
+  }
+
   return { id: data.id };
 }
 
 export async function updateClass(
   classId: string,
   name: string,
-  teacherProfileIds: string[]
+  teacherProfileIds: string[],
+  groupLabel?: string,
 ): Promise<{ error?: string }> {
   const supabase = createAdminClient();
   const n = name?.trim();
@@ -242,6 +272,7 @@ export async function updateClass(
     .from("classes")
     .update({
       name: n,
+      group_label: groupLabel || null,
       updated_at: new Date().toISOString(),
     })
     .eq("id", classId);
@@ -259,6 +290,48 @@ export async function updateClass(
       console.error("[updateClass:teachers]", ctError.message);
     }
   }
+
+  // 유치부 자동 배정: 비어있는 슬롯만 추가 (기존 배정 보존)
+  if (groupLabel === "유치부") {
+    const { data: kindergartenPeriods } = await supabase
+      .from("academy_periods")
+      .select("id")
+      .eq("group_label", "유치부")
+      .eq("is_active", true);
+
+    if (kindergartenPeriods?.length) {
+      const { data: existing } = await supabase
+        .from("class_schedules")
+        .select("academy_period_id, day_of_week")
+        .eq("class_id", classId)
+        .is("student_profile_id", null);
+
+      const existingSet = new Set(
+        (existing ?? []).map((e) => `${e.academy_period_id}_${e.day_of_week}`),
+      );
+
+      const rows = kindergartenPeriods.flatMap((p) =>
+        [1, 2, 3, 4, 5]
+          .filter((day) => !existingSet.has(`${p.id}_${day}`))
+          .map((day) => ({
+            class_id: classId,
+            academy_period_id: p.id,
+            day_of_week: day,
+            teacher_profile_id: null,
+            label: null,
+            textbook_id: null,
+          })),
+      );
+
+      if (rows.length > 0) {
+        const { error: autoErr } = await supabase.from("class_schedules").insert(rows);
+        if (autoErr && autoErr.code !== "23505") {
+          console.error("[updateClass:autoAssign]", autoErr.message);
+        }
+      }
+    }
+  }
+
   return {};
 }
 

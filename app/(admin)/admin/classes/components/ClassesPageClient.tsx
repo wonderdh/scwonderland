@@ -43,18 +43,26 @@ type FlatClassStudent = {
   student_number: string | null;
 };
 
+type TextbookOption = {
+  id: string;
+  title: string;
+  series: string | null;
+};
+
 export function ClassesPageClient({
   initialClasses,
   teachers,
   allClassStudents,
   allStudents,
   periods,
+  textbooks,
 }: {
   initialClasses: ClassWithDetails[];
   teachers: TeacherOption[];
   allClassStudents: FlatClassStudent[];
   allStudents: StudentInfo[];
   periods: AcademyPeriod[];
+  textbooks: TextbookOption[];
 }) {
   const searchParams = useSearchParams();
   const currentTab = parseTab(searchParams.get("tab") ?? undefined);
@@ -105,6 +113,7 @@ export function ClassesPageClient({
             classes={initialClasses}
             teachers={teachers}
             periods={periods}
+            textbooks={textbooks}
           />
         )}
       </div>

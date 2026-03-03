@@ -16,11 +16,11 @@
 
 ## Admin Components
 
-**공유 (admin/components/):** `AdminLayoutClient`, `AdminSidebar`, `AdminListSidebar`, `UserRow`, `UserList`, `ScrollToSection`
+**공유 (admin/components/):** `AdminLayoutClient`, `AdminSidebar`, `AdminListSidebar`, `UserRow`, `UserList`, `ScrollToSection`, `TrashView`
 
 **학생 전용 (admin/students/components/):** `AddStudentForm`, `StudentSelectedView`, `StudentTabNav`, `StudentReportTab`, `StudentLearningTab`, `StudentTextbookTab`, `StudentComingTab`, `ReportCardReadView`
 
-**교사 전용 (admin/teachers/components/):** `AddTeacherForm`, `TeacherInfoCard`, `TeacherTabNav`, `TeacherClassesTab`
+**교사 전용 (admin/teachers/components/):** `AddTeacherForm`, `TeacherInfoCard`, `TeacherTabNav`, `TeacherClassesTab`, `TeacherTimetableTab`
 
 **반 관리 (admin/classes/components/):** `ClassesManager`
 
@@ -46,3 +46,9 @@
 | `TeacherNav` | `teacher/components/` | 교사 포털 탭 (teacherType별 분기: 한국인 4탭/원어민 3탭 영어) |
 | `TeacherReportClient` | `teacher/components/` | 교사 리포트카드 작성/관리 (teacherType별 라벨) |
 | `TeacherTextbookClient` | `teacher/components/` | 교사 반별 교재 현황 조회 (teacherType별 라벨) |
+
+## Admin Info Card 동작 규칙
+- `TeacherInfoCard`: 아이디·이름만 표시, 교번·이메일 숨김, 커스텀 삭제 모달 (배정 건수 경고)
+- `StudentInfoCard` (`StudentSelectedView`): 아이디·이름만 표시, 학번·이메일 숨김, 단순 확인 모달
+- `UserRow` (목록탭): 아이디만 표시 (교번·학번 제거)
+- `AdminListSidebar`: 이름 + 아이디만 표시 (학번·교번 제거)

@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import type { ClassWithDetails, ClassTeacherInfo } from "@/lib/types";
 
 type FlatClassStudent = {
@@ -9,6 +10,51 @@ type FlatClassStudent = {
   korean_name: string | null;
   english_name: string | null;
   student_number: string | null;
+};
+
+const GROUP_ORDER = ["유치부", "오후반", "방과후", ""] as const;
+type GroupKey = (typeof GROUP_ORDER)[number];
+
+const GROUP_STYLE: Record<GroupKey, {
+  icon: string;
+  label: string;
+  headerBg: string;
+  headerText: string;
+  cardBorder: string;
+  cardBg: string;
+}> = {
+  유치부: {
+    icon: "🌅",
+    label: "유치부",
+    headerBg: "bg-amber-500",
+    headerText: "text-white",
+    cardBorder: "border-amber-200",
+    cardBg: "bg-amber-50/60",
+  },
+  오후반: {
+    icon: "☁️",
+    label: "오후반",
+    headerBg: "bg-sky-500",
+    headerText: "text-white",
+    cardBorder: "border-sky-200",
+    cardBg: "bg-sky-50/60",
+  },
+  방과후: {
+    icon: "🌙",
+    label: "방과후",
+    headerBg: "bg-violet-500",
+    headerText: "text-white",
+    cardBorder: "border-violet-200",
+    cardBg: "bg-violet-50/60",
+  },
+  "": {
+    icon: "📋",
+    label: "미지정",
+    headerBg: "bg-slate-400",
+    headerText: "text-white",
+    cardBorder: "border-slate-200",
+    cardBg: "bg-slate-50/60",
+  },
 };
 
 function TeacherBadges({ teachers }: { teachers: ClassTeacherInfo[] }) {
@@ -39,6 +85,34 @@ export function ClassesOverview({
   classes: ClassWithDetails[];
   allClassStudents: FlatClassStudent[];
 }) {
+  const [groupFilter, setGroupFilter] = useState("all");
+
+  const studentsByClass = useMemo(() => {
+    const map = new Map<string, FlatClassStudent[]>();
+    for (const s of allClassStudents) {
+      const list = map.get(s.class_id);
+      if (list) list.push(s);
+      else map.set(s.class_id, [s]);
+    }
+    return map;
+  }, [allClassStudents]);
+
+  const grouped = useMemo(() => {
+    const filtered =
+      groupFilter === "all"
+        ? classes
+        : classes.filter((c) => (c.group_label ?? "") === groupFilter);
+    const map = new Map<GroupKey, ClassWithDetails[]>();
+    for (const g of GROUP_ORDER) map.set(g, []);
+    for (const c of filtered) {
+      const key = (c.group_label ?? "") as GroupKey;
+      map.get(key)!.push(c);
+    }
+    return map;
+  }, [classes, groupFilter]);
+
+  const activeGroups = GROUP_ORDER.filter((g) => (grouped.get(g) ?? []).length > 0);
+
   if (classes.length === 0) {
     return (
       <div className="rounded-xl border border-dashed bg-slate-50/50 p-8 text-center text-sm text-muted-foreground">
@@ -47,53 +121,99 @@ export function ClassesOverview({
     );
   }
 
-  // 반별 학생 맵
-  const studentsByClass = new Map<string, FlatClassStudent[]>();
-  for (const s of allClassStudents) {
-    const list = studentsByClass.get(s.class_id);
-    if (list) list.push(s);
-    else studentsByClass.set(s.class_id, [s]);
-  }
+  // 드롭다운 옵션: 실제 존재하는 그룹만
+  const existingGroups = GROUP_ORDER.filter((g) =>
+    classes.some((c) => (c.group_label ?? "") === g)
+  );
 
   return (
-    <div className="columns-1 sm:columns-2 lg:columns-3 gap-4 space-y-4">
-      {classes.map((c) => {
-        const students = studentsByClass.get(c.id) ?? [];
-        return (
-          <div
-            key={c.id}
-            className="break-inside-avoid rounded-xl border bg-card p-4 shadow-sm hover:shadow-md transition-shadow"
-          >
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="font-semibold text-foreground">{c.name}</h3>
-              <span className="rounded-full bg-violet-100 px-2.5 py-0.5 text-xs font-medium text-violet-700">
-                {c.student_count}명
-              </span>
-            </div>
-            <div className="text-xs text-muted-foreground mb-3">
-              <span className="mr-1">담당:</span>
-              <TeacherBadges teachers={c.teachers} />
-            </div>
-            {students.length > 0 && (
-              <div className="border-t pt-2 space-y-0.5">
-                {students.map((s) => (
-                  <div
-                    key={s.id}
-                    className="text-xs text-foreground/80 flex items-center gap-2 overflow-hidden"
-                  >
-                    <span className="text-muted-foreground shrink-0">
-                      {s.student_number ?? "—"}
-                    </span>
-                    <span className="truncate">
-                      {s.korean_name ?? s.english_name ?? "—"}
-                    </span>
-                  </div>
-                ))}
+    <div className="space-y-6">
+      {/* 그룹 필터 드롭다운 */}
+      <div className="flex items-center gap-3">
+        <label className="text-sm font-medium text-muted-foreground shrink-0">그룹 필터</label>
+        <select
+          value={groupFilter}
+          onChange={(e) => setGroupFilter(e.target.value)}
+          className="rounded-lg border border-input px-3 py-1.5 text-sm text-foreground bg-background"
+        >
+          <option value="all">전체 ({classes.length}개 반)</option>
+          {existingGroups.map((g) => {
+            const count = classes.filter((c) => (c.group_label ?? "") === g).length;
+            return (
+              <option key={g} value={g}>
+                {GROUP_STYLE[g].icon} {GROUP_STYLE[g].label} ({count}개 반)
+              </option>
+            );
+          })}
+        </select>
+      </div>
+
+      {/* 그룹별 섹션 */}
+      {activeGroups.length === 0 ? (
+        <div className="rounded-xl border border-dashed bg-slate-50/50 p-8 text-center text-sm text-muted-foreground">
+          해당 그룹의 반이 없습니다.
+        </div>
+      ) : (
+        activeGroups.map((group) => {
+          const groupClasses = grouped.get(group) ?? [];
+          const style = GROUP_STYLE[group];
+          return (
+            <section key={group}>
+              {/* 섹션 헤더 */}
+              <div className={`flex items-center gap-3 rounded-xl px-4 py-3 mb-3 ${style.headerBg}`}>
+                <span className="text-lg leading-none">{style.icon}</span>
+                <h2 className={`font-bold text-base ${style.headerText}`}>{style.label}</h2>
+                <span
+                  className={`ml-auto rounded-full bg-white/25 px-2.5 py-0.5 text-xs font-semibold ${style.headerText}`}
+                >
+                  {groupClasses.length}개 반
+                </span>
               </div>
-            )}
-          </div>
-        );
-      })}
+
+              {/* 카드 그리드 */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {groupClasses.map((c) => {
+                  const students = studentsByClass.get(c.id) ?? [];
+                  return (
+                    <div
+                      key={c.id}
+                      className={`rounded-xl border ${style.cardBorder} ${style.cardBg} p-4 shadow-sm hover:shadow-md transition-shadow`}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <h3 className="font-semibold text-foreground">{c.name}</h3>
+                        <span className="rounded-full bg-white/70 px-2.5 py-0.5 text-xs font-medium text-foreground/70">
+                          {c.student_count}명
+                        </span>
+                      </div>
+                      <div className="text-xs text-muted-foreground mb-3">
+                        <span className="mr-1">담당:</span>
+                        <TeacherBadges teachers={c.teachers} />
+                      </div>
+                      {students.length > 0 && (
+                        <div className="border-t border-current/10 pt-2 space-y-0.5">
+                          {students.map((s) => (
+                            <div
+                              key={s.id}
+                              className="text-xs text-foreground/80 flex items-center gap-2 overflow-hidden"
+                            >
+                              <span className="text-muted-foreground shrink-0">
+                                {s.student_number ?? "—"}
+                              </span>
+                              <span className="truncate">
+                                {s.korean_name ?? s.english_name ?? "—"}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          );
+        })
+      )}
     </div>
   );
 }

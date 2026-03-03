@@ -11,8 +11,6 @@ import {
 
 const DAY_LABELS = ["월", "화", "수", "목", "금"];
 
-const LABEL_OPTIONS = ["Science", "Math", "Writing", "PE"];
-
 const DAY_COLORS: Record<number, { bg: string; text: string; label: string }> = {
   1: { bg: "bg-red-50", text: "text-red-700", label: "월" },
   2: { bg: "bg-orange-50", text: "text-orange-700", label: "화" },
@@ -20,6 +18,33 @@ const DAY_COLORS: Record<number, { bg: string; text: string; label: string }> = 
   4: { bg: "bg-green-50", text: "text-green-700", label: "목" },
   5: { bg: "bg-blue-50", text: "text-blue-700", label: "금" },
 };
+
+// IMPORTANT: All strings must be complete Tailwind class names (no dynamic concat) for purging to work.
+const TEACHER_COLOR_PALETTE: { bg: string; text: string }[] = [
+  { bg: "bg-blue-200",    text: "text-blue-800"    },
+  { bg: "bg-emerald-200", text: "text-emerald-800"  },
+  { bg: "bg-violet-200",  text: "text-violet-800"   },
+  { bg: "bg-rose-200",    text: "text-rose-800"     },
+  { bg: "bg-amber-200",   text: "text-amber-800"    },
+  { bg: "bg-cyan-200",    text: "text-cyan-800"     },
+  { bg: "bg-pink-200",    text: "text-pink-800"     },
+  { bg: "bg-orange-200",  text: "text-orange-800"   },
+  { bg: "bg-teal-200",    text: "text-teal-800"     },
+  { bg: "bg-indigo-200",  text: "text-indigo-800"   },
+  { bg: "bg-lime-200",    text: "text-lime-800"     },
+  { bg: "bg-sky-200",     text: "text-sky-800"      },
+];
+
+// Accepts pre-sorted teachers array so caller controls the sort order (no duplication).
+function buildTeacherColorMap(
+  sortedTeachers: { id: string; name: string }[],
+): Map<string, { bg: string; text: string }> {
+  const map = new Map<string, { bg: string; text: string }>();
+  sortedTeachers.forEach((t, i) => {
+    map.set(t.id, TEACHER_COLOR_PALETTE[i % TEACHER_COLOR_PALETTE.length]);
+  });
+  return map;
+}
 
 type PendingCell = {
   teacherId: string | null;
@@ -181,6 +206,16 @@ export function GroupTimetableGrid({
     return map;
   }, [data]);
 
+  const sortedTeachers = useMemo(
+    () => [...data.teachers].sort((a, b) => a.name.localeCompare(b.name)),
+    [data.teachers],
+  );
+
+  const teacherColorMap = useMemo(
+    () => buildTeacherColorMap(sortedTeachers),
+    [sortedTeachers],
+  );
+
   if (data.periods.length === 0) {
     return (
       <div className="rounded-xl border border-dashed bg-slate-50/50 p-8 text-center text-sm text-muted-foreground">
@@ -235,16 +270,13 @@ export function GroupTimetableGrid({
 
         <div className="flex items-center gap-1.5">
           <span className="text-xs text-muted-foreground font-medium shrink-0">과목</span>
-          <select
+          <input
+            type="text"
+            placeholder="과목명"
             value={toolLabel}
             onChange={(e) => setToolLabel(e.target.value)}
-            className="text-xs border rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-primary"
-          >
-            <option value="">없음</option>
-            {LABEL_OPTIONS.map((l) => (
-              <option key={l} value={l}>{l}</option>
-            ))}
-          </select>
+            className="text-xs border rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-primary w-24"
+          />
         </div>
 
         <div className="flex items-center gap-1.5">
@@ -283,6 +315,21 @@ export function GroupTimetableGrid({
           </button>
         </div>
       </div>
+
+      {/* 교사 색상 범례 */}
+      {sortedTeachers.length > 0 && (
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 px-1">
+          {sortedTeachers.map((t) => {
+            const color = teacherColorMap.get(t.id);
+            return (
+              <span key={t.id} className="inline-flex items-center gap-1.5 text-xs">
+                <span className={`w-3 h-3 rounded-sm ${color?.bg ?? "bg-slate-200"}`} />
+                <span className="text-muted-foreground">{t.name}</span>
+              </span>
+            );
+          })}
+        </div>
+      )}
 
       {/* 시간표 그리드 */}
       <div className="overflow-x-auto rounded-xl border shadow-sm">
@@ -325,6 +372,7 @@ export function GroupTimetableGrid({
                         onCellToggle={handleCellToggle}
                         onDeleteClick={handleDeleteSchedule}
                         loading={loading || saving}
+                        teacherColorMap={teacherColorMap}
                       />
                     </td>
                   );
@@ -346,6 +394,7 @@ function PeriodDayGrid({
   onCellToggle,
   onDeleteClick,
   loading,
+  teacherColorMap,
 }: {
   classId: string;
   periodId: string;
@@ -354,6 +403,7 @@ function PeriodDayGrid({
   onCellToggle: (classId: string, periodId: string, day: number) => void;
   onDeleteClick: (scheduleIds: string[]) => void;
   loading: boolean;
+  teacherColorMap: Map<string, { bg: string; text: string }>;
 }) {
   const rows: React.ReactNode[] = [];
   let dayIndex = 1;
@@ -395,11 +445,12 @@ function PeriodDayGrid({
       const height = cell.span * 24;
       const hasTeacher = !!cell.teacherName;
       const hasLabel = !!cell.label;
-      const bgClass = hasTeacher
-        ? cell.teacherType === "native"
-          ? "bg-blue-100/70 text-blue-700"
-          : "bg-emerald-100/70 text-emerald-700"
-        : "bg-slate-100/70 text-slate-600";
+      const teacherColor = cell.teacherId ? teacherColorMap.get(cell.teacherId) : undefined;
+      const bgClass = hasTeacher && teacherColor
+        ? `${teacherColor.bg} ${teacherColor.text}`
+        : hasTeacher
+          ? "bg-slate-200 text-slate-700"
+          : "bg-slate-100/70 text-slate-500";
 
       const pendingKey = `${classId}|${periodId}|${cell.startDay}`;
       const pending = pendingChanges.get(pendingKey);

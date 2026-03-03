@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 
-export type TeacherTabId = "info" | "classes";
+export type TeacherTabId = "info" | "classes" | "timetable";
 
 const TABS: { id: TeacherTabId; label: string }[] = [
   { id: "info", label: "선생정보" },
   { id: "classes", label: "담당 반" },
+  { id: "timetable", label: "시간표" },
 ];
 
 export function TeacherTabNav({

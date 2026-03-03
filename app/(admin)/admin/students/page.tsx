@@ -1,6 +1,9 @@
 import {
   deleteUserById,
   listUsersByRole,
+  listDeletedUsers,
+  restoreUser,
+  permanentlyDeleteUser,
   updateStudentProfile,
 } from "../actions";
 import { AdminListSidebar } from "../components/AdminListSidebar";
@@ -16,6 +19,7 @@ import { StudentTextbookTab } from "./components/StudentTextbookTab";
 import { StudentAttendanceTab } from "./components/StudentAttendanceTab";
 import { StudentBusTab } from "./components/StudentBusTab";
 import { StudentTimetableTab } from "./components/StudentTimetableTab";
+import { TrashView } from "../components/TrashView";
 
 const VALID_TABS: StudentTabId[] = ["info", "learning", "report", "textbook", "timetable", "attendance", "bus"];
 
@@ -29,16 +33,24 @@ export default async function AdminStudentsPage({
 }: {
   searchParams: Promise<{ section?: string; selected?: string; tab?: string }>;
 }) {
-  const users = await listUsersByRole("student");
   const { section, selected, tab } = await searchParams;
+  const users = await listUsersByRole("student");
   const selectedUser = selected ? users.find((u) => u.id === selected) : null;
   const currentTab = parseTab(tab);
+  const deletedUsers = section === "trash" ? await listDeletedUsers("student") : [];
 
   return (
     <div className="flex flex-1 min-w-0 -m-6 md:-m-8">
       <AdminListSidebar users={users} variant="students" />
       <div className="flex-1 min-w-0 p-6 md:p-8 flex flex-col">
-        {section === "add" ? (
+        {section === "trash" ? (
+          <TrashView
+            users={deletedUsers}
+            variant="student"
+            onRestore={restoreUser}
+            onPermanentDelete={permanentlyDeleteUser}
+          />
+        ) : section === "add" ? (
           <>
             <ScrollToSection section="add" />
             <section id="add" className="mb-8">
@@ -61,7 +73,7 @@ export default async function AdminStudentsPage({
             <div className="rounded-b-xl border border-t-0 border-slate-200 bg-white p-6 flex-1">
               {currentTab === "info" && (
                 <div className="space-y-8">
-                  <StudentInfoCard user={selectedUser} onUpdate={updateStudentProfile} />
+                  <StudentInfoCard user={selectedUser} onUpdate={updateStudentProfile} onDelete={deleteUserById} />
                   <StudentClassesView studentProfileId={selectedUser.id} />
                 </div>
               )}

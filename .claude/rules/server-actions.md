@@ -6,11 +6,12 @@
 - `createStudent(formData)` — 학생 계정 생성 (AdminClient, email_confirm: true)
 - `createTeacher(formData)` — 교사 계정 생성 (teacher_type: korean/native)
 - `listUsersByRole(role)` — 역할별 사용자 목록 (profiles + auth + students/teachers 조인)
-- `deleteUserById(formData)` — 사용자 삭제 (cascade)
+- `deleteUserById(formData)` — 소프트 삭제: class_teachers·class_schedules 정리 후 profiles.deleted_at 설정 + Auth ban
 - `updateStudentProfile(formData)` — 학생 이름 수정 (profiles + students 테이블)
 - `updateTeacherProfile(formData)` — 교사 이름/유형 수정
 - `resetUserPassword(userId, newPassword)` — 비밀번호 초기화
 - `listAllStudents()` — 전체 학생 목록
+- `getTeacherAssignmentCounts(userId)` — 교사의 담당 반 수 + 수업 배정 수 조회 (count only, 삭제 전 경고용)
 
 **report-actions.ts — 리포트카드:**
 - `getReportCard(studentProfileId, year, month)` — 리포트카드 조회 (RLS)

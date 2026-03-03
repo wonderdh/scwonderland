@@ -5,13 +5,15 @@
 ```
 Supabase Auth Users
     │
-    ├── profiles (id, role: "admin"|"student"|"teacher", first_name, last_name)
+    ├── profiles (id, role: "admin"|"student"|"teacher", first_name, last_name, deleted_at TIMESTAMPTZ)
     │   ├── students (profile_id FK, korean_name, english_name, student_number [auto])
     │   └── teachers (profile_id FK, name, teacher_number [auto], teacher_type: "korean"|"native")
     │
-    ├── classes (id, name)
+    ├── classes (id, name, group_label: "유치부"|"오후반"|"방과후")
     │   ├── class_teachers (class_id FK, teacher_profile_id FK) [junction, 최대 2명]
-    │   └── class_students (class_id FK, student_profile_id FK) [junction]
+    │   ├── class_students (class_id FK, student_profile_id FK) [junction]
+    │   └── class_schedules (class_id FK, teacher_profile_id FK, period_id FK,
+    │       day, label, textbook_id FK→textbooks ON DELETE SET NULL)
     │
     ├── report_cards (student_profile_id FK, author_id FK, year, month, content, reply)
     │   └── UNIQUE (student_profile_id, year, month)

@@ -266,6 +266,31 @@ export const attendanceLabels = {
   },
 } as const;
 
+export const timetableLabels = {
+  korean: {
+    title: "시간표",
+    noPeriods: "이 그룹에 등록된 교시가 없습니다.",
+    period: "교시",
+    days: ["월", "화", "수", "목", "금"] as string[],
+    groups: {
+      "유치부": "유치부",
+      "오후반": "오후반",
+      "방과후": "방과후",
+    } as Record<string, string>,
+  },
+  native: {
+    title: "Timetable",
+    noPeriods: "No periods registered for this group.",
+    period: "Period",
+    days: ["Mon", "Tue", "Wed", "Thu", "Fri"] as string[],
+    groups: {
+      "유치부": "Kindergarten",
+      "오후반": "Afternoon",
+      "방과후": "After School",
+    } as Record<string, string>,
+  },
+} as const;
+
 export const busLabels = {
   korean: {
     title: "승하차 현황",

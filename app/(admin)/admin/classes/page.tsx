@@ -4,17 +4,19 @@ import {
   listClassesWithDetails,
   listTeachersForSelect,
   listAcademyPeriods,
+  listTextbooks,
 } from "../actions";
 import { ClassesPageClient } from "./components/ClassesPageClient";
 
 export default async function AdminClassesPage() {
-  const [classes, teachers, allClassStudents, allStudents, periods] =
+  const [classes, teachers, allClassStudents, allStudents, periods, textbooks] =
     await Promise.all([
       listClassesWithDetails(),
       listTeachersForSelect(),
       getAllClassStudentsFlat(),
       listAllStudents(),
       listAcademyPeriods(),
+      listTextbooks(),
     ]);
 
   return (
@@ -25,6 +27,7 @@ export default async function AdminClassesPage() {
         allClassStudents={allClassStudents}
         allStudents={allStudents}
         periods={periods}
+        textbooks={textbooks.map((tb) => ({ id: tb.id, title: tb.title, series: tb.series ?? null }))}
       />
     </div>
   );

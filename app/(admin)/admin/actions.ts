@@ -47,6 +47,7 @@ export {
 } from "./actions/notice-actions";
 
 export {
+  listTextbooks,
   getClassTextbookProgress,
   batchUpdateProgress,
 } from "./actions/textbook-actions";
@@ -102,6 +103,8 @@ export {
   getStudentTimetable,
   getGroupTimetableGrid,
   addSingleClassSchedule,
+  getStudentTimetableEditable,
+  deleteStudentSchedule,
 } from "./actions/schedule-actions";
 
 export {
