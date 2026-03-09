@@ -30,9 +30,11 @@ export default async function AcademyDashboardPage() {
     redirect("/academy/teacher");
   }
 
-  // bus 역할: 추후 /academy/bus 포털 구현 예정 — 현재는 fallback UI 표시
+  if (profile?.role === "bus") {
+    redirect("/bus");
+  }
 
-  // 역할 미지정 또는 bus 사용자 (fallback)
+  // 역할 미지정 사용자 (fallback)
   return (
     <div className="max-w-3xl mx-auto">
       <h1 className="text-2xl font-semibold text-slate-800 mb-2">

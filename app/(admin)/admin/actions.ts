@@ -133,6 +133,8 @@ export {
   getStudentChangeRequests,
   submitBusChangeRequest,
   cancelBusChangeRequest,
+  boardBusStudent,
+  unboardBusStudent,
   checkBusStudent,
   uncheckBusStudent,
   createBusStaff,

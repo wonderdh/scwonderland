@@ -403,6 +403,7 @@ export type BusManifestEntry = {
   note?: string | null;
   original_slot_time?: string;
   original_bus_label?: string;
+  boarded_at?: string | null;
   checked_at?: string | null;
   check_record_id?: string | null;
 };
@@ -414,6 +415,7 @@ export type BusCheckRecord = {
   direction: "pickup" | "dropoff";
   bus_time_slot_id: string;
   bus_number_id: string;
+  boarded_at: string | null;
   checked_at: string;
   checked_by: string | null;
   created_at: string;

@@ -334,11 +334,11 @@ export async function getDailyBusManifest(
   // 체크 기록 조회
   const { data: checkRecords } = await supabase
     .from("bus_check_records")
-    .select("id, student_profile_id, checked_at")
+    .select("id, student_profile_id, boarded_at, checked_at")
     .eq("check_date", date)
     .eq("direction", direction);
   const checkMap = new Map(
-    (checkRecords ?? []).map((r) => [r.student_profile_id, { checked_at: r.checked_at, id: r.id }])
+    (checkRecords ?? []).map((r) => [r.student_profile_id, { boarded_at: r.boarded_at, checked_at: r.checked_at, id: r.id }])
   );
 
   const groupMap = new Map<string, { slotId: string; busId: string; students: BusManifestEntry[] }>();
@@ -380,6 +380,7 @@ export async function getDailyBusManifest(
         note: def.note,
         original_slot_time: getSlotTime(def.bus_time_slot_id),
         original_bus_label: busMap.get(def.bus_number_id),
+        boarded_at: check?.boarded_at ?? null,
         checked_at: check?.checked_at ?? null,
         check_record_id: check?.id ?? null,
       });
@@ -396,6 +397,7 @@ export async function getDailyBusManifest(
         is_changed: false,
         estimated_time: def.estimated_time,
         note: def.note,
+        boarded_at: check?.boarded_at ?? null,
         checked_at: check?.checked_at ?? null,
         check_record_id: check?.id ?? null,
       });
@@ -420,7 +422,78 @@ export async function getDailyBusManifest(
   return { groups, noRides };
 }
 
-// ── 승하차 체크 ──
+// ── 탑승 체크 ──
+
+export async function boardBusStudent(
+  studentProfileId: string,
+  checkDate: string,
+  direction: "pickup" | "dropoff",
+  busTimeSlotId: string,
+  busNumberId: string
+): Promise<{ error?: string }> {
+  const supabase = createAdminClient();
+  const { error } = await supabase.from("bus_check_records").upsert(
+    {
+      student_profile_id: studentProfileId,
+      check_date: checkDate,
+      direction,
+      bus_time_slot_id: busTimeSlotId,
+      bus_number_id: busNumberId,
+      boarded_at: new Date().toISOString(),
+    },
+    { onConflict: "student_profile_id,check_date,direction" }
+  );
+  if (error) {
+    console.error("[boardBusStudent]", error.message);
+    return { error: error.message };
+  }
+  return {};
+}
+
+export async function unboardBusStudent(
+  studentProfileId: string,
+  checkDate: string,
+  direction: "pickup" | "dropoff"
+): Promise<{ error?: string }> {
+  const supabase = createAdminClient();
+
+  // 기존 레코드 확인
+  const { data: record } = await supabase
+    .from("bus_check_records")
+    .select("id, checked_at")
+    .eq("student_profile_id", studentProfileId)
+    .eq("check_date", checkDate)
+    .eq("direction", direction)
+    .maybeSingle();
+
+  if (!record) return {};
+
+  // checked_at도 null이면 레코드 삭제 (불필요 레코드 정리)
+  if (!record.checked_at) {
+    const { error } = await supabase
+      .from("bus_check_records")
+      .delete()
+      .eq("id", record.id);
+    if (error) {
+      console.error("[unboardBusStudent]", error.message);
+      return { error: error.message };
+    }
+  } else {
+    // checked_at이 있으면 boarded_at만 null로
+    const { error } = await supabase
+      .from("bus_check_records")
+      .update({ boarded_at: null })
+      .eq("id", record.id);
+    if (error) {
+      console.error("[unboardBusStudent]", error.message);
+      return { error: error.message };
+    }
+  }
+
+  return {};
+}
+
+// ── 하차 체크 ──
 
 export async function checkBusStudent(
   studentProfileId: string,
@@ -456,16 +529,39 @@ export async function uncheckBusStudent(
   direction: "pickup" | "dropoff"
 ): Promise<{ error?: string }> {
   const supabase = createAdminClient();
-  const { error } = await supabase
+
+  // boarded_at이 있으면 checked_at만 null로 (탑승 상태로 복귀)
+  // boarded_at도 없으면 레코드 삭제
+  const { data: record } = await supabase
     .from("bus_check_records")
-    .delete()
+    .select("id, boarded_at")
     .eq("student_profile_id", studentProfileId)
     .eq("check_date", checkDate)
-    .eq("direction", direction);
-  if (error) {
-    console.error("[uncheckBusStudent]", error.message);
-    return { error: error.message };
+    .eq("direction", direction)
+    .maybeSingle();
+
+  if (!record) return {};
+
+  if (record.boarded_at) {
+    const { error } = await supabase
+      .from("bus_check_records")
+      .update({ checked_at: null, checked_by: null })
+      .eq("id", record.id);
+    if (error) {
+      console.error("[uncheckBusStudent]", error.message);
+      return { error: error.message };
+    }
+  } else {
+    const { error } = await supabase
+      .from("bus_check_records")
+      .delete()
+      .eq("id", record.id);
+    if (error) {
+      console.error("[uncheckBusStudent]", error.message);
+      return { error: error.message };
+    }
   }
+
   return {};
 }
 

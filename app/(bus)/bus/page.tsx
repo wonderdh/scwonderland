@@ -1,0 +1,15 @@
+import { getCurrentBusStaffProfile } from "./actions";
+import { redirect } from "next/navigation";
+import { BusStaffMonitor } from "./components/BusStaffMonitor";
+
+export default async function BusPage() {
+  const staff = await getCurrentBusStaffProfile();
+  if (!staff) redirect("/academy/login?next=/bus");
+
+  return (
+    <BusStaffMonitor
+      busNumberId={staff.bus_number_id}
+      staffProfileId={staff.profile_id}
+    />
+  );
+}

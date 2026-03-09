@@ -4,7 +4,13 @@ import { useState, useEffect, useCallback, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { BusManifestGroup, BusManifestEntry, BusTimeSlot, NoRideEntry } from "@/lib/types";
-import { getDailyBusManifest, checkBusStudent, uncheckBusStudent } from "../../actions";
+import {
+  getDailyBusManifest,
+  boardBusStudent,
+  unboardBusStudent,
+  checkBusStudent,
+  uncheckBusStudent,
+} from "../../actions";
 
 const DIR_LABEL = { pickup: "등원", dropoff: "하원" } as const;
 const DAY_NAMES = ["일", "월", "화", "수", "목", "금", "토"];
@@ -20,7 +26,6 @@ function formatCheckedTime(iso: string) {
   return `${h}:${m}`;
 }
 
-// 현재 로그인된 관리자 ID 가져오기 (admin layout에서 검증 완료)
 async function getAdminId(): Promise<string> {
   const { createClient } = await import("@/lib/supabase/client");
   const supabase = createClient();
@@ -73,12 +78,12 @@ export function BusDashboard({ busTimeSlots }: { busTimeSlots: BusTimeSlot[] }) 
     load();
   }, [load]);
 
-  const handleCheck = useCallback(
+  const handleBoard = useCallback(
     (
       student: BusManifestEntry,
       busTimeSlotId: string,
       busNumberId: string,
-      isChecked: boolean
+      shouldBoard: boolean
     ) => {
       // Optimistic update
       setGroups((prev) =>
@@ -88,8 +93,7 @@ export function BusDashboard({ busTimeSlots }: { busTimeSlots: BusTimeSlot[] }) 
             s.student_profile_id === student.student_profile_id
               ? {
                   ...s,
-                  checked_at: isChecked ? new Date().toISOString() : null,
-                  check_record_id: isChecked ? "optimistic" : null,
+                  boarded_at: shouldBoard ? new Date().toISOString() : null,
                 }
               : s
           ),
@@ -97,7 +101,59 @@ export function BusDashboard({ busTimeSlots }: { busTimeSlots: BusTimeSlot[] }) 
       );
 
       startTransition(async () => {
-        const result = isChecked
+        const result = shouldBoard
+          ? await boardBusStudent(
+              student.student_profile_id,
+              date,
+              direction,
+              busTimeSlotId,
+              busNumberId
+            )
+          : await unboardBusStudent(student.student_profile_id, date, direction);
+
+        if (result.error) {
+          setGroups((prev) =>
+            prev.map((g) => ({
+              ...g,
+              students: g.students.map((s) =>
+                s.student_profile_id === student.student_profile_id
+                  ? { ...s, boarded_at: student.boarded_at }
+                  : s
+              ),
+            }))
+          );
+          alert(`오류: ${result.error}`);
+        }
+      });
+    },
+    [date, direction]
+  );
+
+  const handleCheck = useCallback(
+    (
+      student: BusManifestEntry,
+      busTimeSlotId: string,
+      busNumberId: string,
+      shouldCheck: boolean
+    ) => {
+      // Optimistic update
+      setGroups((prev) =>
+        prev.map((g) => ({
+          ...g,
+          students: g.students.map((s) =>
+            s.student_profile_id === student.student_profile_id
+              ? {
+                  ...s,
+                  checked_at: shouldCheck ? new Date().toISOString() : null,
+                  check_record_id: shouldCheck ? "optimistic" : null,
+                }
+              : s
+          ),
+        }))
+      );
+
+      startTransition(async () => {
+        const result = shouldCheck
           ? await checkBusStudent(
               student.student_profile_id,
               date,
@@ -109,7 +165,6 @@ export function BusDashboard({ busTimeSlots }: { busTimeSlots: BusTimeSlot[] }) 
           : await uncheckBusStudent(student.student_profile_id, date, direction);
 
         if (result.error) {
-          // Rollback on error
           setGroups((prev) =>
             prev.map((g) => ({
               ...g,
@@ -117,8 +172,8 @@ export function BusDashboard({ busTimeSlots }: { busTimeSlots: BusTimeSlot[] }) 
                 s.student_profile_id === student.student_profile_id
                   ? {
                       ...s,
-                      checked_at: isChecked ? null : student.checked_at,
-                      check_record_id: isChecked ? null : student.check_record_id,
+                      checked_at: student.checked_at,
+                      check_record_id: student.check_record_id,
                     }
                   : s
               ),
@@ -138,7 +193,6 @@ export function BusDashboard({ busTimeSlots }: { busTimeSlots: BusTimeSlot[] }) 
     : groups;
   const timeGroups = groupByTime(filteredGroups);
 
-  // 현재 방향의 시간대만 필터
   const directionSlots = busTimeSlots.filter((s) => s.direction === direction);
 
   return (
@@ -201,7 +255,6 @@ export function BusDashboard({ busTimeSlots }: { busTimeSlots: BusTimeSlot[] }) 
       <div className="space-y-6">
         {timeGroups.map((tg) => (
           <div key={tg.slotTime}>
-            {/* 시간대 섹션 헤더 */}
             <div className="flex items-center gap-3 mb-3">
               <span className="text-sm font-semibold text-slate-700">
                 {formatTime(tg.slotTime)}
@@ -212,9 +265,11 @@ export function BusDashboard({ busTimeSlots }: { busTimeSlots: BusTimeSlot[] }) 
               <div className="flex-1 border-t border-slate-200" />
             </div>
 
-            {/* 호차별 카드 그리드 */}
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
               {tg.cards.map((card) => {
+                const boardedCount = card.students.filter(
+                  (s) => s.boarded_at || s.checked_at
+                ).length;
                 const checkedCount = card.students.filter(
                   (s) => s.checked_at
                 ).length;
@@ -224,8 +279,10 @@ export function BusDashboard({ busTimeSlots }: { busTimeSlots: BusTimeSlot[] }) 
                   <BusCard
                     key={`${card.bus_time_slot_id}-${card.bus_number_id}`}
                     card={card}
+                    boardedCount={boardedCount}
                     checkedCount={checkedCount}
                     totalCount={totalCount}
+                    onBoard={handleBoard}
                     onCheck={handleCheck}
                     isPending={isPending}
                   />
@@ -273,56 +330,85 @@ export function BusDashboard({ busTimeSlots }: { busTimeSlots: BusTimeSlot[] }) 
 
 function BusCard({
   card,
+  boardedCount,
   checkedCount,
   totalCount,
+  onBoard,
   onCheck,
   isPending,
 }: {
   card: BusManifestGroup;
+  boardedCount: number;
   checkedCount: number;
   totalCount: number;
+  onBoard: (
+    student: BusManifestEntry,
+    busTimeSlotId: string,
+    busNumberId: string,
+    shouldBoard: boolean
+  ) => void;
   onCheck: (
     student: BusManifestEntry,
     busTimeSlotId: string,
     busNumberId: string,
-    isChecked: boolean
+    shouldCheck: boolean
   ) => void;
   isPending: boolean;
 }) {
-  const allChecked = checkedCount === totalCount && totalCount > 0;
+  const allDone = checkedCount === totalCount && totalCount > 0;
 
   return (
     <div className="rounded-xl border bg-white shadow-sm overflow-hidden">
       {/* 카드 헤더 */}
-      <div className="bg-slate-50 px-4 py-2.5 flex items-center justify-between">
+      <div className={`px-4 py-2.5 flex items-center justify-between ${allDone ? "bg-green-50" : "bg-slate-50"}`}>
         <span className="text-sm font-semibold text-slate-700">
           {card.bus_label}
         </span>
-        <span
-          className={`text-xs font-medium ${
-            allChecked ? "text-green-600" : "text-slate-400"
-          }`}
-        >
-          {checkedCount}/{totalCount}
+        <span className="text-xs font-medium text-slate-500">
+          탑승 {boardedCount}/{totalCount} · 하차 {checkedCount}/{totalCount}
         </span>
       </div>
 
       {/* 학생 리스트 */}
       <div className="divide-y divide-slate-100">
         {card.students.map((student) => {
+          const isBoarded = !!student.boarded_at;
           const isChecked = !!student.checked_at;
 
+          // 배경색: 미탑승(기본) → 탑승(파란) → 하차(초록)
+          const rowBg = isChecked
+            ? "bg-green-50/60"
+            : isBoarded
+              ? "bg-blue-50/50"
+              : "hover:bg-slate-50";
+
           return (
-            <label
+            <div
               key={student.student_profile_id}
-              className={`flex items-center gap-3 px-4 py-2.5 cursor-pointer transition-colors ${
-                isChecked ? "bg-green-50/60" : "hover:bg-slate-50"
-              }`}
+              className={`flex items-center gap-3 px-4 py-2.5 ${rowBg}`}
             >
+              {/* 탑승 체크박스 */}
+              <input
+                type="checkbox"
+                checked={isBoarded || isChecked}
+                disabled={isPending || isChecked}
+                onChange={() =>
+                  onBoard(
+                    student,
+                    card.bus_time_slot_id,
+                    card.bus_number_id,
+                    !isBoarded
+                  )
+                }
+                title="탑승"
+                className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 accent-blue-600"
+              />
+
+              {/* 하차 체크박스 */}
               <input
                 type="checkbox"
                 checked={isChecked}
-                disabled={isPending}
+                disabled={isPending || !isBoarded}
                 onChange={() =>
                   onCheck(
                     student,
@@ -331,8 +417,10 @@ function BusCard({
                     !isChecked
                   )
                 }
+                title="하차"
                 className="h-4 w-4 rounded border-slate-300 text-green-600 focus:ring-green-500 accent-green-600"
               />
+
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium text-slate-700 truncate">
@@ -350,12 +438,29 @@ function BusCard({
                   </span>
                 )}
               </div>
-              {isChecked && student.checked_at && (
-                <span className="text-xs text-green-600 shrink-0">
-                  {formatCheckedTime(student.checked_at)}
-                </span>
-              )}
-            </label>
+              <div className="flex items-center gap-1.5 shrink-0">
+                {student.estimated_time && (
+                  <span className="text-xs text-slate-400">
+                    {formatTime(student.estimated_time)}
+                  </span>
+                )}
+                {isBoarded && student.boarded_at && (
+                  <>
+                    {student.estimated_time && (
+                      <span className="text-xs text-slate-300">→</span>
+                    )}
+                    <span className="text-xs text-blue-600">
+                      탑승 {formatCheckedTime(student.boarded_at)}
+                    </span>
+                  </>
+                )}
+                {isChecked && student.checked_at && (
+                  <span className="text-xs text-green-600">
+                    하차 {formatCheckedTime(student.checked_at)}
+                  </span>
+                )}
+              </div>
+            </div>
           );
         })}
       </div>
