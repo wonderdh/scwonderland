@@ -95,7 +95,7 @@ export function BusChangeRequestsPanel({ adminId }: { adminId: string }) {
 
             {req.change_type === "change" && (
               <p className="text-xs text-slate-600">
-                → {formatTime(req.new_period_time)} {req.new_period_name} {req.new_bus_label}
+                → {formatTime(req.new_time_slot_time)} {req.new_time_slot_label} {req.new_bus_label}
               </p>
             )}
 

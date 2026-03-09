@@ -6,8 +6,8 @@ import type { DashboardStats } from "@/lib/types";
 export async function getDashboardStats(): Promise<DashboardStats> {
   const supabase = createAdminClient();
   const [students, teachers, classes, reports, notices] = await Promise.all([
-    supabase.from("profiles").select("id", { count: "exact", head: true }).eq("role", "student"),
-    supabase.from("profiles").select("id", { count: "exact", head: true }).eq("role", "teacher"),
+    supabase.from("profiles").select("id", { count: "exact", head: true }).eq("role", "student").is("deleted_at", null),
+    supabase.from("profiles").select("id", { count: "exact", head: true }).eq("role", "teacher").is("deleted_at", null),
     supabase.from("classes").select("id", { count: "exact", head: true }),
     supabase.from("report_cards").select("id", { count: "exact", head: true }),
     supabase.from("notices").select("id", { count: "exact", head: true }),

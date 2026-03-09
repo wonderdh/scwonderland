@@ -23,8 +23,6 @@ export async function createAcademyPeriod(
   name: string,
   startTime: string,
   endTime: string,
-  hasPickup: boolean,
-  hasDropoff: boolean,
   groupLabel?: string
 ): Promise<{ error?: string; id?: string }> {
   const supabase = createAdminClient();
@@ -38,8 +36,8 @@ export async function createAcademyPeriod(
       name: trimmed,
       start_time: startTime,
       end_time: endTime,
-      has_pickup: hasPickup,
-      has_dropoff: hasDropoff,
+      has_pickup: false,
+      has_dropoff: false,
       group_label: groupLabel?.trim() || null,
     })
     .select("id")
@@ -56,8 +54,6 @@ export async function updateAcademyPeriod(
   name: string,
   startTime: string,
   endTime: string,
-  hasPickup: boolean,
-  hasDropoff: boolean,
   groupLabel?: string
 ): Promise<{ error?: string }> {
   const supabase = createAdminClient();
@@ -70,8 +66,8 @@ export async function updateAcademyPeriod(
       name: trimmed,
       start_time: startTime,
       end_time: endTime,
-      has_pickup: hasPickup,
-      has_dropoff: hasDropoff,
+      has_pickup: false,
+      has_dropoff: false,
       group_label: groupLabel?.trim() || null,
       updated_at: new Date().toISOString(),
     })

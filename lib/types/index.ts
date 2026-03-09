@@ -28,6 +28,7 @@ export type {
   Notice,
   NoticeAttachment,
   BusNumber,
+  BusTimeSlot,
   AcademyPeriod,
   StudentBusDefault,
   BusChangeRequest,
@@ -38,4 +39,6 @@ export type {
   StudentTimetableRow,
   BusManifestGroup,
   NoRideEntry,
+  BusCheckRecord,
+  BusStaffProfile,
 } from "./database";

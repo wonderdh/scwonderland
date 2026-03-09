@@ -1,6 +1,7 @@
 "use server";
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import {
   STORAGE_BUCKETS,
   generateStoragePath,
@@ -289,7 +290,22 @@ export async function submitHomework(
   textContent?: string,
   audioFile?: File
 ): Promise<{ error?: string }> {
+  // 인증 검증: 로그인 사용자가 이 제출의 소유자인지 확인
+  const supabaseAuth = await createClient();
+  const { data: { user } } = await supabaseAuth.auth.getUser();
+  if (!user) return { error: "인증이 필요합니다." };
+
   const supabase = createAdminClient();
+
+  // 제출 소유권 검증
+  const { data: submission } = await supabase
+    .from("homework_submissions")
+    .select("student_profile_id")
+    .eq("id", submissionId)
+    .single();
+  if (!submission || submission.student_profile_id !== user.id) {
+    return { error: "권한이 없습니다." };
+  }
 
   // 오디오 파일 업로드
   if (audioFile && audioFile.size > 0) {
@@ -334,6 +350,12 @@ export async function reviewSubmission(
   feedback: string,
   reviewerId: string
 ): Promise<{ error?: string }> {
+  // 인증 검증: 로그인 사용자와 reviewerId 일치 확인
+  const supabaseAuth = await createClient();
+  const { data: { user } } = await supabaseAuth.auth.getUser();
+  if (!user) return { error: "인증이 필요합니다." };
+  if (reviewerId !== user.id) return { error: "권한이 없습니다." };
+
   const supabase = createAdminClient();
   const { error } = await supabase
     .from("homework_submissions")

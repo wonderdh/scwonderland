@@ -18,7 +18,7 @@
 
 **공유 (admin/components/):** `AdminLayoutClient`, `AdminSidebar`, `AdminListSidebar`, `UserRow`, `UserList`, `ScrollToSection`, `TrashView`
 
-**학생 전용 (admin/students/components/):** `AddStudentForm`, `StudentSelectedView`, `StudentTabNav`, `StudentReportTab`, `StudentLearningTab`, `StudentTextbookTab`, `StudentComingTab`, `ReportCardReadView`
+**학생 전용 (admin/students/components/):** `AddStudentForm`, `StudentSelectedView`, `StudentTabNav`, `StudentReportTab`, `StudentLearningTab`, `StudentTextbookTab`, `ReportCardReadView` + 시간표/출결/승하차 탭 컴포넌트
 
 **교사 전용 (admin/teachers/components/):** `AddTeacherForm`, `TeacherInfoCard`, `TeacherTabNav`, `TeacherClassesTab`, `TeacherTimetableTab`
 
@@ -28,24 +28,34 @@
 
 **공지사항 관리 (admin/notices/components/):** `NoticesManager` (검색/필터, 목록 뷰, 폼 모달: 이미지 다중 업로드+미리보기, 파일 다중 첨부, 삭제 확인 모달)
 
+**Academy 공지 (admin/academy-notices/):** Academy 포털 공지 관리
+
+**시간표 (admin/timetable/):** `GroupTimetableGrid`, `PeriodDayGrid`, 교시 관리
+
+**승하차 (admin/bus/):** 호차 관리, 대시보드, 변경요청 관리
+
 ## Shared Components (components/)
 
 | 컴포넌트 | 역할 |
 |---------|------|
-| `LogoutButton` | 로그아웃 + 리다이렉트 (admin + academy 공유) |
-| `ui/` | shadcn/ui 컴포넌트 (button, card, input 등) |
+| `LogoutButton` | 로그아웃 + 리다이렉트 (admin + academy 공유, labels prop으로 영어 지원) |
+| `AudioRecorder` | 오디오 녹음 컴포넌트 (숙제 제출용) |
+| `FileUpload` | 파일 업로드 컴포넌트 |
+| `FileList` | 파일 목록 표시 컴포넌트 |
+| `ui/` | shadcn/ui 컴포넌트 (avatar, badge, button, card, input, label, separator, tabs, textarea, tooltip) |
 
 ## Academy Components (app/(academy)/academy/)
 
 | 컴포넌트 | 위치 | 역할 |
 |---------|------|------|
 | `LoginForm` | `login/` | 이메일/비밀번호 로그인 (에러 코드별 한국어 메시지) |
-| `StudentNav` | `student/components/` | 학생 포털 탭 (내 정보/리포트카드/교재/숙제) |
+| `StudentNav` | `student/components/` | 학생 포털 6탭 (내 정보/리포트카드/교재/공지/숙제/승하차) |
 | `ReportCardReplyForm` | `student/components/` | 학생 리포트카드 답변 작성 폼 |
 | `StudentTextbooksClient` | `student/textbooks/` | 학생 교재 카드 UI (진행 중/완료 분리, 커버 이미지, 진도 바) |
-| `TeacherNav` | `teacher/components/` | 교사 포털 탭 (teacherType별 분기: 한국인 4탭/원어민 3탭 영어) |
+| `TeacherNav` | `teacher/components/` | 교사 포털 탭 (한국인 8탭 / 원어민 6탭 영어) |
 | `TeacherReportClient` | `teacher/components/` | 교사 리포트카드 작성/관리 (teacherType별 라벨) |
 | `TeacherTextbookClient` | `teacher/components/` | 교사 반별 교재 현황 조회 (teacherType별 라벨) |
+| `TeacherAcademyTimetable` | `teacher/timetable/` | 교사 시간표 (모바일 친화적, CLASS_COLOR_PALETTE) |
 
 ## Admin Info Card 동작 규칙
 - `TeacherInfoCard`: 아이디·이름만 표시, 교번·이메일 숨김, 커스텀 삭제 모달 (배정 건수 경고)

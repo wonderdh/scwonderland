@@ -33,15 +33,11 @@ export function TimetableManager({
   const [newName, setNewName] = useState("");
   const [newStartTime, setNewStartTime] = useState("");
   const [newEndTime, setNewEndTime] = useState("");
-  const [newHasPickup, setNewHasPickup] = useState(false);
-  const [newHasDropoff, setNewHasDropoff] = useState(false);
   const [newGroupLabel, setNewGroupLabel] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [editStartTime, setEditStartTime] = useState("");
   const [editEndTime, setEditEndTime] = useState("");
-  const [editHasPickup, setEditHasPickup] = useState(false);
-  const [editHasDropoff, setEditHasDropoff] = useState(false);
   const [editGroupLabel, setEditGroupLabel] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -53,8 +49,6 @@ export function TimetableManager({
       newName,
       newStartTime,
       newEndTime,
-      newHasPickup,
-      newHasDropoff,
       newGroupLabel,
     );
     if (result.error) {
@@ -63,8 +57,6 @@ export function TimetableManager({
       setNewName("");
       setNewStartTime("");
       setNewEndTime("");
-      setNewHasPickup(false);
-      setNewHasDropoff(false);
       setNewGroupLabel("");
       router.refresh();
     }
@@ -79,8 +71,6 @@ export function TimetableManager({
       editName,
       editStartTime,
       editEndTime,
-      editHasPickup,
-      editHasDropoff,
       editGroupLabel,
     );
     if (result.error) {
@@ -174,22 +164,6 @@ export function TimetableManager({
                 <option key={g} value={g}>{g}</option>
               ))}
             </select>
-            <label className="flex items-center gap-1 text-xs">
-              <input
-                type="checkbox"
-                checked={editHasPickup}
-                onChange={(e) => setEditHasPickup(e.target.checked)}
-              />
-              등원
-            </label>
-            <label className="flex items-center gap-1 text-xs">
-              <input
-                type="checkbox"
-                checked={editHasDropoff}
-                onChange={(e) => setEditHasDropoff(e.target.checked)}
-              />
-              하원
-            </label>
             <Button
               size="sm"
               variant="outline"
@@ -216,16 +190,6 @@ export function TimetableManager({
             </span>
             <span className="text-sm text-slate-600">{period.name}</span>
             <span className="flex-1" />
-            {period.has_pickup && (
-              <span className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">
-                등원
-              </span>
-            )}
-            {period.has_dropoff && (
-              <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded">
-                하원
-              </span>
-            )}
             <Button
               size="sm"
               variant="ghost"
@@ -235,8 +199,6 @@ export function TimetableManager({
                 setEditName(period.name);
                 setEditStartTime(formatTime(period.start_time));
                 setEditEndTime(formatTime(period.end_time));
-                setEditHasPickup(period.has_pickup);
-                setEditHasDropoff(period.has_dropoff);
                 setEditGroupLabel(period.group_label ?? "");
               }}
             >
@@ -305,22 +267,6 @@ export function TimetableManager({
             <option key={g} value={g}>{g}</option>
           ))}
         </select>
-        <label className="flex items-center gap-1 text-sm">
-          <input
-            type="checkbox"
-            checked={newHasPickup}
-            onChange={(e) => setNewHasPickup(e.target.checked)}
-          />
-          등원
-        </label>
-        <label className="flex items-center gap-1 text-sm">
-          <input
-            type="checkbox"
-            checked={newHasDropoff}
-            onChange={(e) => setNewHasDropoff(e.target.checked)}
-          />
-          하원
-        </label>
         <Button
           size="sm"
           onClick={handleCreate}

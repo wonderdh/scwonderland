@@ -248,6 +248,11 @@ export async function getClassReportStatus(
 
 /** 특정 반에 배정된 교재 목록 */
 export async function getClassTextbooks(classId: string): Promise<TeacherClassTextbook[]> {
+  // 인증 검증
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+
   const admin = createAdminClient();
 
   const { data: classTextbooks } = await admin

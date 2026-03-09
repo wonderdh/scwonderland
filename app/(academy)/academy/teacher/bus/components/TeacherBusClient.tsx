@@ -78,10 +78,10 @@ export function TeacherBusClient() {
 
       <div className="space-y-4">
         {groups.map((group) => (
-          <div key={`${group.academy_period_id}-${group.bus_number_id}`} className="border rounded-lg overflow-hidden">
+          <div key={`${group.bus_time_slot_id}-${group.bus_number_id}`} className="border rounded-lg overflow-hidden">
             <div className="bg-slate-100 px-4 py-2 flex items-center gap-3">
-              <span className="text-sm font-semibold">{formatTime(group.period_time)}</span>
-              <span className="text-xs text-slate-500">({group.period_name})</span>
+              <span className="text-sm font-semibold">{formatTime(group.slot_time)}</span>
+              <span className="text-xs text-slate-500">({group.slot_label})</span>
               <span className="text-sm font-medium text-blue-700">{group.bus_label}</span>
               <span className="text-xs text-slate-400 ml-auto">{group.students.length}명</span>
             </div>
@@ -111,7 +111,7 @@ export function TeacherBusClient() {
                       변경됨
                       {student.original_bus_label && (
                         <span className="font-normal ml-1">
-                          (원래: {formatTime(student.original_period_time ?? "")} {student.original_bus_label})
+                          (원래: {formatTime(student.original_slot_time ?? "")} {student.original_bus_label})
                         </span>
                       )}
                     </span>
@@ -135,7 +135,7 @@ export function TeacherBusClient() {
                 <span className="text-xs text-slate-400">#{student.student_number}</span>
                 {student.original_bus_label && (
                   <span className="text-xs text-slate-400">
-                    (원래: {formatTime(student.original_period_time ?? "")} {student.original_bus_label})
+                    (원래: {formatTime(student.original_slot_time ?? "")} {student.original_bus_label})
                   </span>
                 )}
               </div>

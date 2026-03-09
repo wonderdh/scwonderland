@@ -4,12 +4,12 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import type { StudentBusDefault, BusChangeRequest, BusNumber, AcademyPeriod } from "@/lib/types";
+import type { StudentBusDefault, BusChangeRequest, BusNumber, BusTimeSlot } from "@/lib/types";
 import {
   getStudentBusDefaults,
   getStudentChangeRequests,
   listBusNumbers,
-  listAcademyPeriods,
+  listBusTimeSlots,
   submitBusChangeRequest,
   cancelBusChangeRequest,
 } from "@/app/(admin)/admin/actions";
@@ -33,7 +33,7 @@ export function StudentBusClient({ studentProfileId }: { studentProfileId: strin
   const [defaults, setDefaults] = useState<StudentBusDefault[]>([]);
   const [requests, setRequests] = useState<BusChangeRequest[]>([]);
   const [busNumbers, setBusNumbers] = useState<BusNumber[]>([]);
-  const [academyPeriods, setAcademyPeriods] = useState<AcademyPeriod[]>([]);
+  const [busTimeSlots, setBusTimeSlots] = useState<BusTimeSlot[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -44,22 +44,22 @@ export function StudentBusClient({ studentProfileId }: { studentProfileId: strin
   const [formDate, setFormDate] = useState("");
   const [formDir, setFormDir] = useState<"pickup" | "dropoff">("pickup");
   const [formType, setFormType] = useState<"change" | "no_ride">("change");
-  const [formPeriodId, setFormPeriodId] = useState("");
+  const [formSlotId, setFormSlotId] = useState("");
   const [formBusId, setFormBusId] = useState("");
   const [formReason, setFormReason] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [d, r, bn, ap] = await Promise.all([
+    const [d, r, bn, ts] = await Promise.all([
       getStudentBusDefaults(studentProfileId),
       getStudentChangeRequests(studentProfileId),
       listBusNumbers(),
-      listAcademyPeriods(),
+      listBusTimeSlots(),
     ]);
     setDefaults(d);
     setRequests(r);
     setBusNumbers(bn);
-    setAcademyPeriods(ap);
+    setBusTimeSlots(ts);
     setLoading(false);
   }, [studentProfileId]);
 
@@ -76,7 +76,7 @@ export function StudentBusClient({ studentProfileId }: { studentProfileId: strin
       formDate,
       formDir,
       formType,
-      formType === "change" ? formPeriodId : undefined,
+      formType === "change" ? formSlotId : undefined,
       formType === "change" ? formBusId : undefined,
       formReason || undefined
     );
@@ -107,8 +107,8 @@ export function StudentBusClient({ studentProfileId }: { studentProfileId: strin
 
   if (loading) return <p className="text-sm text-slate-400 py-4">불러오는 중...</p>;
 
-  const pickupPeriods = academyPeriods.filter((p) => p.has_pickup);
-  const dropoffPeriods = academyPeriods.filter((p) => p.has_dropoff);
+  const pickupSlots = busTimeSlots.filter((s) => s.direction === "pickup");
+  const dropoffSlots = busTimeSlots.filter((s) => s.direction === "dropoff");
 
   return (
     <div className="space-y-6">
@@ -133,8 +133,8 @@ export function StudentBusClient({ studentProfileId }: { studentProfileId: strin
                         }`}>
                           {DIR_LABEL[d.direction]}
                         </span>
-                        {d.period_name && <span className="font-medium mr-1">{d.period_name}</span>}
-                        {formatTime(d.period_time)} {d.bus_label}
+                        {d.time_slot_label && <span className="font-medium mr-1">{d.time_slot_label}</span>}
+                        {formatTime(d.time_slot_time)} {d.bus_label}
                         {d.estimated_time && <span className="ml-1 text-slate-400">({formatTime(d.estimated_time)})</span>}
                         {d.note && <span className="ml-1 text-slate-400">· {d.note}</span>}
                       </span>
@@ -168,7 +168,14 @@ export function StudentBusClient({ studentProfileId }: { studentProfileId: strin
               </div>
               <div>
                 <label className="text-xs text-slate-500 block mb-1">방향</label>
-                <select value={formDir} onChange={(e) => setFormDir(e.target.value as "pickup" | "dropoff")} className="h-9 px-2 border rounded text-sm">
+                <select
+                  value={formDir}
+                  onChange={(e) => {
+                    setFormDir(e.target.value as "pickup" | "dropoff");
+                    setFormSlotId("");
+                  }}
+                  className="h-9 px-2 border rounded text-sm"
+                >
                   <option value="pickup">등원</option>
                   <option value="dropoff">하원</option>
                 </select>
@@ -185,12 +192,12 @@ export function StudentBusClient({ studentProfileId }: { studentProfileId: strin
             {formType === "change" && (
               <div className="flex gap-3 flex-wrap">
                 <div>
-                  <label className="text-xs text-slate-500 block mb-1">수업 시간대</label>
-                  <select value={formPeriodId} onChange={(e) => setFormPeriodId(e.target.value)} className="h-9 px-2 border rounded text-sm">
+                  <label className="text-xs text-slate-500 block mb-1">시간대</label>
+                  <select value={formSlotId} onChange={(e) => setFormSlotId(e.target.value)} className="h-9 px-2 border rounded text-sm">
                     <option value="">선택</option>
-                    {(formDir === "pickup" ? pickupPeriods : dropoffPeriods).map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name} ({formatTime(p.start_time)}~{formatTime(p.end_time)})
+                    {(formDir === "pickup" ? pickupSlots : dropoffSlots).map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.label} ({formatTime(s.time)})
                       </option>
                     ))}
                   </select>
@@ -239,7 +246,7 @@ export function StudentBusClient({ studentProfileId }: { studentProfileId: strin
                 <span className={`text-xs px-1.5 py-0.5 rounded ${
                   req.change_type === "no_ride" ? "bg-red-100 text-red-700" : "bg-blue-100 text-blue-700"
                 }`}>
-                  {req.change_type === "no_ride" ? "미탑승" : `→ ${req.new_period_name ? req.new_period_name + " " : ""}${formatTime(req.new_period_time)} ${req.new_bus_label}`}
+                  {req.change_type === "no_ride" ? "미탑승" : `→ ${req.new_time_slot_label ? req.new_time_slot_label + " " : ""}${formatTime(req.new_time_slot_time)} ${req.new_bus_label}`}
                 </span>
                 <span className={`text-xs px-1.5 py-0.5 rounded ${STATUS_COLOR[req.status]}`}>
                   {STATUS_LABEL[req.status]}

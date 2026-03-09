@@ -380,9 +380,20 @@ export async function listTeachersForSelect(): Promise<
   { id: string; name: string; teacher_type: "korean" | "native" }[]
 > {
   const supabase = createAdminClient();
+
+  // 소프트 삭제되지 않은 교사만 조회
+  const { data: activeProfileIds } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("role", "teacher")
+    .is("deleted_at", null);
+  const activeIds = (activeProfileIds ?? []).map((p) => p.id);
+  if (activeIds.length === 0) return [];
+
   const { data } = await supabase
     .from("teachers")
     .select("profile_id, name, teacher_type")
+    .in("profile_id", activeIds)
     .order("name");
   return (data ?? []).map((t) => ({
     id: t.profile_id,

@@ -330,6 +330,16 @@ export type BusNumber = {
   updated_at: string;
 };
 
+export type BusTimeSlot = {
+  id: string;
+  direction: "pickup" | "dropoff";
+  label: string;
+  time: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
 export type AcademyPeriod = {
   id: string;
   name: string;
@@ -348,12 +358,12 @@ export type StudentBusDefault = {
   student_profile_id: string;
   day_of_week: number;
   direction: "pickup" | "dropoff";
-  academy_period_id: string;
+  bus_time_slot_id: string;
   bus_number_id: string;
   estimated_time?: string | null;
   note?: string | null;
-  period_name?: string;
-  period_time?: string;
+  time_slot_label?: string;
+  time_slot_time?: string;
   bus_label?: string;
   created_at: string;
   updated_at: string;
@@ -365,7 +375,7 @@ export type BusChangeRequest = {
   request_date: string;
   direction: "pickup" | "dropoff";
   change_type: "change" | "no_ride";
-  new_academy_period_id: string | null;
+  new_bus_time_slot_id: string | null;
   new_bus_number_id: string | null;
   reason: string | null;
   status: "pending" | "approved" | "rejected";
@@ -373,8 +383,8 @@ export type BusChangeRequest = {
   reviewed_at: string | null;
   review_note: string | null;
   requested_at: string;
-  new_period_name?: string;
-  new_period_time?: string;
+  new_time_slot_label?: string;
+  new_time_slot_time?: string;
   new_bus_label?: string;
   korean_name?: string | null;
   english_name?: string | null;
@@ -391,8 +401,22 @@ export type BusManifestEntry = {
   is_changed: boolean;
   estimated_time?: string | null;
   note?: string | null;
-  original_period_time?: string;
+  original_slot_time?: string;
   original_bus_label?: string;
+  checked_at?: string | null;
+  check_record_id?: string | null;
+};
+
+export type BusCheckRecord = {
+  id: string;
+  student_profile_id: string;
+  check_date: string;
+  direction: "pickup" | "dropoff";
+  bus_time_slot_id: string;
+  bus_number_id: string;
+  checked_at: string;
+  checked_by: string | null;
+  created_at: string;
 };
 
 // ── 수업 시간표(class_schedules) 타입 ──
@@ -446,9 +470,9 @@ export type StudentTimetableRow = {
 };
 
 export type BusManifestGroup = {
-  academy_period_id: string;
-  period_time: string;
-  period_name: string;
+  bus_time_slot_id: string;
+  slot_time: string;
+  slot_label: string;
   bus_number_id: string;
   bus_label: string;
   students: BusManifestEntry[];
@@ -460,6 +484,18 @@ export type NoRideEntry = {
   english_name: string | null;
   student_number: string | null;
   direction: "pickup" | "dropoff";
-  original_period_time?: string;
+  original_slot_time?: string;
   original_bus_label?: string;
+};
+
+// ── 버스 담당자 타입 ──
+
+export type BusStaffProfile = {
+  id: string;          // bus_staff.id
+  profile_id: string;
+  email: string;
+  name: string;
+  bus_number_id: string | null;
+  bus_label: string | null;
+  created_at: string;
 };

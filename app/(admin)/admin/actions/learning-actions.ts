@@ -1,12 +1,24 @@
 "use server";
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import type { LearningRecord } from "@/lib/types";
+
+/** 인증된 관리자/교사인지 확인 */
+async function verifyAuthenticatedUser(): Promise<{ userId: string } | { error: string }> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "인증이 필요합니다." };
+  return { userId: user.id };
+}
 
 /** 학생의 학습 기록 목록 (최신순) */
 export async function listLearningRecords(
   studentProfileId: string
 ): Promise<LearningRecord[]> {
+  const auth = await verifyAuthenticatedUser();
+  if ("error" in auth) return [];
+
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("learning_records")
@@ -32,6 +44,9 @@ export async function createLearningRecord(
     max_score?: number;
   }
 ): Promise<{ error?: string; id?: string }> {
+  const auth = await verifyAuthenticatedUser();
+  if ("error" in auth) return { error: auth.error };
+
   const supabase = createAdminClient();
 
   if (!record.title?.trim()) return { error: "제목을 입력해 주세요." };
@@ -70,6 +85,9 @@ export async function updateLearningRecord(
     max_score?: number | null;
   }
 ): Promise<{ error?: string }> {
+  const auth = await verifyAuthenticatedUser();
+  if ("error" in auth) return { error: auth.error };
+
   const supabase = createAdminClient();
 
   if (updates.title !== undefined && !updates.title.trim()) {
@@ -102,6 +120,9 @@ export async function updateLearningRecord(
 export async function deleteLearningRecord(
   recordId: string
 ): Promise<{ error?: string }> {
+  const auth = await verifyAuthenticatedUser();
+  if ("error" in auth) return { error: auth.error };
+
   const supabase = createAdminClient();
   const { error } = await supabase
     .from("learning_records")

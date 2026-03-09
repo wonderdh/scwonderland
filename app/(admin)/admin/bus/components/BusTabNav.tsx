@@ -2,12 +2,14 @@
 
 import Link from "next/link";
 
-export type BusTabId = "dashboard" | "numbers" | "requests";
+export type BusTabId = "dashboard" | "numbers" | "timeslots" | "requests" | "staff";
 
 const TABS: { id: BusTabId; label: string }[] = [
   { id: "dashboard", label: "대시보드" },
   { id: "numbers", label: "호차 관리" },
+  { id: "timeslots", label: "시간대 관리" },
   { id: "requests", label: "변경 요청" },
+  { id: "staff", label: "담당자 관리" },
 ];
 
 export function BusTabNav({ currentTab }: { currentTab: BusTabId }) {

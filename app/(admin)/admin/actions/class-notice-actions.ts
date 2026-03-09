@@ -1,6 +1,7 @@
 "use server";
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import {
   STORAGE_BUCKETS,
   generateStoragePath,
@@ -128,6 +129,11 @@ export async function getClassNoticeWithAttachments(
 export async function createClassNotice(
   formData: FormData
 ): Promise<{ error?: string; id?: string }> {
+  // 인증 검증: 로그인 사용자와 author_id 일치 확인
+  const supabaseAuth = await createClient();
+  const { data: { user } } = await supabaseAuth.auth.getUser();
+  if (!user) return { error: "인증이 필요합니다." };
+
   const classId = (formData.get("class_id") as string)?.trim();
   const authorId = (formData.get("author_id") as string)?.trim();
   const title = (formData.get("title") as string)?.trim();
@@ -136,6 +142,9 @@ export async function createClassNotice(
 
   if (!classId || !authorId) return { error: "필수 정보가 누락되었습니다." };
   if (!title) return { error: "제목을 입력해 주세요." };
+
+  // author_id가 로그인 사용자 본인인지 확인
+  if (authorId !== user.id) return { error: "권한이 없습니다." };
 
   const imageFiles = formData.getAll("images") as File[];
   const attachmentFiles = formData.getAll("attachments") as File[];
@@ -214,6 +223,11 @@ export async function createClassNotice(
 export async function updateClassNotice(
   formData: FormData
 ): Promise<{ error?: string }> {
+  // 인증 검증
+  const supabaseAuth = await createClient();
+  const { data: { user } } = await supabaseAuth.auth.getUser();
+  if (!user) return { error: "인증이 필요합니다." };
+
   const id = (formData.get("id") as string)?.trim();
   const title = (formData.get("title") as string)?.trim();
   const content = (formData.get("content") as string)?.trim() || null;
@@ -303,6 +317,11 @@ export async function updateClassNotice(
 export async function deleteClassNotice(
   noticeId: string
 ): Promise<{ error?: string }> {
+  // 인증 검증
+  const supabaseAuth = await createClient();
+  const { data: { user } } = await supabaseAuth.auth.getUser();
+  if (!user) return { error: "인증이 필요합니다." };
+
   const supabase = createAdminClient();
 
   const { data: attachments } = await supabase

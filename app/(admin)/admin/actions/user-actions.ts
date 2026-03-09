@@ -423,9 +423,20 @@ export async function listAllStudents(): Promise<
   { id: string; korean_name: string | null; english_name: string | null; student_number: string | null }[]
 > {
   const supabase = createAdminClient();
+
+  // 소프트 삭제되지 않은 학생만 조회
+  const { data: activeProfileIds } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("role", "student")
+    .is("deleted_at", null);
+  const activeIds = (activeProfileIds ?? []).map((p) => p.id);
+  if (activeIds.length === 0) return [];
+
   const { data: students } = await supabase
     .from("students")
     .select("profile_id, korean_name, english_name, student_number")
+    .in("profile_id", activeIds)
     .order("korean_name");
   return (students ?? []).map((s) => ({
     id: s.profile_id,
