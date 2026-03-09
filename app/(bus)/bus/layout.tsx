@@ -21,7 +21,6 @@ export default async function BusLayout({
     .single();
   if (profile?.role !== "bus") redirect("/academy/dashboard");
 
-  // 헤더 정보 조회
   const admin = createAdminClient();
   const { data: staff } = await admin
     .from("bus_staff")
@@ -39,33 +38,26 @@ export default async function BusLayout({
     busLabel = bus?.label ?? null;
   }
 
-  const staffName = staff?.name ?? "";
-  const headerText = [busLabel, staffName].filter(Boolean).join(" · ");
-
   return (
-    <div className="min-h-screen bg-slate-100">
+    <div className="min-h-screen bg-slate-50">
       {/* 헤더 */}
-      <header className="sticky top-0 z-30 bg-white border-b border-slate-200 px-4 py-3">
-        <div className="max-w-lg mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-2 min-w-0">
-            <span className="text-base font-bold text-slate-800 shrink-0">
-              SC Wonderland
-            </span>
-            {headerText && (
-              <>
-                <span className="text-slate-300">|</span>
-                <span className="text-sm font-medium text-slate-600 truncate">
-                  {headerText}
-                </span>
-              </>
+      <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-sm border-b border-slate-200/80">
+        <div className="max-w-lg mx-auto flex items-center justify-between px-4 h-14">
+          <div className="flex items-center gap-2.5 min-w-0">
+            {busLabel && (
+              <span className="shrink-0 text-xs font-bold bg-slate-800 text-white px-2.5 py-1 rounded-md">
+                {busLabel}
+              </span>
             )}
+            <span className="text-sm font-medium text-slate-600 truncate">
+              {staff?.name ?? ""}
+            </span>
           </div>
-          <LogoutButton className="shrink-0 text-xs text-slate-500 hover:text-red-600 px-2 py-1.5" />
+          <LogoutButton className="shrink-0 text-xs text-slate-400 hover:text-red-500 px-2 py-1.5 transition-colors" />
         </div>
       </header>
 
-      {/* 본문 */}
-      <main className="p-4">{children}</main>
+      <main className="px-4 py-4">{children}</main>
     </div>
   );
 }
