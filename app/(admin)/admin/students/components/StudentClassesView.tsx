@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { getStudentClasses } from "../../actions";
 import type { AdminStudentClassItem } from "@/lib/types";
+import { LoadingState } from "@/components/LoadingState";
 
 export function StudentClassesView({
   studentProfileId,
@@ -32,11 +33,7 @@ export function StudentClassesView({
   }, [studentProfileId]);
 
   if (loading) {
-    return (
-      <div className="py-6 text-center text-sm text-slate-400">
-        불러오는 중...
-      </div>
-    );
+    return <LoadingState className="py-6" />;
   }
 
   if (error) {

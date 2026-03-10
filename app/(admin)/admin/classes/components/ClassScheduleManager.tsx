@@ -11,6 +11,8 @@ import {
   deleteClassSchedule,
   listClassSchedules,
 } from "../../actions";
+import { LoadingState } from "@/components/LoadingState";
+import { Spinner } from "@/components/Spinner";
 
 const DAY_LABELS = ["월", "화", "수", "목", "금"];
 
@@ -410,7 +412,7 @@ export function ClassScheduleManager({
                     disabled={pendingChanges.size === 0 || saving}
                     className="text-xs px-3 py-1.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40 transition-colors font-medium"
                   >
-                    {saving ? "저장 중…" : pendingChanges.size > 0 ? `저장 ${pendingChanges.size}건` : "저장"}
+                    {saving ? <><Spinner size="sm" /> 저장 중…</> : pendingChanges.size > 0 ? `저장 ${pendingChanges.size}건` : "저장"}
                   </button>
                 </div>
               </div>
@@ -432,7 +434,7 @@ export function ClassScheduleManager({
 
               {/* 시간표 그리드 */}
               {loading ? (
-                <p className="text-sm text-muted-foreground py-4">불러오는 중...</p>
+                <LoadingState className="py-4" />
               ) : classPeriods.length === 0 ? (
                 <div className="rounded-xl border border-dashed bg-slate-50/50 p-8 text-center text-sm text-muted-foreground">
                   이 그룹에 등록된 교시가 없습니다.

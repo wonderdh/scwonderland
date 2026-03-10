@@ -1,6 +1,7 @@
 "use server";
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import { verifyAdmin } from "./auth-helpers";
 import type {
   ClassScheduleWithDetails,
   StudentTimetableRow,
@@ -138,6 +139,9 @@ export async function addSingleClassSchedule(
   textbookId: string | null = null,
   studentProfileId: string | null = null,
 ): Promise<{ error?: string }> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return { error: auth.error };
+
   if (!classId && !studentProfileId) {
     return { error: "반 또는 학생을 지정해 주세요." };
   }
@@ -270,6 +274,9 @@ export async function addClassScheduleBatch(
   teacherProfileId: string | null,
   label: string | null,
 ): Promise<{ error?: string }> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return { error: auth.error };
+
   if (dayOfWeeks.length === 0) return { error: "요일을 하나 이상 선택해 주세요." };
   if (!classId || !academyPeriodId) {
     return { error: "반과 교시를 선택해 주세요." };
@@ -305,6 +312,9 @@ export async function addClassScheduleBatch(
 export async function deleteClassSchedule(
   scheduleId: string,
 ): Promise<{ error?: string }> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return { error: auth.error };
+
   const supabase = createAdminClient();
   const { error } = await supabase
     .from("class_schedules")
@@ -562,6 +572,9 @@ export async function getStudentTimetableEditable(
 export async function deleteStudentSchedule(
   scheduleId: string,
 ): Promise<{ error?: string }> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return { error: auth.error };
+
   const supabase = createAdminClient();
   const { error } = await supabase
     .from("class_schedules")

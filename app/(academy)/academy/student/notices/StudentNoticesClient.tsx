@@ -8,6 +8,7 @@ import {
   getAcademyNoticeWithAttachments,
 } from "@/app/(admin)/admin/actions";
 import { FileList } from "@/components/FileList";
+import { LoadingState } from "@/components/LoadingState";
 import type { ClassNotice, ClassNoticeAttachment, AcademyNotice, AcademyNoticeAttachment } from "@/lib/types";
 
 type NoticeItem = {
@@ -108,7 +109,7 @@ export function StudentNoticesClient({
   const filtered = tab === "all" ? notices : notices.filter((n) => n.type === tab);
 
   if (loading) {
-    return <div className="py-8 text-center text-sm text-muted-foreground">불러오는 중…</div>;
+    return <LoadingState />;
   }
 
   if (selectedNotice) {

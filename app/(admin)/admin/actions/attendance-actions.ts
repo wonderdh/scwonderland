@@ -1,6 +1,7 @@
 "use server";
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import { verifyAuthenticated } from "./auth-helpers";
 import type { AttendanceRecord, AttendanceStats } from "@/lib/types";
 
 /** 학생의 출결 기록 목록 (최신순) */
@@ -56,6 +57,8 @@ export async function recordAttendance(
   status: string,
   note?: string
 ): Promise<{ error?: string }> {
+  const auth = await verifyAuthenticated();
+  if ("error" in auth) return { error: auth.error };
   const supabase = createAdminClient();
 
   if (!["present", "absent", "late", "excused"].includes(status)) {
@@ -85,6 +88,8 @@ export async function recordAttendance(
 export async function deleteAttendance(
   recordId: string
 ): Promise<{ error?: string }> {
+  const auth = await verifyAuthenticated();
+  if ("error" in auth) return { error: auth.error };
   const supabase = createAdminClient();
   const { error } = await supabase
     .from("attendance")

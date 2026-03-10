@@ -10,6 +10,7 @@ import {
   getStudentClasses,
 } from "../../actions";
 import type { AttendanceRecord, AttendanceStats, AdminStudentClassItem } from "@/lib/types";
+import { LoadingState } from "@/components/LoadingState";
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
   present: { label: "출석", color: "text-emerald-700", bg: "bg-emerald-100" },
@@ -126,7 +127,7 @@ export function StudentAttendanceTab({ studentProfileId }: { studentProfileId: s
   };
 
   if (loading) {
-    return <div className="py-8 text-center text-sm text-muted-foreground">불러오는 중…</div>;
+    return <LoadingState />;
   }
 
   return (

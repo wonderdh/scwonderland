@@ -10,6 +10,8 @@ import {
 } from "../../actions";
 import type { StudentTimetableRow } from "@/lib/types";
 import type { StudentTimetableEditData } from "../../actions/schedule-actions";
+import { LoadingState } from "@/components/LoadingState";
+import { Spinner } from "@/components/Spinner";
 
 const DAY_NAMES = ["월", "화", "수", "목", "금"];
 
@@ -195,11 +197,7 @@ export function StudentTimetableTab({
   }
 
   if (loading) {
-    return (
-      <div className="py-8 text-center text-sm text-muted-foreground">
-        불러오는 중...
-      </div>
-    );
+    return <LoadingState />;
   }
 
   return (
@@ -382,7 +380,7 @@ export function StudentTimetableTab({
                 disabled={pendingChanges.size === 0 || saving}
                 className="text-xs px-3 py-1.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40 transition-colors font-medium"
               >
-                {saving ? "저장 중…" : pendingChanges.size > 0 ? `저장 ${pendingChanges.size}건` : "저장"}
+                {saving ? <><Spinner size="sm" /> 저장 중…</> : pendingChanges.size > 0 ? `저장 ${pendingChanges.size}건` : "저장"}
               </button>
             </div>
           </div>

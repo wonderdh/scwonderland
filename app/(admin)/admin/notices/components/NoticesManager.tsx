@@ -9,6 +9,7 @@ import {
 import type { Notice, NoticeAttachment } from "@/lib/types";
 import { useRouter } from "next/navigation";
 import { useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 
 type NoticeWithCounts = Notice & {
   image_count: number;
@@ -195,6 +196,7 @@ export function NoticesManager({
             const result = await createNotice(fd);
             if (result?.error) return result.error;
             setCreateOpen(false);
+            toast.success("공지사항이 등록되었습니다.");
             router.refresh();
             return null;
           }}
@@ -212,6 +214,7 @@ export function NoticesManager({
             const result = await updateNotice(fd);
             if (result?.error) return result.error;
             setEditTarget(null);
+            toast.success("공지사항이 수정되었습니다.");
             router.refresh();
             return null;
           }}
@@ -224,6 +227,7 @@ export function NoticesManager({
           onConfirm={async () => {
             await deleteNotice(deleteTarget.id);
             setDeleteTarget(null);
+            toast.success("공지사항이 삭제되었습니다.");
             router.refresh();
           }}
         />

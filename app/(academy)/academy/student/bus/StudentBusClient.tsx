@@ -2,6 +2,9 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { LoadingState } from "@/components/LoadingState";
+import { Spinner } from "@/components/Spinner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { StudentBusDefault, BusChangeRequest, BusNumber, BusTimeSlot } from "@/lib/types";
@@ -83,6 +86,7 @@ export function StudentBusClient({ studentProfileId }: { studentProfileId: strin
     if (result.error) {
       setError(result.error);
     } else {
+      toast.success("변경 요청이 제출되었습니다.");
       setSuccess("변경 요청이 제출되었습니다.");
       setShowForm(false);
       setFormDate("");
@@ -99,13 +103,14 @@ export function StudentBusClient({ studentProfileId }: { studentProfileId: strin
     const result = await cancelBusChangeRequest(id, studentProfileId);
     if (result.error) setError(result.error);
     else {
+      toast.success("변경 요청이 취소되었습니다.");
       await load();
       router.refresh();
     }
     setSubmitting(false);
   }
 
-  if (loading) return <p className="text-sm text-slate-400 py-4">불러오는 중...</p>;
+  if (loading) return <LoadingState />;
 
   const pickupSlots = busTimeSlots.filter((s) => s.direction === "pickup");
   const dropoffSlots = busTimeSlots.filter((s) => s.direction === "dropoff");
@@ -225,7 +230,7 @@ export function StudentBusClient({ studentProfileId }: { studentProfileId: strin
             </div>
 
             <Button size="sm" onClick={handleSubmit} disabled={submitting || !formDate}>
-              {submitting ? "제출 중..." : "제출"}
+              {submitting ? <><Spinner size="sm" /> 제출 중...</> : "제출"}
             </Button>
           </div>
         )}

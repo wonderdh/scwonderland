@@ -1,6 +1,7 @@
 "use server";
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import { verifyAdmin } from "./auth-helpers";
 import {
   STORAGE_BUCKETS,
   generateStoragePath,
@@ -131,6 +132,9 @@ export async function getAcademyNoticeWithAttachments(
 export async function createAcademyNotice(
   formData: FormData
 ): Promise<{ error?: string; id?: string }> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return { error: auth.error };
+
   const title = (formData.get("title") as string)?.trim();
   const content = (formData.get("content") as string)?.trim() || null;
   const excerpt = (formData.get("excerpt") as string)?.trim() || null;
@@ -214,15 +218,23 @@ export async function createAcademyNotice(
 export async function updateAcademyNotice(
   formData: FormData
 ): Promise<{ error?: string }> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return { error: auth.error };
+
   const id = (formData.get("id") as string)?.trim();
   const title = (formData.get("title") as string)?.trim();
   const content = (formData.get("content") as string)?.trim() || null;
   const excerpt = (formData.get("excerpt") as string)?.trim() || null;
   const is_published = formData.get("is_published") === "true";
   const is_pinned = formData.get("is_pinned") === "true";
-  const removeIds = JSON.parse(
-    (formData.get("remove_attachment_ids") as string) || "[]"
-  ) as string[];
+  let removeIds: string[] = [];
+  try {
+    removeIds = JSON.parse(
+      (formData.get("remove_attachment_ids") as string) || "[]"
+    ) as string[];
+  } catch {
+    return { error: "잘못된 요청 형식입니다." };
+  }
 
   if (!id) return { error: "id가 없습니다." };
   if (!title) return { error: "제목을 입력해 주세요." };
@@ -312,6 +324,9 @@ export async function updateAcademyNotice(
 export async function deleteAcademyNotice(
   noticeId: string
 ): Promise<{ error?: string }> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return { error: auth.error };
+
   const supabase = createAdminClient();
 
   const { data: attachments } = await supabase

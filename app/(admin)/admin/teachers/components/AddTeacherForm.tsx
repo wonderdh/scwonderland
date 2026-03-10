@@ -2,7 +2,9 @@
 
 import { useActionState, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { createTeacher } from "../../actions";
+import { Spinner } from "@/components/Spinner";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -12,12 +14,13 @@ type FormState = { error?: string; success?: string } | null;
 export function AddTeacherForm() {
   const formRef = useRef<HTMLFormElement>(null);
   const router = useRouter();
-  const [state, formAction] = useActionState(
+  const [state, formAction, isPending] = useActionState(
     async (_: FormState, formData: FormData) => {
       const result = await createTeacher(formData);
       if (result.error) return { error: result.error };
       formRef.current?.reset();
       router.refresh();
+      toast.success("교사가 추가되었습니다.");
       return { success: "교사가 추가되었습니다." };
     },
     null as FormState
@@ -40,6 +43,7 @@ export function AddTeacherForm() {
           required
           placeholder="test1"
           autoComplete="off"
+          disabled={isPending}
           className="mt-1"
         />
         <p className="text-xs text-muted-foreground mt-0.5">@ 없이 쓰면 도메인 자동 추가</p>
@@ -54,6 +58,7 @@ export function AddTeacherForm() {
           name="password"
           required
           autoComplete="new-password"
+          disabled={isPending}
           className="mt-1"
         />
       </div>
@@ -67,6 +72,7 @@ export function AddTeacherForm() {
           name="name"
           required
           placeholder="김선생"
+          disabled={isPending}
           className="mt-1"
         />
       </div>
@@ -78,13 +84,14 @@ export function AddTeacherForm() {
           id="teacher-type"
           name="teacher_type"
           required
+          disabled={isPending}
           className="mt-1 flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
         >
           <option value="korean">한국인</option>
           <option value="native">원어민</option>
         </select>
       </div>
-      <Button type="submit">추가</Button>
+      <Button type="submit" disabled={isPending}>{isPending ? <><Spinner size="sm" /> 추가 중...</> : "추가"}</Button>
       <p className="w-full text-xs text-muted-foreground">* 필수 입력</p>
       {state?.error && (
         <p className="w-full text-sm text-destructive" role="alert">

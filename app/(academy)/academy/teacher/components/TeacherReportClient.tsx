@@ -9,6 +9,7 @@ import {
 } from "@/app/(admin)/admin/actions";
 import type { ReportCard } from "@/lib/types";
 import { reportLabels, ENGLISH_MONTHS } from "@/lib/teacher-labels";
+import { LoadingState } from "@/components/LoadingState";
 
 const MONTHS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
@@ -182,7 +183,7 @@ export function TeacherReportClient({
             </h2>
           </div>
           {statusLoading ? (
-            <p className="px-4 py-6 text-sm text-slate-400 text-center">{L.loading}</p>
+            <LoadingState label={L.loading} />
           ) : statusList.length === 0 ? (
             <p className="px-4 py-6 text-sm text-slate-400 text-center">{L.noStudents}</p>
           ) : (
@@ -291,7 +292,7 @@ export function TeacherReportClient({
                 </div>
                 <div className="p-4">
                   {reportLoading ? (
-                    <p className="text-sm text-slate-400">{L.loading}</p>
+                    <LoadingState label={L.loading} />
                   ) : (
                     <>
                       <textarea
@@ -325,7 +326,7 @@ export function TeacherReportClient({
                 </div>
                 <div className="p-4">
                   {reportLoading ? (
-                    <p className="text-sm text-slate-400">{L.loading}</p>
+                    <LoadingState label={L.loading} />
                   ) : report?.reply != null && report.reply.trim() !== "" ? (
                     <p className="whitespace-pre-wrap text-sm text-slate-800">
                       {report.reply}

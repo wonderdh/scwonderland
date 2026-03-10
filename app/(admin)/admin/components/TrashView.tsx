@@ -4,6 +4,7 @@ import type { UserWithProfile } from "@/lib/types";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 type Variant = "student" | "teacher";
 
@@ -31,6 +32,7 @@ export function TrashView({
       setError(result.error);
       return;
     }
+    toast.success("복구되었습니다.");
     router.refresh();
   };
 
@@ -44,6 +46,7 @@ export function TrashView({
       setError(result.error);
       return;
     }
+    toast.success("영구 삭제되었습니다.");
     router.refresh();
   };
 

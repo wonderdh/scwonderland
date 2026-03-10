@@ -20,6 +20,7 @@ import {
 import type { ClassTeacherInfo } from "@/lib/types";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 
 const GROUP_ORDER = ["유치부", "오후반", "방과후", ""] as const;
 
@@ -642,6 +643,7 @@ export function ClassesManager({
           onClose={() => setCreateOpen(false)}
           onSuccess={() => {
             setCreateOpen(false);
+            toast.success("반이 생성되었습니다.");
             router.refresh();
           }}
         />
@@ -653,6 +655,7 @@ export function ClassesManager({
           onClose={() => setEditClass(null)}
           onSuccess={() => {
             setEditClass(null);
+            toast.success("반이 수정되었습니다.");
             router.refresh();
           }}
         />
@@ -677,6 +680,7 @@ export function ClassesManager({
           onConfirm={async () => {
             await deleteClass(deleteTarget.id);
             setDeleteTarget(null);
+            toast.success("반이 삭제되었습니다.");
             router.refresh();
           }}
         />

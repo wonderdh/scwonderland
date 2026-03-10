@@ -9,6 +9,8 @@ import {
   approveChangeRequest,
   rejectChangeRequest,
 } from "../../actions";
+import { LoadingState } from "@/components/LoadingState";
+import { toast } from "sonner";
 
 const DIR_LABEL = { pickup: "등원", dropoff: "하원" } as const;
 const TYPE_LABEL = { change: "변경", no_ride: "미탑승" } as const;
@@ -38,6 +40,7 @@ export function BusChangeRequestsPanel({ adminId }: { adminId: string }) {
   async function handleApprove(id: string) {
     setActionLoading(id);
     await approveChangeRequest(id, adminId);
+    toast.success("변경 요청이 승인되었습니다.");
     await load();
     router.refresh();
     setActionLoading(null);
@@ -48,13 +51,14 @@ export function BusChangeRequestsPanel({ adminId }: { adminId: string }) {
     if (note === null) return; // 취소
     setActionLoading(id);
     await rejectChangeRequest(id, adminId, note || undefined);
+    toast.success("변경 요청이 거부되었습니다.");
     await load();
     router.refresh();
     setActionLoading(null);
   }
 
   if (loading) {
-    return <p className="text-sm text-slate-400 py-4">불러오는 중...</p>;
+    return <LoadingState className="py-4" />;
   }
 
   return (

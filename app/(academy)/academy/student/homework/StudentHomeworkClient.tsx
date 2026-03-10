@@ -7,7 +7,10 @@ import {
   submitHomework,
   getSubmissionFiles,
 } from "@/app/(admin)/admin/actions";
+import { toast } from "sonner";
 import { AudioRecorder } from "@/components/AudioRecorder";
+import { LoadingState } from "@/components/LoadingState";
+import { Spinner } from "@/components/Spinner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import type { HomeworkAssignment, HomeworkSubmission, HomeworkSubmissionFile } from "@/lib/types";
@@ -86,13 +89,14 @@ export function StudentHomeworkClient({
       return;
     }
 
+    toast.success("숙제가 제출되었습니다.");
     setSelectedItem(null);
     router.refresh();
     await load();
   };
 
   if (loading) {
-    return <div className="py-8 text-center text-sm text-muted-foreground">불러오는 중…</div>;
+    return <LoadingState />;
   }
 
   // Detail view
@@ -213,7 +217,7 @@ export function StudentHomeworkClient({
                   disabled={submitting || (!audioBlob && !textContent.trim())}
                   className="min-h-[44px] sm:min-h-[40px]"
                 >
-                  {submitting ? "제출 중…" : "제출하기"}
+                  {submitting ? <><Spinner size="sm" /> 제출 중…</> : "제출하기"}
                 </Button>
               </div>
             </div>

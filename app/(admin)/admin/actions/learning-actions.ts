@@ -1,16 +1,8 @@
 "use server";
 
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
+import { verifyAuthenticated as verifyAuthenticatedUser } from "./auth-helpers";
 import type { LearningRecord } from "@/lib/types";
-
-/** 인증된 관리자/교사인지 확인 */
-async function verifyAuthenticatedUser(): Promise<{ userId: string } | { error: string }> {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "인증이 필요합니다." };
-  return { userId: user.id };
-}
 
 /** 학생의 학습 기록 목록 (최신순) */
 export async function listLearningRecords(

@@ -1,6 +1,7 @@
 "use server";
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import { verifyAdmin } from "./auth-helpers";
 import type { AcademyPeriod } from "@/lib/types";
 
 // ── 수업 시간대 CRUD ──
@@ -25,6 +26,9 @@ export async function createAcademyPeriod(
   endTime: string,
   groupLabel?: string
 ): Promise<{ error?: string; id?: string }> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return { error: auth.error };
+
   const supabase = createAdminClient();
   const trimmed = name.trim();
   if (!trimmed) return { error: "수업 이름을 입력해 주세요." };
@@ -56,6 +60,9 @@ export async function updateAcademyPeriod(
   endTime: string,
   groupLabel?: string
 ): Promise<{ error?: string }> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return { error: auth.error };
+
   const supabase = createAdminClient();
   const trimmed = name.trim();
   if (!trimmed) return { error: "수업 이름을 입력해 주세요." };
@@ -80,6 +87,9 @@ export async function updateAcademyPeriod(
 }
 
 export async function deleteAcademyPeriod(id: string): Promise<{ error?: string }> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return { error: auth.error };
+
   const supabase = createAdminClient();
   const { error } = await supabase
     .from("academy_periods")

@@ -15,6 +15,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import type { AcademyNotice, AcademyNoticeAttachment } from "@/lib/types";
+import { LoadingState } from "@/components/LoadingState";
+import { toast } from "sonner";
 
 export function AcademyNoticesManager() {
   const router = useRouter();
@@ -110,6 +112,7 @@ export function AcademyNoticesManager() {
       setError(result.error);
       return;
     }
+    toast.success(editingId ? "공지사항이 수정되었습니다." : "공지사항이 등록되었습니다.");
     setView("list");
     router.refresh();
     await loadNotices();
@@ -124,12 +127,13 @@ export function AcademyNoticesManager() {
       setError(result.error);
       return;
     }
+    toast.success("공지사항이 삭제되었습니다.");
     router.refresh();
     await loadNotices();
   };
 
   if (loading) {
-    return <div className="py-8 text-center text-sm text-muted-foreground">불러오는 중…</div>;
+    return <LoadingState />;
   }
 
   // Form view

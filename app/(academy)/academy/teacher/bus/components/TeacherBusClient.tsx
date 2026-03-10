@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/Spinner";
 import { Input } from "@/components/ui/input";
 import type { BusManifestGroup, NoRideEntry } from "@/lib/types";
 import { getDailyBusManifest } from "@/app/(admin)/admin/actions";
@@ -64,7 +65,7 @@ export function TeacherBusClient() {
           </Button>
         </div>
         <Button size="sm" variant="ghost" onClick={load} disabled={loading}>
-          {loading ? "불러오는 중..." : "새로고침"}
+          {loading ? <><Spinner size="sm" /> 불러오는 중...</> : "새로고침"}
         </Button>
       </div>
 

@@ -10,6 +10,7 @@ import { TEXTBOOK_CATEGORIES } from "../../actions/textbook-constants";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 
 export function TextbooksManager({
   initialTextbooks,
@@ -119,6 +120,7 @@ export function TextbooksManager({
             const result = await createTextbook(fd);
             if (result?.error) return result.error;
             setCreateOpen(false);
+            toast.success("교재가 추가되었습니다.");
             router.refresh();
             return null;
           }}
@@ -134,6 +136,7 @@ export function TextbooksManager({
             const result = await updateTextbook(fd);
             if (result?.error) return result.error;
             setEditTarget(null);
+            toast.success("교재가 수정되었습니다.");
             router.refresh();
             return null;
           }}
@@ -146,6 +149,7 @@ export function TextbooksManager({
           onConfirm={async () => {
             await deleteTextbook(deleteTarget.id);
             setDeleteTarget(null);
+            toast.success("교재가 삭제되었습니다.");
             router.refresh();
           }}
         />

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef, useTransition, useMemo } from "react";
+import { toast } from "sonner";
 import type { BusManifestGroup, BusManifestEntry } from "@/lib/types";
 import {
   getDailyBusManifest,
@@ -18,7 +19,7 @@ function fmt(t: string) {
   return t.slice(0, 5);
 }
 
-function formatCheckedTime(iso: string) {
+function fmtISO(iso: string) {
   const d = new Date(iso);
   return `${d.getHours()}:${d.getMinutes().toString().padStart(2, "0")}`;
 }
@@ -424,7 +425,7 @@ export function BusStaffMonitor({
               }),
             }))
           );
-          alert(`오류: ${result.error}`);
+          toast.error(`오류: ${result.error}`);
         }
 
         setPendingIds((prev) => {

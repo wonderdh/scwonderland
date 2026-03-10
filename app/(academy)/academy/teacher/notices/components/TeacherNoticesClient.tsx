@@ -9,7 +9,10 @@ import {
   updateClassNotice,
   deleteClassNotice,
 } from "@/app/(admin)/admin/actions";
+import { toast } from "sonner";
 import { noticeLabels } from "@/lib/teacher-labels";
+import { LoadingState } from "@/components/LoadingState";
+import { Spinner } from "@/components/Spinner";
 import { formatFileSize } from "@/lib/supabase/storage";
 import { FileUpload } from "@/components/FileUpload";
 import { FileList } from "@/components/FileList";
@@ -131,6 +134,7 @@ export function TeacherNoticesClient({
       setError(result.error);
       return;
     }
+    toast.success(editingId ? "공지사항이 수정되었습니다." : "공지사항이 등록되었습니다.");
     setView("list");
     router.refresh();
     await loadNotices();
@@ -143,6 +147,7 @@ export function TeacherNoticesClient({
       setError(result.error);
       return;
     }
+    toast.success("공지사항이 삭제되었습니다.");
     setView("list");
     router.refresh();
     await loadNotices();
@@ -192,7 +197,7 @@ export function TeacherNoticesClient({
       {/* List view */}
       {view === "list" && (
         loading ? (
-          <div className="py-8 text-center text-sm text-muted-foreground">{L.loading}</div>
+          <LoadingState label={L.loading} />
         ) : notices.length === 0 ? (
           <div className="rounded-xl border border-dashed bg-muted/30 p-12 text-center">
             <p className="text-sm text-muted-foreground">{L.noNotices}</p>
@@ -369,7 +374,7 @@ export function TeacherNoticesClient({
               {L.cancel}
             </Button>
             <Button onClick={handleSave} disabled={saving || !formTitle.trim()} className="min-h-[44px] sm:min-h-[40px]">
-              {saving ? L.saving : L.save}
+              {saving ? <><Spinner size="sm" /> {L.saving}</> : L.save}
             </Button>
           </div>
         </div>

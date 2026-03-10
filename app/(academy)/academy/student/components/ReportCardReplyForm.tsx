@@ -3,6 +3,8 @@
 import { updateReportCardReply } from "@/app/(admin)/admin/actions";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { toast } from "sonner";
+import { Spinner } from "@/components/Spinner";
 
 export function ReportCardReplyForm({
   reportCardId,
@@ -29,6 +31,7 @@ export function ReportCardReplyForm({
       setError(result.error);
       return;
     }
+    toast.success("답변이 저장되었습니다.");
     router.refresh();
   };
 
@@ -58,7 +61,7 @@ export function ReportCardReplyForm({
             disabled={pending}
             className="min-h-[44px] rounded-lg bg-slate-800 px-4 py-2.5 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50 touch-manipulation"
           >
-            {pending ? `${buttonLabel} 중…` : buttonLabel}
+            {pending ? <><Spinner size="sm" /> {buttonLabel} 중…</> : buttonLabel}
           </button>
         </div>
       </form>

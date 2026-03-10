@@ -12,6 +12,8 @@ import type { LearningRecord } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { LoadingState } from "@/components/LoadingState";
+import { Spinner } from "@/components/Spinner";
 
 const CATEGORIES: { value: LearningRecord["category"]; label: string }[] = [
   { value: "test", label: "시험" },
@@ -130,7 +132,7 @@ export function StudentLearningTab({ studentProfileId }: { studentProfileId: str
       : records.filter((r) => r.category === filterCategory);
 
   if (loading) {
-    return <div className="py-8 text-center text-sm text-muted-foreground">불러오는 중…</div>;
+    return <LoadingState />;
   }
 
   return (
@@ -240,7 +242,7 @@ export function StudentLearningTab({ studentProfileId }: { studentProfileId: str
               취소
             </Button>
             <Button onClick={handleSave} disabled={saving} className="min-h-[44px] sm:min-h-[40px]">
-              {saving ? "저장 중…" : editingId ? "수정" : "추가"}
+              {saving ? <><Spinner size="sm" /> 저장 중…</> : editingId ? "수정" : "추가"}
             </Button>
           </div>
         </div>

@@ -13,6 +13,7 @@ import { TEXTBOOK_CATEGORIES } from "../../actions/textbook-constants";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { LoadingState } from "@/components/LoadingState";
 
 const STATUS_MAP = {
   not_started: { label: "시작 전", color: "bg-slate-100 text-slate-600" },
@@ -175,7 +176,7 @@ export function StudentTextbookTab({ studentProfileId }: { studentProfileId: str
   const completedBooks = progress.filter((p) => p.status === "completed");
 
   if (loading && progress.length === 0) {
-    return <div className="py-8 text-center text-sm text-slate-500">불러오는 중…</div>;
+    return <LoadingState />;
   }
 
   return (
@@ -354,7 +355,7 @@ function AddTextbookModal({
           </button>
         </div>
         {loading ? (
-          <p className="py-4 text-center text-sm text-slate-500">불러오는 중…</p>
+          <LoadingState className="py-4" />
         ) : options.length === 0 ? (
           <p className="py-4 text-center text-sm text-slate-500">배정 가능한 교재가 없습니다.</p>
         ) : (

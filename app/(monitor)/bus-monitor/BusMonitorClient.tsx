@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef, useTransition } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import type { BusManifestGroup, BusManifestEntry, BusTimeSlot } from "@/lib/types";
 import {
@@ -77,7 +78,7 @@ function ProgressBar({ boarded, total }: { boarded: number; total: number }) {
 
   return (
     <div className="flex items-center gap-2">
-      <div className="flex-1 h-2 bg-slate-200 rounded-full overflow-hidden">
+      <div className="flex-1 h-1.5 bg-slate-200 rounded-full overflow-hidden">
         <div
           className={`h-full ${color} rounded-full transition-all duration-300`}
           style={{ width: `${pct}%` }}
@@ -87,15 +88,14 @@ function ProgressBar({ boarded, total }: { boarded: number; total: number }) {
   );
 }
 
-type StudentAction = {
-  studentId: string;
-  action: "board" | "unboard" | "check" | "uncheck";
-};
+/** 이 수 초과 시 카드가 넓어지고 내부 2열 그리드 사용 */
+const WIDE_THRESHOLD = 8;
 
 function MonitorBusCard({
   card,
   onAction,
   pendingIds,
+  wide,
 }: {
   card: BusManifestGroup;
   onAction: (
@@ -105,6 +105,7 @@ function MonitorBusCard({
     action: "board" | "unboard" | "check" | "uncheck"
   ) => void;
   pendingIds: Set<string>;
+  wide: boolean;
 }) {
   const boardedCount = card.students.filter(
     (s) => s.boarded_at || s.checked_at
@@ -114,152 +115,182 @@ function MonitorBusCard({
   const allDone = checkedCount === totalCount && totalCount > 0;
   const stopGroups = groupStudentsByStop(card.students);
 
-  return (
-    <div className="rounded-xl border bg-white shadow-sm overflow-hidden">
+  const renderStudent = (student: BusManifestEntry) => {
+    const isBoarded = !!student.boarded_at;
+    const isChecked = !!student.checked_at;
+    const isPending = pendingIds.has(student.student_profile_id);
+
+    const rowBg = isChecked
+      ? "bg-green-50/50"
+      : isBoarded
+        ? "bg-blue-50/40"
+        : "";
+
+    return (
       <div
-        className={`px-4 py-3 ${allDone ? "bg-green-50" : "bg-slate-50"}`}
+        key={student.student_profile_id}
+        className={`px-3 py-1 flex items-center gap-2 ${rowBg} ${
+          isPending ? "opacity-60" : ""
+        }`}
       >
-        <div className="flex items-center justify-between mb-1.5">
-          <span className="text-sm font-semibold text-slate-700">
+        <button
+          type="button"
+          disabled={isPending || isChecked}
+          onClick={() =>
+            onAction(
+              student,
+              card.bus_time_slot_id,
+              card.bus_number_id,
+              isBoarded ? "unboard" : "board"
+            )
+          }
+          className={`flex items-center gap-2 flex-1 min-w-0 text-left ${
+            isChecked ? "cursor-default" : "cursor-pointer active:scale-[0.98]"
+          }`}
+        >
+          <span className="text-lg shrink-0">
+            {isChecked ? "✅" : isBoarded ? "🚌" : "⬜"}
+          </span>
+          <span
+            className={`flex-1 truncate text-xl ${
+              isChecked
+                ? "text-slate-400 line-through"
+                : isBoarded
+                  ? "font-bold text-blue-700"
+                  : "font-bold text-slate-800"
+            }`}
+          >
+            {student.korean_name || student.english_name}
+          </span>
+        </button>
+
+        <div className="flex items-center gap-1.5 shrink-0">
+          {isBoarded && student.boarded_at && !isChecked && (
+            <span className="text-sm text-blue-600 font-medium">
+              {formatCheckedTime(student.boarded_at)}
+            </span>
+          )}
+          {isChecked && student.checked_at && (
+            <span className="text-sm text-green-600 font-medium">
+              {formatCheckedTime(student.checked_at)}
+            </span>
+          )}
+        </div>
+
+        {isBoarded && !isChecked && (
+          <button
+            type="button"
+            disabled={isPending}
+            onClick={(e) => {
+              e.stopPropagation();
+              onAction(student, card.bus_time_slot_id, card.bus_number_id, "check");
+            }}
+            className="shrink-0 text-sm bg-green-100 text-green-700 px-3 py-1 rounded-md font-semibold hover:bg-green-200 active:scale-95"
+          >
+            하차
+          </button>
+        )}
+
+        {isChecked && (
+          <button
+            type="button"
+            disabled={isPending}
+            onClick={(e) => {
+              e.stopPropagation();
+              onAction(student, card.bus_time_slot_id, card.bus_number_id, "uncheck");
+            }}
+            className="shrink-0 text-sm text-slate-400 hover:text-slate-600 p-1 active:scale-95"
+            title="하차 취소"
+          >
+            ↩
+          </button>
+        )}
+      </div>
+    );
+  };
+
+  const renderStopGroup = (group: StopGroup, gi: number) => (
+    <div key={gi}>
+      {(group.note || group.estimatedTime) && (
+        <div className="px-4 py-1 bg-slate-50/60 flex items-center gap-2">
+          <span className="text-sm text-slate-500">▸</span>
+          {group.estimatedTime && (
+            <span className="text-sm font-semibold text-slate-600">
+              {formatTime(group.estimatedTime)}
+            </span>
+          )}
+          {group.note && (
+            <span className="text-sm text-slate-500 truncate">
+              {group.note}
+            </span>
+          )}
+        </div>
+      )}
+      {group.students.map(renderStudent)}
+    </div>
+  );
+
+  // wide 모드: stopGroups를 학생 수 기준으로 좌/우 컬럼에 분배
+  const splitStopGroups = () => {
+    const total = stopGroups.reduce((sum, g) => sum + g.students.length, 0);
+    const half = Math.ceil(total / 2);
+    const left: StopGroup[] = [];
+    const right: StopGroup[] = [];
+    let count = 0;
+    for (const g of stopGroups) {
+      if (count < half) {
+        // 이 그룹이 half를 넘으면 분할
+        const remaining = half - count;
+        if (remaining >= g.students.length) {
+          left.push(g);
+          count += g.students.length;
+        } else {
+          // 그룹을 나눠서 왼쪽/오른쪽에 분배
+          left.push({ ...g, students: g.students.slice(0, remaining) });
+          right.push({ ...g, students: g.students.slice(remaining) });
+          count += g.students.length;
+        }
+      } else {
+        right.push(g);
+        count += g.students.length;
+      }
+    }
+    return { left, right };
+  };
+
+  return (
+    <div className={`rounded-xl border bg-white shadow-sm overflow-hidden ${wide ? "col-span-2" : ""}`}>
+      <div
+        className={`px-4 py-2 ${allDone ? "bg-green-50" : "bg-slate-50"}`}
+      >
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-lg font-bold text-slate-800">
             {card.bus_label}
           </span>
-          <span className="text-xs font-medium text-slate-500">
+          <span className="text-base font-medium text-slate-500">
             탑승 {boardedCount}/{totalCount} · 하차 {checkedCount}/{totalCount}
           </span>
         </div>
         <ProgressBar boarded={boardedCount} total={totalCount} />
       </div>
 
-      <div className="divide-y divide-slate-100">
-        {stopGroups.map((group, gi) => (
-          <div key={gi}>
-            {(group.note || group.estimatedTime) && (
-              <div className="px-4 py-1.5 bg-slate-50/60 flex items-center gap-2">
-                <span className="text-xs text-slate-500">▸</span>
-                {group.estimatedTime && (
-                  <span className="text-xs font-medium text-slate-600">
-                    {formatTime(group.estimatedTime)}
-                  </span>
-                )}
-                {group.note && (
-                  <span className="text-xs text-slate-500 truncate">
-                    {group.note}
-                  </span>
-                )}
-              </div>
-            )}
-
-            {group.students.map((student) => {
-              const isBoarded = !!student.boarded_at;
-              const isChecked = !!student.checked_at;
-              const isPending = pendingIds.has(student.student_profile_id);
-
-              // 상태별 배경색
-              const rowBg = isChecked
-                ? "bg-green-50/50"
-                : isBoarded
-                  ? "bg-blue-50/40"
-                  : "";
-
-              return (
-                <div
-                  key={student.student_profile_id}
-                  className={`px-4 py-2 pl-8 flex items-center gap-2 text-sm ${rowBg} ${
-                    isPending ? "opacity-60" : ""
-                  }`}
-                >
-                  {/* 행 탭 영역 — 탑승 토글 (하차 완료 시 잠금) */}
-                  <button
-                    type="button"
-                    disabled={isPending || isChecked}
-                    onClick={() =>
-                      onAction(
-                        student,
-                        card.bus_time_slot_id,
-                        card.bus_number_id,
-                        isBoarded ? "unboard" : "board"
-                      )
-                    }
-                    className={`flex items-center gap-2 flex-1 min-w-0 text-left ${
-                      isChecked ? "cursor-default" : "cursor-pointer active:scale-[0.98]"
-                    }`}
-                  >
-                    <span className="text-xs shrink-0">
-                      {isChecked ? "✅" : isBoarded ? "🚌" : "⬜"}
-                    </span>
-                    <span
-                      className={`flex-1 truncate ${
-                        isChecked
-                          ? "text-slate-400 line-through"
-                          : isBoarded
-                            ? "font-medium text-blue-700"
-                            : "font-medium text-slate-700"
-                      }`}
-                    >
-                      {student.korean_name || student.english_name}
-                    </span>
-                  </button>
-
-                  {/* 시각 표시 */}
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    {isBoarded && student.boarded_at && !isChecked && (
-                      <span className="text-xs text-blue-600">
-                        {formatCheckedTime(student.boarded_at)}
-                      </span>
-                    )}
-                    {isChecked && student.checked_at && (
-                      <span className="text-xs text-green-600">
-                        하차 {formatCheckedTime(student.checked_at)}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* 하차 버튼 — 탑승 상태에서만 */}
-                  {isBoarded && !isChecked && (
-                    <button
-                      type="button"
-                      disabled={isPending}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onAction(
-                          student,
-                          card.bus_time_slot_id,
-                          card.bus_number_id,
-                          "check"
-                        );
-                      }}
-                      className="shrink-0 text-xs bg-green-100 text-green-700 px-2 py-1 rounded font-medium hover:bg-green-200 active:scale-95"
-                    >
-                      하차
-                    </button>
-                  )}
-
-                  {/* 하차 취소 — 하차 완료 시 작은 아이콘 */}
-                  {isChecked && (
-                    <button
-                      type="button"
-                      disabled={isPending}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onAction(
-                          student,
-                          card.bus_time_slot_id,
-                          card.bus_number_id,
-                          "uncheck"
-                        );
-                      }}
-                      className="shrink-0 text-xs text-slate-400 hover:text-slate-600 p-1 active:scale-95"
-                      title="하차 취소"
-                    >
-                      ↩
-                    </button>
-                  )}
-                </div>
-              );
-            })}
+      {wide ? (() => {
+        const { left, right } = splitStopGroups();
+        return (
+          <div className="grid grid-cols-2 divide-x divide-slate-200">
+            <div className="divide-y divide-slate-100">
+              {left.map((g, i) => renderStopGroup(g, i))}
+            </div>
+            <div className="divide-y divide-slate-100">
+              {right.map((g, i) => renderStopGroup(g, i + left.length))}
+            </div>
           </div>
-        ))}
-      </div>
+        );
+      })() : (
+        <div className="divide-y divide-slate-100">
+          {stopGroups.map((g, i) => renderStopGroup(g, i))}
+        </div>
+      )}
     </div>
   );
 }
@@ -434,7 +465,7 @@ export function BusMonitorClient({
               })),
             }))
           );
-          alert(`오류: ${result.error}`);
+          toast.error(`오류: ${result.error}`);
         }
 
         setPendingIds((prev) => {
@@ -455,10 +486,10 @@ export function BusMonitorClient({
   const dayName = DAY_NAMES[d.getDay()];
 
   return (
-    <div className="max-w-6xl mx-auto space-y-5">
+    <div className="w-full space-y-4">
       {/* 상단 바 */}
       <div className="flex items-center gap-3 flex-wrap">
-        <h1 className="text-lg font-bold text-slate-800">
+        <h1 className="text-xl font-bold text-slate-800">
           {date} ({dayName})
         </h1>
 
@@ -507,16 +538,16 @@ export function BusMonitorClient({
       )}
 
       {/* 시간대별 → 호차별 카드 */}
-      <div className="space-y-6">
+      <div className="space-y-4">
         {filteredGroups.map((tg) => (
           <div key={`${tg.slotTime}-${tg.direction}`}>
             {/* 시간대 헤더 */}
-            <div className="flex items-center gap-3 mb-3">
-              <span className="text-sm font-semibold text-slate-700">
+            <div className="flex items-center gap-3 mb-2">
+              <span className="text-lg font-bold text-slate-700">
                 {formatTime(tg.slotTime)}
               </span>
               <span
-                className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                className={`text-base font-bold px-3 py-0.5 rounded-full ${
                   tg.direction === "pickup"
                     ? "bg-blue-100 text-blue-700"
                     : "bg-orange-100 text-orange-700"
@@ -525,19 +556,20 @@ export function BusMonitorClient({
                 {DIR_LABEL[tg.direction]}
               </span>
               {tg.slotLabel && (
-                <span className="text-sm text-slate-500">{tg.slotLabel}</span>
+                <span className="text-base text-slate-500">{tg.slotLabel}</span>
               )}
               <div className="flex-1 border-t border-slate-200" />
             </div>
 
-            {/* 호차별 모니터링 카드 */}
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {/* 호차별 모니터링 카드 — 인원 많으면 wide(col-span-2) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {tg.cards.map((card) => (
                 <MonitorBusCard
                   key={`${card.bus_time_slot_id}-${card.bus_number_id}`}
                   card={card}
                   onAction={handleAction}
                   pendingIds={pendingIds}
+                  wide={card.students.length > WIDE_THRESHOLD}
                 />
               ))}
             </div>

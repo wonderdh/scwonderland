@@ -1,6 +1,7 @@
 "use server";
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import { verifyAdmin } from "./auth-helpers";
 import type { ClassWithDetails, ClassStudentRow, ClassTeacherInfo, AdminStudentClassItem } from "@/lib/types";
 
 export async function listClassesWithDetails(): Promise<ClassWithDetails[]> {
@@ -79,17 +80,61 @@ export async function getClassWithStudents(
   classId: string
 ): Promise<{ class: ClassWithDetails | null; students: ClassStudentRow[] }> {
   const supabase = createAdminClient();
-  const list = await listClassesWithDetails();
-  const classRow = list.find((c) => c.id === classId) ?? null;
-  if (!classRow) {
+
+  // 직접 단일 반 조회 (N+1 쿼리 제거)
+  const { data: classRow, error: classError } = await supabase
+    .from("classes")
+    .select("id, name, group_label, created_at, updated_at")
+    .eq("id", classId)
+    .single();
+
+  if (classError || !classRow) {
     return { class: null, students: [] };
   }
+
+  // 교사 정보 조회
+  const { data: classTeachers } = await supabase
+    .from("class_teachers")
+    .select("teacher_profile_id")
+    .eq("class_id", classId);
+
+  const teacherIds = (classTeachers ?? []).map((ct) => ct.teacher_profile_id);
+  let teachers: ClassTeacherInfo[] = [];
+  if (teacherIds.length > 0) {
+    const { data: teacherRows } = await supabase
+      .from("teachers")
+      .select("profile_id, name, teacher_type")
+      .in("profile_id", teacherIds);
+    teachers = (teacherRows ?? []).map((t) => ({
+      profile_id: t.profile_id,
+      name: t.name ?? "",
+      teacher_type: (t.teacher_type ?? "korean") as "korean" | "native",
+    }));
+  }
+
+  // 학생 수
+  const { count: studentCount } = await supabase
+    .from("class_students")
+    .select("*", { count: "exact", head: true })
+    .eq("class_id", classId);
+
+  const classWithDetails: ClassWithDetails = {
+    id: classRow.id,
+    name: classRow.name,
+    group_label: (classRow.group_label ?? null) as "유치부" | "방과후" | "오후반" | null,
+    teachers,
+    student_count: studentCount ?? 0,
+    created_at: classRow.created_at,
+    updated_at: classRow.updated_at,
+  };
+
+  // 학생 목록 조회
   const { data: rows } = await supabase
     .from("class_students")
     .select("id, student_profile_id")
     .eq("class_id", classId);
   if (!rows?.length) {
-    return { class: classRow, students: [] };
+    return { class: classWithDetails, students: [] };
   }
   const profileIds = rows.map((r) => r.student_profile_id);
   const { data: students } = await supabase
@@ -109,7 +154,7 @@ export async function getClassWithStudents(
       student_number: s?.student_number ?? null,
     };
   });
-  return { class: classRow, students: studentsList };
+  return { class: classWithDetails, students: studentsList };
 }
 
 /** 특정 학생의 소속 반 목록 (반 이름 + 담당 교사 정보) */
@@ -208,6 +253,8 @@ export async function createClass(
   teacherProfileIds: string[],
   groupLabel?: string,
 ): Promise<{ error?: string; id?: string }> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return { error: auth.error };
   const supabase = createAdminClient();
   const n = name?.trim();
   if (!n) return { error: "반 이름을 입력해 주세요." };
@@ -265,6 +312,8 @@ export async function updateClass(
   teacherProfileIds: string[],
   groupLabel?: string,
 ): Promise<{ error?: string }> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return { error: auth.error };
   const supabase = createAdminClient();
   const n = name?.trim();
   if (!n) return { error: "반 이름을 입력해 주세요." };
@@ -336,6 +385,8 @@ export async function updateClass(
 }
 
 export async function deleteClass(classId: string): Promise<{ error?: string }> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return { error: auth.error };
   const supabase = createAdminClient();
   const { error } = await supabase.from("classes").delete().eq("id", classId);
   if (error) {
@@ -349,6 +400,8 @@ export async function addStudentToClass(
   classId: string,
   studentProfileId: string
 ): Promise<{ error?: string }> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return { error: auth.error };
   const supabase = createAdminClient();
   const { error } = await supabase.from("class_students").insert({
     class_id: classId,
@@ -364,6 +417,8 @@ export async function addStudentToClass(
 export async function removeStudentFromClass(
   classStudentId: string
 ): Promise<{ error?: string }> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return { error: auth.error };
   const supabase = createAdminClient();
   const { error } = await supabase
     .from("class_students")

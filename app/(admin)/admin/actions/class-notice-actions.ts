@@ -232,9 +232,14 @@ export async function updateClassNotice(
   const title = (formData.get("title") as string)?.trim();
   const content = (formData.get("content") as string)?.trim() || null;
   const is_pinned = formData.get("is_pinned") === "true";
-  const removeIds = JSON.parse(
-    (formData.get("remove_attachment_ids") as string) || "[]"
-  ) as string[];
+  let removeIds: string[] = [];
+  try {
+    removeIds = JSON.parse(
+      (formData.get("remove_attachment_ids") as string) || "[]"
+    ) as string[];
+  } catch {
+    return { error: "잘못된 요청 형식입니다." };
+  }
 
   if (!id) return { error: "id가 없습니다." };
   if (!title) return { error: "제목을 입력해 주세요." };

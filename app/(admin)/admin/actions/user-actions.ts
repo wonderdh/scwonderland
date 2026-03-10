@@ -1,12 +1,17 @@
 "use server";
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import { normalizeEmail } from "@/lib/auth-utils";
+import { verifyAdmin } from "./auth-helpers";
 import type { UserWithProfile } from "@/lib/types";
 
 export async function createStudent(
   formData: FormData
 ): Promise<{ error?: string }> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return { error: auth.error };
+
   const email = normalizeEmail((formData.get("email") as string) ?? "");
   const password = (formData.get("password") as string) ?? "";
   const korean_name = (formData.get("korean_name") as string)?.trim() ?? "";
@@ -43,6 +48,9 @@ export async function createStudent(
 export async function createTeacher(
   formData: FormData
 ): Promise<{ error?: string }> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return { error: auth.error };
+
   const email = normalizeEmail((formData.get("email") as string) ?? "");
   const password = (formData.get("password") as string) ?? "";
   const name = (formData.get("name") as string)?.trim() ?? "";
@@ -91,6 +99,9 @@ export async function createTeacher(
 export async function listUsersByRole(
   role: "student" | "teacher"
 ): Promise<UserWithProfile[]> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return [];
+
   const supabase = createAdminClient();
 
   const { data: profiles, error: profilesError } = await supabase
@@ -109,8 +120,9 @@ export async function listUsersByRole(
 
   const ids = profiles.map((p) => p.id);
   const { data: users } = await supabase.auth.admin.listUsers();
+  const idSet = new Set(ids);
   const userMap = new Map(
-    (users?.users ?? []).filter((u) => ids.includes(u.id)).map((u) => [u.id, u])
+    (users?.users ?? []).filter((u) => idSet.has(u.id)).map((u) => [u.id, u])
   );
 
   if (role === "student") {
@@ -162,6 +174,9 @@ export async function listUsersByRole(
 export async function getTeacherAssignmentCounts(
   userId: string
 ): Promise<{ classCount: number; scheduleCount: number }> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return { classCount: 0, scheduleCount: 0 };
+
   const supabase = createAdminClient();
 
   const [{ count: classCount }, { count: scheduleCount }] = await Promise.all([
@@ -185,6 +200,9 @@ export async function getTeacherAssignmentCounts(
 export async function deleteUserById(
   formData: FormData
 ): Promise<{ error?: string }> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return { error: auth.error };
+
   const id = (formData.get("id") as string)?.trim();
   if (!id) return { error: "id가 없습니다." };
 
@@ -231,6 +249,9 @@ export async function deleteUserById(
 export async function restoreUser(
   userId: string
 ): Promise<{ error?: string }> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return { error: auth.error };
+
   if (!userId) return { error: "id가 없습니다." };
 
   const supabase = createAdminClient();
@@ -258,6 +279,9 @@ export async function restoreUser(
 export async function permanentlyDeleteUser(
   userId: string
 ): Promise<{ error?: string }> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return { error: auth.error };
+
   if (!userId) return { error: "id가 없습니다." };
 
   const supabase = createAdminClient();
@@ -273,6 +297,9 @@ export async function permanentlyDeleteUser(
 export async function listDeletedUsers(
   role: "student" | "teacher"
 ): Promise<UserWithProfile[]> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return [];
+
   const supabase = createAdminClient();
 
   const { data: profiles, error: profilesError } = await supabase
@@ -285,8 +312,9 @@ export async function listDeletedUsers(
 
   const ids = profiles.map((p) => p.id);
   const { data: users } = await supabase.auth.admin.listUsers();
+  const idSet = new Set(ids);
   const userMap = new Map(
-    (users?.users ?? []).filter((u) => ids.includes(u.id)).map((u) => [u.id, u])
+    (users?.users ?? []).filter((u) => idSet.has(u.id)).map((u) => [u.id, u])
   );
 
   if (role === "student") {
@@ -337,6 +365,9 @@ export async function listDeletedUsers(
 export async function updateStudentProfile(
   formData: FormData
 ): Promise<{ error?: string }> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return { error: auth.error };
+
   const id = (formData.get("id") as string)?.trim();
   const korean_name = (formData.get("korean_name") as string)?.trim() ?? "";
   const english_name = (formData.get("english_name") as string)?.trim() ?? "";
@@ -346,10 +377,14 @@ export async function updateStudentProfile(
 
   const supabase = createAdminClient();
 
-  await supabase
+  const { error: profileError } = await supabase
     .from("profiles")
     .update({ first_name: korean_name, last_name: english_name })
     .eq("id", id);
+  if (profileError) {
+    console.error("[updateStudentProfile:profile]", profileError.message, { id });
+    return { error: profileError.message };
+  }
 
   const { error: studentError } = await supabase
     .from("students")
@@ -366,6 +401,9 @@ export async function updateStudentProfile(
 export async function updateTeacherProfile(
   formData: FormData
 ): Promise<{ error?: string }> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return { error: auth.error };
+
   const id = (formData.get("id") as string)?.trim();
   const name = (formData.get("name") as string)?.trim() ?? "";
   const teacher_type = (formData.get("teacher_type") as string) || null;
@@ -375,10 +413,14 @@ export async function updateTeacherProfile(
 
   const supabase = createAdminClient();
 
-  await supabase
+  const { error: profileError } = await supabase
     .from("profiles")
     .update({ first_name: name, last_name: "" })
     .eq("id", id);
+  if (profileError) {
+    console.error("[updateTeacherProfile:profile]", profileError.message, { id });
+    return { error: profileError.message };
+  }
 
   const updateData: Record<string, unknown> = { name, updated_at: new Date().toISOString() };
   if (teacher_type === "korean" || teacher_type === "native") {
@@ -401,6 +443,9 @@ export async function resetUserPassword(
   userId: string,
   newPassword: string
 ): Promise<{ error?: string }> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return { error: auth.error };
+
   if (!userId || !newPassword) {
     return { error: "사용자 ID와 새 비밀번호를 입력해 주세요." };
   }
@@ -422,6 +467,9 @@ export async function resetUserPassword(
 export async function listAllStudents(): Promise<
   { id: string; korean_name: string | null; english_name: string | null; student_number: string | null }[]
 > {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return [];
+
   const supabase = createAdminClient();
 
   // 소프트 삭제되지 않은 학생만 조회

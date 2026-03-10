@@ -2,6 +2,7 @@
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { verifyAdmin, verifyAuthenticated } from "./auth-helpers";
 
 const COVER_BUCKET = "textbook-covers";
 const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
@@ -152,6 +153,9 @@ export async function getTextbook(textbookId: string): Promise<Textbook | null> 
 }
 
 export async function createTextbook(formData: FormData): Promise<{ error?: string; id?: string }> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return { error: auth.error };
+
   const title = (formData.get("title") as string)?.trim();
   const series = (formData.get("series") as string)?.trim() || null;
   const level = (formData.get("level") as string)?.trim() || null;
@@ -188,6 +192,9 @@ export async function createTextbook(formData: FormData): Promise<{ error?: stri
 }
 
 export async function updateTextbook(formData: FormData): Promise<{ error?: string }> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return { error: auth.error };
+
   const id = (formData.get("id") as string)?.trim();
   const title = (formData.get("title") as string)?.trim();
   const series = (formData.get("series") as string)?.trim() || null;
@@ -250,6 +257,9 @@ export async function updateTextbook(formData: FormData): Promise<{ error?: stri
 }
 
 export async function deleteTextbook(textbookId: string): Promise<{ error?: string }> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return { error: auth.error };
+
   const supabase = createAdminClient();
 
   // 커버 이미지 URL 조회 (삭제용)
@@ -324,6 +334,9 @@ export async function assignTextbookToClass(
   classId: string,
   textbookId: string
 ): Promise<{ error?: string }> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return { error: auth.error };
+
   const supabase = createAdminClient();
 
   // 1. class_textbooks에 배정
@@ -372,6 +385,9 @@ export async function removeTextbookFromClass(
   classId: string,
   textbookId: string
 ): Promise<{ error?: string }> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return { error: auth.error };
+
   const supabase = createAdminClient();
 
   // class_textbooks에서 제거
@@ -405,6 +421,9 @@ export async function assignTextbookToStudent(
   studentProfileId: string,
   textbookId: string
 ): Promise<{ error?: string }> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return { error: auth.error };
+
   const supabase = createAdminClient();
   const { error } = await supabase
     .from("student_textbook_progress")
@@ -428,6 +447,9 @@ export async function assignTextbookToStudent(
 }
 
 export async function removeTextbookFromStudent(progressId: string): Promise<{ error?: string }> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return { error: auth.error };
+
   const supabase = createAdminClient();
   const { error } = await supabase
     .from("student_textbook_progress")
@@ -452,6 +474,9 @@ export async function updateProgress(
   assignedAt?: string | null,
   completedAt?: string | null
 ): Promise<{ error?: string }> {
+  const auth = await verifyAuthenticated();
+  if ("error" in auth) return { error: auth.error };
+
   const supabase = createAdminClient();
 
   // progress 현재 상태 조회
@@ -649,6 +674,9 @@ export async function batchUpdateProgress(
   completedUnits: number,
   excludeStudentIds: string[]
 ): Promise<{ error?: string; updatedCount?: number }> {
+  const auth = await verifyAuthenticated();
+  if ("error" in auth) return { error: auth.error };
+
   const supabase = createAdminClient();
 
   // 교재의 total_units 조회

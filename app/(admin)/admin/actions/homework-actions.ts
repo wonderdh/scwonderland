@@ -2,6 +2,7 @@
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { verifyAuthenticated } from "./auth-helpers";
 import {
   STORAGE_BUCKETS,
   generateStoragePath,
@@ -72,6 +73,8 @@ export async function createHomeworkAssignment(
   description?: string,
   dueDate?: string
 ): Promise<{ error?: string; id?: string }> {
+  const auth = await verifyAuthenticated();
+  if ("error" in auth) return { error: auth.error };
   if (!title.trim()) return { error: "제목을 입력해 주세요." };
 
   const supabase = createAdminClient();
@@ -118,6 +121,8 @@ export async function updateHomeworkAssignment(
   description?: string,
   dueDate?: string
 ): Promise<{ error?: string }> {
+  const auth = await verifyAuthenticated();
+  if ("error" in auth) return { error: auth.error };
   if (!title.trim()) return { error: "제목을 입력해 주세요." };
 
   const supabase = createAdminClient();
@@ -139,6 +144,8 @@ export async function updateHomeworkAssignment(
 export async function deleteHomeworkAssignment(
   assignmentId: string
 ): Promise<{ error?: string }> {
+  const auth = await verifyAuthenticated();
+  if ("error" in auth) return { error: auth.error };
   const supabase = createAdminClient();
 
   // 제출 파일 삭제

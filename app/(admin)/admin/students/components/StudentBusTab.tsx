@@ -12,6 +12,7 @@ import {
   listBusNumbers,
   listBusTimeSlots,
 } from "../../actions";
+import { LoadingState } from "@/components/LoadingState";
 
 const DAY_NAMES = ["", "월", "화", "수", "목", "금"];
 const DIR_LABEL = { pickup: "등원", dropoff: "하원" } as const;
@@ -158,7 +159,7 @@ export function StudentBusTab({ studentProfileId }: { studentProfileId: string }
     setSaving(false);
   }
 
-  if (loading) return <p className="text-sm text-slate-400 py-4">불러오는 중...</p>;
+  if (loading) return <LoadingState className="py-4" />;
 
   const pickupSlots = busTimeSlots.filter((s) => s.direction === "pickup");
   const dropoffSlots = busTimeSlots.filter((s) => s.direction === "dropoff");

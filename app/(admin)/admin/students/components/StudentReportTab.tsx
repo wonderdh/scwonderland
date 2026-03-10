@@ -10,6 +10,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { LoadingState } from "@/components/LoadingState";
 
 const MONTHS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
@@ -78,9 +79,7 @@ export function StudentReportTab({ studentProfileId }: { studentProfileId: strin
 
   const isInitialLoad = loading && report === null && list.length === 0 && !listLoading;
   if (isInitialLoad) {
-    return (
-      <div className="py-8 text-center text-muted-foreground text-sm">불러오는 중…</div>
-    );
+    return <LoadingState />;
   }
 
   return (
@@ -88,7 +87,7 @@ export function StudentReportTab({ studentProfileId }: { studentProfileId: strin
       <section className="rounded-xl border bg-muted/30 p-4 sm:p-4">
         <h2 className="mb-3 text-sm font-medium text-muted-foreground">기존 리포트</h2>
         {listLoading ? (
-          <p className="py-2 text-sm text-muted-foreground">목록 불러오는 중…</p>
+          <LoadingState label="목록 불러오는 중…" className="py-2" />
         ) : list.length === 0 ? (
           <p className="py-2 text-sm text-muted-foreground">아직 작성된 리포트가 없습니다.</p>
         ) : (
@@ -163,7 +162,7 @@ export function StudentReportTab({ studentProfileId }: { studentProfileId: strin
         </div>
         <div className="p-4 sm:p-5">
           {loading && (
-            <p className="mb-2 text-sm text-muted-foreground">불러오는 중…</p>
+            <LoadingState className="py-0 mb-2" />
           )}
           <label htmlFor="rc-content" className="sr-only">
             리포트 본문

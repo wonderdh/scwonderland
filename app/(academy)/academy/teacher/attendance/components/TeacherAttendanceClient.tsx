@@ -5,7 +5,10 @@ import {
   getClassAttendanceByDate,
   recordAttendance,
 } from "@/app/(admin)/admin/actions";
+import { toast } from "sonner";
 import { attendanceLabels } from "@/lib/teacher-labels";
+import { LoadingState } from "@/components/LoadingState";
+import { Spinner } from "@/components/Spinner";
 import { Button } from "@/components/ui/button";
 
 type TeacherClass = { id: string; name: string };
@@ -111,6 +114,7 @@ export function TeacherAttendanceClient({
       setError(result.error);
       return;
     }
+    toast.success("출결이 저장되었습니다.");
     setSavedIds((prev) => new Set(prev).add(studentId));
   };
 
@@ -132,6 +136,7 @@ export function TeacherAttendanceClient({
       setStatusMap((prev) => ({ ...prev, [s.profile_id]: "present" }));
       setSavedIds((prev) => new Set(prev).add(s.profile_id));
     }
+    toast.success("출결이 저장되었습니다.");
     setSaving(null);
   };
 
@@ -167,7 +172,7 @@ export function TeacherAttendanceClient({
             onClick={handleAllPresent}
             disabled={saving !== null || students.length === 0}
           >
-            {saving === "all" ? L.saving : L.allPresent}
+            {saving === "all" ? <><Spinner size="sm" /> {L.saving}</> : L.allPresent}
           </Button>
         </div>
       </div>
@@ -177,7 +182,7 @@ export function TeacherAttendanceClient({
       )}
 
       {loading ? (
-        <div className="py-8 text-center text-sm text-muted-foreground">{L.loading}</div>
+        <LoadingState label={L.loading} />
       ) : students.length === 0 ? (
         <div className="rounded-xl border border-dashed bg-muted/30 p-12 text-center">
           <p className="text-sm text-muted-foreground">{L.noStudents}</p>
@@ -212,7 +217,7 @@ export function TeacherAttendanceClient({
                       onClick={() => handleSave(s.profile_id)}
                       disabled={!currentStatus || isSaving || saving === "all"}
                     >
-                      {isSaving ? L.saving : L.save}
+                      {isSaving ? <><Spinner size="sm" /> {L.saving}</> : L.save}
                     </Button>
                   </div>
                 </div>

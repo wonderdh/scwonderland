@@ -5,6 +5,7 @@ import { listClassTextbooks, type ClassTextbook } from "../../actions/textbook-a
 import { TEXTBOOK_CATEGORIES } from "../../actions/textbook-constants";
 import type { ClassWithDetails, ClassStudentRow, ClassTeacherInfo } from "@/lib/types";
 import { useCallback, useEffect, useState } from "react";
+import { LoadingState } from "@/components/LoadingState";
 
 export function TeacherClassesTab({
   teacherProfileId,
@@ -109,7 +110,7 @@ function ClassRow({
       {isExpanded && (
         <div className="border-t px-4 py-3 space-y-4">
           {!loaded ? (
-            <p className="text-sm text-muted-foreground text-center py-4">불러오는 중…</p>
+            <LoadingState className="py-4" />
           ) : (
             <>
               {/* 담당 선생님 */}

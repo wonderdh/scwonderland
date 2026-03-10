@@ -2,6 +2,7 @@
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { normalizeEmail } from "@/lib/auth-utils";
+import { verifyAdmin, verifyAuthenticated } from "./auth-helpers";
 import type {
   BusNumber,
   BusTimeSlot,
@@ -32,6 +33,8 @@ export async function listBusNumbers(): Promise<BusNumber[]> {
 export async function createBusNumber(
   label: string
 ): Promise<{ error?: string; id?: string }> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return { error: auth.error };
   const supabase = createAdminClient();
   const trimmed = label.trim();
   if (!trimmed) return { error: "호차 이름을 입력해 주세요." };
@@ -53,6 +56,8 @@ export async function updateBusNumber(
   id: string,
   label: string
 ): Promise<{ error?: string }> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return { error: auth.error };
   const supabase = createAdminClient();
   const trimmed = label.trim();
   if (!trimmed) return { error: "호차 이름을 입력해 주세요." };
@@ -70,6 +75,8 @@ export async function updateBusNumber(
 }
 
 export async function deleteBusNumber(id: string): Promise<{ error?: string }> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return { error: auth.error };
   const supabase = createAdminClient();
   const { error } = await supabase
     .from("bus_numbers")
@@ -104,6 +111,8 @@ export async function createBusTimeSlot(
   label: string,
   time: string
 ): Promise<{ error?: string; id?: string }> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return { error: auth.error };
   const supabase = createAdminClient();
   const trimmed = label.trim();
   if (!trimmed) return { error: "시간대 이름을 입력해 주세요." };
@@ -126,6 +135,8 @@ export async function updateBusTimeSlot(
   label: string,
   time: string
 ): Promise<{ error?: string }> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return { error: auth.error };
   const supabase = createAdminClient();
   const trimmed = label.trim();
   if (!trimmed) return { error: "시간대 이름을 입력해 주세요." };
@@ -142,6 +153,8 @@ export async function updateBusTimeSlot(
 }
 
 export async function deleteBusTimeSlot(id: string): Promise<{ error?: string }> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return { error: auth.error };
   const supabase = createAdminClient();
   const { error } = await supabase
     .from("bus_time_slots")
@@ -212,6 +225,8 @@ export async function upsertStudentBusDefault(
   estimatedTime?: string,
   note?: string
 ): Promise<{ error?: string }> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return { error: auth.error };
   const supabase = createAdminClient();
   const { error } = await supabase.from("student_bus_defaults").upsert(
     {
@@ -234,6 +249,8 @@ export async function upsertStudentBusDefault(
 }
 
 export async function deleteStudentBusDefault(id: string): Promise<{ error?: string }> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return { error: auth.error };
   const supabase = createAdminClient();
   const { error } = await supabase
     .from("student_bus_defaults")
@@ -431,6 +448,8 @@ export async function boardBusStudent(
   busTimeSlotId: string,
   busNumberId: string
 ): Promise<{ error?: string }> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return { error: auth.error };
   const supabase = createAdminClient();
   const { error } = await supabase.from("bus_check_records").upsert(
     {
@@ -455,6 +474,8 @@ export async function unboardBusStudent(
   checkDate: string,
   direction: "pickup" | "dropoff"
 ): Promise<{ error?: string }> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return { error: auth.error };
   const supabase = createAdminClient();
 
   // 기존 레코드 확인
@@ -503,6 +524,8 @@ export async function checkBusStudent(
   busNumberId: string,
   checkedBy: string
 ): Promise<{ error?: string }> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return { error: auth.error };
   const supabase = createAdminClient();
   const { error } = await supabase.from("bus_check_records").upsert(
     {
@@ -528,6 +551,8 @@ export async function uncheckBusStudent(
   checkDate: string,
   direction: "pickup" | "dropoff"
 ): Promise<{ error?: string }> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return { error: auth.error };
   const supabase = createAdminClient();
 
   // boarded_at이 있으면 checked_at만 null로 (탑승 상태로 복귀)
@@ -623,6 +648,8 @@ export async function approveChangeRequest(
   reviewerId: string,
   reviewNote?: string
 ): Promise<{ error?: string }> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return { error: auth.error };
   const supabase = createAdminClient();
   const { error } = await supabase
     .from("bus_change_requests")
@@ -647,6 +674,8 @@ export async function rejectChangeRequest(
   reviewerId: string,
   reviewNote?: string
 ): Promise<{ error?: string }> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return { error: auth.error };
   const supabase = createAdminClient();
   const { error } = await supabase
     .from("bus_change_requests")
@@ -716,6 +745,8 @@ export async function submitBusChangeRequest(
   newBusNumberId?: string,
   reason?: string
 ): Promise<{ error?: string }> {
+  const auth = await verifyAuthenticated();
+  if ("error" in auth) return { error: auth.error };
   const supabase = createAdminClient();
 
   if (changeType === "change" && (!newBusTimeSlotId || !newBusNumberId)) {
@@ -744,6 +775,8 @@ export async function cancelBusChangeRequest(
   requestId: string,
   studentProfileId: string
 ): Promise<{ error?: string }> {
+  const auth = await verifyAuthenticated();
+  if ("error" in auth) return { error: auth.error };
   const supabase = createAdminClient();
   const { error } = await supabase
     .from("bus_change_requests")
@@ -763,6 +796,8 @@ export async function cancelBusChangeRequest(
 export async function createBusStaff(
   formData: FormData
 ): Promise<{ error?: string }> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return { error: auth.error };
   const email = normalizeEmail((formData.get("email") as string) ?? "");
   const password = (formData.get("password") as string) ?? "";
   const name = (formData.get("name") as string)?.trim() ?? "";
@@ -867,6 +902,8 @@ export async function updateBusStaff(
   name: string,
   busNumberId: string | null
 ): Promise<{ error?: string }> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return { error: auth.error };
   const trimmed = name.trim();
   if (!trimmed) return { error: "이름을 입력해 주세요." };
 

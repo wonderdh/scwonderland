@@ -2,7 +2,9 @@
 
 import { useActionState, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { createStudent } from "../../actions";
+import { Spinner } from "@/components/Spinner";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -12,12 +14,13 @@ type FormState = { error?: string; success?: string } | null;
 export function AddStudentForm() {
   const formRef = useRef<HTMLFormElement>(null);
   const router = useRouter();
-  const [state, formAction] = useActionState(
+  const [state, formAction, isPending] = useActionState(
     async (_: FormState, formData: FormData) => {
       const result = await createStudent(formData);
       if (result.error) return { error: result.error };
       formRef.current?.reset();
       router.refresh();
+      toast.success("학생이 추가되었습니다.");
       return { success: "학생이 추가되었습니다." };
     },
     null as FormState
@@ -40,6 +43,7 @@ export function AddStudentForm() {
           required
           placeholder="test1"
           autoComplete="off"
+          disabled={isPending}
           className="mt-1"
         />
         <p className="text-xs text-muted-foreground mt-0.5">@ 없이 쓰면 도메인 자동 추가</p>
@@ -54,6 +58,7 @@ export function AddStudentForm() {
           name="password"
           required
           autoComplete="new-password"
+          disabled={isPending}
           className="mt-1"
         />
       </div>
@@ -67,6 +72,7 @@ export function AddStudentForm() {
           name="korean_name"
           required
           placeholder="홍길동"
+          disabled={isPending}
           className="mt-1"
         />
       </div>
@@ -77,10 +83,11 @@ export function AddStudentForm() {
           type="text"
           name="english_name"
           placeholder="John Hong"
+          disabled={isPending}
           className="mt-1"
         />
       </div>
-      <Button type="submit">추가</Button>
+      <Button type="submit" disabled={isPending}>{isPending ? <><Spinner size="sm" /> 추가 중...</> : "추가"}</Button>
       <p className="w-full text-xs text-muted-foreground">* 필수 입력</p>
       {state?.error && (
         <p className="w-full text-sm text-destructive" role="alert">

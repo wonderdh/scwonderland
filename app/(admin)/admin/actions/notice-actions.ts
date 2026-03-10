@@ -1,6 +1,7 @@
 "use server";
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import { verifyAdmin } from "./auth-helpers";
 import type { Notice, NoticeAttachment } from "@/lib/types";
 
 const NOTICE_BUCKET = "notice-files";
@@ -165,6 +166,9 @@ export async function getNoticeWithAttachments(
 export async function createNotice(
   formData: FormData
 ): Promise<{ error?: string; id?: string }> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return { error: auth.error };
+
   const title = (formData.get("title") as string)?.trim();
   const content = (formData.get("content") as string)?.trim() || null;
   const excerpt = (formData.get("excerpt") as string)?.trim() || null;
@@ -279,15 +283,23 @@ export async function createNotice(
 export async function updateNotice(
   formData: FormData
 ): Promise<{ error?: string }> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return { error: auth.error };
+
   const id = (formData.get("id") as string)?.trim();
   const title = (formData.get("title") as string)?.trim();
   const content = (formData.get("content") as string)?.trim() || null;
   const excerpt = (formData.get("excerpt") as string)?.trim() || null;
   const is_published = formData.get("is_published") === "true";
   const is_pinned = formData.get("is_pinned") === "true";
-  const removeAttachmentIds = JSON.parse(
-    (formData.get("remove_attachment_ids") as string) || "[]"
-  ) as string[];
+  let removeAttachmentIds: string[] = [];
+  try {
+    removeAttachmentIds = JSON.parse(
+      (formData.get("remove_attachment_ids") as string) || "[]"
+    ) as string[];
+  } catch {
+    return { error: "잘못된 요청 형식입니다." };
+  }
 
   if (!id) return { error: "id가 없습니다." };
   if (!title) return { error: "제목을 입력해 주세요." };
@@ -396,6 +408,9 @@ export async function updateNotice(
 export async function deleteNotice(
   noticeId: string
 ): Promise<{ error?: string }> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return { error: auth.error };
+
   const supabase = createAdminClient();
 
   // 첨부파일 URL 조회 (Storage 삭제용)

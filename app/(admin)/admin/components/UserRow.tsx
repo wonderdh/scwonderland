@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { UserWithProfile } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
 
 type UserRowProps = {
   user: UserWithProfile;
@@ -26,6 +27,7 @@ export function UserRow({ user, variant, onUpdate, onDelete }: UserRowProps) {
       setError(result.error);
       return;
     }
+    toast.success("정보가 수정되었습니다.");
     setError(null);
     setEditing(false);
   }

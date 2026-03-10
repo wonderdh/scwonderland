@@ -10,7 +10,10 @@ import {
   listSubmissions,
   reviewSubmission,
 } from "@/app/(admin)/admin/actions";
+import { toast } from "sonner";
 import { homeworkLabels } from "@/lib/teacher-labels";
+import { LoadingState } from "@/components/LoadingState";
+import { Spinner } from "@/components/Spinner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -97,6 +100,7 @@ export function TeacherHomeworkClient({
       setError(result.error);
       return;
     }
+    toast.success(editingId ? "숙제가 수정되었습니다." : "숙제가 출제되었습니다.");
     setView("list");
     router.refresh();
     await loadAssignments();
@@ -130,6 +134,7 @@ export function TeacherHomeworkClient({
       setError(result.error);
       return;
     }
+    toast.success("피드백이 저장되었습니다.");
     // 새로고침
     if (selectedAssignment) {
       const subs = await listSubmissions(selectedAssignment.id);
@@ -177,7 +182,7 @@ export function TeacherHomeworkClient({
       {/* List */}
       {view === "list" && (
         loading ? (
-          <div className="py-8 text-center text-sm text-muted-foreground">{L.loading}</div>
+          <LoadingState label={L.loading} />
         ) : assignments.length === 0 ? (
           <div className="rounded-xl border border-dashed bg-muted/30 p-12 text-center">
             <p className="text-sm text-muted-foreground">{L.noHomework}</p>
@@ -257,7 +262,7 @@ export function TeacherHomeworkClient({
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setView("list")}>{L.cancel}</Button>
             <Button onClick={handleSave} disabled={saving || !formTitle.trim()}>
-              {saving ? L.saving : L.save}
+              {saving ? <><Spinner size="sm" /> {L.saving}</> : L.save}
             </Button>
           </div>
         </div>
@@ -341,7 +346,7 @@ export function TeacherHomeworkClient({
                           disabled={reviewing === sub.id}
                           className="min-h-[40px]"
                         >
-                          {reviewing === sub.id ? L.reviewing : L.review}
+                          {reviewing === sub.id ? <><Spinner size="sm" /> {L.reviewing}</> : L.review}
                         </Button>
                       </div>
                     )}

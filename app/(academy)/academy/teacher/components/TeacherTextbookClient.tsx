@@ -13,6 +13,7 @@ import {
   batchUpdateProgress,
 } from "@/app/(admin)/admin/actions";
 import { textbookLabels, batchUpdateLabels } from "@/lib/teacher-labels";
+import { LoadingState } from "@/components/LoadingState";
 
 export function TeacherTextbookClient({
   classes,
@@ -160,9 +161,7 @@ export function TeacherTextbookClient({
       </div>
 
       {loading ? (
-        <div className="rounded-xl border border-slate-200 bg-white p-8 text-center">
-          <p className="text-sm text-slate-400">{L.loading}</p>
-        </div>
+        <LoadingState label={L.loading} />
       ) : textbooks.length === 0 ? (
         <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50/50 p-8 text-center">
           <p className="text-sm text-slate-500">
@@ -252,9 +251,7 @@ export function TeacherTextbookClient({
             {/* Body */}
             <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
               {batchLoading ? (
-                <p className="text-sm text-slate-400 text-center py-8">
-                  {BL.loading}
-                </p>
+                <LoadingState label={BL.loading} />
               ) : progressRows.length === 0 ? (
                 <p className="text-sm text-slate-500 text-center py-8">
                   {BL.noProgress}

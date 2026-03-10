@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useEffect, useCallback, useTransition } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/Spinner";
 import { Input } from "@/components/ui/input";
 import type { BusManifestGroup, BusManifestEntry, BusTimeSlot, NoRideEntry } from "@/lib/types";
 import {
@@ -122,7 +124,7 @@ export function BusDashboard({ busTimeSlots }: { busTimeSlots: BusTimeSlot[] }) 
               ),
             }))
           );
-          alert(`오류: ${result.error}`);
+          toast.error(`오류: ${result.error}`);
         }
       });
     },
@@ -179,7 +181,7 @@ export function BusDashboard({ busTimeSlots }: { busTimeSlots: BusTimeSlot[] }) 
               ),
             }))
           );
-          alert(`오류: ${result.error}`);
+          toast.error(`오류: ${result.error}`);
         }
       });
     },
@@ -237,7 +239,7 @@ export function BusDashboard({ busTimeSlots }: { busTimeSlots: BusTimeSlot[] }) 
           </select>
         )}
         <Button size="sm" variant="ghost" onClick={load} disabled={loading}>
-          {loading ? "불러오는 중..." : "새로고침"}
+          {loading ? <><Spinner size="sm" /> 불러오는 중...</> : "새로고침"}
         </Button>
       </div>
 
