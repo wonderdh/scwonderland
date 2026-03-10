@@ -851,11 +851,11 @@ function AdminBusChangeModal({
           </div>
         )}
 
-        {/* 사유 */}
+        {/* 메모 */}
         <div>
-          <label className="text-xs font-medium text-slate-600 block mb-1">사유 (선택)</label>
+          <label className="text-xs font-medium text-slate-600 block mb-1">메모 (선택)</label>
           <Input
-            placeholder="사유 입력..."
+            placeholder="메모 입력..."
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             className="text-sm"

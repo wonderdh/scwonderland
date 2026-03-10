@@ -174,6 +174,7 @@ function MonitorBusCard({ card }: { card: BusManifestGroup }) {
                     {student.is_changed && student.original_bus_label && (
                       <span className="block text-[10px] text-amber-500">
                         ← {student.original_bus_label}
+                        {student.note ? ` · ${student.note}` : ""}
                       </span>
                     )}
                   </div>

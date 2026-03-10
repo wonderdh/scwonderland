@@ -455,11 +455,16 @@ export async function getDailyBusManifest(
       if (!groupMap.has(key)) {
         groupMap.set(key, { slotId: newSlotId, busId: newBusId, students: [] });
       }
-      // 변경 학생: 새 정류장 우선, 없으면 원래 정류장
+      // 변경 학생: 새 정류장 있으면 그것만 사용 (시간도 새 정류장 기준, 없으면 null)
       const newStopId = change.new_bus_stop_id;
       const effectiveStopId = newStopId ?? def.bus_stop_id;
-      const stopTime = effectiveStopId ? stopScheduleMap.get(effectiveStopId)?.get(direction) : undefined;
       const stopName = effectiveStopId ? stopNameMap.get(effectiveStopId) : undefined;
+      // 새 정류장이 지정된 경우: 해당 정류장 스케줄 시간만 사용 (없으면 null → 시간 표시 안 함)
+      // 새 정류장 없이 호차만 변경: 원래 정류장 시간 or 개별 시간
+      const stopTime = newStopId
+        ? (stopScheduleMap.get(newStopId)?.get(direction) ?? null)
+        : (def.bus_stop_id ? (stopScheduleMap.get(def.bus_stop_id)?.get(direction) ?? null) : null);
+      const estimatedTime = newStopId ? stopTime : (stopTime ?? def.estimated_time);
       groupMap.get(key)!.students.push({
         student_profile_id: def.student_profile_id,
         korean_name: student.korean_name,
@@ -467,8 +472,8 @@ export async function getDailyBusManifest(
         student_number: student.student_number,
         age: student.age ?? null,
         is_changed: true,
-        estimated_time: stopTime ?? def.estimated_time,
-        note: def.note,
+        estimated_time: estimatedTime,
+        note: change.reason || def.note,
         bus_stop_name: stopName ?? null,
         original_slot_time: getSlotTime(def.bus_time_slot_id),
         original_bus_label: busMap.get(def.bus_number_id),

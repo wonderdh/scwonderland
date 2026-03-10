@@ -142,6 +142,7 @@ function MonitorBusCard({
           {student.is_changed && student.original_bus_label && (
             <span className="block truncate text-xs text-amber-500 -mt-0.5">
               ← {student.original_bus_label}
+              {student.note ? ` · ${student.note}` : ""}
             </span>
           )}
           {student.note && !student.is_changed && (
