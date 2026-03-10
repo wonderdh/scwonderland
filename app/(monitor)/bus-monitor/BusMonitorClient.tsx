@@ -264,6 +264,8 @@ export function BusMonitorClient({
   const [initialLoaded, setInitialLoaded] = useState(false);
   const [showAll, setShowAll] = useState(true);
   const [currentTime, setCurrentTime] = useState(getCurrentHHMM);
+  const [groupFilter, setGroupFilter] = useState<string>("");
+  const [slotFilter, setSlotFilter] = useState<string>("");
   const [unassignedStudents, setUnassignedStudents] = useState<{korean_name: string | null; english_name: string | null; age?: number | null}[]>([]);
 
   const load = useCallback(async () => {
@@ -333,9 +335,19 @@ export function BusMonitorClient({
     return () => clearInterval(interval);
   }, [load]);
 
-  const filteredGroups = showAll
-    ? allGroups
-    : allGroups.filter((tg) => tg.slotTime >= currentTime);
+  // 필터 카테고리 추출 (등록된 시간대 label에서 키워드)
+  const GROUP_FILTERS = ["유치부", "오후반", "방과후"] as const;
+  const availableFilters = GROUP_FILTERS.filter((gf) =>
+    busTimeSlots.some((s) => s.label.includes(gf))
+  );
+
+  // 그룹 필터에 맞는 시간대 목록 (드롭다운용)
+  const filteredSlots = busTimeSlots.filter((s) => !groupFilter || s.label.includes(groupFilter));
+
+  const filteredGroups = allGroups
+    .filter((tg) => showAll || tg.slotTime >= currentTime)
+    .filter((tg) => !groupFilter || tg.slotLabel.includes(groupFilter))
+    .filter((tg) => !slotFilter || tg.cards.some((c) => c.bus_time_slot_id === slotFilter));
 
   // 호차별 고유 색상 매핑 (라벨 기준 정렬 → 인덱스)
   const busColorMap = (() => {
@@ -428,6 +440,45 @@ export function BusMonitorClient({
           </Button>
         </div>
 
+        {/* 그룹 필터 */}
+        {availableFilters.length > 0 && (
+          <div className="flex gap-1">
+            <Button
+              size="sm"
+              variant={groupFilter === "" ? "default" : "outline"}
+              onClick={() => { setGroupFilter(""); setSlotFilter(""); }}
+            >
+              전체
+            </Button>
+            {availableFilters.map((gf) => (
+              <Button
+                key={gf}
+                size="sm"
+                variant={groupFilter === gf ? "default" : "outline"}
+                onClick={() => { setGroupFilter(gf); setSlotFilter(""); }}
+              >
+                {gf}
+              </Button>
+            ))}
+          </div>
+        )}
+
+        {/* 시간대 필터 */}
+        {filteredSlots.length > 0 && (
+          <select
+            value={slotFilter}
+            onChange={(e) => setSlotFilter(e.target.value)}
+            className="h-9 px-2 border rounded text-sm"
+          >
+            <option value="">전체 시간대</option>
+            {filteredSlots.map((s) => (
+              <option key={s.id} value={s.id}>
+                {formatTime(s.time)} {s.label} ({s.direction === "pickup" ? "등원" : "하원"})
+              </option>
+            ))}
+          </select>
+        )}
+
         {/* 나이별 색상 범례 */}
         <div className="flex items-center gap-3 ml-auto">
           <span className="text-xs text-slate-400">나이:</span>
@@ -473,7 +524,9 @@ export function BusMonitorClient({
 
             {/* 호차별 모니터링 카드 */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {tg.cards.map((card) => (
+              {tg.cards
+                .filter((c) => !slotFilter || c.bus_time_slot_id === slotFilter)
+                .map((card) => (
                 <MonitorBusCard
                   key={`${card.bus_time_slot_id}-${card.bus_number_id}`}
                   card={card}
