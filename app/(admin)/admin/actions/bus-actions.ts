@@ -106,6 +106,27 @@ export async function listBusTimeSlots(): Promise<BusTimeSlot[]> {
   return data as BusTimeSlot[];
 }
 
+export async function listAllActiveStudentNames(): Promise<
+  { profile_id: string; korean_name: string | null; english_name: string | null }[]
+> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("students")
+    .select("profile_id, korean_name, english_name, profiles!inner(deleted_at)")
+    .is("profiles.deleted_at", null);
+
+  if (error) {
+    console.error("[listAllActiveStudentNames]", error.message);
+    return [];
+  }
+
+  return (data ?? []).map((s) => ({
+    profile_id: s.profile_id,
+    korean_name: s.korean_name,
+    english_name: s.english_name,
+  }));
+}
+
 export async function createBusTimeSlot(
   direction: "pickup" | "dropoff",
   label: string,

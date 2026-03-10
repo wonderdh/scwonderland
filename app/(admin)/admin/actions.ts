@@ -115,6 +115,7 @@ export {
 } from "./actions/timetable-actions";
 
 export {
+  listAllActiveStudentNames,
   listBusNumbers,
   createBusNumber,
   updateBusNumber,

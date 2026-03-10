@@ -3,11 +3,23 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import type { BusManifestGroup, BusManifestEntry, BusTimeSlot } from "@/lib/types";
-import { getDailyBusManifest } from "@/app/(admin)/admin/actions";
+import { getDailyBusManifest, listAllActiveStudentNames } from "@/app/(admin)/admin/actions";
 
 const DIR_LABEL = { pickup: "등원", dropoff: "하원" } as const;
 const DAY_NAMES = ["일", "월", "화", "수", "목", "금", "토"];
 const REFRESH_INTERVAL = 30;
+
+// 호차별 색상 팔레트 (Tailwind purge-safe 리터럴)
+const BUS_CARD_COLORS = [
+  { bg: "bg-blue-50", border: "border-l-blue-500", text: "text-blue-700" },
+  { bg: "bg-emerald-50", border: "border-l-emerald-500", text: "text-emerald-700" },
+  { bg: "bg-amber-50", border: "border-l-amber-500", text: "text-amber-700" },
+  { bg: "bg-purple-50", border: "border-l-purple-500", text: "text-purple-700" },
+  { bg: "bg-rose-50", border: "border-l-rose-500", text: "text-rose-700" },
+  { bg: "bg-cyan-50", border: "border-l-cyan-500", text: "text-cyan-700" },
+  { bg: "bg-indigo-50", border: "border-l-indigo-500", text: "text-indigo-700" },
+  { bg: "bg-orange-50", border: "border-l-orange-500", text: "text-orange-700" },
+] as const;
 
 function formatTime(t: string) {
   return t.slice(0, 5);
@@ -83,8 +95,10 @@ function ProgressBar({ boarded, total }: { boarded: number; total: number }) {
 
 function MonitorBusCard({
   card,
+  color,
 }: {
   card: BusManifestGroup;
+  color: (typeof BUS_CARD_COLORS)[number];
 }) {
   const boardedCount = card.students.filter(
     (s) => s.boarded_at || s.checked_at
@@ -164,12 +178,12 @@ function MonitorBusCard({
   );
 
   return (
-    <div className="rounded-xl border bg-white shadow-sm overflow-hidden">
+    <div className={`rounded-xl border border-l-4 ${color.border} bg-white shadow-sm overflow-hidden`}>
       <div
-        className={`px-4 py-2 ${allDone ? "bg-green-50" : "bg-slate-50"}`}
+        className={`px-4 py-2.5 ${allDone ? "bg-green-50" : color.bg}`}
       >
         <div className="flex items-center justify-between mb-1">
-          <span className="text-lg font-bold text-slate-800">
+          <span className={`text-2xl font-extrabold ${color.text}`}>
             {card.bus_label}
           </span>
           <span className="text-base font-medium text-slate-500">
@@ -194,6 +208,37 @@ type TimeGroup = {
   cards: BusManifestGroup[];
 };
 
+function UnassignedCard({
+  students,
+}: {
+  students: { korean_name: string | null; english_name: string | null }[];
+}) {
+  if (students.length === 0) return null;
+
+  return (
+    <div className="rounded-xl border bg-white shadow-sm overflow-hidden">
+      <div className="px-4 py-2.5 bg-slate-100">
+        <div className="flex items-center justify-between">
+          <span className="text-2xl font-extrabold text-slate-600">미배정</span>
+          <span className="text-base font-medium text-slate-500">
+            {students.length}명
+          </span>
+        </div>
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-4">
+        {students.map((s, i) => (
+          <div key={i} className="px-3 py-1 flex items-center gap-2">
+            <span className="text-xl shrink-0">⬜</span>
+            <span className="flex-1 truncate text-2xl font-bold text-slate-800">
+              {s.korean_name || s.english_name}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function BusMonitorClient({
   busTimeSlots,
 }: {
@@ -204,15 +249,17 @@ export function BusMonitorClient({
   const [loading, setLoading] = useState(false);
   const [showAll, setShowAll] = useState(false);
   const [currentTime, setCurrentTime] = useState(getCurrentHHMM);
+  const [unassignedStudents, setUnassignedStudents] = useState<{korean_name: string | null; english_name: string | null}[]>([]);
 
   const load = useCallback(async () => {
     setLoading(true);
     const currentDate = getToday();
     setDate(currentDate);
 
-    const [pickupResult, dropoffResult] = await Promise.all([
+    const [pickupResult, dropoffResult, allStudents] = await Promise.all([
       getDailyBusManifest(currentDate, "pickup"),
       getDailyBusManifest(currentDate, "dropoff"),
+      listAllActiveStudentNames(),
     ]);
 
     const merged: TimeGroup[] = [];
@@ -246,6 +293,19 @@ export function BusMonitorClient({
       return a.direction === "pickup" ? -1 : 1;
     });
 
+    // 미배정 학생 계산: manifest에 등장하지 않는 학생
+    const assignedIds = new Set<string>();
+    for (const g of pickupResult.groups) {
+      for (const s of g.students) assignedIds.add(s.student_profile_id);
+    }
+    for (const g of dropoffResult.groups) {
+      for (const s of g.students) assignedIds.add(s.student_profile_id);
+    }
+    const unassigned = allStudents
+      .filter((s) => !assignedIds.has(s.profile_id))
+      .sort((a, b) => (a.korean_name ?? a.english_name ?? "").localeCompare(b.korean_name ?? b.english_name ?? ""));
+    setUnassignedStudents(unassigned);
+
     setAllGroups(merged);
     setLoading(false);
     setCurrentTime(getCurrentHHMM());
@@ -260,6 +320,20 @@ export function BusMonitorClient({
   const filteredGroups = showAll
     ? allGroups
     : allGroups.filter((tg) => tg.slotTime >= currentTime);
+
+  // 호차별 고유 색상 매핑 (라벨 기준 정렬 → 인덱스)
+  const busColorMap = (() => {
+    const labels = new Set<string>();
+    for (const tg of allGroups) {
+      for (const c of tg.cards) labels.add(c.bus_label);
+    }
+    const sorted = [...labels].sort();
+    const map = new Map<string, (typeof BUS_CARD_COLORS)[number]>();
+    sorted.forEach((label, i) => {
+      map.set(label, BUS_CARD_COLORS[i % BUS_CARD_COLORS.length]);
+    });
+    return map;
+  })();
 
   const d = new Date(date);
   const dayName = DAY_NAMES[d.getDay()];
@@ -332,12 +406,24 @@ export function BusMonitorClient({
                 <MonitorBusCard
                   key={`${card.bus_time_slot_id}-${card.bus_number_id}`}
                   card={card}
+                  color={busColorMap.get(card.bus_label) ?? BUS_CARD_COLORS[0]}
                 />
               ))}
             </div>
           </div>
         ))}
       </div>
+
+      {/* 미배정 학생 카드 */}
+      {unassignedStudents.length > 0 && (
+        <div>
+          <div className="flex items-center gap-3 mb-2">
+            <span className="text-lg font-bold text-slate-700">미배정 학생</span>
+            <div className="flex-1 border-t border-slate-200" />
+          </div>
+          <UnassignedCard students={unassignedStudents} />
+        </div>
+      )}
     </div>
   );
 }
