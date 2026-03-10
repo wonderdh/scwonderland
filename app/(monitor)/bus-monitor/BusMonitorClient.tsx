@@ -1,16 +1,9 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef, useTransition } from "react";
-import { toast } from "sonner";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import type { BusManifestGroup, BusManifestEntry, BusTimeSlot } from "@/lib/types";
-import {
-  getDailyBusManifest,
-  boardBusStudent,
-  unboardBusStudent,
-  checkBusStudent,
-  uncheckBusStudent,
-} from "@/app/(admin)/admin/actions";
+import { getDailyBusManifest } from "@/app/(admin)/admin/actions";
 
 const DIR_LABEL = { pickup: "등원", dropoff: "하원" } as const;
 const DAY_NAMES = ["일", "월", "화", "수", "목", "금", "토"];
@@ -88,24 +81,10 @@ function ProgressBar({ boarded, total }: { boarded: number; total: number }) {
   );
 }
 
-/** 이 수 초과 시 카드가 넓어지고 내부 2열 그리드 사용 */
-const WIDE_THRESHOLD = 8;
-
 function MonitorBusCard({
   card,
-  onAction,
-  pendingIds,
-  wide,
 }: {
   card: BusManifestGroup;
-  onAction: (
-    student: BusManifestEntry,
-    busTimeSlotId: string,
-    busNumberId: string,
-    action: "board" | "unboard" | "check" | "uncheck"
-  ) => void;
-  pendingIds: Set<string>;
-  wide: boolean;
 }) {
   const boardedCount = card.students.filter(
     (s) => s.boarded_at || s.checked_at
@@ -118,7 +97,6 @@ function MonitorBusCard({
   const renderStudent = (student: BusManifestEntry) => {
     const isBoarded = !!student.boarded_at;
     const isChecked = !!student.checked_at;
-    const isPending = pendingIds.has(student.student_profile_id);
 
     const rowBg = isChecked
       ? "bg-green-50/50"
@@ -129,82 +107,35 @@ function MonitorBusCard({
     return (
       <div
         key={student.student_profile_id}
-        className={`px-3 py-1 flex items-center gap-2 ${rowBg} ${
-          isPending ? "opacity-60" : ""
-        }`}
+        className={`px-3 py-1 flex items-center gap-2 ${rowBg}`}
       >
-        <button
-          type="button"
-          disabled={isPending || isChecked}
-          onClick={() =>
-            onAction(
-              student,
-              card.bus_time_slot_id,
-              card.bus_number_id,
-              isBoarded ? "unboard" : "board"
-            )
-          }
-          className={`flex items-center gap-2 flex-1 min-w-0 text-left ${
-            isChecked ? "cursor-default" : "cursor-pointer active:scale-[0.98]"
+        <span className="text-xl shrink-0">
+          {isChecked ? "✅" : isBoarded ? "🚌" : "⬜"}
+        </span>
+        <span
+          className={`flex-1 truncate text-2xl ${
+            isChecked
+              ? "text-slate-400 line-through"
+              : isBoarded
+                ? "font-bold text-blue-700"
+                : "font-bold text-slate-800"
           }`}
         >
-          <span className="text-lg shrink-0">
-            {isChecked ? "✅" : isBoarded ? "🚌" : "⬜"}
-          </span>
-          <span
-            className={`flex-1 truncate text-xl ${
-              isChecked
-                ? "text-slate-400 line-through"
-                : isBoarded
-                  ? "font-bold text-blue-700"
-                  : "font-bold text-slate-800"
-            }`}
-          >
-            {student.korean_name || student.english_name}
-          </span>
-        </button>
+          {student.korean_name || student.english_name}
+        </span>
 
         <div className="flex items-center gap-1.5 shrink-0">
           {isBoarded && student.boarded_at && !isChecked && (
-            <span className="text-sm text-blue-600 font-medium">
+            <span className="text-base text-blue-600 font-medium">
               {formatCheckedTime(student.boarded_at)}
             </span>
           )}
           {isChecked && student.checked_at && (
-            <span className="text-sm text-green-600 font-medium">
+            <span className="text-base text-green-600 font-medium">
               {formatCheckedTime(student.checked_at)}
             </span>
           )}
         </div>
-
-        {isBoarded && !isChecked && (
-          <button
-            type="button"
-            disabled={isPending}
-            onClick={(e) => {
-              e.stopPropagation();
-              onAction(student, card.bus_time_slot_id, card.bus_number_id, "check");
-            }}
-            className="shrink-0 text-sm bg-green-100 text-green-700 px-3 py-1 rounded-md font-semibold hover:bg-green-200 active:scale-95"
-          >
-            하차
-          </button>
-        )}
-
-        {isChecked && (
-          <button
-            type="button"
-            disabled={isPending}
-            onClick={(e) => {
-              e.stopPropagation();
-              onAction(student, card.bus_time_slot_id, card.bus_number_id, "uncheck");
-            }}
-            className="shrink-0 text-sm text-slate-400 hover:text-slate-600 p-1 active:scale-95"
-            title="하차 취소"
-          >
-            ↩
-          </button>
-        )}
       </div>
     );
   };
@@ -226,40 +157,14 @@ function MonitorBusCard({
           )}
         </div>
       )}
-      {group.students.map(renderStudent)}
+      <div className="grid grid-cols-2">
+        {group.students.map(renderStudent)}
+      </div>
     </div>
   );
 
-  // wide 모드: stopGroups를 학생 수 기준으로 좌/우 컬럼에 분배
-  const splitStopGroups = () => {
-    const total = stopGroups.reduce((sum, g) => sum + g.students.length, 0);
-    const half = Math.ceil(total / 2);
-    const left: StopGroup[] = [];
-    const right: StopGroup[] = [];
-    let count = 0;
-    for (const g of stopGroups) {
-      if (count < half) {
-        // 이 그룹이 half를 넘으면 분할
-        const remaining = half - count;
-        if (remaining >= g.students.length) {
-          left.push(g);
-          count += g.students.length;
-        } else {
-          // 그룹을 나눠서 왼쪽/오른쪽에 분배
-          left.push({ ...g, students: g.students.slice(0, remaining) });
-          right.push({ ...g, students: g.students.slice(remaining) });
-          count += g.students.length;
-        }
-      } else {
-        right.push(g);
-        count += g.students.length;
-      }
-    }
-    return { left, right };
-  };
-
   return (
-    <div className={`rounded-xl border bg-white shadow-sm overflow-hidden ${wide ? "col-span-2" : ""}`}>
+    <div className="rounded-xl border bg-white shadow-sm overflow-hidden">
       <div
         className={`px-4 py-2 ${allDone ? "bg-green-50" : "bg-slate-50"}`}
       >
@@ -274,23 +179,9 @@ function MonitorBusCard({
         <ProgressBar boarded={boardedCount} total={totalCount} />
       </div>
 
-      {wide ? (() => {
-        const { left, right } = splitStopGroups();
-        return (
-          <div className="grid grid-cols-2 divide-x divide-slate-200">
-            <div className="divide-y divide-slate-100">
-              {left.map((g, i) => renderStopGroup(g, i))}
-            </div>
-            <div className="divide-y divide-slate-100">
-              {right.map((g, i) => renderStopGroup(g, i + left.length))}
-            </div>
-          </div>
-        );
-      })() : (
-        <div className="divide-y divide-slate-100">
-          {stopGroups.map((g, i) => renderStopGroup(g, i))}
-        </div>
-      )}
+      <div className="divide-y divide-slate-100">
+        {stopGroups.map((g, i) => renderStopGroup(g, i))}
+      </div>
     </div>
   );
 }
@@ -311,12 +202,8 @@ export function BusMonitorClient({
   const [date, setDate] = useState(getToday);
   const [allGroups, setAllGroups] = useState<TimeGroup[]>([]);
   const [loading, setLoading] = useState(false);
-  const [countdown, setCountdown] = useState(REFRESH_INTERVAL);
   const [showAll, setShowAll] = useState(false);
   const [currentTime, setCurrentTime] = useState(getCurrentHHMM);
-  const countdownRef = useRef(REFRESH_INTERVAL);
-  const [, startTransition] = useTransition();
-  const [pendingIds, setPendingIds] = useState<Set<string>>(new Set());
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -361,8 +248,6 @@ export function BusMonitorClient({
 
     setAllGroups(merged);
     setLoading(false);
-    setCountdown(REFRESH_INTERVAL);
-    countdownRef.current = REFRESH_INTERVAL;
     setCurrentTime(getCurrentHHMM());
   }, []);
 
@@ -371,112 +256,6 @@ export function BusMonitorClient({
     const interval = setInterval(() => load(), REFRESH_INTERVAL * 1000);
     return () => clearInterval(interval);
   }, [load]);
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      countdownRef.current -= 1;
-      if (countdownRef.current < 0) countdownRef.current = REFRESH_INTERVAL;
-      setCountdown(countdownRef.current);
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  const handleAction = useCallback(
-    (
-      student: BusManifestEntry,
-      busTimeSlotId: string,
-      busNumberId: string,
-      action: "board" | "unboard" | "check" | "uncheck"
-    ) => {
-      const sid = student.student_profile_id;
-      const now = new Date().toISOString();
-
-      // Optimistic update
-      setAllGroups((prev) =>
-        prev.map((tg) => ({
-          ...tg,
-          cards: tg.cards.map((c) => ({
-            ...c,
-            students: c.students.map((s) => {
-              if (s.student_profile_id !== sid) return s;
-              switch (action) {
-                case "board":
-                  return { ...s, boarded_at: now };
-                case "unboard":
-                  return { ...s, boarded_at: null };
-                case "check":
-                  return { ...s, checked_at: now, check_record_id: "optimistic" };
-                case "uncheck":
-                  // 하차 취소 → 탑승 상태로 복귀
-                  return { ...s, checked_at: null, check_record_id: null };
-                default:
-                  return s;
-              }
-            }),
-          })),
-        }))
-      );
-
-      setPendingIds((prev) => new Set(prev).add(sid));
-
-      // Determine direction from the TimeGroup containing this card
-      const direction = allGroups.find((tg) =>
-        tg.cards.some(
-          (c) =>
-            c.bus_time_slot_id === busTimeSlotId &&
-            c.bus_number_id === busNumberId
-        )
-      )?.direction ?? "pickup";
-
-      startTransition(async () => {
-        let result: { error?: string };
-
-        switch (action) {
-          case "board":
-            result = await boardBusStudent(sid, date, direction, busTimeSlotId, busNumberId);
-            break;
-          case "unboard":
-            result = await unboardBusStudent(sid, date, direction);
-            break;
-          case "check":
-            result = await checkBusStudent(sid, date, direction, busTimeSlotId, busNumberId, "");
-            break;
-          case "uncheck":
-            result = await uncheckBusStudent(sid, date, direction);
-            break;
-        }
-
-        if (result.error) {
-          // Rollback
-          setAllGroups((prev) =>
-            prev.map((tg) => ({
-              ...tg,
-              cards: tg.cards.map((c) => ({
-                ...c,
-                students: c.students.map((s) => {
-                  if (s.student_profile_id !== sid) return s;
-                  return {
-                    ...s,
-                    boarded_at: student.boarded_at,
-                    checked_at: student.checked_at,
-                    check_record_id: student.check_record_id,
-                  };
-                }),
-              })),
-            }))
-          );
-          toast.error(`오류: ${result.error}`);
-        }
-
-        setPendingIds((prev) => {
-          const next = new Set(prev);
-          next.delete(sid);
-          return next;
-        });
-      });
-    },
-    [date, allGroups]
-  );
 
   const filteredGroups = showAll
     ? allGroups
@@ -510,20 +289,6 @@ export function BusMonitorClient({
             }}
           >
             현재 시간
-          </Button>
-        </div>
-
-        <div className="flex items-center gap-2 ml-auto">
-          <span className="text-xs text-slate-400">
-            {countdown}초 후 갱신
-          </span>
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={load}
-            disabled={loading}
-          >
-            {loading ? "갱신 중..." : "새로고침"}
           </Button>
         </div>
       </div>
@@ -561,15 +326,12 @@ export function BusMonitorClient({
               <div className="flex-1 border-t border-slate-200" />
             </div>
 
-            {/* 호차별 모니터링 카드 — 인원 많으면 wide(col-span-2) */}
+            {/* 호차별 모니터링 카드 */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {tg.cards.map((card) => (
                 <MonitorBusCard
                   key={`${card.bus_time_slot_id}-${card.bus_number_id}`}
                   card={card}
-                  onAction={handleAction}
-                  pendingIds={pendingIds}
-                  wide={card.students.length > WIDE_THRESHOLD}
                 />
               ))}
             </div>
