@@ -41,4 +41,7 @@ export type {
   NoRideEntry,
   BusCheckRecord,
   BusStaffProfile,
+  BusStop,
+  BusStopSchedule,
+  BusDefaultAssignment,
 } from "./database";

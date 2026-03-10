@@ -7,6 +7,7 @@ export type UserWithProfile = {
   last_name: string | null;
   korean_name?: string | null;
   english_name?: string | null;
+  age?: number | null;
   student_number?: string | null;
   name?: string | null;
   teacher_number?: string | null;
@@ -60,6 +61,7 @@ export type ClassStudentRow = {
   student_profile_id: string;
   korean_name: string | null;
   english_name: string | null;
+  age?: number | null;
   student_number: string | null;
 };
 
@@ -70,6 +72,7 @@ export type StudentProfile = {
   email: string;
   korean_name: string | null;
   english_name: string | null;
+  age?: number | null;
   student_number: string | null;
 };
 
@@ -360,6 +363,8 @@ export type StudentBusDefault = {
   direction: "pickup" | "dropoff";
   bus_time_slot_id: string;
   bus_number_id: string;
+  bus_stop_id?: string | null;
+  bus_stop_name?: string | null;
   estimated_time?: string | null;
   note?: string | null;
   time_slot_label?: string;
@@ -398,9 +403,11 @@ export type BusManifestEntry = {
   korean_name: string | null;
   english_name: string | null;
   student_number: string | null;
+  age: number | null;
   is_changed: boolean;
   estimated_time?: string | null;
   note?: string | null;
+  bus_stop_name?: string | null;
   original_slot_time?: string;
   original_bus_label?: string;
   boarded_at?: string | null;
@@ -500,4 +507,40 @@ export type BusStaffProfile = {
   bus_number_id: string | null;
   bus_label: string | null;
   created_at: string;
+};
+
+// ── 정류장 타입 ──
+
+export type BusStop = {
+  id: string;
+  bus_number_id: string;
+  name: string;
+  sort_order: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type BusStopSchedule = {
+  id: string;
+  bus_stop_id: string;
+  day_of_week: number;
+  direction: "pickup" | "dropoff";
+  estimated_time: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type BusDefaultAssignment = {
+  id: string;
+  student_profile_id: string;
+  korean_name: string | null;
+  english_name: string | null;
+  age: number | null;
+  bus_number_id: string;
+  bus_stop_id: string | null;
+  bus_stop_name: string | null;
+  bus_time_slot_id: string;
+  estimated_time: string | null;
+  note: string | null;
 };

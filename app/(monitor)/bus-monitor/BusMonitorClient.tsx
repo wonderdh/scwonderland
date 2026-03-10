@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import type { BusManifestGroup, BusManifestEntry, BusTimeSlot } from "@/lib/types";
+import { getAgeColor } from "@/lib/student-age-colors";
 import { getDailyBusManifest, listAllActiveStudentNames } from "@/app/(admin)/admin/actions";
 
 const DIR_LABEL = { pickup: "등원", dropoff: "하원" } as const;
@@ -44,7 +45,7 @@ function getCurrentHHMM() {
 }
 
 type StopGroup = {
-  note: string;
+  stopName: string;
   estimatedTime: string | null;
   students: BusManifestEntry[];
 };
@@ -54,17 +55,17 @@ function groupStudentsByStop(students: BusManifestEntry[]): StopGroup[] {
     const ta = a.estimated_time ?? "99:99";
     const tb = b.estimated_time ?? "99:99";
     if (ta !== tb) return ta.localeCompare(tb);
-    return (a.note ?? "").localeCompare(b.note ?? "");
+    return (a.bus_stop_name ?? "").localeCompare(b.bus_stop_name ?? "");
   });
 
   const groups: StopGroup[] = [];
   let current: StopGroup | null = null;
 
   for (const s of sorted) {
-    const key = `${s.estimated_time ?? ""}|${s.note ?? ""}`;
-    if (!current || `${current.estimatedTime ?? ""}|${current.note}` !== key) {
+    const key = `${s.bus_stop_name ?? ""}|${s.estimated_time ?? ""}`;
+    if (!current || `${current.stopName}|${current.estimatedTime ?? ""}` !== key) {
       current = {
-        note: s.note ?? "",
+        stopName: s.bus_stop_name ?? "",
         estimatedTime: s.estimated_time ?? null,
         students: [],
       };
@@ -131,8 +132,8 @@ function MonitorBusCard({
             isChecked
               ? "text-slate-400 line-through"
               : isBoarded
-                ? "font-bold text-blue-700"
-                : "font-bold text-slate-800"
+                ? `font-bold ${getAgeColor(student.age).text}`
+                : `font-bold ${getAgeColor(student.age).text}`
           }`}
         >
           {student.korean_name || student.english_name}
@@ -156,7 +157,7 @@ function MonitorBusCard({
 
   const renderStopGroup = (group: StopGroup, gi: number) => (
     <div key={gi}>
-      {(group.note || group.estimatedTime) && (
+      {(group.stopName || group.estimatedTime) && (
         <div className="px-4 py-1 bg-slate-50/60 flex items-center gap-2">
           <span className="text-sm text-slate-500">▸</span>
           {group.estimatedTime && (
@@ -164,9 +165,9 @@ function MonitorBusCard({
               {formatTime(group.estimatedTime)}
             </span>
           )}
-          {group.note && (
+          {group.stopName && (
             <span className="text-sm text-slate-500 truncate">
-              {group.note}
+              📍 {group.stopName}
             </span>
           )}
         </div>
@@ -211,7 +212,7 @@ type TimeGroup = {
 function UnassignedCard({
   students,
 }: {
-  students: { korean_name: string | null; english_name: string | null }[];
+  students: { korean_name: string | null; english_name: string | null; age?: number | null }[];
 }) {
   if (students.length === 0) return null;
 
@@ -229,7 +230,7 @@ function UnassignedCard({
         {students.map((s, i) => (
           <div key={i} className="px-3 py-1 flex items-center gap-2">
             <span className="text-xl shrink-0">⬜</span>
-            <span className="flex-1 truncate text-2xl font-bold text-slate-800">
+            <span className={`flex-1 truncate text-2xl font-bold ${getAgeColor(s.age).text}`}>
               {s.korean_name || s.english_name}
             </span>
           </div>
@@ -247,9 +248,10 @@ export function BusMonitorClient({
   const [date, setDate] = useState(getToday);
   const [allGroups, setAllGroups] = useState<TimeGroup[]>([]);
   const [loading, setLoading] = useState(false);
+  const [initialLoaded, setInitialLoaded] = useState(false);
   const [showAll, setShowAll] = useState(false);
   const [currentTime, setCurrentTime] = useState(getCurrentHHMM);
-  const [unassignedStudents, setUnassignedStudents] = useState<{korean_name: string | null; english_name: string | null}[]>([]);
+  const [unassignedStudents, setUnassignedStudents] = useState<{korean_name: string | null; english_name: string | null; age?: number | null}[]>([]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -308,6 +310,7 @@ export function BusMonitorClient({
 
     setAllGroups(merged);
     setLoading(false);
+    setInitialLoaded(true);
     setCurrentTime(getCurrentHHMM());
   }, []);
 
@@ -338,6 +341,52 @@ export function BusMonitorClient({
   const d = new Date(date);
   const dayName = DAY_NAMES[d.getDay()];
 
+  if (!initialLoaded) {
+    return (
+      <div className="w-full space-y-4 animate-pulse">
+        {/* 상단 바 스켈레톤 */}
+        <div className="flex items-center gap-3">
+          <div className="h-7 w-40 bg-slate-200 rounded" />
+          <div className="h-8 w-20 bg-slate-200 rounded" />
+          <div className="h-8 w-24 bg-slate-200 rounded" />
+        </div>
+        {/* 시간대 헤더 스켈레톤 */}
+        <div className="space-y-4">
+          {[1, 2].map((i) => (
+            <div key={i} className="space-y-2">
+              <div className="flex items-center gap-3">
+                <div className="h-6 w-14 bg-slate-200 rounded" />
+                <div className="h-6 w-12 bg-slate-200 rounded-full" />
+                <div className="flex-1 border-t border-slate-200" />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {[1, 2].map((j) => (
+                  <div key={j} className="rounded-xl border bg-white shadow-sm overflow-hidden">
+                    <div className="px-4 py-3 bg-slate-50">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="h-7 w-20 bg-slate-200 rounded" />
+                        <div className="h-5 w-32 bg-slate-200 rounded" />
+                      </div>
+                      <div className="h-1.5 bg-slate-200 rounded-full" />
+                    </div>
+                    <div className="px-3 py-2 space-y-2">
+                      {[1, 2, 3, 4].map((k) => (
+                        <div key={k} className="flex items-center gap-2">
+                          <div className="h-6 w-6 bg-slate-200 rounded" />
+                          <div className="h-6 flex-1 bg-slate-200 rounded" />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full space-y-4">
       {/* 상단 바 */}
@@ -364,6 +413,15 @@ export function BusMonitorClient({
           >
             현재 시간
           </Button>
+        </div>
+
+        {/* 나이별 색상 범례 */}
+        <div className="flex items-center gap-3 ml-auto">
+          <span className="text-xs text-slate-400">나이:</span>
+          <span className="text-xs font-bold text-pink-700">5세</span>
+          <span className="text-xs font-bold text-sky-700">6세</span>
+          <span className="text-xs font-bold text-emerald-700">7세</span>
+          <span className="text-xs font-bold text-slate-600">기타</span>
         </div>
       </div>
 

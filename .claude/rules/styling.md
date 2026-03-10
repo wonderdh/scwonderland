@@ -20,6 +20,22 @@
 - **Blue** (`#3a75ff`): 타임라인 아이콘, 보조 컬러
 - **Slate** 계열: Admin/Academy 전체 UI
 
+## 학생 나이별 색상 팔레트 (lib/student-age-colors.ts)
+
+학생 이름을 표시할 때 나이별 색상으로 구분. **반드시 이 규칙을 따를 것.**
+
+| 나이 | 배경 | 텍스트 | 테두리 |
+|------|------|--------|--------|
+| 5세 | `bg-pink-100` | `text-pink-700` | `border-pink-200` |
+| 6세 | `bg-sky-100` | `text-sky-700` | `border-sky-200` |
+| 7세 | `bg-emerald-100` | `text-emerald-700` | `border-emerald-200` |
+| 기타/미설정 | `bg-slate-100` | `text-slate-600` | `border-slate-200` |
+
+- `getAgeColor(age)` 헬퍼로 `{ bg, text, border }` 반환
+- 태그/배지 스타일: `${ac.bg} ${ac.text} border ${ac.border}`
+- 텍스트만: `${getAgeColor(age).text}`
+- 적용 범위: 버스 배정/대시보드/모니터, 학생 목록 등 학생 이름 표시되는 모든 곳
+
 ## 반응형 브레이크포인트
 
 - **lg** (1024px+): 데스크톱 (사이드바, 다중 컬럼)

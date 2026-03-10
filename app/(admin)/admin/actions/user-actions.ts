@@ -16,6 +16,8 @@ export async function createStudent(
   const password = (formData.get("password") as string) ?? "";
   const korean_name = (formData.get("korean_name") as string)?.trim() ?? "";
   const english_name = (formData.get("english_name") as string)?.trim() ?? "";
+  const ageStr = formData.get("age") as string;
+  const age = ageStr ? parseInt(ageStr, 10) : null;
 
   if (!email || !password || !korean_name) {
     return { error: "아이디, 비밀번호, 한글 이름을 입력해 주세요." };
@@ -42,6 +44,11 @@ export async function createStudent(
   if (!data.user) {
     return { error: "사용자 생성에 실패했습니다." };
   }
+
+  if (age !== null && !isNaN(age)) {
+    await supabase.from("students").update({ age }).eq("profile_id", data.user.id);
+  }
+
   return {};
 }
 
@@ -128,7 +135,7 @@ export async function listUsersByRole(
   if (role === "student") {
     const { data: students } = await supabase
       .from("students")
-      .select("profile_id, korean_name, english_name, student_number")
+      .select("profile_id, korean_name, english_name, student_number, age")
       .in("profile_id", ids);
     const studentMap = new Map(
       (students ?? []).map((s) => [s.profile_id, s])
@@ -144,6 +151,7 @@ export async function listUsersByRole(
         korean_name: s?.korean_name ?? p.first_name,
         english_name: s?.english_name ?? p.last_name,
         student_number: s?.student_number ?? null,
+        age: s?.age ?? null,
       };
     });
   }
@@ -320,7 +328,7 @@ export async function listDeletedUsers(
   if (role === "student") {
     const { data: students } = await supabase
       .from("students")
-      .select("profile_id, korean_name, english_name, student_number")
+      .select("profile_id, korean_name, english_name, student_number, age")
       .in("profile_id", ids);
     const studentMap = new Map(
       (students ?? []).map((s) => [s.profile_id, s])
@@ -336,6 +344,7 @@ export async function listDeletedUsers(
         korean_name: s?.korean_name ?? p.first_name,
         english_name: s?.english_name ?? p.last_name,
         student_number: s?.student_number ?? null,
+        age: s?.age ?? null,
       };
     });
   }
@@ -371,6 +380,8 @@ export async function updateStudentProfile(
   const id = (formData.get("id") as string)?.trim();
   const korean_name = (formData.get("korean_name") as string)?.trim() ?? "";
   const english_name = (formData.get("english_name") as string)?.trim() ?? "";
+  const ageStr = formData.get("age") as string;
+  const age = ageStr ? parseInt(ageStr, 10) : null;
 
   if (!id) return { error: "id가 없습니다." };
   if (!korean_name) return { error: "한글 이름을 입력해 주세요." };
@@ -388,7 +399,7 @@ export async function updateStudentProfile(
 
   const { error: studentError } = await supabase
     .from("students")
-    .update({ korean_name, english_name, updated_at: new Date().toISOString() })
+    .update({ korean_name, english_name, age: age !== null && !isNaN(age) ? age : null, updated_at: new Date().toISOString() })
     .eq("profile_id", id);
 
   if (studentError) {
@@ -465,7 +476,7 @@ export async function resetUserPassword(
 }
 
 export async function listAllStudents(): Promise<
-  { id: string; korean_name: string | null; english_name: string | null; student_number: string | null }[]
+  { id: string; korean_name: string | null; english_name: string | null; student_number: string | null; age: number | null }[]
 > {
   const auth = await verifyAdmin();
   if ("error" in auth) return [];
@@ -483,7 +494,7 @@ export async function listAllStudents(): Promise<
 
   const { data: students } = await supabase
     .from("students")
-    .select("profile_id, korean_name, english_name, student_number")
+    .select("profile_id, korean_name, english_name, student_number, age")
     .in("profile_id", activeIds)
     .order("korean_name");
   return (students ?? []).map((s) => ({
@@ -491,5 +502,6 @@ export async function listAllStudents(): Promise<
     korean_name: s.korean_name ?? null,
     english_name: s.english_name ?? null,
     student_number: s.student_number ?? null,
+    age: s.age ?? null,
   }));
 }

@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 
-export type BusTabId = "dashboard" | "monitoring" | "numbers" | "timeslots" | "requests" | "staff";
+export type BusTabId = "assignments" | "dashboard" | "monitoring" | "numbers" | "timeslots" | "requests" | "staff";
 
 const TABS: { id: BusTabId; label: string }[] = [
+  { id: "assignments", label: "배정 관리" },
   { id: "dashboard", label: "대시보드" },
   { id: "monitoring", label: "실시간 현황" },
   { id: "numbers", label: "호차 관리" },

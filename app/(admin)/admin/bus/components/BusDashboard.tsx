@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/Spinner";
 import { Input } from "@/components/ui/input";
 import type { BusManifestGroup, BusManifestEntry, BusTimeSlot, NoRideEntry } from "@/lib/types";
+import { getAgeColor } from "@/lib/student-age-colors";
 import {
   getDailyBusManifest,
   boardBusStudent,
@@ -425,7 +426,7 @@ function BusCard({
 
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-slate-700 truncate">
+                  <span className={`text-sm font-medium truncate ${getAgeColor(student.age).text}`}>
                     {student.korean_name || student.english_name}
                   </span>
                   {student.is_changed && (
@@ -434,9 +435,9 @@ function BusCard({
                     </span>
                   )}
                 </div>
-                {student.note && (
+                {(student.bus_stop_name || student.note) && (
                   <span className="text-xs text-slate-400 truncate block">
-                    {student.note}
+                    {student.bus_stop_name ? `📍 ${student.bus_stop_name}` : ""}{student.bus_stop_name && student.note ? " · " : ""}{student.note ?? ""}
                   </span>
                 )}
               </div>

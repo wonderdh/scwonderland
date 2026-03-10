@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { BusManifestGroup, BusManifestEntry, BusTimeSlot } from "@/lib/types";
+import { getAgeColor } from "@/lib/student-age-colors";
 import { getDailyBusManifest } from "../../actions";
 
 const DIR_LABEL = { pickup: "등원", dropoff: "하원" } as const;
@@ -20,7 +21,7 @@ function formatCheckedTime(iso: string) {
 }
 
 type StopGroup = {
-  note: string;
+  stopName: string;
   estimatedTime: string | null;
   students: BusManifestEntry[];
 };
@@ -30,17 +31,17 @@ function groupStudentsByStop(students: BusManifestEntry[]): StopGroup[] {
     const ta = a.estimated_time ?? "99:99";
     const tb = b.estimated_time ?? "99:99";
     if (ta !== tb) return ta.localeCompare(tb);
-    return (a.note ?? "").localeCompare(b.note ?? "");
+    return (a.bus_stop_name ?? "").localeCompare(b.bus_stop_name ?? "");
   });
 
   const groups: StopGroup[] = [];
   let current: StopGroup | null = null;
 
   for (const s of sorted) {
-    const key = `${s.estimated_time ?? ""}|${s.note ?? ""}`;
-    if (!current || `${current.estimatedTime ?? ""}|${current.note}` !== key) {
+    const key = `${s.bus_stop_name ?? ""}|${s.estimated_time ?? ""}`;
+    if (!current || `${current.stopName}|${current.estimatedTime ?? ""}` !== key) {
       current = {
-        note: s.note ?? "",
+        stopName: s.bus_stop_name ?? "",
         estimatedTime: s.estimated_time ?? null,
         students: [],
       };
@@ -123,7 +124,7 @@ function MonitorBusCard({ card }: { card: BusManifestGroup }) {
         {stopGroups.map((group, gi) => (
           <div key={gi}>
             {/* 정류장 헤더 */}
-            {(group.note || group.estimatedTime) && (
+            {(group.stopName || group.estimatedTime) && (
               <div className="px-4 py-1.5 bg-slate-50/60 flex items-center gap-2">
                 <span className="text-xs text-slate-500">▸</span>
                 {group.estimatedTime && (
@@ -131,9 +132,9 @@ function MonitorBusCard({ card }: { card: BusManifestGroup }) {
                     {formatTime(group.estimatedTime)}
                   </span>
                 )}
-                {group.note && (
+                {group.stopName && (
                   <span className="text-xs text-slate-500 truncate">
-                    {group.note}
+                    📍 {group.stopName}
                   </span>
                 )}
               </div>
@@ -163,8 +164,8 @@ function MonitorBusCard({ card }: { card: BusManifestGroup }) {
                       isChecked
                         ? "text-slate-400 line-through"
                         : isBoarded
-                          ? "font-medium text-blue-700"
-                          : "font-medium text-slate-700"
+                          ? `font-medium ${getAgeColor(student.age).text}`
+                          : `font-medium ${getAgeColor(student.age).text}`
                     }`}
                   >
                     {student.korean_name || student.english_name}

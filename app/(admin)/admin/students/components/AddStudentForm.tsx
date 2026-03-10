@@ -87,6 +87,19 @@ export function AddStudentForm() {
           className="mt-1"
         />
       </div>
+      <div className="min-w-[80px] max-w-[100px]">
+        <Label htmlFor="student-age">나이</Label>
+        <Input
+          id="student-age"
+          type="number"
+          name="age"
+          min={3}
+          max={20}
+          placeholder="7"
+          disabled={isPending}
+          className="mt-1"
+        />
+      </div>
       <Button type="submit" disabled={isPending}>{isPending ? <><Spinner size="sm" /> 추가 중...</> : "추가"}</Button>
       <p className="w-full text-xs text-muted-foreground">* 필수 입력</p>
       {state?.error && (

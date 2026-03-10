@@ -25,6 +25,7 @@ export function StudentInfoCard({
   const [error, setError] = useState<string | null>(null);
   const [koreanName, setKoreanName] = useState(user.korean_name ?? user.first_name ?? "");
   const [englishName, setEnglishName] = useState(user.english_name ?? user.last_name ?? "");
+  const [age, setAge] = useState(user.age?.toString() ?? "");
   const [showPwReset, setShowPwReset] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [pwPending, setPwPending] = useState(false);
@@ -36,6 +37,7 @@ export function StudentInfoCard({
   const handleStartEdit = () => {
     setKoreanName(user.korean_name ?? user.first_name ?? "");
     setEnglishName(user.english_name ?? user.last_name ?? "");
+    setAge(user.age?.toString() ?? "");
     setError(null);
     setEditing(true);
   };
@@ -45,6 +47,7 @@ export function StudentInfoCard({
     setError(null);
     setKoreanName(user.korean_name ?? user.first_name ?? "");
     setEnglishName(user.english_name ?? user.last_name ?? "");
+    setAge(user.age?.toString() ?? "");
   };
 
   const handleSave = async () => {
@@ -58,6 +61,7 @@ export function StudentInfoCard({
     form.set("id", user.id);
     form.set("korean_name", koreanName.trim());
     form.set("english_name", englishName.trim());
+    form.set("age", age);
     const result = await onUpdate(form);
     setPending(false);
     if (result?.error) {
@@ -182,6 +186,23 @@ export function StudentInfoCard({
               />
             ) : (
               (user.english_name ?? user.last_name) || "—"
+            )}
+          </dd>
+        </div>
+        <div className="py-3 flex gap-4 items-center">
+          <dt className="w-28 shrink-0 text-muted-foreground text-sm">나이</dt>
+          <dd className="text-foreground flex-1 min-w-0">
+            {editing ? (
+              <Input
+                type="number"
+                value={age}
+                onChange={(e) => setAge(e.target.value)}
+                min={3}
+                max={20}
+                placeholder="나이"
+              />
+            ) : (
+              user.age ? `${user.age}세` : "—"
             )}
           </dd>
         </div>

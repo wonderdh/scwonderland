@@ -7,6 +7,9 @@ import type {
   BusNumber,
   BusTimeSlot,
   BusStaffProfile,
+  BusStop,
+  BusStopSchedule,
+  BusDefaultAssignment,
   StudentBusDefault,
   BusChangeRequest,
   BusManifestGroup,
@@ -107,12 +110,12 @@ export async function listBusTimeSlots(): Promise<BusTimeSlot[]> {
 }
 
 export async function listAllActiveStudentNames(): Promise<
-  { profile_id: string; korean_name: string | null; english_name: string | null }[]
+  { profile_id: string; korean_name: string | null; english_name: string | null; age: number | null }[]
 > {
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("students")
-    .select("profile_id, korean_name, english_name, profiles!inner(deleted_at)")
+    .select("profile_id, korean_name, english_name, age, profiles!inner(deleted_at)")
     .is("profiles.deleted_at", null);
 
   if (error) {
@@ -124,6 +127,7 @@ export async function listAllActiveStudentNames(): Promise<
     profile_id: s.profile_id,
     korean_name: s.korean_name,
     english_name: s.english_name,
+    age: s.age ?? null,
   }));
 }
 
@@ -207,9 +211,11 @@ export async function getStudentBusDefaults(
 
   const slotIds = [...new Set((data ?? []).map((d) => d.bus_time_slot_id))];
   const busIds = [...new Set((data ?? []).map((d) => d.bus_number_id))];
+  const stopIds = [...new Set((data ?? []).filter((d) => d.bus_stop_id).map((d) => d.bus_stop_id))];
 
   let slotMap = new Map<string, { label: string; time: string }>();
   let busMap = new Map<string, string>();
+  let stopMap = new Map<string, string>();
 
   if (slotIds.length) {
     const { data: slots } = await supabase
@@ -225,6 +231,13 @@ export async function getStudentBusDefaults(
       .in("id", busIds);
     busMap = new Map((buses ?? []).map((b) => [b.id, b.label]));
   }
+  if (stopIds.length) {
+    const { data: stops } = await supabase
+      .from("bus_stops")
+      .select("id, name")
+      .in("id", stopIds);
+    stopMap = new Map((stops ?? []).map((s) => [s.id, s.name]));
+  }
 
   return (data ?? []).map((d) => {
     const slot = slotMap.get(d.bus_time_slot_id);
@@ -233,6 +246,7 @@ export async function getStudentBusDefaults(
       time_slot_label: slot?.label,
       time_slot_time: slot?.time,
       bus_label: busMap.get(d.bus_number_id),
+      bus_stop_name: d.bus_stop_id ? (stopMap.get(d.bus_stop_id) ?? null) : null,
     };
   }) as StudentBusDefault[];
 }
@@ -244,7 +258,8 @@ export async function upsertStudentBusDefault(
   busTimeSlotId: string,
   busNumberId: string,
   estimatedTime?: string,
-  note?: string
+  note?: string,
+  busStopId?: string
 ): Promise<{ error?: string }> {
   const auth = await verifyAdmin();
   if ("error" in auth) return { error: auth.error };
@@ -258,6 +273,7 @@ export async function upsertStudentBusDefault(
       bus_number_id: busNumberId,
       estimated_time: estimatedTime || null,
       note: note?.trim() || null,
+      bus_stop_id: busStopId ?? null,
       updated_at: new Date().toISOString(),
     },
     { onConflict: "student_profile_id,day_of_week,direction" }
@@ -324,7 +340,7 @@ export async function getDailyBusManifest(
   ];
   const { data: studentsRaw } = await supabase
     .from("students")
-    .select("profile_id, korean_name, english_name, student_number")
+    .select("profile_id, korean_name, english_name, student_number, age")
     .in("profile_id", allStudentIds);
   const studentMap = new Map(
     (studentsRaw ?? []).map((s) => [s.profile_id, s])
@@ -379,6 +395,29 @@ export async function getDailyBusManifest(
     (checkRecords ?? []).map((r) => [r.student_profile_id, { boarded_at: r.boarded_at, checked_at: r.checked_at, id: r.id }])
   );
 
+  // 정류장별 예상 시간 조회 (해당 요일 기준)
+  const allStopIds = [
+    ...new Set(defaultRows.filter((r) => r.bus_stop_id).map((r) => r.bus_stop_id)),
+  ];
+  let stopScheduleMap = new Map<string, Map<string, string>>(); // stopId -> direction -> time
+  let stopNameMap = new Map<string, string>();
+  if (allStopIds.length) {
+    const { data: stopSchedules } = await supabase
+      .from("bus_stop_schedules")
+      .select("bus_stop_id, direction, estimated_time")
+      .in("bus_stop_id", allStopIds)
+      .eq("day_of_week", isoDay);
+    for (const ss of stopSchedules ?? []) {
+      if (!stopScheduleMap.has(ss.bus_stop_id)) stopScheduleMap.set(ss.bus_stop_id, new Map());
+      stopScheduleMap.get(ss.bus_stop_id)!.set(ss.direction, ss.estimated_time);
+    }
+    const { data: stopNames } = await supabase
+      .from("bus_stops")
+      .select("id, name")
+      .in("id", allStopIds);
+    stopNameMap = new Map((stopNames ?? []).map((s) => [s.id, s.name]));
+  }
+
   const groupMap = new Map<string, { slotId: string; busId: string; students: BusManifestEntry[] }>();
   const noRides: NoRideEntry[] = [];
 
@@ -408,14 +447,19 @@ export async function getDailyBusManifest(
       if (!groupMap.has(key)) {
         groupMap.set(key, { slotId: newSlotId, busId: newBusId, students: [] });
       }
+      // 정류장 시간 우선, 없으면 개별 시간 사용
+      const stopTime = def.bus_stop_id ? stopScheduleMap.get(def.bus_stop_id)?.get(direction) : undefined;
+      const stopName = def.bus_stop_id ? stopNameMap.get(def.bus_stop_id) : undefined;
       groupMap.get(key)!.students.push({
         student_profile_id: def.student_profile_id,
         korean_name: student.korean_name,
         english_name: student.english_name,
         student_number: student.student_number,
+        age: student.age ?? null,
         is_changed: true,
-        estimated_time: def.estimated_time,
+        estimated_time: stopTime ?? def.estimated_time,
         note: def.note,
+        bus_stop_name: stopName ?? null,
         original_slot_time: getSlotTime(def.bus_time_slot_id),
         original_bus_label: busMap.get(def.bus_number_id),
         boarded_at: check?.boarded_at ?? null,
@@ -427,14 +471,19 @@ export async function getDailyBusManifest(
       if (!groupMap.has(key)) {
         groupMap.set(key, { slotId: def.bus_time_slot_id, busId: def.bus_number_id, students: [] });
       }
+      // 정류장 시간 우선, 없으면 개별 시간 사용
+      const stopTime2 = def.bus_stop_id ? stopScheduleMap.get(def.bus_stop_id)?.get(direction) : undefined;
+      const stopName2 = def.bus_stop_id ? stopNameMap.get(def.bus_stop_id) : undefined;
       groupMap.get(key)!.students.push({
         student_profile_id: def.student_profile_id,
         korean_name: student.korean_name,
         english_name: student.english_name,
         student_number: student.student_number,
+        age: student.age ?? null,
         is_changed: false,
-        estimated_time: def.estimated_time,
+        estimated_time: stopTime2 ?? def.estimated_time,
         note: def.note,
+        bus_stop_name: stopName2 ?? null,
         boarded_at: check?.boarded_at ?? null,
         checked_at: check?.checked_at ?? null,
         check_record_id: check?.id ?? null,
@@ -812,6 +861,167 @@ export async function cancelBusChangeRequest(
   return {};
 }
 
+// ── 정류장 CRUD ──
+
+export async function listBusStops(busNumberId?: string): Promise<BusStop[]> {
+  const supabase = createAdminClient();
+  let query = supabase
+    .from("bus_stops")
+    .select("*")
+    .eq("is_active", true)
+    .order("sort_order")
+    .order("name");
+  if (busNumberId) {
+    query = query.eq("bus_number_id", busNumberId);
+  }
+  const { data, error } = await query;
+  if (error) {
+    console.error("[listBusStops]", error.message);
+    return [];
+  }
+  return data as BusStop[];
+}
+
+export async function createBusStop(
+  busNumberId: string,
+  name: string
+): Promise<{ error?: string; id?: string }> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return { error: auth.error };
+  const supabase = createAdminClient();
+  const trimmed = name.trim();
+  if (!trimmed) return { error: "정류장 이름을 입력해 주세요." };
+
+  // auto sort_order: max + 1
+  const { data: existing } = await supabase
+    .from("bus_stops")
+    .select("sort_order")
+    .eq("bus_number_id", busNumberId)
+    .eq("is_active", true)
+    .order("sort_order", { ascending: false })
+    .limit(1);
+  const nextOrder = (existing?.[0]?.sort_order ?? -1) + 1;
+
+  const { data, error } = await supabase
+    .from("bus_stops")
+    .insert({ bus_number_id: busNumberId, name: trimmed, sort_order: nextOrder })
+    .select("id")
+    .single();
+  if (error) {
+    console.error("[createBusStop]", error.message);
+    return { error: error.message };
+  }
+  return { id: data.id };
+}
+
+export async function updateBusStop(
+  id: string,
+  name: string,
+  sortOrder?: number
+): Promise<{ error?: string }> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return { error: auth.error };
+  const supabase = createAdminClient();
+  const trimmed = name.trim();
+  if (!trimmed) return { error: "정류장 이름을 입력해 주세요." };
+
+  const updateData: Record<string, unknown> = { name: trimmed, updated_at: new Date().toISOString() };
+  if (sortOrder !== undefined) updateData.sort_order = sortOrder;
+
+  const { error } = await supabase.from("bus_stops").update(updateData).eq("id", id);
+  if (error) {
+    console.error("[updateBusStop]", error.message);
+    return { error: error.message };
+  }
+  return {};
+}
+
+export async function deleteBusStop(id: string): Promise<{ error?: string }> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return { error: auth.error };
+  const supabase = createAdminClient();
+
+  // null out student_bus_defaults references
+  await supabase
+    .from("student_bus_defaults")
+    .update({ bus_stop_id: null, updated_at: new Date().toISOString() })
+    .eq("bus_stop_id", id);
+
+  const { error } = await supabase
+    .from("bus_stops")
+    .update({ is_active: false, updated_at: new Date().toISOString() })
+    .eq("id", id);
+  if (error) {
+    console.error("[deleteBusStop]", error.message);
+    return { error: error.message };
+  }
+  return {};
+}
+
+// ── 일괄 배정 조회 ──
+
+export async function getBulkBusDefaults(
+  dayOfWeek: number,
+  direction: "pickup" | "dropoff",
+  busTimeSlotId?: string
+): Promise<BusDefaultAssignment[]> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return [];
+  const supabase = createAdminClient();
+
+  let query = supabase
+    .from("student_bus_defaults")
+    .select("*")
+    .eq("day_of_week", dayOfWeek)
+    .eq("direction", direction);
+  if (busTimeSlotId) {
+    query = query.eq("bus_time_slot_id", busTimeSlotId);
+  }
+
+  const { data: defaults, error } = await query;
+  if (error) {
+    console.error("[getBulkBusDefaults]", error.message);
+    return [];
+  }
+  if (!defaults?.length) return [];
+
+  // batch fetch students
+  const profileIds = [...new Set(defaults.map((d) => d.student_profile_id))];
+  const { data: students } = await supabase
+    .from("students")
+    .select("profile_id, korean_name, english_name, age")
+    .in("profile_id", profileIds);
+  const studentMap = new Map((students ?? []).map((s) => [s.profile_id, s]));
+
+  // batch fetch bus stops
+  const stopIds = [...new Set(defaults.filter((d) => d.bus_stop_id).map((d) => d.bus_stop_id))];
+  let stopMap = new Map<string, string>();
+  if (stopIds.length) {
+    const { data: stops } = await supabase
+      .from("bus_stops")
+      .select("id, name")
+      .in("id", stopIds);
+    stopMap = new Map((stops ?? []).map((s) => [s.id, s.name]));
+  }
+
+  return defaults.map((d) => {
+    const student = studentMap.get(d.student_profile_id);
+    return {
+      id: d.id,
+      student_profile_id: d.student_profile_id,
+      korean_name: student?.korean_name ?? null,
+      english_name: student?.english_name ?? null,
+      age: student?.age ?? null,
+      bus_number_id: d.bus_number_id,
+      bus_stop_id: d.bus_stop_id ?? null,
+      bus_stop_name: d.bus_stop_id ? (stopMap.get(d.bus_stop_id) ?? null) : null,
+      bus_time_slot_id: d.bus_time_slot_id,
+      estimated_time: d.estimated_time ?? null,
+      note: d.note ?? null,
+    };
+  });
+}
+
 // ── 버스 담당자 CRUD ──
 
 export async function createBusStaff(
@@ -950,5 +1160,76 @@ export async function updateBusStaff(
     .update({ first_name: trimmed })
     .eq("id", profileId);
 
+  return {};
+}
+
+// ── 정류장 시간표 (요일별 예상 시간) ──
+
+export async function listBusStopSchedules(
+  busStopId: string
+): Promise<BusStopSchedule[]> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("bus_stop_schedules")
+    .select("*")
+    .eq("bus_stop_id", busStopId)
+    .order("day_of_week")
+    .order("direction");
+  if (error) {
+    console.error("[listBusStopSchedules]", error.message);
+    return [];
+  }
+  return data as BusStopSchedule[];
+}
+
+export async function upsertBusStopSchedule(
+  busStopId: string,
+  dayOfWeek: number,
+  direction: "pickup" | "dropoff",
+  estimatedTime: string
+): Promise<{ error?: string }> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return { error: auth.error };
+  const supabase = createAdminClient();
+
+  if (dayOfWeek < 1 || dayOfWeek > 5) return { error: "유효하지 않은 요일입니다." };
+  if (!estimatedTime) return { error: "시간을 입력해 주세요." };
+
+  const { error } = await supabase.from("bus_stop_schedules").upsert(
+    {
+      bus_stop_id: busStopId,
+      day_of_week: dayOfWeek,
+      direction,
+      estimated_time: estimatedTime,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "bus_stop_id,day_of_week,direction" }
+  );
+  if (error) {
+    console.error("[upsertBusStopSchedule]", error.message);
+    return { error: error.message };
+  }
+  return {};
+}
+
+export async function deleteBusStopSchedule(
+  busStopId: string,
+  dayOfWeek: number,
+  direction: "pickup" | "dropoff"
+): Promise<{ error?: string }> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return { error: auth.error };
+  const supabase = createAdminClient();
+
+  const { error } = await supabase
+    .from("bus_stop_schedules")
+    .delete()
+    .eq("bus_stop_id", busStopId)
+    .eq("day_of_week", dayOfWeek)
+    .eq("direction", direction);
+  if (error) {
+    console.error("[deleteBusStopSchedule]", error.message);
+    return { error: error.message };
+  }
   return {};
 }
