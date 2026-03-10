@@ -50,6 +50,16 @@ function groupStudentsByStop(students: BusManifestEntry[]): StopGroup[] {
     current.students.push(s);
   }
 
+  // 그룹 내 학생: 나이순 → 이름순
+  for (const g of groups) {
+    g.students.sort((a, b) => {
+      const ageA = a.age ?? 99;
+      const ageB = b.age ?? 99;
+      if (ageA !== ageB) return ageA - ageB;
+      return (a.korean_name ?? a.english_name ?? "").localeCompare(b.korean_name ?? b.english_name ?? "");
+    });
+  }
+
   return groups;
 }
 
