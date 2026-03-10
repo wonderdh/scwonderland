@@ -262,7 +262,7 @@ export function BusMonitorClient({
   const [allGroups, setAllGroups] = useState<TimeGroup[]>([]);
   const [loading, setLoading] = useState(false);
   const [initialLoaded, setInitialLoaded] = useState(false);
-  const [showAll, setShowAll] = useState(false);
+  const [showAll, setShowAll] = useState(true);
   const [currentTime, setCurrentTime] = useState(getCurrentHHMM);
   const [unassignedStudents, setUnassignedStudents] = useState<{korean_name: string | null; english_name: string | null; age?: number | null}[]>([]);
 
