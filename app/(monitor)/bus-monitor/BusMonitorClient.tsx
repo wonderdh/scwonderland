@@ -115,9 +115,11 @@ function MonitorBusCard({
 
     const rowBg = isChecked
       ? "bg-green-50/50"
-      : isBoarded
-        ? "bg-blue-50/40"
-        : "";
+      : student.is_changed
+        ? "bg-amber-50"
+        : isBoarded
+          ? "bg-blue-50/40"
+          : "";
 
     return (
       <div
@@ -137,7 +139,12 @@ function MonitorBusCard({
           >
             {student.korean_name || student.english_name}
           </span>
-          {student.note && (
+          {student.is_changed && student.original_bus_label && (
+            <span className="block truncate text-xs text-amber-500 -mt-0.5">
+              ← {student.original_bus_label}
+            </span>
+          )}
+          {student.note && !student.is_changed && (
             <span className="block truncate text-xs text-slate-400 -mt-0.5">
               {student.note}
             </span>

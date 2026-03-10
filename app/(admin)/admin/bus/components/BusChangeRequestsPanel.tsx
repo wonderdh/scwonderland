@@ -13,7 +13,7 @@ import { LoadingState } from "@/components/LoadingState";
 import { toast } from "sonner";
 
 const DIR_LABEL = { pickup: "등원", dropoff: "하원" } as const;
-const TYPE_LABEL = { change: "변경", no_ride: "미탑승" } as const;
+const TYPE_LABEL = { change: "변경", no_ride: "미탑승", absent: "결석" } as const;
 
 function formatTime(t: string | undefined) {
   if (!t) return "";
@@ -91,7 +91,9 @@ export function BusChangeRequestsPanel({ adminId }: { adminId: string }) {
               <span className={`text-xs px-2 py-0.5 rounded ${
                 req.change_type === "no_ride"
                   ? "bg-red-100 text-red-700"
-                  : "bg-amber-100 text-amber-700"
+                  : req.change_type === "absent"
+                    ? "bg-slate-200 text-slate-700"
+                    : "bg-amber-100 text-amber-700"
               }`}>
                 {TYPE_LABEL[req.change_type]}
               </span>

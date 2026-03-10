@@ -43,7 +43,7 @@ export default async function AdminBusPage({
       <BusTabNav currentTab={currentTab} />
       <div className="rounded-b-xl border border-t-0 border-slate-200 bg-white p-6">
         {currentTab === "assignments" && <BusAssignmentManager busNumbers={busNumbers} busTimeSlots={busTimeSlots} initialStops={busStops} allStudents={allStudentNames} />}
-        {currentTab === "dashboard" && <BusDashboard busTimeSlots={busTimeSlots} />}
+        {currentTab === "dashboard" && <BusDashboard busTimeSlots={busTimeSlots} busNumbers={busNumbers} />}
         {currentTab === "monitoring" && <BusMonitoringDashboard busTimeSlots={busTimeSlots} />}
         {currentTab === "numbers" && <BusNumbersManager busNumbers={busNumbers} />}
         {currentTab === "timeslots" && <BusTimeSlotsManager busTimeSlots={busTimeSlots} />}

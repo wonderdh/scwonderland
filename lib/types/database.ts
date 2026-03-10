@@ -379,9 +379,10 @@ export type BusChangeRequest = {
   student_profile_id: string;
   request_date: string;
   direction: "pickup" | "dropoff";
-  change_type: "change" | "no_ride";
+  change_type: "change" | "no_ride" | "absent";
   new_bus_time_slot_id: string | null;
   new_bus_number_id: string | null;
+  new_bus_stop_id: string | null;
   reason: string | null;
   status: "pending" | "approved" | "rejected";
   reviewed_by: string | null;
@@ -495,6 +496,8 @@ export type NoRideEntry = {
   direction: "pickup" | "dropoff";
   original_slot_time?: string;
   original_bus_label?: string;
+  change_type?: "no_ride" | "absent";
+  request_id?: string;
 };
 
 // ── 버스 담당자 타입 ──

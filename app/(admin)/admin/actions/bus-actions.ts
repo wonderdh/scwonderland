@@ -396,8 +396,12 @@ export async function getDailyBusManifest(
   );
 
   // 정류장별 예상 시간 조회 (해당 요일 기준)
+  const changeStopIds = changeRows.filter((c) => c.new_bus_stop_id).map((c) => c.new_bus_stop_id);
   const allStopIds = [
-    ...new Set(defaultRows.filter((r) => r.bus_stop_id).map((r) => r.bus_stop_id)),
+    ...new Set([
+      ...defaultRows.filter((r) => r.bus_stop_id).map((r) => r.bus_stop_id),
+      ...changeStopIds,
+    ]),
   ];
   let stopScheduleMap = new Map<string, Map<string, string>>(); // stopId -> direction -> time
   let stopNameMap = new Map<string, string>();
@@ -429,7 +433,9 @@ export async function getDailyBusManifest(
     const check = checkMap.get(def.student_profile_id);
 
     if (change) {
-      if (change.change_type === "no_ride") {
+      // 미탑승: noRides로
+      // 결석: bus 배정 있으면 해당 그룹에, 없으면 noRides
+      if (change.change_type === "no_ride" || (change.change_type === "absent" && !change.new_bus_number_id)) {
         noRides.push({
           student_profile_id: def.student_profile_id,
           korean_name: student.korean_name,
@@ -438,6 +444,8 @@ export async function getDailyBusManifest(
           direction,
           original_slot_time: getSlotTime(def.bus_time_slot_id),
           original_bus_label: busMap.get(def.bus_number_id),
+          change_type: change.change_type as "no_ride" | "absent",
+          request_id: change.id,
         });
         continue;
       }
@@ -447,9 +455,11 @@ export async function getDailyBusManifest(
       if (!groupMap.has(key)) {
         groupMap.set(key, { slotId: newSlotId, busId: newBusId, students: [] });
       }
-      // 정류장 시간 우선, 없으면 개별 시간 사용
-      const stopTime = def.bus_stop_id ? stopScheduleMap.get(def.bus_stop_id)?.get(direction) : undefined;
-      const stopName = def.bus_stop_id ? stopNameMap.get(def.bus_stop_id) : undefined;
+      // 변경 학생: 새 정류장 우선, 없으면 원래 정류장
+      const newStopId = change.new_bus_stop_id;
+      const effectiveStopId = newStopId ?? def.bus_stop_id;
+      const stopTime = effectiveStopId ? stopScheduleMap.get(effectiveStopId)?.get(direction) : undefined;
+      const stopName = effectiveStopId ? stopNameMap.get(effectiveStopId) : undefined;
       groupMap.get(key)!.students.push({
         student_profile_id: def.student_profile_id,
         korean_name: student.korean_name,
@@ -856,6 +866,199 @@ export async function cancelBusChangeRequest(
     .eq("status", "pending");
   if (error) {
     console.error("[cancelBusChangeRequest]", error.message);
+    return { error: error.message };
+  }
+  return {};
+}
+
+// ── 관리자 당일 변경/결석 ──
+
+// 결석 시 특수 호차 + 결석 정류장 자동 조회
+async function resolveAbsentBusInfo(
+  supabase: ReturnType<typeof createAdminClient>,
+  studentProfileId: string,
+  requestDate: string,
+  direction: "pickup" | "dropoff"
+): Promise<{ slotId: string | null; busId: string | null; stopId: string | null }> {
+  // 특수 호차 찾기
+  const { data: busRow } = await supabase
+    .from("bus_numbers")
+    .select("id")
+    .eq("label", "특수")
+    .eq("is_active", true)
+    .maybeSingle();
+  if (!busRow) return { slotId: null, busId: null, stopId: null };
+
+  // 결석 정류장 찾기
+  const { data: stopRow } = await supabase
+    .from("bus_stops")
+    .select("id")
+    .eq("bus_number_id", busRow.id)
+    .eq("name", "결석")
+    .eq("is_active", true)
+    .maybeSingle();
+
+  // 학생의 원래 시간대 가져오기
+  const d = new Date(requestDate);
+  const jsDay = d.getDay();
+  const isoDay = jsDay === 0 ? 7 : jsDay;
+  const { data: defRow } = await supabase
+    .from("student_bus_defaults")
+    .select("bus_time_slot_id")
+    .eq("student_profile_id", studentProfileId)
+    .eq("day_of_week", isoDay)
+    .eq("direction", direction)
+    .maybeSingle();
+
+  return {
+    slotId: defRow?.bus_time_slot_id ?? null,
+    busId: busRow.id,
+    stopId: stopRow?.id ?? null,
+  };
+}
+
+export async function createAdminBusChange(
+  studentProfileId: string,
+  requestDate: string,
+  direction: "pickup" | "dropoff",
+  changeType: "change" | "no_ride" | "absent",
+  newBusTimeSlotId?: string,
+  newBusNumberId?: string,
+  newBusStopId?: string,
+  reason?: string
+): Promise<{ error?: string }> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return { error: auth.error };
+
+  if (changeType === "change" && (!newBusTimeSlotId || !newBusNumberId)) {
+    return { error: "변경할 시간대와 호차를 선택해 주세요." };
+  }
+
+  const supabase = createAdminClient();
+
+  let finalSlotId = changeType === "change" ? (newBusTimeSlotId ?? null) : null;
+  let finalBusId = changeType === "change" ? (newBusNumberId ?? null) : null;
+  let finalStopId = changeType === "change" ? (newBusStopId || null) : null;
+
+  // 결석 → 특수 호차 + 결석 정류장 자동 배정
+  if (changeType === "absent") {
+    const info = await resolveAbsentBusInfo(supabase, studentProfileId, requestDate, direction);
+    finalSlotId = info.slotId;
+    finalBusId = info.busId;
+    finalStopId = info.stopId;
+  }
+
+  const { error } = await supabase.from("bus_change_requests").insert({
+    student_profile_id: studentProfileId,
+    request_date: requestDate,
+    direction,
+    change_type: changeType,
+    new_bus_time_slot_id: finalSlotId,
+    new_bus_number_id: finalBusId,
+    new_bus_stop_id: finalStopId,
+    reason: reason?.trim() || null,
+    status: "approved",
+    reviewed_by: auth.userId,
+    reviewed_at: new Date().toISOString(),
+  });
+
+  if (error) {
+    if (error.code === "23505") return { error: "해당 날짜에 이미 변경 요청이 있습니다." };
+    console.error("[createAdminBusChange]", error.message);
+    return { error: error.message };
+  }
+  return {};
+}
+
+export async function updateAdminBusChange(
+  requestId: string,
+  studentProfileId: string,
+  requestDate: string,
+  direction: "pickup" | "dropoff",
+  changeType: "change" | "no_ride" | "absent",
+  newBusTimeSlotId?: string,
+  newBusNumberId?: string,
+  newBusStopId?: string,
+  reason?: string
+): Promise<{ error?: string }> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return { error: auth.error };
+
+  if (changeType === "change" && (!newBusTimeSlotId || !newBusNumberId)) {
+    return { error: "변경할 시간대와 호차를 선택해 주세요." };
+  }
+
+  const supabase = createAdminClient();
+
+  let finalSlotId = changeType === "change" ? (newBusTimeSlotId ?? null) : null;
+  let finalBusId = changeType === "change" ? (newBusNumberId ?? null) : null;
+  let finalStopId = changeType === "change" ? (newBusStopId || null) : null;
+
+  if (changeType === "absent") {
+    const info = await resolveAbsentBusInfo(supabase, studentProfileId, requestDate, direction);
+    finalSlotId = info.slotId;
+    finalBusId = info.busId;
+    finalStopId = info.stopId;
+  }
+
+  const { error } = await supabase
+    .from("bus_change_requests")
+    .update({
+      change_type: changeType,
+      new_bus_time_slot_id: finalSlotId,
+      new_bus_number_id: finalBusId,
+      new_bus_stop_id: finalStopId,
+      reason: reason?.trim() || null,
+      reviewed_by: auth.userId,
+      reviewed_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", requestId);
+
+  if (error) {
+    console.error("[updateAdminBusChange]", error.message);
+    return { error: error.message };
+  }
+  return {};
+}
+
+export async function getExistingBusChange(
+  studentProfileId: string,
+  requestDate: string,
+  direction: "pickup" | "dropoff"
+): Promise<{
+  id: string;
+  change_type: "change" | "no_ride" | "absent";
+  new_bus_time_slot_id: string | null;
+  new_bus_number_id: string | null;
+  new_bus_stop_id: string | null;
+  reason: string | null;
+} | null> {
+  const supabase = createAdminClient();
+  const { data } = await supabase
+    .from("bus_change_requests")
+    .select("id, change_type, new_bus_time_slot_id, new_bus_number_id, new_bus_stop_id, reason")
+    .eq("student_profile_id", studentProfileId)
+    .eq("request_date", requestDate)
+    .eq("direction", direction)
+    .eq("status", "approved")
+    .maybeSingle();
+  return data as typeof data & { change_type: "change" | "no_ride" | "absent" } | null;
+}
+
+export async function deleteAdminBusChange(
+  requestId: string
+): Promise<{ error?: string }> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return { error: auth.error };
+
+  const supabase = createAdminClient();
+  const { error } = await supabase
+    .from("bus_change_requests")
+    .delete()
+    .eq("id", requestId);
+  if (error) {
+    console.error("[deleteAdminBusChange]", error.message);
     return { error: error.message };
   }
   return {};

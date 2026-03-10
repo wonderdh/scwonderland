@@ -147,9 +147,11 @@ function MonitorBusCard({ card }: { card: BusManifestGroup }) {
 
               const rowBg = isChecked
                 ? "bg-green-50/40"
-                : isBoarded
-                  ? "bg-blue-50/30"
-                  : "";
+                : student.is_changed
+                  ? "bg-amber-50"
+                  : isBoarded
+                    ? "bg-blue-50/30"
+                    : "";
 
               return (
                 <div
@@ -159,17 +161,22 @@ function MonitorBusCard({ card }: { card: BusManifestGroup }) {
                   <span className="text-xs shrink-0">
                     {isChecked ? "✅" : isBoarded ? "🚌" : "⬜"}
                   </span>
-                  <span
-                    className={`flex-1 truncate ${
-                      isChecked
-                        ? "text-slate-400 line-through"
-                        : isBoarded
-                          ? `font-medium ${getAgeColor(student.age).text}`
+                  <div className="flex-1 min-w-0">
+                    <span
+                      className={`block truncate ${
+                        isChecked
+                          ? "text-slate-400 line-through"
                           : `font-medium ${getAgeColor(student.age).text}`
-                    }`}
-                  >
-                    {student.korean_name || student.english_name}
-                  </span>
+                      }`}
+                    >
+                      {student.korean_name || student.english_name}
+                    </span>
+                    {student.is_changed && student.original_bus_label && (
+                      <span className="block text-[10px] text-amber-500">
+                        ← {student.original_bus_label}
+                      </span>
+                    )}
+                  </div>
                   {isBoarded && student.boarded_at && !isChecked && (
                     <span className="text-xs text-blue-600 shrink-0">
                       탑승 {formatCheckedTime(student.boarded_at)}
