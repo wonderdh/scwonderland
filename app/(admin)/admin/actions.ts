@@ -145,6 +145,7 @@ export {
   createBusStop,
   updateBusStop,
   deleteBusStop,
+  saveBulkBusDefaults,
   getBulkBusDefaults,
   listBusStopSchedules,
   upsertBusStopSchedule,

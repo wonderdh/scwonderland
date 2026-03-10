@@ -958,6 +958,68 @@ export async function deleteBusStop(id: string): Promise<{ error?: string }> {
   return {};
 }
 
+// ── 일괄 배정 저장 ──
+
+export async function saveBulkBusDefaults(
+  dayOfWeek: number,
+  direction: "pickup" | "dropoff",
+  assignments: { student_profile_id: string; bus_number_id: string; bus_time_slot_id: string; bus_stop_id?: string | null }[]
+): Promise<{ error?: string; saved?: number }> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return { error: auth.error };
+  const supabase = createAdminClient();
+
+  // 1. 기존 배정 전부 조회
+  const { data: existing, error: fetchErr } = await supabase
+    .from("student_bus_defaults")
+    .select("id, student_profile_id")
+    .eq("day_of_week", dayOfWeek)
+    .eq("direction", direction);
+  if (fetchErr) {
+    console.error("[saveBulkBusDefaults] fetch", fetchErr.message);
+    return { error: fetchErr.message };
+  }
+
+  const newMap = new Map(assignments.map((a) => [a.student_profile_id, a]));
+  const existingMap = new Map((existing ?? []).map((e) => [e.student_profile_id, e.id]));
+
+  // 2. 삭제: 서버에 있지만 새 목록에 없는 배정
+  const toDelete = (existing ?? []).filter((e) => !newMap.has(e.student_profile_id)).map((e) => e.id);
+  if (toDelete.length) {
+    const { error: delErr } = await supabase
+      .from("student_bus_defaults")
+      .delete()
+      .in("id", toDelete);
+    if (delErr) {
+      console.error("[saveBulkBusDefaults] delete", delErr.message);
+      return { error: delErr.message };
+    }
+  }
+
+  // 3. Upsert: 새 목록의 모든 배정
+  if (assignments.length) {
+    const now = new Date().toISOString();
+    const rows = assignments.map((a) => ({
+      student_profile_id: a.student_profile_id,
+      day_of_week: dayOfWeek,
+      direction,
+      bus_time_slot_id: a.bus_time_slot_id,
+      bus_number_id: a.bus_number_id,
+      bus_stop_id: a.bus_stop_id ?? null,
+      updated_at: now,
+    }));
+    const { error: upsertErr } = await supabase
+      .from("student_bus_defaults")
+      .upsert(rows, { onConflict: "student_profile_id,day_of_week,direction" });
+    if (upsertErr) {
+      console.error("[saveBulkBusDefaults] upsert", upsertErr.message);
+      return { error: upsertErr.message };
+    }
+  }
+
+  return { saved: assignments.length + toDelete.length };
+}
+
 // ── 일괄 배정 조회 ──
 
 export async function getBulkBusDefaults(

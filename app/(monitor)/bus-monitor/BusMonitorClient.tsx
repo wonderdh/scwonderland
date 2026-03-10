@@ -127,17 +127,22 @@ function MonitorBusCard({
         <span className="text-xl shrink-0">
           {isChecked ? "✅" : isBoarded ? "🚌" : "⬜"}
         </span>
-        <span
-          className={`flex-1 truncate text-2xl ${
-            isChecked
-              ? "text-slate-400 line-through"
-              : isBoarded
-                ? `font-bold ${getAgeColor(student.age).text}`
+        <div className="flex-1 min-w-0">
+          <span
+            className={`block truncate text-2xl ${
+              isChecked
+                ? "text-slate-400 line-through"
                 : `font-bold ${getAgeColor(student.age).text}`
-          }`}
-        >
-          {student.korean_name || student.english_name}
-        </span>
+            }`}
+          >
+            {student.korean_name || student.english_name}
+          </span>
+          {student.note && (
+            <span className="block truncate text-xs text-slate-400 -mt-0.5">
+              {student.note}
+            </span>
+          )}
+        </div>
 
         <div className="flex items-center gap-1.5 shrink-0">
           {isBoarded && student.boarded_at && !isChecked && (

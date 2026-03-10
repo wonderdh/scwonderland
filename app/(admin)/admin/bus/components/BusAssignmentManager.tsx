@@ -7,8 +7,7 @@ import { Input } from "@/components/ui/input";
 import type { BusNumber, BusTimeSlot, BusStop, BusDefaultAssignment } from "@/lib/types";
 import {
   getBulkBusDefaults,
-  upsertStudentBusDefault,
-  deleteStudentBusDefault,
+  saveBulkBusDefaults,
   listBusStops,
 } from "../../actions";
 import { getAgeColor } from "@/lib/student-age-colors";
@@ -200,46 +199,24 @@ export function BusAssignmentManager({
     setHasChanges(false);
   };
 
-  // 일괄 저장
+  // 일괄 저장 (서버에서 한 트랜잭션으로 처리)
   const handleSaveAll = async () => {
     setSaving(true);
-    const serverMap = new Map(serverAssignments.map((a) => [a.student_profile_id, a]));
-    const localMap = new Map(localAssignments.map((a) => [a.student_profile_id, a]));
+    const result = await saveBulkBusDefaults(
+      day,
+      direction,
+      localAssignments.map((a) => ({
+        student_profile_id: a.student_profile_id,
+        bus_number_id: a.bus_number_id,
+        bus_time_slot_id: a.bus_time_slot_id,
+        bus_stop_id: a.bus_stop_id,
+      }))
+    );
 
-    const errors: string[] = [];
-    let successCount = 0;
-
-    // Upsert: 새로 추가됐거나 위치가 변경된 배정
-    for (const [sid, local] of localMap) {
-      const server = serverMap.get(sid);
-      if (
-        !server ||
-        server.bus_number_id !== local.bus_number_id ||
-        server.bus_stop_id !== local.bus_stop_id ||
-        server.bus_time_slot_id !== local.bus_time_slot_id
-      ) {
-        const result = await upsertStudentBusDefault(
-          sid, day, direction, local.bus_time_slot_id, local.bus_number_id,
-          undefined, undefined, local.bus_stop_id ?? undefined
-        );
-        if (result.error) errors.push(result.error);
-        else successCount++;
-      }
-    }
-
-    // Delete: 서버에는 있지만 로컬에서 제거된 배정
-    for (const [sid, server] of serverMap) {
-      if (!localMap.has(sid)) {
-        const result = await deleteStudentBusDefault(server.id);
-        if (result.error) errors.push(result.error);
-        else successCount++;
-      }
-    }
-
-    if (errors.length) {
-      toast.error(`일부 저장 실패: ${errors.join(", ")}`);
-    } else if (successCount > 0) {
-      toast.success(`${successCount}건 저장되었습니다.`);
+    if (result.error) {
+      toast.error(result.error);
+    } else {
+      toast.success("저장되었습니다.");
     }
 
     await fetchAssignments();
