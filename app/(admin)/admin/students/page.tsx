@@ -84,7 +84,7 @@ export default async function AdminStudentsPage({
               {currentTab === "textbook" && selectedUser && (
                 <StudentTextbookTab studentProfileId={selectedUser.id} />
               )}
-              {currentTab === "timetable" && <StudentTimetableTab studentProfileId={selectedUser.id} />}
+              {currentTab === "timetable" && <StudentTimetableTab studentProfileId={selectedUser.id} studentName={selectedUser.korean_name ?? selectedUser.first_name ?? ""} />}
               {currentTab === "attendance" && <StudentAttendanceTab studentProfileId={selectedUser.id} />}
               {currentTab === "bus" && <StudentBusTab studentProfileId={selectedUser.id} />}
             </div>

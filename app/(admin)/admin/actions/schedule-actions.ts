@@ -353,13 +353,46 @@ export async function getStudentTimetable(
     classMap = new Map((classes ?? []).map((c) => [c.id, c.name]));
   }
 
-  // 3. 반 기반 수업 시간표 + 개인 배정 병렬 조회
+  // 2.5 방과후 등록 요일 조회
+  const { data: afterschoolEnrollments } = await supabase
+    .from("afterschool_enrollments")
+    .select("class_id, day_of_week")
+    .eq("student_profile_id", studentProfileId);
+
+  // 방과후 등록된 class_id 중 일반 반(classIds)에 없는 것만 추가 조회 필요
+  const afterschoolClassIds = [...new Set(
+    (afterschoolEnrollments ?? [])
+      .map((e) => e.class_id)
+      .filter((cid) => !classIds.includes(cid)),
+  )];
+
+  // 방과후 등록 요일 맵: class_id → Set<day_of_week>
+  const afterschoolDayMap = new Map<string, Set<number>>();
+  for (const e of afterschoolEnrollments ?? []) {
+    const set = afterschoolDayMap.get(e.class_id) ?? new Set();
+    set.add(e.day_of_week);
+    afterschoolDayMap.set(e.class_id, set);
+  }
+
+  // 방과후 반 이름 조회
+  if (afterschoolClassIds.length > 0) {
+    const { data: asClasses } = await supabase
+      .from("classes")
+      .select("id, name")
+      .in("id", afterschoolClassIds);
+    for (const c of asClasses ?? []) {
+      classMap.set(c.id, c.name);
+    }
+  }
+
+  // 3. 반 기반 수업 시간표 + 개인 배정 + 방과후 반 스케줄 병렬 조회
+  const allClassIdsForSchedule = [...classIds, ...afterschoolClassIds];
   const [{ data: classSchedules }, { data: individualSchedules }] = await Promise.all([
-    classIds.length > 0
+    allClassIdsForSchedule.length > 0
       ? supabase
           .from("class_schedules")
           .select("id, class_id, academy_period_id, day_of_week, teacher_profile_id, label, textbook_id")
-          .in("class_id", classIds)
+          .in("class_id", allClassIdsForSchedule)
           .is("student_profile_id", null)
       : Promise.resolve({ data: [] as { id: string; class_id: string; academy_period_id: string; day_of_week: number; teacher_profile_id: string | null; label: string | null; textbook_id: string | null }[] }),
     supabase
@@ -369,7 +402,16 @@ export async function getStudentTimetable(
       .is("class_id", null),
   ]);
 
-  const allSchedules = [...(classSchedules ?? []), ...(individualSchedules ?? [])];
+  // 방과후 스케줄: 등록 요일에 해당하는 것만 필터
+  const filteredClassSchedules = (classSchedules ?? []).filter((s) => {
+    // 일반 반은 그대로 포함
+    if (classIds.includes(s.class_id)) return true;
+    // 방과후 반은 등록 요일만 포함
+    const days = afterschoolDayMap.get(s.class_id);
+    return days?.has(s.day_of_week) ?? false;
+  });
+
+  const allSchedules = [...filteredClassSchedules, ...(individualSchedules ?? [])];
   if (allSchedules.length === 0) return [];
 
   // 4. period + teacher 정보
@@ -428,7 +470,7 @@ export async function getStudentTimetable(
         continue;
       }
 
-      const schedule = (classSchedules ?? []).find(
+      const schedule = filteredClassSchedules.find(
         (s) => s.academy_period_id === period.id && s.day_of_week === day,
       );
       if (schedule) {

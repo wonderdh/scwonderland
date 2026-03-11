@@ -45,4 +45,5 @@ export type {
   BusStopDayAssignment,
   BusStopSchedule,
   BusDefaultAssignment,
+  AfterschoolEnrollment,
 } from "./database";

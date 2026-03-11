@@ -160,3 +160,12 @@ export {
   getExistingBusChange,
   deleteAdminBusChange,
 } from "./actions/bus-actions";
+
+export {
+  getOrCreateAfterschoolClass,
+  getAfterschoolEnrollments,
+  enrollStudent,
+  removeAfterschoolStudent,
+  listAvailableStudents,
+  bulkUpdateEnrollmentDays,
+} from "./actions/afterschool-actions";

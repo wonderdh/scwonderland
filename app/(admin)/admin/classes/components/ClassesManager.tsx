@@ -22,7 +22,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
-const GROUP_ORDER = ["유치부", "오후반", "방과후", ""] as const;
+const GROUP_ORDER = ["유치부", "오후반", ""] as const;
 
 const MANAGE_GROUP_STYLE: Record<string, {
   icon: string;
@@ -32,7 +32,6 @@ const MANAGE_GROUP_STYLE: Record<string, {
 }> = {
   유치부: { icon: "🌅", sectionBg: "bg-amber-100", sectionText: "text-amber-800", countBg: "bg-amber-200 text-amber-800" },
   오후반: { icon: "☁️", sectionBg: "bg-sky-100", sectionText: "text-sky-800", countBg: "bg-sky-200 text-sky-800" },
-  방과후: { icon: "🌙", sectionBg: "bg-violet-100", sectionText: "text-violet-800", countBg: "bg-violet-200 text-violet-800" },
   "": { icon: "📋", sectionBg: "bg-slate-100", sectionText: "text-slate-600", countBg: "bg-slate-200 text-slate-600" },
 };
 
@@ -144,12 +143,13 @@ export function ClassesManager({
     return map;
   }, [allClassStudents, initialClasses]);
 
-  // 왼쪽 패널 검색 필터
+  // 왼쪽 패널 검색 필터 (방과후 제외)
   const filteredClasses = useMemo(() => {
+    const nonAfterschool = initialClasses.filter((c) => c.group_label !== "방과후");
     let result =
       groupFilter === "all"
-        ? initialClasses
-        : initialClasses.filter((c) => (c.group_label ?? "") === groupFilter);
+        ? nonAfterschool
+        : nonAfterschool.filter((c) => (c.group_label ?? "") === groupFilter);
     if (!search.trim()) return result;
     const q = search.trim().toLowerCase();
     return result.filter((c) => {
@@ -169,7 +169,6 @@ export function ClassesManager({
     const map = new Map<string, ClassWithDetails[]>([
       ["유치부", []],
       ["오후반", []],
-      ["방과후", []],
       ["", []],
     ]);
     for (const c of filteredClasses) {
@@ -378,7 +377,6 @@ export function ClassesManager({
                 <option value="all">전체</option>
                 <option value="유치부">🌅 유치부</option>
                 <option value="오후반">☁️ 오후반</option>
-                <option value="방과후">🌙 방과후</option>
                 <option value="">미지정</option>
               </select>
             </div>
@@ -938,7 +936,6 @@ function AddClassModal({
             >
               <option value="">미지정</option>
               <option value="유치부">유치부</option>
-              <option value="방과후">방과후</option>
               <option value="오후반">오후반</option>
             </select>
           </div>
@@ -1088,7 +1085,6 @@ function EditClassModal({
             >
               <option value="">미지정</option>
               <option value="유치부">유치부</option>
-              <option value="방과후">방과후</option>
               <option value="오후반">오후반</option>
             </select>
           </div>

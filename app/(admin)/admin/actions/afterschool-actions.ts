@@ -1,0 +1,240 @@
+"use server";
+
+import { createAdminClient } from "@/lib/supabase/admin";
+import { verifyAdmin } from "./auth-helpers";
+
+// ── 방과후 반 조회 or 자동 생성 ──
+
+export async function getOrCreateAfterschoolClass(): Promise<{ id: string; name: string }> {
+  const supabase = createAdminClient();
+
+  const { data: existing } = await supabase
+    .from("classes")
+    .select("id, name")
+    .eq("group_label", "방과후")
+    .limit(1)
+    .single();
+
+  if (existing) return { id: existing.id, name: existing.name };
+
+  // 없으면 자동 생성
+  const { data: created } = await supabase
+    .from("classes")
+    .insert({ name: "방과후", group_label: "방과후" })
+    .select("id, name")
+    .single();
+
+  return { id: created!.id, name: created!.name };
+}
+
+// ── 등록 학생 + 요일 정보 ──
+
+export type AfterschoolStudentEnrollment = {
+  student_profile_id: string;
+  korean_name: string | null;
+  english_name: string | null;
+  age: number | null;
+  days: number[]; // [1,3,5] etc
+};
+
+export async function getAfterschoolEnrollments(
+  classId: string,
+): Promise<AfterschoolStudentEnrollment[]> {
+  const supabase = createAdminClient();
+
+  const { data: enrollments } = await supabase
+    .from("afterschool_enrollments")
+    .select("student_profile_id, day_of_week")
+    .eq("class_id", classId);
+
+  const studentDaysMap = new Map<string, number[]>();
+  for (const e of enrollments ?? []) {
+    const days = studentDaysMap.get(e.student_profile_id) ?? [];
+    days.push(e.day_of_week);
+    studentDaysMap.set(e.student_profile_id, days);
+  }
+
+  const profileIds = [...studentDaysMap.keys()];
+  if (!profileIds.length) return [];
+
+  const { data: studentRows } = await supabase
+    .from("students")
+    .select("profile_id, korean_name, english_name, age")
+    .in("profile_id", profileIds);
+
+  const students = (studentRows ?? []).map((s) => ({
+    student_profile_id: s.profile_id,
+    korean_name: s.korean_name ?? null,
+    english_name: s.english_name ?? null,
+    age: s.age ?? null,
+    days: (studentDaysMap.get(s.profile_id) ?? []).sort(),
+  }));
+
+  students.sort((a, b) => (a.korean_name ?? "").localeCompare(b.korean_name ?? ""));
+  return students;
+}
+
+// ── 학생 등록 (요일 포함) ──
+
+export async function enrollStudent(
+  classId: string,
+  studentProfileId: string,
+  days: number[],
+): Promise<{ error?: string }> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return { error: auth.error };
+  if (!days.length) return { error: "요일을 선택해 주세요." };
+
+  const supabase = createAdminClient();
+
+  const rows = days.map((d) => ({
+    class_id: classId,
+    student_profile_id: studentProfileId,
+    day_of_week: d,
+  }));
+
+  const { error } = await supabase.from("afterschool_enrollments").insert(rows);
+  if (error) {
+    console.error("[enrollStudent]", error.message);
+    return { error: error.message };
+  }
+
+  // class_students에도 추가 (출석/숙제 호환)
+  const { error: csError } = await supabase
+    .from("class_students")
+    .upsert(
+      { class_id: classId, student_profile_id: studentProfileId },
+      { onConflict: "class_id,student_profile_id", ignoreDuplicates: true },
+    );
+  if (csError && csError.code !== "23505") {
+    console.error("[enrollStudent:class_students]", csError.message);
+  }
+
+  return {};
+}
+
+// ── 학생 제거 ──
+
+export async function removeAfterschoolStudent(
+  classId: string,
+  studentProfileId: string,
+): Promise<{ error?: string }> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return { error: auth.error };
+  const supabase = createAdminClient();
+
+  const { error: aeError } = await supabase
+    .from("afterschool_enrollments")
+    .delete()
+    .eq("class_id", classId)
+    .eq("student_profile_id", studentProfileId);
+
+  if (aeError) {
+    console.error("[removeAfterschoolStudent:enrollments]", aeError.message);
+    return { error: aeError.message };
+  }
+
+  const { error: csError } = await supabase
+    .from("class_students")
+    .delete()
+    .eq("class_id", classId)
+    .eq("student_profile_id", studentProfileId);
+
+  if (csError) {
+    console.error("[removeAfterschoolStudent:class_students]", csError.message);
+  }
+
+  return {};
+}
+
+// ── 미등록 학생 목록 ──
+
+export async function listAvailableStudents(
+  classId: string,
+): Promise<{ id: string; korean_name: string | null; english_name: string | null; age: number | null }[]> {
+  const supabase = createAdminClient();
+
+  const { data: enrolled } = await supabase
+    .from("afterschool_enrollments")
+    .select("student_profile_id")
+    .eq("class_id", classId);
+
+  const enrolledIds = new Set((enrolled ?? []).map((e) => e.student_profile_id));
+
+  const { data: activeProfiles } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("role", "student")
+    .is("deleted_at", null);
+
+  const activeIds = (activeProfiles ?? []).map((p) => p.id);
+  if (!activeIds.length) return [];
+
+  const { data: students } = await supabase
+    .from("students")
+    .select("profile_id, korean_name, english_name, age")
+    .in("profile_id", activeIds)
+    .order("korean_name");
+
+  return (students ?? [])
+    .filter((s) => !enrolledIds.has(s.profile_id))
+    .map((s) => ({
+      id: s.profile_id,
+      korean_name: s.korean_name ?? null,
+      english_name: s.english_name ?? null,
+      age: s.age ?? null,
+    }));
+}
+
+// ── 일괄 요일 저장 ──
+
+export async function bulkUpdateEnrollmentDays(
+  classId: string,
+  updates: { studentProfileId: string; days: number[] }[],
+): Promise<{ error?: string }> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return { error: auth.error };
+  const supabase = createAdminClient();
+
+  const studentIds = updates.map((u) => u.studentProfileId);
+
+  const { error: delError } = await supabase
+    .from("afterschool_enrollments")
+    .delete()
+    .eq("class_id", classId)
+    .in("student_profile_id", studentIds);
+
+  if (delError) {
+    console.error("[bulkUpdateEnrollmentDays:delete]", delError.message);
+    return { error: delError.message };
+  }
+
+  const rows = updates.flatMap((u) =>
+    u.days.map((d) => ({
+      class_id: classId,
+      student_profile_id: u.studentProfileId,
+      day_of_week: d,
+    })),
+  );
+
+  if (rows.length > 0) {
+    const { error } = await supabase.from("afterschool_enrollments").insert(rows);
+    if (error) {
+      console.error("[bulkUpdateEnrollmentDays:insert]", error.message);
+      return { error: error.message };
+    }
+  }
+
+  // 요일이 0개인 학생은 class_students에서도 제거
+  for (const u of updates) {
+    if (u.days.length === 0) {
+      await supabase
+        .from("class_students")
+        .delete()
+        .eq("class_id", classId)
+        .eq("student_profile_id", u.studentProfileId);
+    }
+  }
+
+  return {};
+}

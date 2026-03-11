@@ -430,6 +430,16 @@ export type BusCheckRecord = {
   created_at: string;
 };
 
+// ── 방과후 등록 타입 ──
+
+export type AfterschoolEnrollment = {
+  id: string;
+  class_id: string;
+  student_profile_id: string;
+  day_of_week: number; // 1=월 ~ 5=금
+  created_at: string;
+};
+
 // ── 수업 시간표(class_schedules) 타입 ──
 
 export type ClassSchedule = {

@@ -12,7 +12,7 @@ type FlatClassStudent = {
   student_number: string | null;
 };
 
-const GROUP_ORDER = ["유치부", "오후반", "방과후", ""] as const;
+const GROUP_ORDER = ["유치부", "오후반", ""] as const;
 type GroupKey = (typeof GROUP_ORDER)[number];
 
 const GROUP_STYLE: Record<GroupKey, {
@@ -38,14 +38,6 @@ const GROUP_STYLE: Record<GroupKey, {
     headerText: "text-white",
     cardBorder: "border-sky-200",
     cardBg: "bg-sky-50/60",
-  },
-  방과후: {
-    icon: "🌙",
-    label: "방과후",
-    headerBg: "bg-violet-500",
-    headerText: "text-white",
-    cardBorder: "border-violet-200",
-    cardBg: "bg-violet-50/60",
   },
   "": {
     icon: "📋",
@@ -87,6 +79,12 @@ export function ClassesOverview({
 }) {
   const [groupFilter, setGroupFilter] = useState("all");
 
+  // 방과후 반 제외 (방과후 관리 페이지에서 별도 관리)
+  const filteredOutClasses = useMemo(
+    () => classes.filter((c) => c.group_label !== "방과후"),
+    [classes],
+  );
+
   const studentsByClass = useMemo(() => {
     const map = new Map<string, FlatClassStudent[]>();
     for (const s of allClassStudents) {
@@ -100,8 +98,8 @@ export function ClassesOverview({
   const grouped = useMemo(() => {
     const filtered =
       groupFilter === "all"
-        ? classes
-        : classes.filter((c) => (c.group_label ?? "") === groupFilter);
+        ? filteredOutClasses
+        : filteredOutClasses.filter((c) => (c.group_label ?? "") === groupFilter);
     const map = new Map<GroupKey, ClassWithDetails[]>();
     for (const g of GROUP_ORDER) map.set(g, []);
     for (const c of filtered) {
@@ -109,11 +107,11 @@ export function ClassesOverview({
       map.get(key)!.push(c);
     }
     return map;
-  }, [classes, groupFilter]);
+  }, [filteredOutClasses, groupFilter]);
 
   const activeGroups = GROUP_ORDER.filter((g) => (grouped.get(g) ?? []).length > 0);
 
-  if (classes.length === 0) {
+  if (filteredOutClasses.length === 0) {
     return (
       <div className="rounded-xl border border-dashed bg-slate-50/50 p-8 text-center text-sm text-muted-foreground">
         등록된 반이 없습니다.
@@ -123,7 +121,7 @@ export function ClassesOverview({
 
   // 드롭다운 옵션: 실제 존재하는 그룹만
   const existingGroups = GROUP_ORDER.filter((g) =>
-    classes.some((c) => (c.group_label ?? "") === g)
+    filteredOutClasses.some((c) => (c.group_label ?? "") === g)
   );
 
   return (
@@ -136,9 +134,9 @@ export function ClassesOverview({
           onChange={(e) => setGroupFilter(e.target.value)}
           className="rounded-lg border border-input px-3 py-1.5 text-sm text-foreground bg-background"
         >
-          <option value="all">전체 ({classes.length}개 반)</option>
+          <option value="all">전체 ({filteredOutClasses.length}개 반)</option>
           {existingGroups.map((g) => {
-            const count = classes.filter((c) => (c.group_label ?? "") === g).length;
+            const count = filteredOutClasses.filter((c) => (c.group_label ?? "") === g).length;
             return (
               <option key={g} value={g}>
                 {GROUP_STYLE[g].icon} {GROUP_STYLE[g].label} ({count}개 반)

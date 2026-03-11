@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
 import {
   getStudentTimetable,
   getStudentTimetableEditable,
@@ -70,8 +71,10 @@ type PendingCell = {
 
 export function StudentTimetableTab({
   studentProfileId,
+  studentName,
 }: {
   studentProfileId: string;
+  studentName: string;
 }) {
   const router = useRouter();
   const [rows, setRows] = useState<StudentTimetableRow[]>([]);
@@ -86,6 +89,33 @@ export function StudentTimetableTab({
   const [pendingChanges, setPendingChanges] = useState<Map<string, PendingCell>>(new Map());
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const printRef = useRef<HTMLDivElement>(null);
+
+  function handlePrint() {
+    if (!printRef.current) return;
+    const printContent = printRef.current.innerHTML;
+    const win = window.open("", "_blank");
+    if (!win) return;
+    win.document.write(`<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>${studentName} 시간표</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, sans-serif; padding: 24px; }
+  h2 { font-size: 18px; font-weight: 700; margin-bottom: 16px; text-align: center; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { border: 1px solid #d1d5db; padding: 8px 10px; text-align: center; font-size: 12px; }
+  th { background: #f1f5f9; font-weight: 600; }
+  td.period-cell { text-align: left; font-weight: 500; white-space: nowrap; }
+  .teacher { font-size: 11px; font-weight: 600; }
+  .label { font-size: 10px; color: #64748b; }
+  .cell-filled { background: #f0f9ff; }
+</style></head><body>
+<h2>${studentName} — 반 기반 시간표</h2>
+${printContent}
+</body></html>`);
+    win.document.close();
+    win.onload = () => { win.print(); };
+  }
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -204,13 +234,57 @@ export function StudentTimetableTab({
     <div className="space-y-8">
       {/* 반 기반 시간표 (읽기 전용) */}
       <div className="space-y-4">
-        <h3 className="text-sm font-semibold text-slate-700">반 기반 시간표</h3>
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-slate-700">반 기반 시간표</h3>
+          {classRows.length > 0 && (
+            <Button size="sm" variant="outline" className="h-7 text-xs" onClick={handlePrint}>
+              출력
+            </Button>
+          )}
+        </div>
         {classRows.length === 0 ? (
           <div className="py-4 text-center text-sm text-muted-foreground">
             반 기반 배정이 없습니다.
           </div>
         ) : (
           <div className="overflow-x-auto rounded-xl border shadow-sm">
+            {/* 출력용 숨겨진 테이블 (인쇄 전용 심플 마크업) */}
+            <div ref={printRef} className="hidden">
+              <table>
+                <thead>
+                  <tr>
+                    <th>교시</th>
+                    {DAY_NAMES.map((name) => (
+                      <th key={name}>{name}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {classRows.map((row) => (
+                    <tr key={row.academy_period_id}>
+                      <td className="period-cell">
+                        {row.period_name}<br />
+                        <span className="label">{formatTime(row.start_time)}~{formatTime(row.end_time)}</span>
+                      </td>
+                      {[1, 2, 3, 4, 5].map((day) => {
+                        const cell = row.cells[day];
+                        return (
+                          <td key={day} className={cell ? "cell-filled" : ""}>
+                            {cell ? (
+                              <>
+                                {cell.teacher_name && <div className="teacher">{cell.teacher_name}</div>}
+                                {cell.label && <div className="label">{cell.label}</div>}
+                              </>
+                            ) : "-"}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {/* 화면 표시용 테이블 */}
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-muted/50 border-b">

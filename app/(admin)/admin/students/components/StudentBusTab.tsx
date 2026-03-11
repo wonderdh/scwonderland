@@ -8,7 +8,7 @@ import type { StudentBusDefault, BusNumber, BusTimeSlot, BusStop } from "@/lib/t
 import {
   getStudentBusDefaults,
   upsertStudentBusDefault,
-  deleteStudentBusDefault,
+  deleteStudentBusDefaults,
   listBusNumbers,
   listBusTimeSlots,
   listBusStops,
@@ -32,6 +32,9 @@ export function StudentBusTab({ studentProfileId }: { studentProfileId: string }
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+
+  // 삭제 대기 목록 (로컬에서 먼저 제거, 저장 시 일괄 삭제)
+  const [pendingDeletes, setPendingDeletes] = useState<Set<string>>(new Set());
 
   // 일괄 설정 모드
   const [batchMode, setBatchMode] = useState(false);
@@ -63,6 +66,7 @@ export function StudentBusTab({ studentProfileId }: { studentProfileId: string }
     setBusNumbers(bn);
     setBusTimeSlots(ts);
     setBusStops(stops);
+    setPendingDeletes(new Set());
     setLoading(false);
   }, [studentProfileId]);
 
@@ -71,13 +75,17 @@ export function StudentBusTab({ studentProfileId }: { studentProfileId: string }
   }, [load]);
 
   function getDefault(day: number, dir: "pickup" | "dropoff") {
-    return defaults.find((d) => d.day_of_week === day && d.direction === dir);
+    return defaults.find(
+      (d) => d.day_of_week === day && d.direction === dir && !pendingDeletes.has(d.id)
+    );
   }
 
   // 선택된 호차의 정류장 필터
   function getStopsForBus(busId: string) {
     return busStops.filter((s) => s.bus_number_id === busId);
   }
+
+  const hasPendingChanges = pendingDeletes.size > 0;
 
   async function handleSave(day: number, dir: "pickup" | "dropoff") {
     if (!editSlotId || !editBusId) {
@@ -161,16 +169,33 @@ export function StudentBusTab({ studentProfileId }: { studentProfileId: string }
     setSaving(false);
   }
 
-  async function handleDelete(id: string) {
-    if (!confirm("이 배정을 삭제하시겠습니까?")) return;
+  function handleMarkDelete(id: string) {
+    setPendingDeletes((prev) => new Set(prev).add(id));
+  }
+
+  function handleUndoDelete(id: string) {
+    setPendingDeletes((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+  }
+
+  async function handleCommitDeletes() {
     setSaving(true);
-    const result = await deleteStudentBusDefault(id);
-    if (result.error) setError(result.error);
-    else {
+    setError("");
+    const result = await deleteStudentBusDefaults(Array.from(pendingDeletes));
+    if (result.error) {
+      setError(result.error);
+    } else {
       await load();
       router.refresh();
     }
     setSaving(false);
+  }
+
+  function handleCancelAllDeletes() {
+    setPendingDeletes(new Set());
   }
 
   if (loading) return <LoadingState className="py-4" />;
@@ -182,6 +207,9 @@ export function StudentBusTab({ studentProfileId }: { studentProfileId: string }
   const batchBusStops = getStopsForBus(batchBusId);
   // 편집 모드 - 선택된 호차의 정류장
   const editBusStops = getStopsForBus(editBusId);
+
+  // 삭제 대기 중인 항목 정보
+  const pendingDeleteItems = defaults.filter((d) => pendingDeletes.has(d.id));
 
   return (
     <div className="space-y-4">
@@ -196,6 +224,39 @@ export function StudentBusTab({ studentProfileId }: { studentProfileId: string }
 
       {error && (
         <p className="text-xs text-red-500 bg-red-50 px-3 py-2 rounded">{error}</p>
+      )}
+
+      {/* 삭제 대기 저장 바 */}
+      {hasPendingChanges && (
+        <div className="flex items-center justify-between bg-amber-50 border border-amber-200 rounded-lg px-4 py-2.5">
+          <div className="text-xs text-amber-800">
+            <span className="font-medium">{pendingDeletes.size}건</span> 삭제 대기 중
+            {pendingDeleteItems.length > 0 && (
+              <span className="ml-1.5 text-amber-600">
+                ({pendingDeleteItems.map((d) => `${DAY_NAMES[d.day_of_week]} ${DIR_LABEL[d.direction]}`).join(", ")})
+              </span>
+            )}
+          </div>
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 text-xs text-slate-600"
+              onClick={handleCancelAllDeletes}
+              disabled={saving}
+            >
+              취소
+            </Button>
+            <Button
+              size="sm"
+              className="h-7 text-xs bg-red-500 hover:bg-red-600 text-white"
+              onClick={handleCommitDeletes}
+              disabled={saving}
+            >
+              {saving ? "삭제 중..." : "삭제 저장"}
+            </Button>
+          </div>
+        </div>
       )}
 
       {batchMode && (
@@ -337,12 +398,16 @@ export function StudentBusTab({ studentProfileId }: { studentProfileId: string }
               {[1, 2, 3, 4, 5].map((day) =>
                 (["pickup", "dropoff"] as const).map((dir) => {
                   const def = getDefault(day, dir);
+                  // 삭제 대기 중인 원본 항목 (되돌리기 표시용)
+                  const deletedDef = defaults.find(
+                    (d) => d.day_of_week === day && d.direction === dir && pendingDeletes.has(d.id)
+                  );
                   const key = `${day}-${dir}`;
                   const isEditing = editKey === key;
                   const relevantSlots = dir === "pickup" ? pickupSlots : dropoffSlots;
 
                   return (
-                    <tr key={key} className="border-b hover:bg-slate-50">
+                    <tr key={key} className={`border-b ${deletedDef ? "bg-red-50/50" : "hover:bg-slate-50"}`}>
                       {dir === "pickup" && (
                         <td rowSpan={2} className="py-2 px-2 font-medium text-center align-middle border-r">
                           {DAY_NAMES[day]}
@@ -355,7 +420,26 @@ export function StudentBusTab({ studentProfileId }: { studentProfileId: string }
                           {DIR_LABEL[dir]}
                         </span>
                       </td>
-                      {isEditing ? (
+                      {deletedDef ? (
+                        <>
+                          <td colSpan={5} className="py-2 px-2">
+                            <span className="text-xs text-red-400 line-through">
+                              {formatTime(deletedDef.time_slot_time)} {deletedDef.bus_label} {deletedDef.bus_stop_name ?? ""}
+                            </span>
+                            <span className="text-xs text-red-500 ml-2">삭제 대기</span>
+                          </td>
+                          <td className="py-2 px-2 text-right">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-6 text-xs text-blue-500"
+                              onClick={() => handleUndoDelete(deletedDef.id)}
+                            >
+                              되돌리기
+                            </Button>
+                          </td>
+                        </>
+                      ) : isEditing ? (
                         <>
                           <td className="py-2 px-2">
                             <select
@@ -478,7 +562,7 @@ export function StudentBusTab({ studentProfileId }: { studentProfileId: string }
                                 size="sm"
                                 variant="ghost"
                                 className="h-6 text-xs text-red-500"
-                                onClick={() => handleDelete(def.id)}
+                                onClick={() => handleMarkDelete(def.id)}
                                 disabled={saving}
                               >
                                 삭제
