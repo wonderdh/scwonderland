@@ -127,6 +127,7 @@ export {
   getStudentBusDefaults,
   upsertStudentBusDefault,
   deleteStudentBusDefault,
+  deleteStudentBusDefaults,
   getDailyBusManifest,
   listPendingChangeRequests,
   approveChangeRequest,

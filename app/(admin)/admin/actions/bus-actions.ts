@@ -301,6 +301,22 @@ export async function deleteStudentBusDefault(id: string): Promise<{ error?: str
   return {};
 }
 
+export async function deleteStudentBusDefaults(ids: string[]): Promise<{ error?: string }> {
+  if (ids.length === 0) return {};
+  const auth = await verifyAdmin();
+  if ("error" in auth) return { error: auth.error };
+  const supabase = createAdminClient();
+  const { error } = await supabase
+    .from("student_bus_defaults")
+    .delete()
+    .in("id", ids);
+  if (error) {
+    console.error("[deleteStudentBusDefaults]", error.message);
+    return { error: error.message };
+  }
+  return {};
+}
+
 // ── 일일 매니페스트 (동승자 뷰) ──
 
 export async function getDailyBusManifest(
