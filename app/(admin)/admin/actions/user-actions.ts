@@ -135,7 +135,7 @@ export async function listUsersByRole(
   if (role === "student") {
     const { data: students } = await supabase
       .from("students")
-      .select("profile_id, korean_name, english_name, student_number, age")
+      .select("profile_id, korean_name, english_name, student_number, age, group_type")
       .in("profile_id", ids);
     const studentMap = new Map(
       (students ?? []).map((s) => [s.profile_id, s])
@@ -152,8 +152,9 @@ export async function listUsersByRole(
         english_name: s?.english_name ?? p.last_name,
         student_number: s?.student_number ?? null,
         age: s?.age ?? null,
+        group_type: (s?.group_type as "유치부" | "오후반" | null) ?? null,
       };
-    });
+    }).sort((a, b) => a.korean_name.localeCompare(b.korean_name, "ko"));
   }
 
   const { data: teachers } = await supabase
@@ -175,7 +176,7 @@ export async function listUsersByRole(
       teacher_number: t?.teacher_number ?? null,
       teacher_type: (t?.teacher_type ?? "korean") as "korean" | "native",
     };
-  });
+  }).sort((a, b) => a.name.localeCompare(b.name, "ko"));
 }
 
 /** 삭제 전 경고용: 교사의 반 담임 + 수업 배정 건수 조회 */

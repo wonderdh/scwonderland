@@ -1,3 +1,10 @@
+---
+paths:
+  - "app/(admin)/admin/actions/**/*"
+  - "app/(admin)/admin/actions.ts"
+  - "app/(academy)/academy/actions.ts"
+---
+
 # Server Actions
 
 ## admin/actions/ (15개 파일, ~101개 함수, barrel re-export via actions.ts)

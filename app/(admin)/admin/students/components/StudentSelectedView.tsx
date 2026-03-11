@@ -206,6 +206,25 @@ export function StudentInfoCard({
             )}
           </dd>
         </div>
+        <div className="py-3 flex gap-4 items-center">
+          <dt className="w-28 shrink-0 text-muted-foreground text-sm">그룹</dt>
+          <dd className="text-foreground flex-1 min-w-0">
+            {user.group_type ? (
+              <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${
+                user.group_type === "유치부"
+                  ? "bg-amber-100 text-amber-700"
+                  : "bg-sky-100 text-sky-700"
+              }`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${
+                  user.group_type === "유치부" ? "bg-amber-400" : "bg-sky-400"
+                }`} />
+                {user.group_type}
+              </span>
+            ) : (
+              <span className="text-muted-foreground">미배정</span>
+            )}
+          </dd>
+        </div>
       </dl>
 
       <Separator className="my-4" />

@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
 type Variant = "students" | "teachers";
+type GroupFilter = "all" | "유치부" | "오후반";
 
 function matchSearch(user: UserWithProfile, q: string, variant: Variant): boolean {
   if (!q.trim()) return true;
@@ -18,6 +19,12 @@ function matchSearch(user: UserWithProfile, q: string, variant: Variant): boolea
       : [user.name, user.first_name, user.last_name, user.teacher_number, user.email];
   return fields.some((f) => f && String(f).toLowerCase().includes(lower));
 }
+
+const GROUP_FILTERS: { value: GroupFilter; label: string }[] = [
+  { value: "all", label: "전체" },
+  { value: "유치부", label: "유치부" },
+  { value: "오후반", label: "오후반" },
+];
 
 export function AdminListSidebar({
   users,
@@ -30,11 +37,15 @@ export function AdminListSidebar({
   const selectedId = searchParams.get("selected");
   const basePath = variant === "students" ? "/admin/students" : "/admin/teachers";
   const [search, setSearch] = useState("");
+  const [groupFilter, setGroupFilter] = useState<GroupFilter>("all");
 
-  const filtered = useMemo(
-    () => (users ?? []).filter((u) => matchSearch(u, search, variant)),
-    [users, search, variant]
-  );
+  const filtered = useMemo(() => {
+    let list = (users ?? []).filter((u) => matchSearch(u, search, variant));
+    if (variant === "students" && groupFilter !== "all") {
+      list = list.filter((u) => u.group_type === groupFilter);
+    }
+    return list;
+  }, [users, search, variant, groupFilter]);
 
   const title = variant === "students" ? "학생 목록" : "선생 목록";
   const searchPlaceholder = "이름, 아이디 검색";
@@ -55,9 +66,26 @@ export function AdminListSidebar({
           placeholder={searchPlaceholder}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="h-7 text-xs bg-sidebar-accent/50 border-sidebar-border"
+          className="h-7 text-xs bg-sidebar-accent/50 border-sidebar-border text-sidebar-foreground placeholder:text-sidebar-foreground/50"
         />
       </div>
+      {variant === "students" && (
+        <div className="px-2 py-1.5 border-b border-sidebar-border flex gap-1">
+          {GROUP_FILTERS.map((f) => (
+            <button
+              key={f.value}
+              onClick={() => setGroupFilter(f.value)}
+              className={`px-2 py-0.5 rounded text-[10px] font-medium transition-colors ${
+                groupFilter === f.value
+                  ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                  : "text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+      )}
       <div className="px-2 py-2 border-b border-sidebar-border">
         <Link
           href={`${basePath}?section=trash`}
@@ -74,7 +102,7 @@ export function AdminListSidebar({
       <ul className="flex-1 overflow-y-auto min-h-0">
         {filtered.length === 0 ? (
           <li className="px-3 py-4 text-muted-foreground text-xs">
-            {search.trim() ? "검색 결과 없음" : "없음"}
+            {search.trim() || groupFilter !== "all" ? "검색 결과 없음" : "없음"}
           </li>
         ) : (
           filtered.map((user) => {
@@ -85,6 +113,12 @@ export function AdminListSidebar({
                   "—"
                 : user.name ?? user.first_name ?? "—";
             const isSelected = selectedId === user.id;
+            const groupDot =
+              variant === "students" && user.group_type === "유치부"
+                ? "bg-amber-400"
+                : variant === "students" && user.group_type === "오후반"
+                  ? "bg-sky-400"
+                  : null;
             return (
               <li key={user.id}>
                 <Link
@@ -95,7 +129,10 @@ export function AdminListSidebar({
                       : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                   }`}
                 >
-                  <span className="font-medium block truncate">{name}</span>
+                  <span className="font-medium block truncate flex items-center gap-1.5">
+                    {groupDot && <span className={`inline-block w-1.5 h-1.5 rounded-full shrink-0 ${groupDot}`} />}
+                    {name}
+                  </span>
                   <span className="text-[10px] opacity-50 block truncate">{user.email?.split("@")[0]}</span>
                 </Link>
               </li>

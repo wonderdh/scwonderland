@@ -1,3 +1,11 @@
+---
+paths:
+  - "**/*.css"
+  - "**/*.module.css"
+  - "app/(site)/**/*"
+  - "app/globals.css"
+---
+
 # Styling
 
 **Tailwind CSS v4** 기본, CSS Modules는 복잡한 레이아웃에만 사용.

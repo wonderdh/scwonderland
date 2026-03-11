@@ -33,7 +33,7 @@ export default async function AdminBusPage({
     listBusNumbers(),
     listBusTimeSlots(),
     currentTab === "staff" ? listBusStaff() : Promise.resolve([]),
-    currentTab === "assignments" ? listBusStops() : Promise.resolve([]),
+    (currentTab === "assignments" || currentTab === "numbers") ? listBusStops() : Promise.resolve([]),
     currentTab === "assignments" ? listAllActiveStudentNames() : Promise.resolve([]),
   ]);
 
@@ -45,7 +45,7 @@ export default async function AdminBusPage({
         {currentTab === "assignments" && <BusAssignmentManager busNumbers={busNumbers} busTimeSlots={busTimeSlots} initialStops={busStops} allStudents={allStudentNames} />}
         {currentTab === "dashboard" && <BusDashboard busTimeSlots={busTimeSlots} busNumbers={busNumbers} />}
         {currentTab === "monitoring" && <BusMonitoringDashboard busTimeSlots={busTimeSlots} />}
-        {currentTab === "numbers" && <BusNumbersManager busNumbers={busNumbers} />}
+        {currentTab === "numbers" && <BusNumbersManager busNumbers={busNumbers} busTimeSlots={busTimeSlots} initialStops={busStops} />}
         {currentTab === "timeslots" && <BusTimeSlotsManager busTimeSlots={busTimeSlots} />}
         {currentTab === "requests" && <BusChangeRequestsPanel adminId={user.id} />}
         {currentTab === "staff" && <BusStaffManager busStaff={busStaff} busNumbers={busNumbers} />}

@@ -12,6 +12,7 @@ export type UserWithProfile = {
   name?: string | null;
   teacher_number?: string | null;
   teacher_type?: "korean" | "native";
+  group_type?: "유치부" | "오후반" | null;
 };
 
 export type DashboardStats = {
@@ -516,10 +517,20 @@ export type BusStaffProfile = {
 
 export type BusStop = {
   id: string;
-  bus_number_id: string;
+  bus_number_id: string | null;
   name: string;
   sort_order: number;
   is_active: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type BusStopDayAssignment = {
+  id: string;
+  bus_stop_id: string;
+  bus_number_id: string;
+  day_of_week: number;
+  sort_order: number;
   created_at: string;
   updated_at: string;
 };
@@ -529,6 +540,7 @@ export type BusStopSchedule = {
   bus_stop_id: string;
   day_of_week: number;
   direction: "pickup" | "dropoff";
+  bus_time_slot_id: string | null;
   estimated_time: string;
   created_at: string;
   updated_at: string;

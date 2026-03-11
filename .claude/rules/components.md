@@ -1,3 +1,9 @@
+---
+paths:
+  - "app/**/*.tsx"
+  - "components/**/*"
+---
+
 # Components
 
 ## Site Components (app/(site)/_components/)

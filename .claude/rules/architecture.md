@@ -1,3 +1,9 @@
+---
+paths:
+  - "app/**/*"
+  - "proxy.ts"
+---
+
 # Architecture
 
 ## Route Groups

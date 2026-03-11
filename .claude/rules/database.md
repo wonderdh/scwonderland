@@ -1,3 +1,11 @@
+---
+paths:
+  - "lib/types/**/*"
+  - "lib/supabase/**/*"
+  - "app/(admin)/admin/actions/**/*"
+  - "docs/**/*.sql"
+---
+
 # Database & Supabase
 
 ## Database Schema

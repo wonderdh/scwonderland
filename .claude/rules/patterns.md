@@ -1,3 +1,9 @@
+---
+paths:
+  - "app/**/*"
+  - "lib/**/*"
+---
+
 # Important Patterns
 
 ## Routing (lib/menu-routes.ts)
