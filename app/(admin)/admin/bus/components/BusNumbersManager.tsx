@@ -75,12 +75,20 @@ export function BusNumbersManager({
   // ── Fetch ──
 
   const fetchDayAssignments = useCallback(async () => {
-    const data = await listBusStopDayAssignments(day);
+    let data = await listBusStopDayAssignments(day, direction, timeSlotId || undefined);
+    // 특정 시간대 선택 시 데이터가 없으면 기본(전체) 배정을 복사해서 표시
+    const isSlotFallback = timeSlotId && data.length === 0;
+    if (isSlotFallback) {
+      data = await listBusStopDayAssignments(day, direction, undefined);
+    }
     const map = new Map<string, StopAssignment>();
     for (const a of data) map.set(a.bus_stop_id, { busNumberId: a.bus_number_id, sortOrder: a.sort_order });
     setDayAssignments(map);
-    serverAssignments.current = new Map(map.entries().map(([k, v]) => [k, { ...v }]));
-  }, [day]);
+    // fallback 데이터는 서버에 없으므로 serverAssignments를 비워서 dirty 상태로 표시
+    serverAssignments.current = isSlotFallback
+      ? new Map()
+      : new Map(map.entries().map(([k, v]) => [k, { ...v }]));
+  }, [day, direction, timeSlotId]);
 
   const fetchSchedules = useCallback(async () => {
     const data = await listBusStopSchedulesBulk(day, direction, timeSlotId || undefined);
@@ -256,7 +264,7 @@ export function BusNumbersManager({
       bus_number_id: a.busNumberId,
       sort_order: a.sortOrder,
     }));
-    const aResult = await saveBusStopDayAssignments(day, assignmentArr);
+    const aResult = await saveBusStopDayAssignments(day, assignmentArr, direction, timeSlotId || undefined);
     if (aResult.error) errors.push(`배정 저장: ${aResult.error}`);
 
     // 2. Save schedule changes

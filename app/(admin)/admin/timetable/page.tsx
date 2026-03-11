@@ -8,12 +8,11 @@ export default async function AdminTimetablePage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/academy/login");
 
-  const [academyPeriods, kindergartenData, afternoonData, afterschoolData] =
+  const [academyPeriods, kindergartenData, afternoonData] =
     await Promise.all([
       listAcademyPeriods(),
       getGroupTimetableGrid("유치부"),
       getGroupTimetableGrid("오후반"),
-      getGroupTimetableGrid("방과후"),
     ]);
 
   return (
@@ -22,7 +21,6 @@ export default async function AdminTimetablePage() {
       allGroupData={{
         "유치부": kindergartenData,
         "오후반": afternoonData,
-        "방과후": afterschoolData,
       }}
     />
   );

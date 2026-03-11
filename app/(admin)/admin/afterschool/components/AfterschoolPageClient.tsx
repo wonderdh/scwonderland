@@ -177,11 +177,16 @@ export function AfterschoolPageClient({
           <thead>
             <tr className="border-b bg-muted/50">
               <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">이름</th>
-              {DAY_LABELS.map((label, idx) => (
-                <th key={idx} className="px-3 py-2.5 text-center font-medium text-muted-foreground w-14">
-                  {label}
-                </th>
-              ))}
+              {DAY_LABELS.map((label, idx) => {
+                const day = idx + 1;
+                const count = students.filter((s) => s.days.includes(day)).length;
+                return (
+                  <th key={idx} className="px-3 py-2.5 text-center font-medium text-muted-foreground w-14">
+                    <div>{label}</div>
+                    <div className="text-[10px] font-normal text-violet-500">{count}명</div>
+                  </th>
+                );
+              })}
               <th className="px-3 py-2.5 text-center font-medium text-muted-foreground w-12" />
             </tr>
           </thead>

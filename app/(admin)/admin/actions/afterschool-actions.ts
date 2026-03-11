@@ -186,6 +186,19 @@ export async function listAvailableStudents(
     }));
 }
 
+// ── 학생별 방과후 등록 요일 조회 ──
+
+export async function getStudentAfterschoolDays(
+  studentProfileId: string,
+): Promise<number[]> {
+  const supabase = createAdminClient();
+  const { data } = await supabase
+    .from("afterschool_enrollments")
+    .select("day_of_week")
+    .eq("student_profile_id", studentProfileId);
+  return (data ?? []).map((d) => d.day_of_week).sort();
+}
+
 // ── 일괄 요일 저장 ──
 
 export async function bulkUpdateEnrollmentDays(

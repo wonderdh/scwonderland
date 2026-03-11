@@ -540,6 +540,8 @@ export type BusStopDayAssignment = {
   bus_stop_id: string;
   bus_number_id: string;
   day_of_week: number;
+  direction: "pickup" | "dropoff" | null;
+  bus_time_slot_id: string | null;
   sort_order: number;
   created_at: string;
   updated_at: string;

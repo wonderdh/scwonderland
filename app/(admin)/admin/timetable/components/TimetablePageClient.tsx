@@ -6,13 +6,12 @@ import type { GroupTimetableData } from "../../actions/schedule-actions";
 import { TimetableManager } from "./TimetableManager";
 import { GroupTimetableGrid } from "./GroupTimetableGrid";
 
-type TabId = "periods" | "kindergarten" | "afternoon" | "afterschool";
+type TabId = "periods" | "kindergarten" | "afternoon";
 
 const TABS: { id: TabId; label: string; groupLabel?: string }[] = [
   { id: "periods", label: "교시 관리" },
   { id: "kindergarten", label: "유치부 시간표", groupLabel: "유치부" },
   { id: "afternoon", label: "오후반 시간표", groupLabel: "오후반" },
-  { id: "afterschool", label: "방과후 시간표", groupLabel: "방과후" },
 ];
 
 export function TimetablePageClient({

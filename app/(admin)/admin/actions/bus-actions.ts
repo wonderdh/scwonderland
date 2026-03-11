@@ -1184,14 +1184,22 @@ export async function assignBusStopToBus(
 // ── 요일별 정류장-호차 배정 ──
 
 export async function listBusStopDayAssignments(
-  day: number
+  day: number,
+  direction?: "pickup" | "dropoff",
+  busTimeSlotId?: string
 ): Promise<BusStopDayAssignment[]> {
   const supabase = createAdminClient();
-  const { data, error } = await supabase
+  let query = supabase
     .from("bus_stop_day_assignments")
     .select("*")
-    .eq("day_of_week", day)
-    .order("sort_order");
+    .eq("day_of_week", day);
+  if (direction) query = query.eq("direction", direction);
+  if (busTimeSlotId) {
+    query = query.eq("bus_time_slot_id", busTimeSlotId);
+  } else {
+    query = query.is("bus_time_slot_id", null);
+  }
+  const { data, error } = await query.order("sort_order");
   if (error) {
     console.error("[listBusStopDayAssignments]", error.message);
     return [];
@@ -1201,17 +1209,26 @@ export async function listBusStopDayAssignments(
 
 export async function saveBusStopDayAssignments(
   day: number,
-  assignments: { bus_stop_id: string; bus_number_id: string; sort_order: number }[]
+  assignments: { bus_stop_id: string; bus_number_id: string; sort_order: number }[],
+  direction?: "pickup" | "dropoff",
+  busTimeSlotId?: string
 ): Promise<{ error?: string }> {
   const auth = await verifyAdmin();
   if ("error" in auth) return { error: auth.error };
   const supabase = createAdminClient();
 
-  // 1. Delete all existing assignments for this day
-  const { error: delErr } = await supabase
+  // 1. Delete existing assignments for this day + direction + timeSlot
+  let delQuery = supabase
     .from("bus_stop_day_assignments")
     .delete()
     .eq("day_of_week", day);
+  if (direction) delQuery = delQuery.eq("direction", direction);
+  if (busTimeSlotId) {
+    delQuery = delQuery.eq("bus_time_slot_id", busTimeSlotId);
+  } else {
+    delQuery = delQuery.is("bus_time_slot_id", null);
+  }
+  const { error: delErr } = await delQuery;
   if (delErr) {
     console.error("[saveBusStopDayAssignments] delete", delErr.message);
     return { error: delErr.message };
@@ -1224,6 +1241,8 @@ export async function saveBusStopDayAssignments(
       bus_stop_id: a.bus_stop_id,
       bus_number_id: a.bus_number_id,
       day_of_week: day,
+      direction: direction ?? "pickup",
+      bus_time_slot_id: busTimeSlotId ?? null,
       sort_order: a.sort_order,
       updated_at: now,
     }));
