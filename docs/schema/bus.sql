@@ -111,6 +111,13 @@ CREATE TABLE bus_change_requests (
   UNIQUE (student_profile_id, request_date, direction)
 );
 
+-- 인덱스
+CREATE INDEX IF NOT EXISTS idx_check_records_date_dir
+  ON bus_check_records(check_date, direction);
+
+CREATE INDEX IF NOT EXISTS idx_stop_schedules_stop_day
+  ON bus_stop_schedules(bus_stop_id, day_of_week);
+
 -- 버스 스태프
 CREATE TABLE bus_staff (
   id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),

@@ -330,28 +330,45 @@ export async function getDailyBusManifest(
   const jsDay = d.getDay();
   const isoDay = jsDay === 0 ? 7 : jsDay;
 
-  const { data: defaults } = await supabase
-    .from("student_bus_defaults")
-    .select("*")
-    .eq("day_of_week", isoDay)
-    .eq("direction", direction);
+  // ── Phase 1: 3개 독립 쿼리 병렬 실행 ──
+  const isDropoffWeekday = direction === "dropoff" && isoDay >= 1 && isoDay <= 5;
 
-  const { data: changes } = await supabase
-    .from("bus_change_requests")
-    .select("*")
-    .eq("request_date", date)
-    .eq("direction", direction)
-    .eq("status", "approved");
+  const [
+    { data: defaults },
+    { data: changes },
+    afterschoolEnrollments,
+  ] = await Promise.all([
+    supabase
+      .from("student_bus_defaults")
+      .select("*")
+      .eq("day_of_week", isoDay)
+      .eq("direction", direction),
+    supabase
+      .from("bus_change_requests")
+      .select("*")
+      .eq("request_date", date)
+      .eq("direction", direction)
+      .eq("status", "approved"),
+    isDropoffWeekday
+      ? supabase
+          .from("afterschool_enrollments")
+          .select("student_profile_id")
+          .eq("day_of_week", isoDay)
+      : Promise.resolve({ data: null }),
+  ]);
 
-  // 하원 시 방과후 참여 학생 조회
-  let afterschoolStudents: AfterSchoolBusEntry[] = [];
-  if (direction === "dropoff" && isoDay >= 1 && isoDay <= 5) {
-    const { data: enrollments } = await supabase
-      .from("afterschool_enrollments")
-      .select("student_profile_id")
-      .eq("day_of_week", isoDay);
-    if (enrollments?.length) {
-      const enrolledIds = [...new Set(enrollments.map((e) => e.student_profile_id))];
+  // 방과후 학생 ID 수집 (Phase 2에서 학생 정보 함께 조회)
+  const enrolledIds = isDropoffWeekday && afterschoolEnrollments.data?.length
+    ? [...new Set(afterschoolEnrollments.data.map((e) => e.student_profile_id))]
+    : [];
+
+  const defaultRows = defaults ?? [];
+  const changeRows = changes ?? [];
+
+  if (!defaultRows.length && !changeRows.length) {
+    // 방과후 학생만 있는 경우에도 조회 필요
+    let afterschoolStudents: AfterSchoolBusEntry[] = [];
+    if (enrolledIds.length) {
       const { data: students } = await supabase
         .from("students")
         .select("profile_id, korean_name, english_name, age")
@@ -363,29 +380,16 @@ export async function getDailyBusManifest(
         age: s.age ?? null,
       }));
     }
-  }
-
-  const defaultRows = defaults ?? [];
-  const changeRows = changes ?? [];
-
-  if (!defaultRows.length && !changeRows.length) {
     return { groups: [], noRides: [], afterschoolStudents };
   }
 
+  // ID 수집 (Phase 2 쿼리용)
   const allStudentIds = [
     ...new Set([
       ...defaultRows.map((d) => d.student_profile_id),
       ...changeRows.map((c) => c.student_profile_id),
     ]),
   ];
-  const { data: studentsRaw } = await supabase
-    .from("students")
-    .select("profile_id, korean_name, english_name, student_number, age")
-    .in("profile_id", allStudentIds);
-  const studentMap = new Map(
-    (studentsRaw ?? []).map((s) => [s.profile_id, s])
-  );
-
   const allSlotIds = [
     ...new Set([
       ...defaultRows.map((d) => d.bus_time_slot_id),
@@ -398,44 +402,6 @@ export async function getDailyBusManifest(
       ...changeRows.filter((c) => c.new_bus_number_id).map((c) => c.new_bus_number_id),
     ]),
   ];
-
-  let slotMap = new Map<string, { label: string; time: string }>();
-  let busMap = new Map<string, string>();
-
-  if (allSlotIds.length) {
-    const { data: slots } = await supabase
-      .from("bus_time_slots")
-      .select("id, label, time")
-      .in("id", allSlotIds);
-    slotMap = new Map(
-      (slots ?? []).map((s) => [s.id, { label: s.label, time: s.time }])
-    );
-  }
-  if (allBusIds.length) {
-    const { data: buses } = await supabase
-      .from("bus_numbers")
-      .select("id, label")
-      .in("id", allBusIds);
-    busMap = new Map((buses ?? []).map((b) => [b.id, b.label]));
-  }
-
-  function getSlotTime(slotId: string): string {
-    return slotMap.get(slotId)?.time ?? "";
-  }
-
-  const changeMap = new Map(changeRows.map((c) => [c.student_profile_id, c]));
-
-  // 체크 기록 조회
-  const { data: checkRecords } = await supabase
-    .from("bus_check_records")
-    .select("id, student_profile_id, boarded_at, checked_at")
-    .eq("check_date", date)
-    .eq("direction", direction);
-  const checkMap = new Map(
-    (checkRecords ?? []).map((r) => [r.student_profile_id, { boarded_at: r.boarded_at, checked_at: r.checked_at, id: r.id }])
-  );
-
-  // 정류장별 예상 시간 조회 (해당 요일 기준, 시간대별)
   const changeStopIds = changeRows.filter((c) => c.new_bus_stop_id).map((c) => c.new_bus_stop_id);
   const allStopIds = [
     ...new Set([
@@ -443,27 +409,102 @@ export async function getDailyBusManifest(
       ...changeStopIds,
     ]),
   ];
+  // 방과후 학생 중 bus default에 없는 ID도 조회 대상에 포함
+  const afterschoolOnlyIds = enrolledIds.filter((id) => !allStudentIds.includes(id));
+
+  // ── Phase 2: 6개 독립 쿼리 병렬 실행 ──
+  const [
+    { data: studentsRaw },
+    { data: afterschoolStudentsRaw },
+    slotsResult,
+    busesResult,
+    { data: checkRecords },
+    stopSchedulesResult,
+    stopNamesResult,
+  ] = await Promise.all([
+    supabase
+      .from("students")
+      .select("profile_id, korean_name, english_name, student_number, age")
+      .in("profile_id", allStudentIds),
+    afterschoolOnlyIds.length
+      ? supabase
+          .from("students")
+          .select("profile_id, korean_name, english_name, age")
+          .in("profile_id", afterschoolOnlyIds)
+      : Promise.resolve({ data: [] as { profile_id: string; korean_name: string; english_name: string; age: number | null }[] }),
+    allSlotIds.length
+      ? supabase.from("bus_time_slots").select("id, label, time").in("id", allSlotIds)
+      : Promise.resolve({ data: [] as { id: string; label: string; time: string }[] }),
+    supabase.from("bus_numbers").select("id, label").eq("is_active", true),
+    supabase
+      .from("bus_check_records")
+      .select("id, student_profile_id, boarded_at, checked_at")
+      .eq("check_date", date)
+      .eq("direction", direction),
+    allStopIds.length
+      ? supabase
+          .from("bus_stop_schedules")
+          .select("bus_stop_id, direction, estimated_time, bus_time_slot_id")
+          .in("bus_stop_id", allStopIds)
+          .eq("day_of_week", isoDay)
+      : Promise.resolve({ data: [] as { bus_stop_id: string; direction: string; estimated_time: string; bus_time_slot_id: string | null }[] }),
+    allStopIds.length
+      ? supabase.from("bus_stops").select("id, name").in("id", allStopIds)
+      : Promise.resolve({ data: [] as { id: string; name: string }[] }),
+  ]);
+
+  // ── 맵 구축 ──
+  const studentMap = new Map(
+    (studentsRaw ?? []).map((s) => [s.profile_id, s])
+  );
+
+  const slotMap = new Map(
+    (slotsResult.data ?? []).map((s) => [s.id, { label: s.label, time: s.time }])
+  );
+
+  // bus_numbers 전체 조회 → busMap + specialBus 동시에 구축
+  const allBuses = busesResult.data ?? [];
+  const busMap = new Map(allBuses.map((b) => [b.id, b.label]));
+  const specialBus = allBuses.find((b) => b.label === "특수") ?? null;
+
+  const checkMap = new Map(
+    (checkRecords ?? []).map((r) => [r.student_profile_id, { boarded_at: r.boarded_at, checked_at: r.checked_at, id: r.id }])
+  );
+
   // stopId -> slotId|"_" -> direction -> time
-  let stopScheduleMap = new Map<string, Map<string, Map<string, string>>>();
-  let stopNameMap = new Map<string, string>();
-  if (allStopIds.length) {
-    const { data: stopSchedules } = await supabase
-      .from("bus_stop_schedules")
-      .select("bus_stop_id, direction, estimated_time, bus_time_slot_id")
-      .in("bus_stop_id", allStopIds)
-      .eq("day_of_week", isoDay);
-    for (const ss of stopSchedules ?? []) {
-      if (!stopScheduleMap.has(ss.bus_stop_id)) stopScheduleMap.set(ss.bus_stop_id, new Map());
-      const slotKey = ss.bus_time_slot_id ?? "_";
-      const slotMap2 = stopScheduleMap.get(ss.bus_stop_id)!;
-      if (!slotMap2.has(slotKey)) slotMap2.set(slotKey, new Map());
-      slotMap2.get(slotKey)!.set(ss.direction, ss.estimated_time);
-    }
-    const { data: stopNames } = await supabase
-      .from("bus_stops")
-      .select("id, name")
-      .in("id", allStopIds);
-    stopNameMap = new Map((stopNames ?? []).map((s) => [s.id, s.name]));
+  const stopScheduleMap = new Map<string, Map<string, Map<string, string>>>();
+  for (const ss of stopSchedulesResult.data ?? []) {
+    if (!stopScheduleMap.has(ss.bus_stop_id)) stopScheduleMap.set(ss.bus_stop_id, new Map());
+    const slotKey = ss.bus_time_slot_id ?? "_";
+    const slotMap2 = stopScheduleMap.get(ss.bus_stop_id)!;
+    if (!slotMap2.has(slotKey)) slotMap2.set(slotKey, new Map());
+    slotMap2.get(slotKey)!.set(ss.direction, ss.estimated_time);
+  }
+  const stopNameMap = new Map((stopNamesResult.data ?? []).map((s) => [s.id, s.name]));
+
+  // 방과후 학생 목록 조합
+  let afterschoolStudents: AfterSchoolBusEntry[] = [];
+  if (enrolledIds.length) {
+    // bus default에 포함된 학생은 studentMap에서, 나머지는 afterschoolStudentsRaw에서
+    afterschoolStudents = enrolledIds
+      .map((id) => {
+        const fromMain = studentMap.get(id);
+        if (fromMain) return {
+          student_profile_id: fromMain.profile_id,
+          korean_name: fromMain.korean_name,
+          english_name: fromMain.english_name,
+          age: fromMain.age ?? null,
+        };
+        const fromAfter = (afterschoolStudentsRaw ?? []).find((s) => s.profile_id === id);
+        if (fromAfter) return {
+          student_profile_id: fromAfter.profile_id,
+          korean_name: fromAfter.korean_name,
+          english_name: fromAfter.english_name,
+          age: fromAfter.age ?? null,
+        };
+        return null;
+      })
+      .filter((s): s is AfterSchoolBusEntry => s !== null);
   }
 
   // 정류장 시간 조회 헬퍼: 시간대 매칭 → fallback null 슬롯
@@ -479,6 +520,11 @@ export async function getDailyBusManifest(
     return bySlot.get("_")?.get(dir) ?? null;
   }
 
+  function getSlotTime(slotId: string): string {
+    return slotMap.get(slotId)?.time ?? "";
+  }
+
+  const changeMap = new Map(changeRows.map((c) => [c.student_profile_id, c]));
   const groupMap = new Map<string, { slotId: string; busId: string; students: BusManifestEntry[] }>();
   const noRides: NoRideEntry[] = [];
 
@@ -564,16 +610,8 @@ export async function getDailyBusManifest(
     }
   }
 
-  // 특수 호차: 각 시간대마다 학생 없어도 항상 카드 표시
-  const { data: specialBus } = await supabase
-    .from("bus_numbers")
-    .select("id, label")
-    .eq("label", "특수")
-    .eq("is_active", true)
-    .maybeSingle();
-
+  // 특수 호차: 각 시간대마다 학생 없어도 항상 카드 표시 (이미 Phase 2에서 조회됨)
   if (specialBus) {
-    if (!busMap.has(specialBus.id)) busMap.set(specialBus.id, specialBus.label);
     // groupMap에 존재하는 각 시간대에 특수 호차가 없으면 빈 그룹 추가
     const existingSlotIds = new Set([...groupMap.values()].map((g) => g.slotId));
     for (const slotId of existingSlotIds) {
@@ -629,7 +667,7 @@ export async function boardBusStudent(
   busTimeSlotId: string,
   busNumberId: string
 ): Promise<{ error?: string }> {
-  const auth = await verifyAdmin();
+  const auth = await verifyAuthenticated();
   if ("error" in auth) return { error: auth.error };
   const supabase = createAdminClient();
   const { error } = await supabase.from("bus_check_records").upsert(
@@ -655,7 +693,7 @@ export async function unboardBusStudent(
   checkDate: string,
   direction: "pickup" | "dropoff"
 ): Promise<{ error?: string }> {
-  const auth = await verifyAdmin();
+  const auth = await verifyAuthenticated();
   if ("error" in auth) return { error: auth.error };
   const supabase = createAdminClient();
 
@@ -705,7 +743,7 @@ export async function checkBusStudent(
   busNumberId: string,
   checkedBy: string
 ): Promise<{ error?: string }> {
-  const auth = await verifyAdmin();
+  const auth = await verifyAuthenticated();
   if ("error" in auth) return { error: auth.error };
   const supabase = createAdminClient();
   const { error } = await supabase.from("bus_check_records").upsert(
@@ -732,7 +770,7 @@ export async function uncheckBusStudent(
   checkDate: string,
   direction: "pickup" | "dropoff"
 ): Promise<{ error?: string }> {
-  const auth = await verifyAdmin();
+  const auth = await verifyAuthenticated();
   if ("error" in auth) return { error: auth.error };
   const supabase = createAdminClient();
 

@@ -1,0 +1,19 @@
+{
+  "name": "원더랜드 버스 모니터",
+  "short_name": "버스 모니터",
+  "description": "원더랜드 영어학원 승하차 실시간 모니터링",
+  "start_url": "/bus-monitor",
+  "scope": "/bus-monitor",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f1f5f9",
+  "theme_color": "#1e293b",
+  "icons": [
+    {
+      "src": "/sc-wonderland-logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

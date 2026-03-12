@@ -9,8 +9,9 @@ import { BusChangeRequestsPanel } from "./components/BusChangeRequestsPanel";
 import { BusStaffManager } from "./components/BusStaffManager";
 import { BusMonitoringDashboard } from "./components/BusMonitoringDashboard";
 import { BusAssignmentManager } from "./components/BusAssignmentManager";
+import { BusOverviewPanel } from "./components/BusOverviewPanel";
 
-const VALID_TABS: BusTabId[] = ["assignments", "dashboard", "monitoring", "numbers", "timeslots", "requests", "staff"];
+const VALID_TABS: BusTabId[] = ["assignments", "overview", "dashboard", "monitoring", "numbers", "timeslots", "requests", "staff"];
 
 function parseTab(tab: string | undefined): BusTabId {
   if (tab && VALID_TABS.includes(tab as BusTabId)) return tab as BusTabId;
@@ -43,6 +44,7 @@ export default async function AdminBusPage({
       <BusTabNav currentTab={currentTab} />
       <div className="rounded-b-xl border border-t-0 border-slate-200 bg-white p-6">
         {currentTab === "assignments" && <BusAssignmentManager busNumbers={busNumbers} busTimeSlots={busTimeSlots} initialStops={busStops} allStudents={allStudentNames} />}
+        {currentTab === "overview" && <BusOverviewPanel busNumbers={busNumbers} busTimeSlots={busTimeSlots} />}
         {currentTab === "dashboard" && <BusDashboard busTimeSlots={busTimeSlots} busNumbers={busNumbers} />}
         {currentTab === "monitoring" && <BusMonitoringDashboard busTimeSlots={busTimeSlots} />}
         {currentTab === "numbers" && <BusNumbersManager busNumbers={busNumbers} busTimeSlots={busTimeSlots} initialStops={busStops} />}

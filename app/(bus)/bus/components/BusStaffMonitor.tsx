@@ -40,6 +40,14 @@ type StopGroup = {
   students: BusManifestEntry[];
 };
 
+type PendingChange = {
+  action: "board" | "unboard" | "check" | "uncheck";
+  student: BusManifestEntry;
+  busTimeSlotId: string;
+  busNumberId: string;
+  direction: "pickup" | "dropoff";
+};
+
 function groupStudentsByStop(students: BusManifestEntry[]): StopGroup[] {
   const sorted = [...students].sort((a, b) => {
     const ta = a.estimated_time ?? "99:99";
@@ -60,7 +68,6 @@ function groupStudentsByStop(students: BusManifestEntry[]): StopGroup[] {
     current.students.push(s);
   }
 
-  // 그룹 내 학생: 나이순 → 이름순
   for (const g of groups) {
     g.students.sort((a, b) => {
       const ageA = a.age ?? 99;
@@ -76,54 +83,76 @@ function groupStudentsByStop(students: BusManifestEntry[]): StopGroup[] {
 /* ── 학생 행 ── */
 function StudentRow({
   student,
-  isPending,
   isBoarded,
   isChecked,
-  onBoard,
-  onCheck,
-  onUncheck,
+  pendingAction,
+  onToggle,
+  onToggleCheck,
+  onToggleUncheck,
 }: {
   student: BusManifestEntry;
-  isPending: boolean;
   isBoarded: boolean;
   isChecked: boolean;
-  onBoard: () => void;
-  onCheck: () => void;
-  onUncheck: () => void;
+  pendingAction: "board" | "unboard" | "check" | "uncheck" | null;
+  onToggle: () => void;
+  onToggleCheck: () => void;
+  onToggleUncheck: () => void;
 }) {
+  // 선택된 상태 시각화
+  const isSelected = pendingAction !== null;
+
+  // 배경색 결정
+  let bgClass = "bg-white";
+  if (pendingAction === "board") bgClass = "bg-blue-50 ring-2 ring-blue-400 ring-inset";
+  else if (pendingAction === "unboard") bgClass = "bg-slate-50 ring-2 ring-slate-300 ring-inset";
+  else if (pendingAction === "check") bgClass = "bg-green-50 ring-2 ring-green-400 ring-inset";
+  else if (pendingAction === "uncheck") bgClass = "bg-yellow-50 ring-2 ring-yellow-400 ring-inset";
+  else if (isChecked) bgClass = "bg-green-50/60";
+  else if (isBoarded) bgClass = "bg-blue-50/50";
+
   return (
-    <div
-      className={`flex items-center gap-3 px-4 py-3 transition-colors ${
-        isChecked ? "bg-green-50/60" : isBoarded ? "bg-blue-50/50" : "bg-white"
-      } ${isPending ? "opacity-50 pointer-events-none" : ""}`}
-    >
+    <div className={`flex items-center gap-3 px-4 py-3 transition-all ${bgClass}`}>
       {/* 탑승 토글 */}
       <button
         type="button"
-        disabled={isPending || isChecked}
-        onClick={onBoard}
+        disabled={isChecked && pendingAction !== "uncheck"}
+        onClick={onToggle}
         className={`flex items-center gap-2.5 flex-1 min-w-0 text-left ${
-          isChecked ? "cursor-default" : "cursor-pointer active:scale-[0.98]"
+          isChecked && pendingAction !== "uncheck" ? "cursor-default" : "cursor-pointer active:scale-[0.98]"
         }`}
       >
         <span
-          className={`size-7 rounded-full flex items-center justify-center text-sm shrink-0 ${
-            isChecked
-              ? "bg-green-100 text-green-600"
-              : isBoarded
-                ? "bg-blue-100 text-blue-600"
-                : "bg-slate-100 text-slate-400"
+          className={`size-8 rounded-full flex items-center justify-center text-sm shrink-0 transition-all ${
+            pendingAction === "board"
+              ? "bg-blue-500 text-white scale-110"
+              : pendingAction === "unboard"
+                ? "bg-slate-200 text-slate-500 scale-110"
+                : pendingAction === "check"
+                  ? "bg-green-500 text-white scale-110"
+                  : pendingAction === "uncheck"
+                    ? "bg-yellow-400 text-white scale-110"
+                    : isChecked
+                      ? "bg-green-100 text-green-600"
+                      : isBoarded
+                        ? "bg-blue-100 text-blue-600"
+                        : "bg-slate-100 text-slate-400"
           }`}
         >
-          {isChecked ? "✓" : isBoarded ? "●" : "○"}
+          {pendingAction === "board" ? "●" :
+           pendingAction === "unboard" ? "○" :
+           pendingAction === "check" ? "✓" :
+           pendingAction === "uncheck" ? "↩" :
+           isChecked ? "✓" : isBoarded ? "●" : "○"}
         </span>
         <span
           className={`flex-1 truncate text-[15px] ${
-            isChecked
-              ? "text-slate-400 line-through"
-              : isBoarded
-                ? "font-semibold text-slate-800"
-                : "text-slate-700"
+            isSelected
+              ? "font-semibold text-slate-900"
+              : isChecked
+                ? "text-slate-400 line-through"
+                : isBoarded
+                  ? "font-semibold text-slate-800"
+                  : "text-slate-700"
           }`}
         >
           {student.korean_name || student.english_name}
@@ -131,26 +160,29 @@ function StudentRow({
       </button>
 
       {/* 타임스탬프 */}
-      {isBoarded && student.boarded_at && !isChecked && (
+      {isBoarded && student.boarded_at && !isChecked && !isSelected && (
         <span className="text-xs tabular-nums text-blue-500">
           {fmtISO(student.boarded_at)}
         </span>
       )}
-      {isChecked && student.checked_at && (
+      {isChecked && student.checked_at && !isSelected && (
         <span className="text-xs tabular-nums text-green-500">
           {fmtISO(student.checked_at)}
         </span>
       )}
 
       {/* 하차 버튼 */}
-      {isBoarded && !isChecked && (
+      {isBoarded && !isChecked && pendingAction !== "unboard" && (
         <button
           type="button"
-          disabled={isPending}
-          onClick={(e) => { e.stopPropagation(); onCheck(); }}
-          className="shrink-0 text-xs font-semibold bg-green-500 text-white px-3 py-1.5 rounded-full active:scale-95 hover:bg-green-600 transition-colors"
+          onClick={(e) => { e.stopPropagation(); onToggleCheck(); }}
+          className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full active:scale-95 transition-colors ${
+            pendingAction === "check"
+              ? "bg-green-600 text-white"
+              : "bg-green-500 text-white hover:bg-green-600"
+          }`}
         >
-          하차
+          {pendingAction === "check" ? "하차 취소" : "하차"}
         </button>
       )}
 
@@ -158,12 +190,14 @@ function StudentRow({
       {isChecked && (
         <button
           type="button"
-          disabled={isPending}
-          onClick={(e) => { e.stopPropagation(); onUncheck(); }}
-          className="shrink-0 text-xs text-slate-400 hover:text-slate-600 px-1 py-1 active:scale-95"
-          title="하차 취소"
+          onClick={(e) => { e.stopPropagation(); onToggleUncheck(); }}
+          className={`shrink-0 text-xs px-2 py-1 active:scale-95 transition-colors ${
+            pendingAction === "uncheck"
+              ? "font-semibold text-yellow-600"
+              : "text-slate-400 hover:text-slate-600"
+          }`}
         >
-          취소
+          {pendingAction === "uncheck" ? "되돌리기" : "취소"}
         </button>
       )}
     </div>
@@ -174,19 +208,17 @@ function StudentRow({
 function StaffBusCard({
   card,
   direction,
-  onAction,
-  pendingIds,
+  pendingChanges,
+  onToggleBoard,
+  onToggleCheck,
+  onToggleUncheck,
 }: {
   card: BusManifestGroup;
   direction: "pickup" | "dropoff";
-  onAction: (
-    student: BusManifestEntry,
-    busTimeSlotId: string,
-    busNumberId: string,
-    direction: "pickup" | "dropoff",
-    action: "board" | "unboard" | "check" | "uncheck"
-  ) => void;
-  pendingIds: Set<string>;
+  pendingChanges: Map<string, PendingChange>;
+  onToggleBoard: (student: BusManifestEntry, busTimeSlotId: string, busNumberId: string, direction: "pickup" | "dropoff") => void;
+  onToggleCheck: (student: BusManifestEntry, busTimeSlotId: string, busNumberId: string, direction: "pickup" | "dropoff") => void;
+  onToggleUncheck: (student: BusManifestEntry, busTimeSlotId: string, busNumberId: string, direction: "pickup" | "dropoff") => void;
 }) {
   const total = card.students.length;
   const boarded = card.students.filter((s) => s.boarded_at || s.checked_at).length;
@@ -197,10 +229,13 @@ function StaffBusCard({
   const boardPct = total > 0 ? Math.round((boarded / total) * 100) : 0;
   const checkPct = total > 0 ? Math.round((checked / total) * 100) : 0;
 
+  // 이 카드에 pending change가 있는지
+  const hasPending = card.students.some((s) => pendingChanges.has(s.student_profile_id));
+
   return (
     <div
       className={`rounded-2xl border overflow-hidden transition-colors ${
-        allDone ? "border-green-200 bg-green-50/30" : "border-slate-200 bg-white"
+        hasPending ? "border-blue-300 shadow-sm" : allDone ? "border-green-200 bg-green-50/30" : "border-slate-200 bg-white"
       }`}
     >
       {/* 헤더 */}
@@ -273,18 +308,17 @@ function StaffBusCard({
               <StudentRow
                 key={student.student_profile_id}
                 student={student}
-                isPending={pendingIds.has(student.student_profile_id)}
                 isBoarded={!!student.boarded_at}
                 isChecked={!!student.checked_at}
-                onBoard={() =>
-                  onAction(student, card.bus_time_slot_id, card.bus_number_id, direction,
-                    student.boarded_at ? "unboard" : "board")
+                pendingAction={pendingChanges.get(student.student_profile_id)?.action ?? null}
+                onToggle={() =>
+                  onToggleBoard(student, card.bus_time_slot_id, card.bus_number_id, direction)
                 }
-                onCheck={() =>
-                  onAction(student, card.bus_time_slot_id, card.bus_number_id, direction, "check")
+                onToggleCheck={() =>
+                  onToggleCheck(student, card.bus_time_slot_id, card.bus_number_id, direction)
                 }
-                onUncheck={() =>
-                  onAction(student, card.bus_time_slot_id, card.bus_number_id, direction, "uncheck")
+                onToggleUncheck={() =>
+                  onToggleUncheck(student, card.bus_time_slot_id, card.bus_number_id, direction)
                 }
               />
             ))}
@@ -308,10 +342,11 @@ export function BusStaffMonitor({
   const [groups, setGroups] = useState<BusManifestGroup[]>([]);
   const [loading, setLoading] = useState(false);
   const [countdown, setCountdown] = useState(REFRESH_INTERVAL);
-  const [, startTransition] = useTransition();
-  const [pendingIds, setPendingIds] = useState<Set<string>>(new Set());
-  // 시간대 필터: null = 현재 시간 이후, "all" = 전체, string = 특정 시간대
+  const [saving, startSaving] = useTransition();
   const [slotFilter, setSlotFilter] = useState<string | null>(null);
+
+  // 일괄 저장용 pending changes
+  const [pendingChanges, setPendingChanges] = useState<Map<string, PendingChange>>(new Map());
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -341,7 +376,7 @@ export function BusStaffMonitor({
     return () => clearInterval(timer);
   }, []);
 
-  // 고유 시간대 목록 추출
+  // 고유 시간대 목록
   const timeSlots = useMemo(() => {
     const map = new Map<string, string>();
     for (const g of groups) {
@@ -360,90 +395,143 @@ export function BusStaffMonitor({
     if (slotFilter && slotFilter !== "all") {
       return groups.filter((g) => g.slot_time === slotFilter);
     }
-    // null = 현재 시간 이후
     const now = getNowHHMM();
     return groups.filter((g) => g.slot_time >= now);
   }, [groups, slotFilter]);
 
-  const handleAction = useCallback(
-    (
-      student: BusManifestEntry,
-      busTimeSlotId: string,
-      busNumberId: string,
-      dir: "pickup" | "dropoff",
-      action: "board" | "unboard" | "check" | "uncheck"
-    ) => {
+  // 탑승 토글
+  const toggleBoard = useCallback(
+    (student: BusManifestEntry, busTimeSlotId: string, busNumberId: string, dir: "pickup" | "dropoff") => {
       const sid = student.student_profile_id;
-      const now = new Date().toISOString();
+      setPendingChanges((prev) => {
+        const next = new Map(prev);
+        const existing = next.get(sid);
 
-      setGroups((prev) =>
-        prev.map((c) => ({
-          ...c,
-          students: c.students.map((s) => {
-            if (s.student_profile_id !== sid) return s;
-            switch (action) {
-              case "board":
-                return { ...s, boarded_at: now };
-              case "unboard":
-                return { ...s, boarded_at: null };
-              case "check":
-                return { ...s, checked_at: now, check_record_id: "optimistic" };
-              case "uncheck":
-                return { ...s, checked_at: null, check_record_id: null };
-              default:
-                return s;
-            }
-          }),
-        }))
-      );
-
-      setPendingIds((prev) => new Set(prev).add(sid));
-
-      startTransition(async () => {
-        let result: { error?: string };
-
-        switch (action) {
-          case "board":
-            result = await boardBusStudent(sid, date, dir, busTimeSlotId, busNumberId);
-            break;
-          case "unboard":
-            result = await unboardBusStudent(sid, date, dir);
-            break;
-          case "check":
-            result = await checkBusStudent(sid, date, dir, busTimeSlotId, busNumberId, staffProfileId);
-            break;
-          case "uncheck":
-            result = await uncheckBusStudent(sid, date, dir);
-            break;
+        if (student.boarded_at) {
+          // 이미 탑승 → unboard 토글
+          if (existing?.action === "unboard") {
+            next.delete(sid);
+          } else {
+            next.set(sid, { action: "unboard", student, busTimeSlotId, busNumberId, direction: dir });
+          }
+        } else {
+          // 미탑승 → board 토글
+          if (existing?.action === "board") {
+            next.delete(sid);
+          } else {
+            next.set(sid, { action: "board", student, busTimeSlotId, busNumberId, direction: dir });
+          }
         }
-
-        if (result.error) {
-          setGroups((prev) =>
-            prev.map((c) => ({
-              ...c,
-              students: c.students.map((s) => {
-                if (s.student_profile_id !== sid) return s;
-                return {
-                  ...s,
-                  boarded_at: student.boarded_at,
-                  checked_at: student.checked_at,
-                  check_record_id: student.check_record_id,
-                };
-              }),
-            }))
-          );
-          toast.error(`오류: ${result.error}`);
-        }
-
-        setPendingIds((prev) => {
-          const next = new Set(prev);
-          next.delete(sid);
-          return next;
-        });
+        return next;
       });
     },
-    [date, staffProfileId]
+    []
   );
+
+  // 하차 토글
+  const toggleCheck = useCallback(
+    (student: BusManifestEntry, busTimeSlotId: string, busNumberId: string, dir: "pickup" | "dropoff") => {
+      const sid = student.student_profile_id;
+      setPendingChanges((prev) => {
+        const next = new Map(prev);
+        const existing = next.get(sid);
+
+        if (existing?.action === "check") {
+          next.delete(sid);
+        } else {
+          next.set(sid, { action: "check", student, busTimeSlotId, busNumberId, direction: dir });
+        }
+        return next;
+      });
+    },
+    []
+  );
+
+  // 하차 취소 토글
+  const toggleUncheck = useCallback(
+    (student: BusManifestEntry, busTimeSlotId: string, busNumberId: string, dir: "pickup" | "dropoff") => {
+      const sid = student.student_profile_id;
+      setPendingChanges((prev) => {
+        const next = new Map(prev);
+        const existing = next.get(sid);
+
+        if (existing?.action === "uncheck") {
+          next.delete(sid);
+        } else {
+          next.set(sid, { action: "uncheck", student, busTimeSlotId, busNumberId, direction: dir });
+        }
+        return next;
+      });
+    },
+    []
+  );
+
+  // 일괄 저장
+  const saveAll = useCallback(() => {
+    if (pendingChanges.size === 0) return;
+
+    const changes = [...pendingChanges.values()];
+    setPendingChanges(new Map());
+
+    // 낙관적 UI 업데이트
+    const now = new Date().toISOString();
+    setGroups((prev) =>
+      prev.map((c) => ({
+        ...c,
+        students: c.students.map((s) => {
+          const change = changes.find((ch) => ch.student.student_profile_id === s.student_profile_id);
+          if (!change) return s;
+          switch (change.action) {
+            case "board": return { ...s, boarded_at: now };
+            case "unboard": return { ...s, boarded_at: null };
+            case "check": return { ...s, checked_at: now, check_record_id: "optimistic" };
+            case "uncheck": return { ...s, checked_at: null, check_record_id: null };
+            default: return s;
+          }
+        }),
+      }))
+    );
+
+    startSaving(async () => {
+      const results = await Promise.allSettled(
+        changes.map((ch) => {
+          const sid = ch.student.student_profile_id;
+          switch (ch.action) {
+            case "board":
+              return boardBusStudent(sid, date, ch.direction, ch.busTimeSlotId, ch.busNumberId);
+            case "unboard":
+              return unboardBusStudent(sid, date, ch.direction);
+            case "check":
+              return checkBusStudent(sid, date, ch.direction, ch.busTimeSlotId, ch.busNumberId, staffProfileId);
+            case "uncheck":
+              return uncheckBusStudent(sid, date, ch.direction);
+          }
+        })
+      );
+
+      const errors: string[] = [];
+      for (const r of results) {
+        if (r.status === "rejected") {
+          errors.push("서버 오류");
+        } else if (r.value.error) {
+          errors.push(r.value.error);
+        }
+      }
+
+      if (errors.length > 0) {
+        toast.error(`${errors.length}건 오류 발생: ${errors[0]}`);
+        // 에러 시 전체 새로고침
+        await load();
+      } else {
+        toast.success(`${changes.length}건 저장 완료`);
+      }
+    });
+  }, [pendingChanges, date, staffProfileId, load]);
+
+  // 전체 취소
+  const clearAll = useCallback(() => {
+    setPendingChanges(new Map());
+  }, []);
 
   const d = new Date(date);
   const dayName = DAY_NAMES[d.getDay()];
@@ -456,8 +544,10 @@ export function BusStaffMonitor({
     (sum, g) => sum + g.students.filter((s) => s.checked_at).length, 0
   );
 
+  const pendingCount = pendingChanges.size;
+
   return (
-    <div className="max-w-lg mx-auto space-y-4">
+    <div className="max-w-lg mx-auto space-y-4 pb-24">
       {/* 날짜 헤더 */}
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-bold text-slate-800">
@@ -483,7 +573,7 @@ export function BusStaffMonitor({
           <button
             key={dir}
             type="button"
-            onClick={() => setDirection(dir)}
+            onClick={() => { setDirection(dir); setPendingChanges(new Map()); }}
             className={`flex-1 py-2.5 text-sm font-semibold rounded-lg transition-all ${
               direction === dir
                 ? "bg-white shadow-sm " + (dir === "pickup" ? "text-blue-600" : "text-orange-600")
@@ -583,11 +673,43 @@ export function BusStaffMonitor({
             key={`${card.bus_time_slot_id}-${card.bus_number_id}`}
             card={card}
             direction={direction}
-            onAction={handleAction}
-            pendingIds={pendingIds}
+            pendingChanges={pendingChanges}
+            onToggleBoard={toggleBoard}
+            onToggleCheck={toggleCheck}
+            onToggleUncheck={toggleUncheck}
           />
         ))}
       </div>
+
+      {/* 하단 고정 저장 바 */}
+      {pendingCount > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 safe-area-bottom">
+          <div className="max-w-lg mx-auto px-4 pb-4 pt-2">
+            <div className="bg-slate-800 rounded-2xl shadow-2xl shadow-slate-900/30 px-4 py-3 flex items-center gap-3">
+              <button
+                type="button"
+                onClick={clearAll}
+                className="shrink-0 text-sm text-slate-400 hover:text-slate-200 px-2 py-1 active:scale-95 transition-colors"
+              >
+                취소
+              </button>
+              <div className="flex-1 text-center">
+                <span className="text-sm text-slate-300">
+                  <span className="font-bold text-white">{pendingCount}</span>명 선택됨
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={saveAll}
+                disabled={saving}
+                className="shrink-0 bg-blue-500 hover:bg-blue-600 disabled:bg-blue-400 text-white text-sm font-bold px-5 py-2.5 rounded-xl active:scale-95 transition-all"
+              >
+                {saving ? "저장 중..." : "확인"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

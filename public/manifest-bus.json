@@ -1,0 +1,19 @@
+{
+  "name": "원더랜드 버스 동승",
+  "short_name": "버스 동승",
+  "description": "원더랜드 영어학원 동승자 승하차 관리",
+  "start_url": "/bus",
+  "scope": "/bus",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f8fafc",
+  "theme_color": "#1e293b",
+  "icons": [
+    {
+      "src": "/sc-wonderland-logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

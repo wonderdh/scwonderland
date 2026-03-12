@@ -1,7 +1,26 @@
+import type { Metadata, Viewport } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
 import { LogoutButton } from "@/components/LogoutButton";
+
+export const metadata: Metadata = {
+  title: "버스 동승",
+  manifest: "/manifest-bus.json",
+  icons: {
+    apple: "/sc-wonderland-logo.png",
+  },
+  other: {
+    "mobile-web-app-capable": "yes",
+    "apple-mobile-web-app-capable": "yes",
+    "apple-mobile-web-app-status-bar-style": "black-translucent",
+    "apple-mobile-web-app-title": "버스 동승",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#1e293b",
+};
 
 export default async function BusLayout({
   children,
