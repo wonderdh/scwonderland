@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -9,6 +10,7 @@ import {
   validateFile,
 } from "@/lib/supabase/storage";
 import type { ClassNotice, ClassNoticeAttachment } from "@/lib/types";
+import { verifyAuthenticated } from "./auth-helpers";
 
 const BUCKET = STORAGE_BUCKETS.CLASS_NOTICES;
 
@@ -50,6 +52,9 @@ async function deleteClassNoticeFile(publicUrl: string): Promise<void> {
 
 /** 특정 반의 공지 목록 */
 export async function listClassNotices(classId: string): Promise<ClassNotice[]> {
+  const auth = await verifyAuthenticated();
+  if ("error" in auth) return [];
+
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("class_notices")
@@ -96,6 +101,9 @@ export async function listClassNotices(classId: string): Promise<ClassNotice[]> 
 export async function getClassNoticeWithAttachments(
   noticeId: string
 ): Promise<{ notice: ClassNotice; attachments: ClassNoticeAttachment[] } | null> {
+  const auth = await verifyAuthenticated();
+  if ("error" in auth) return null;
+
   const supabase = createAdminClient();
   const { data: notice, error } = await supabase
     .from("class_notices")
@@ -206,11 +214,16 @@ export async function createClassNotice(
     }
 
     if (records.length > 0) {
-      await supabase
+      const { error: attachErr } = await supabase
         .from("class_notice_attachments")
         .insert(records.map((r) => ({ ...r, class_notice_id: data.id })));
+      if (attachErr) {
+        console.error("[createClassNotice] 첨부파일 저장", attachErr.message);
+        return { error: "첨부파일 저장에 실패했습니다." };
+      }
     }
 
+    revalidatePath("/admin/class-notices");
     return { id: data.id };
   } catch (err) {
     for (const u of uploadedFiles) await deleteClassNoticeFile(u.url);
@@ -295,9 +308,13 @@ export async function updateClassNotice(
     }
 
     if (newRecords.length > 0) {
-      await supabase
+      const { error: attachErr } = await supabase
         .from("class_notice_attachments")
         .insert(newRecords.map((r) => ({ ...r, class_notice_id: id })));
+      if (attachErr) {
+        console.error("[updateClassNotice] 첨부파일 저장", attachErr.message);
+        return { error: "첨부파일 저장에 실패했습니다." };
+      }
     }
 
     if (removeIds.length > 0) {
@@ -311,6 +328,7 @@ export async function updateClassNotice(
       }
     }
 
+    revalidatePath("/admin/class-notices");
     return {};
   } catch (err) {
     for (const u of uploadedFiles) await deleteClassNoticeFile(u.url);
@@ -347,6 +365,7 @@ export async function deleteClassNotice(
     console.error("[deleteClassNotice]", error.message);
     return { error: error.message };
   }
+  revalidatePath("/admin/class-notices");
   return {};
 }
 
@@ -356,6 +375,9 @@ export async function deleteClassNotice(
 export async function getMyClassNotices(
   studentProfileId: string
 ): Promise<ClassNotice[]> {
+  const auth = await verifyAuthenticated();
+  if ("error" in auth) return [];
+
   const supabase = createAdminClient();
 
   const { data: memberships } = await supabase

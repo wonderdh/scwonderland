@@ -112,7 +112,7 @@ export function TeacherBusClient() {
                       변경됨
                       {student.original_bus_label && (
                         <span className="font-normal ml-1">
-                          (원래: {formatTime(student.original_slot_time ?? "")} {student.original_bus_label})
+                          ({student.original_bus_label} → {group.bus_label})
                         </span>
                       )}
                     </span>

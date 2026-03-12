@@ -39,6 +39,7 @@ export type {
   StudentTimetableRow,
   BusManifestGroup,
   NoRideEntry,
+  AfterSchoolBusEntry,
   BusCheckRecord,
   BusStaffProfile,
   BusStop,

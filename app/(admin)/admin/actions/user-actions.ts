@@ -3,6 +3,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { normalizeEmail } from "@/lib/auth-utils";
+import { revalidatePath } from "next/cache";
 import { verifyAdmin } from "./auth-helpers";
 import type { UserWithProfile } from "@/lib/types";
 
@@ -49,6 +50,7 @@ export async function createStudent(
     await supabase.from("students").update({ age }).eq("profile_id", data.user.id);
   }
 
+  revalidatePath("/admin/users");
   return {};
 }
 
@@ -100,6 +102,7 @@ export async function createTeacher(
       .eq("profile_id", data.user.id);
   }
 
+  revalidatePath("/admin/users");
   return {};
 }
 
@@ -251,6 +254,7 @@ export async function deleteUserById(
     console.error("[deleteUserById:ban]", banError.message, { id });
   }
 
+  revalidatePath("/admin/users");
   return {};
 }
 
@@ -281,6 +285,7 @@ export async function restoreUser(
     console.error("[restoreUser:unban]", unbanError.message, { userId });
   }
 
+  revalidatePath("/admin/users");
   return {};
 }
 
@@ -299,6 +304,7 @@ export async function permanentlyDeleteUser(
     console.error("[permanentlyDeleteUser]", error.message, { userId });
     return { error: error.message };
   }
+  revalidatePath("/admin/users");
   return {};
 }
 
@@ -407,6 +413,7 @@ export async function updateStudentProfile(
     console.error("[updateStudentProfile]", studentError.message, { id });
     return { error: studentError.message };
   }
+  revalidatePath("/admin/users");
   return {};
 }
 
@@ -448,6 +455,7 @@ export async function updateTeacherProfile(
     console.error("[updateTeacherProfile]", teacherError.message, { id });
     return { error: teacherError.message };
   }
+  revalidatePath("/admin/users");
   return {};
 }
 
@@ -473,6 +481,7 @@ export async function resetUserPassword(
     console.error("[resetUserPassword]", error.message, { userId });
     return { error: error.message };
   }
+  revalidatePath("/admin/users");
   return {};
 }
 

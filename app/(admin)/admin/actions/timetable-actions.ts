@@ -1,6 +1,7 @@
 "use server";
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import { revalidatePath } from "next/cache";
 import { verifyAdmin } from "./auth-helpers";
 import type { AcademyPeriod } from "@/lib/types";
 
@@ -33,6 +34,7 @@ export async function createAcademyPeriod(
   const trimmed = name.trim();
   if (!trimmed) return { error: "수업 이름을 입력해 주세요." };
   if (!startTime || !endTime) return { error: "시작/종료 시간을 입력해 주세요." };
+  if (startTime >= endTime) return { error: "시작 시간은 종료 시간보다 빨라야 합니다." };
 
   const { data, error } = await supabase
     .from("academy_periods")
@@ -50,6 +52,7 @@ export async function createAcademyPeriod(
     console.error("[createAcademyPeriod]", error.message);
     return { error: error.message };
   }
+  revalidatePath("/admin/timetable");
   return { id: data.id };
 }
 
@@ -66,6 +69,8 @@ export async function updateAcademyPeriod(
   const supabase = createAdminClient();
   const trimmed = name.trim();
   if (!trimmed) return { error: "수업 이름을 입력해 주세요." };
+  if (!startTime || !endTime) return { error: "시작/종료 시간을 입력해 주세요." };
+  if (startTime >= endTime) return { error: "시작 시간은 종료 시간보다 빨라야 합니다." };
 
   const { error } = await supabase
     .from("academy_periods")
@@ -83,6 +88,7 @@ export async function updateAcademyPeriod(
     console.error("[updateAcademyPeriod]", error.message);
     return { error: error.message };
   }
+  revalidatePath("/admin/timetable");
   return {};
 }
 
@@ -99,5 +105,6 @@ export async function deleteAcademyPeriod(id: string): Promise<{ error?: string 
     console.error("[deleteAcademyPeriod]", error.message);
     return { error: error.message };
   }
+  revalidatePath("/admin/timetable");
   return {};
 }

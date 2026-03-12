@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef, useTransition, useMemo } from "react";
+import { useState, useEffect, useCallback, useTransition, useMemo } from "react";
 import { toast } from "sonner";
 import type { BusManifestGroup, BusManifestEntry } from "@/lib/types";
 import {
@@ -308,7 +308,6 @@ export function BusStaffMonitor({
   const [groups, setGroups] = useState<BusManifestGroup[]>([]);
   const [loading, setLoading] = useState(false);
   const [countdown, setCountdown] = useState(REFRESH_INTERVAL);
-  const countdownRef = useRef(REFRESH_INTERVAL);
   const [, startTransition] = useTransition();
   const [pendingIds, setPendingIds] = useState<Set<string>>(new Set());
   // 시간대 필터: null = 현재 시간 이후, "all" = 전체, string = 특정 시간대
@@ -327,7 +326,6 @@ export function BusStaffMonitor({
     setGroups(filtered);
     setLoading(false);
     setCountdown(REFRESH_INTERVAL);
-    countdownRef.current = REFRESH_INTERVAL;
   }, [direction, busNumberId]);
 
   useEffect(() => {
@@ -338,9 +336,7 @@ export function BusStaffMonitor({
 
   useEffect(() => {
     const timer = setInterval(() => {
-      countdownRef.current -= 1;
-      if (countdownRef.current < 0) countdownRef.current = REFRESH_INTERVAL;
-      setCountdown(countdownRef.current);
+      setCountdown((prev) => (prev <= 0 ? REFRESH_INTERVAL : prev - 1));
     }, 1000);
     return () => clearInterval(timer);
   }, []);

@@ -217,6 +217,7 @@ export function BusAssignmentManager({
       toast.error(result.error);
     } else {
       toast.success("저장되었습니다.");
+      await refreshStops();
     }
 
     await fetchAssignments();

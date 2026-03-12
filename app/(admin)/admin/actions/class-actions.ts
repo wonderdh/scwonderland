@@ -1,10 +1,13 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { verifyAdmin } from "./auth-helpers";
+import { verifyAdmin, verifyAuthenticated } from "./auth-helpers";
 import type { ClassWithDetails, ClassStudentRow, ClassTeacherInfo, AdminStudentClassItem } from "@/lib/types";
 
 export async function listClassesWithDetails(): Promise<ClassWithDetails[]> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return [];
   const supabase = createAdminClient();
   const { data: classes, error: classesError } = await supabase
     .from("classes")
@@ -79,6 +82,8 @@ export async function listClassesWithDetails(): Promise<ClassWithDetails[]> {
 export async function getClassWithStudents(
   classId: string
 ): Promise<{ class: ClassWithDetails | null; students: ClassStudentRow[] }> {
+  const auth = await verifyAuthenticated();
+  if ("error" in auth) return { class: null, students: [] };
   const supabase = createAdminClient();
 
   // 직접 단일 반 조회 (N+1 쿼리 제거)
@@ -161,6 +166,8 @@ export async function getClassWithStudents(
 export async function getStudentClasses(
   studentProfileId: string
 ): Promise<{ classes: AdminStudentClassItem[]; error?: string }> {
+  const auth = await verifyAuthenticated();
+  if ("error" in auth) return { classes: [] };
   const supabase = createAdminClient();
 
   const { data: members, error: membersError } = await supabase
@@ -222,6 +229,8 @@ export async function getStudentClasses(
 export async function getAllClassStudentsFlat(): Promise<
   { class_id: string; id: string; student_profile_id: string; korean_name: string | null; english_name: string | null; student_number: string | null }[]
 > {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return [];
   const supabase = createAdminClient();
   const { data: rows } = await supabase
     .from("class_students")
@@ -274,8 +283,11 @@ export async function createClass(
       .insert(teacherProfileIds.map((tid) => ({ class_id: data.id, teacher_profile_id: tid })));
     if (ctError) {
       console.error("[createClass:teachers]", ctError.message);
+      return { error: "교사 배정에 실패했습니다." };
     }
   }
+
+  revalidatePath("/admin/classes");
 
   // 유치부 자동 배정: 모든 교시×요일 슬롯을 빈 상태로 생성
   if (groupLabel === "유치부") {
@@ -330,15 +342,22 @@ export async function updateClass(
     return { error: error.message };
   }
   // 교사 재배정: 기존 삭제 → 새로 삽입
-  await supabase.from("class_teachers").delete().eq("class_id", classId);
+  const { error: deleteError } = await supabase.from("class_teachers").delete().eq("class_id", classId);
+  if (deleteError) {
+    console.error("[updateClass:teachers:delete]", deleteError.message);
+    return { error: "교사 배정 수정에 실패했습니다." };
+  }
   if (teacherProfileIds.length > 0) {
     const { error: ctError } = await supabase
       .from("class_teachers")
       .insert(teacherProfileIds.map((tid) => ({ class_id: classId, teacher_profile_id: tid })));
     if (ctError) {
       console.error("[updateClass:teachers]", ctError.message);
+      return { error: "교사 배정 수정에 실패했습니다." };
     }
   }
+
+  revalidatePath("/admin/classes");
 
   // 유치부 자동 배정: 비어있는 슬롯만 추가 (기존 배정 보존)
   if (groupLabel === "유치부") {
@@ -393,6 +412,7 @@ export async function deleteClass(classId: string): Promise<{ error?: string }> 
     console.error("[deleteClass]", error.message, { classId });
     return { error: error.message };
   }
+  revalidatePath("/admin/classes");
   return {};
 }
 
@@ -411,6 +431,7 @@ export async function addStudentToClass(
     console.error("[addStudentToClass]", error.message, { classId, studentProfileId });
     return { error: error.message };
   }
+  revalidatePath("/admin/classes");
   return {};
 }
 
@@ -428,12 +449,15 @@ export async function removeStudentFromClass(
     console.error("[removeStudentFromClass]", error.message, { classStudentId });
     return { error: error.message };
   }
+  revalidatePath("/admin/classes");
   return {};
 }
 
 export async function listTeachersForSelect(): Promise<
   { id: string; name: string; teacher_type: "korean" | "native" }[]
 > {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return [];
   const supabase = createAdminClient();
 
   // 소프트 삭제되지 않은 교사만 조회
@@ -460,6 +484,8 @@ export async function listTeachersForSelect(): Promise<
 export async function listStudentsNotInClass(
   classId: string
 ): Promise<{ id: string; korean_name: string | null; english_name: string | null; student_number: string | null }[]> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return [];
   const supabase = createAdminClient();
   const { data: inClass } = await supabase
     .from("class_students")

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import type { BusManifestGroup, BusManifestEntry, BusTimeSlot } from "@/lib/types";
+import type { BusManifestGroup, BusManifestEntry, BusTimeSlot, AfterSchoolBusEntry } from "@/lib/types";
 import { getAgeColor } from "@/lib/student-age-colors";
 import { getDailyBusManifest, listAllActiveStudentNames } from "@/app/(admin)/admin/actions";
 
@@ -151,11 +151,10 @@ function MonitorBusCard({
           </span>
           {student.is_changed && student.original_bus_label && (
             <span className="block truncate text-xs text-amber-500 -mt-0.5">
-              ← {student.original_bus_label}
-              {student.note ? ` · ${student.note}` : ""}
+              {student.original_bus_label} → {card.bus_label}
             </span>
           )}
-          {student.note && !student.is_changed && (
+          {student.note && (
             <span className="block truncate text-xs text-slate-400 -mt-0.5">
               {student.note}
             </span>
@@ -277,6 +276,7 @@ export function BusMonitorClient({
   const [groupFilter, setGroupFilter] = useState<string>("");
   const [slotFilter, setSlotFilter] = useState<string>("");
   const [unassignedStudents, setUnassignedStudents] = useState<{korean_name: string | null; english_name: string | null; age?: number | null}[]>([]);
+  const [afterschoolStudents, setAfterSchoolStudents] = useState<AfterSchoolBusEntry[]>([]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -313,6 +313,9 @@ export function BusMonitorClient({
 
     addGroups(pickupResult.groups, "pickup");
     addGroups(dropoffResult.groups, "dropoff");
+
+    // 방과후 학생 (하원 결과에서)
+    setAfterSchoolStudents(dropoffResult.afterschoolStudents);
 
     merged.sort((a, b) => {
       const cmp = a.slotTime.localeCompare(b.slotTime);
@@ -548,6 +551,31 @@ export function BusMonitorClient({
           </div>
         ))}
       </div>
+
+      {/* 방과후 학생 */}
+      {afterschoolStudents.length > 0 && (
+        <div>
+          <div className="flex items-center gap-3 mb-2">
+            <span className="text-lg font-bold text-violet-700">방과후 ({afterschoolStudents.length}명)</span>
+            <div className="flex-1 border-t border-violet-200" />
+          </div>
+          <div className="rounded-xl border border-violet-200 bg-violet-50/50 p-3">
+            <div className="flex flex-wrap gap-2">
+              {afterschoolStudents.map((student) => {
+                const ageColor = getAgeColor(student.age);
+                return (
+                  <span
+                    key={student.student_profile_id}
+                    className={`inline-block px-2 py-1 rounded text-xs font-medium ${ageColor.bg} ${ageColor.text}`}
+                  >
+                    {student.korean_name || student.english_name}
+                  </span>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 미배정 학생 카드 */}
       {unassignedStudents.length > 0 && (

@@ -1,6 +1,7 @@
 "use server";
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import { revalidatePath } from "next/cache";
 import { verifyAdmin } from "./auth-helpers";
 
 // ── 방과후 반 조회 or 자동 생성 ──
@@ -110,6 +111,7 @@ export async function enrollStudent(
     console.error("[enrollStudent:class_students]", csError.message);
   }
 
+  revalidatePath("/admin/afterschool");
   return {};
 }
 
@@ -144,6 +146,7 @@ export async function removeAfterschoolStudent(
     console.error("[removeAfterschoolStudent:class_students]", csError.message);
   }
 
+  revalidatePath("/admin/afterschool");
   return {};
 }
 
@@ -249,5 +252,6 @@ export async function bulkUpdateEnrollmentDays(
     }
   }
 
+  revalidatePath("/admin/afterschool");
   return {};
 }

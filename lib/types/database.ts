@@ -393,6 +393,7 @@ export type BusChangeRequest = {
   new_time_slot_label?: string;
   new_time_slot_time?: string;
   new_bus_label?: string;
+  new_bus_stop_name?: string;
   korean_name?: string | null;
   english_name?: string | null;
   student_number?: string | null;
@@ -509,6 +510,13 @@ export type NoRideEntry = {
   original_bus_label?: string;
   change_type?: "no_ride" | "absent";
   request_id?: string;
+};
+
+export type AfterSchoolBusEntry = {
+  student_profile_id: string;
+  korean_name: string | null;
+  english_name: string | null;
+  age: number | null;
 };
 
 // ── 버스 담당자 타입 ──

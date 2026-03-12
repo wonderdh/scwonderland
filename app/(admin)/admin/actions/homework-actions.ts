@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { verifyAuthenticated } from "./auth-helpers";
@@ -23,6 +24,8 @@ const BUCKET = STORAGE_BUCKETS.HOMEWORK_SUBMISSIONS;
 export async function listHomeworkAssignments(
   classId: string
 ): Promise<HomeworkAssignment[]> {
+  const auth = await verifyAuthenticated();
+  if ("error" in auth) return [];
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("homework_assignments")
@@ -102,15 +105,20 @@ export async function createHomeworkAssignment(
     .eq("class_id", classId);
 
   if (students?.length) {
-    await supabase.from("homework_submissions").insert(
-      students.map((s) => ({
-        assignment_id: data.id,
-        student_profile_id: s.student_profile_id,
-        status: "pending",
-      }))
-    );
+    const { error: subError } = await supabase
+      .from("homework_submissions")
+      .insert(
+        students.map((s) => ({
+          assignment_id: data.id,
+          student_profile_id: s.student_profile_id,
+          status: "pending",
+        }))
+      );
+    if (subError) return { error: "숙제 제출 생성에 실패했습니다." };
   }
 
+  revalidatePath("/academy/teacher/homework");
+  revalidatePath("/academy/student/homework");
   return { id: data.id };
 }
 
@@ -137,6 +145,8 @@ export async function updateHomeworkAssignment(
     .eq("id", assignmentId);
 
   if (error) return { error: error.message };
+  revalidatePath("/academy/teacher/homework");
+  revalidatePath("/academy/student/homework");
   return {};
 }
 
@@ -174,6 +184,8 @@ export async function deleteHomeworkAssignment(
     .eq("id", assignmentId);
 
   if (error) return { error: error.message };
+  revalidatePath("/academy/teacher/homework");
+  revalidatePath("/academy/student/homework");
   return {};
 }
 
@@ -183,6 +195,8 @@ export async function deleteHomeworkAssignment(
 export async function listSubmissions(
   assignmentId: string
 ): Promise<HomeworkSubmission[]> {
+  const auth = await verifyAuthenticated();
+  if ("error" in auth) return [];
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("homework_submissions")
@@ -246,6 +260,8 @@ export async function listSubmissions(
 export async function getStudentHomework(
   studentProfileId: string
 ): Promise<(HomeworkAssignment & { submission: HomeworkSubmission | null })[]> {
+  const auth = await verifyAuthenticated();
+  if ("error" in auth) return [];
   const supabase = createAdminClient();
 
   // 소속 반 확인
@@ -348,6 +364,8 @@ export async function submitHomework(
     .eq("id", submissionId);
 
   if (error) return { error: error.message };
+  revalidatePath("/academy/teacher/homework");
+  revalidatePath("/academy/student/homework");
   return {};
 }
 
@@ -376,6 +394,8 @@ export async function reviewSubmission(
     .eq("id", submissionId);
 
   if (error) return { error: error.message };
+  revalidatePath("/academy/teacher/homework");
+  revalidatePath("/academy/student/homework");
   return {};
 }
 
@@ -383,6 +403,8 @@ export async function reviewSubmission(
 export async function getSubmissionFiles(
   submissionId: string
 ): Promise<HomeworkSubmissionFile[]> {
+  const auth = await verifyAuthenticated();
+  if ("error" in auth) return [];
   const supabase = createAdminClient();
   const { data: files } = await supabase
     .from("homework_submission_files")

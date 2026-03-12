@@ -19,10 +19,9 @@ tools:
 
 - `app/(admin)/admin/notices/` — 공개 공지 관리
 - `app/(admin)/admin/academy-notices/` — Academy 공지 관리
-- `app/(admin)/admin/classes/[id]/notices/` — 반별 공지 (반 상세 내)
-- `app/(admin)/admin/actions/notice-actions.ts` — 공개 공지 Actions
-- `app/(admin)/admin/actions/class-notice-actions.ts` — 반별 공지 Actions
-- `app/(admin)/admin/actions/academy-notice-actions.ts` — Academy 공지 Actions
+- `app/(admin)/admin/actions/notice-actions.ts` — 공개 공지 Actions (5개)
+- `app/(admin)/admin/actions/class-notice-actions.ts` — 반별 공지 Actions (6개)
+- `app/(admin)/admin/actions/academy-notice-actions.ts` — Academy 공지 Actions (5개)
 - `app/(site)/notice/` — 공개 사이트 공지 표시
 - `app/(academy)/academy/student/notices/` — 학생 공지 조회
 - `app/(academy)/academy/teacher/notices/` — 교사 공지 조회
@@ -32,8 +31,11 @@ tools:
 > 스키마 참조: `docs/schema/notices.sql`
 
 - `notices` — 공개 공지 (is_pinned, is_popup)
+- `notice_attachments` — 공개 공지 첨부파일
 - `class_notices` — 반별 공지 (class_id FK)
+- `class_notice_attachments` — 반별 공지 첨부파일
 - `academy_notices` — Academy 공지 (역할별 대상)
+- `academy_notice_attachments` — Academy 공지 첨부파일
 
 ## 규칙
 

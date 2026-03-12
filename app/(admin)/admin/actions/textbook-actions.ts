@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { verifyAdmin, verifyAuthenticated } from "./auth-helpers";
@@ -124,6 +125,8 @@ async function deleteCoverImage(publicUrl: string): Promise<void> {
 // ──────────────────────────────────────────────
 
 export async function listTextbooks(): Promise<Textbook[]> {
+  const auth = await verifyAuthenticated();
+  if ("error" in auth) return [];
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("textbooks")
@@ -139,6 +142,8 @@ export async function listTextbooks(): Promise<Textbook[]> {
 }
 
 export async function getTextbook(textbookId: string): Promise<Textbook | null> {
+  const auth = await verifyAuthenticated();
+  if ("error" in auth) return null;
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("textbooks")
@@ -188,6 +193,7 @@ export async function createTextbook(formData: FormData): Promise<{ error?: stri
     console.error("[createTextbook]", error.message);
     return { error: error.message };
   }
+  revalidatePath("/admin/textbooks");
   return { id: data.id };
 }
 
@@ -253,6 +259,7 @@ export async function updateTextbook(formData: FormData): Promise<{ error?: stri
     await deleteCoverImage(oldCoverUrl);
   }
 
+  revalidatePath("/admin/textbooks");
   return {};
 }
 
@@ -285,6 +292,7 @@ export async function deleteTextbook(textbookId: string): Promise<{ error?: stri
     await deleteCoverImage(existing.cover_image as string);
   }
 
+  revalidatePath("/admin/textbooks");
   return {};
 }
 
@@ -293,6 +301,8 @@ export async function deleteTextbook(textbookId: string): Promise<{ error?: stri
 // ──────────────────────────────────────────────
 
 export async function listClassTextbooks(classId: string): Promise<ClassTextbook[]> {
+  const auth = await verifyAuthenticated();
+  if ("error" in auth) return [];
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("class_textbooks")
@@ -375,9 +385,11 @@ export async function assignTextbookToClass(
 
     if (progressError) {
       console.error("[assignTextbookToClass] progress 생성 오류", progressError.message);
+      return { error: "학생 진도 생성에 실패했습니다." };
     }
   }
 
+  revalidatePath("/admin/textbooks");
   return {};
 }
 
@@ -410,6 +422,7 @@ export async function removeTextbookFromClass(
     .eq("source_class_id", classId)
     .eq("source_type", "class");
 
+  revalidatePath("/admin/textbooks");
   return {};
 }
 
@@ -443,6 +456,7 @@ export async function assignTextbookToStudent(
     console.error("[assignTextbookToStudent]", error.message);
     return { error: error.message };
   }
+  revalidatePath("/admin/textbooks");
   return {};
 }
 
@@ -460,6 +474,7 @@ export async function removeTextbookFromStudent(progressId: string): Promise<{ e
     console.error("[removeTextbookFromStudent]", error.message);
     return { error: error.message };
   }
+  revalidatePath("/admin/textbooks");
   return {};
 }
 
@@ -539,12 +554,15 @@ export async function updateProgress(
     console.error("[updateProgress]", error.message);
     return { error: error.message };
   }
+  revalidatePath("/admin/textbooks");
   return {};
 }
 
 export async function listStudentProgress(
   studentProfileId: string
 ): Promise<StudentTextbookProgress[]> {
+  const auth = await verifyAuthenticated();
+  if ("error" in auth) return [];
   const supabase = createAdminClient();
 
   const { data, error } = await supabase
@@ -609,6 +627,8 @@ export async function getClassTextbookProgress(
   classId: string,
   textbookId: string
 ): Promise<ClassTextbookProgressRow[]> {
+  const auth = await verifyAuthenticated();
+  if ("error" in auth) return [];
   const supabase = createAdminClient();
 
   // 반 소속 학생 목록
@@ -655,6 +675,8 @@ export async function getClassTextbookProgress(
 
 // 교재를 배정할 수 있는 교재 목록 (해당 반에 아직 배정되지 않은 것)
 export async function listTextbooksNotInClass(classId: string): Promise<Textbook[]> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return [];
   const supabase = createAdminClient();
 
   const { data: assigned } = await supabase
@@ -742,6 +764,7 @@ export async function batchUpdateProgress(
     return { error: error.message };
   }
 
+  revalidatePath("/admin/textbooks");
   return { updatedCount: targetIds.length };
 }
 

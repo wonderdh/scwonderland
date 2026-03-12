@@ -1,7 +1,8 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { verifyAdmin } from "./auth-helpers";
+import { verifyAdmin, verifyAuthenticated } from "./auth-helpers";
 import type { Notice, NoticeAttachment } from "@/lib/types";
 
 const NOTICE_BUCKET = "notice-files";
@@ -83,6 +84,9 @@ async function deleteNoticeFile(publicUrl: string): Promise<void> {
 export async function listNotices(
   includeUnpublished = false
 ): Promise<(Notice & { image_count: number; attachment_count: number })[]> {
+  const auth = await verifyAuthenticated();
+  if ("error" in auth) return [];
+
   const supabase = createAdminClient();
 
   let query = supabase
@@ -133,6 +137,9 @@ export async function getNoticeWithAttachments(
   images: NoticeAttachment[];
   attachments: NoticeAttachment[];
 } | null> {
+  const auth = await verifyAuthenticated();
+  if ("error" in auth) return null;
+
   const supabase = createAdminClient();
 
   const { data: notice, error } = await supabase
@@ -266,9 +273,11 @@ export async function createNotice(
         .insert(rows);
       if (attError) {
         console.error("[createNotice] 첨부파일 레코드 삽입 실패", attError.message);
+        return { error: "첨부파일 저장에 실패했습니다." };
       }
     }
 
+    revalidatePath("/admin/notices");
     return { id: data.id };
   } catch (err) {
     // 예외 발생 시 업로드 파일 롤백
@@ -376,7 +385,11 @@ export async function updateNotice(
     // 새 첨부파일 레코드 삽입
     if (newRecords.length > 0) {
       const rows = newRecords.map((r) => ({ ...r, notice_id: id }));
-      await supabase.from("notice_attachments").insert(rows);
+      const { error: attError } = await supabase.from("notice_attachments").insert(rows);
+      if (attError) {
+        console.error("[updateNotice] 첨부파일 레코드 삽입 실패", attError.message);
+        return { error: "첨부파일 저장에 실패했습니다." };
+      }
     }
 
     // 제거할 첨부파일 삭제
@@ -397,6 +410,7 @@ export async function updateNotice(
       }
     }
 
+    revalidatePath("/admin/notices");
     return {};
   } catch (err) {
     for (const uploaded of uploadedFiles) await deleteNoticeFile(uploaded.url);
@@ -437,5 +451,6 @@ export async function deleteNotice(
     return { error: error.message };
   }
 
+  revalidatePath("/admin/notices");
   return {};
 }

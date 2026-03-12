@@ -22,9 +22,10 @@ tools:
 
 ## 담당 파일
 
-- `docs/schema/*.sql` — 도메인별 DDL 스키마
+- `docs/schema/*.sql` — 도메인별 DDL 스키마 (users, classes, textbooks, timetable, notices, bus, academy)
 - `docs/migrations/` — 마이그레이션 기록
 - `lib/types/database.ts` — TypeScript 타입 정의
+- `lib/types/index.ts` — 타입 barrel re-export
 
 ## 규칙
 
@@ -34,3 +35,4 @@ tools:
 - Supabase MCP 도구는 이 에이전트만 사용 (다른 에이전트는 MCP 호출 금지)
 - 마이그레이션 전 영향받는 테이블의 기존 데이터 확인
 - RLS 정책: admin은 전체 접근, teacher/student는 본인 관련 데이터만
+- 새 타입 추가 시 `database.ts`에 정의 + `index.ts`에 export 추가

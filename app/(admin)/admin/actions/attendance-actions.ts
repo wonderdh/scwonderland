@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { verifyAuthenticated } from "./auth-helpers";
 import type { AttendanceRecord, AttendanceStats } from "@/lib/types";
@@ -10,6 +11,9 @@ export async function listAttendanceRecords(
   year?: number,
   month?: number
 ): Promise<AttendanceRecord[]> {
+  const auth = await verifyAuthenticated();
+  if ("error" in auth) return [];
+  if (year !== undefined && month !== undefined && (month < 1 || month > 12 || year < 2020 || year > 2100)) return [];
   const supabase = createAdminClient();
   let query = supabase
     .from("attendance")
@@ -81,6 +85,7 @@ export async function recordAttendance(
     console.error("[recordAttendance]", error.message);
     return { error: error.message };
   }
+  revalidatePath("/admin/students");
   return {};
 }
 
@@ -99,6 +104,7 @@ export async function deleteAttendance(
     console.error("[deleteAttendance]", error.message);
     return { error: error.message };
   }
+  revalidatePath("/admin/students");
   return {};
 }
 
@@ -107,6 +113,8 @@ export async function getClassAttendanceByDate(
   classId: string,
   date: string
 ): Promise<{ studentProfileId: string; status: string | null; note: string | null }[]> {
+  const auth = await verifyAuthenticated();
+  if ("error" in auth) return [];
   const supabase = createAdminClient();
 
   // 반 학생 목록
@@ -146,6 +154,8 @@ export async function getAttendanceStats(
   year: number,
   month: number
 ): Promise<AttendanceStats> {
+  const auth = await verifyAuthenticated();
+  if ("error" in auth) return { total: 0, present: 0, absent: 0, late: 0, excused: 0 };
   const supabase = createAdminClient();
 
   const startDate = `${year}-${String(month).padStart(2, "0")}-01`;

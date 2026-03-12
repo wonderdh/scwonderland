@@ -16,6 +16,7 @@ import type {
   BusManifestGroup,
   BusManifestEntry,
   NoRideEntry,
+  AfterSchoolBusEntry,
 } from "@/lib/types";
 
 // ── 호차 CRUD ──
@@ -322,7 +323,7 @@ export async function deleteStudentBusDefaults(ids: string[]): Promise<{ error?:
 export async function getDailyBusManifest(
   date: string,
   direction: "pickup" | "dropoff"
-): Promise<{ groups: BusManifestGroup[]; noRides: NoRideEntry[] }> {
+): Promise<{ groups: BusManifestGroup[]; noRides: NoRideEntry[]; afterschoolStudents: AfterSchoolBusEntry[] }> {
   const supabase = createAdminClient();
 
   const d = new Date(date);
@@ -342,11 +343,33 @@ export async function getDailyBusManifest(
     .eq("direction", direction)
     .eq("status", "approved");
 
+  // 하원 시 방과후 참여 학생 조회
+  let afterschoolStudents: AfterSchoolBusEntry[] = [];
+  if (direction === "dropoff" && isoDay >= 1 && isoDay <= 5) {
+    const { data: enrollments } = await supabase
+      .from("afterschool_enrollments")
+      .select("student_profile_id")
+      .eq("day_of_week", isoDay);
+    if (enrollments?.length) {
+      const enrolledIds = [...new Set(enrollments.map((e) => e.student_profile_id))];
+      const { data: students } = await supabase
+        .from("students")
+        .select("profile_id, korean_name, english_name, age")
+        .in("profile_id", enrolledIds);
+      afterschoolStudents = (students ?? []).map((s) => ({
+        student_profile_id: s.profile_id,
+        korean_name: s.korean_name,
+        english_name: s.english_name,
+        age: s.age ?? null,
+      }));
+    }
+  }
+
   const defaultRows = defaults ?? [];
   const changeRows = changes ?? [];
 
   if (!defaultRows.length && !changeRows.length) {
-    return { groups: [], noRides: [] };
+    return { groups: [], noRides: [], afterschoolStudents };
   }
 
   const allStudentIds = [
@@ -541,6 +564,44 @@ export async function getDailyBusManifest(
     }
   }
 
+  // 특수 호차: 각 시간대마다 학생 없어도 항상 카드 표시
+  const { data: specialBus } = await supabase
+    .from("bus_numbers")
+    .select("id, label")
+    .eq("label", "특수")
+    .eq("is_active", true)
+    .maybeSingle();
+
+  if (specialBus) {
+    if (!busMap.has(specialBus.id)) busMap.set(specialBus.id, specialBus.label);
+    // groupMap에 존재하는 각 시간대에 특수 호차가 없으면 빈 그룹 추가
+    const existingSlotIds = new Set([...groupMap.values()].map((g) => g.slotId));
+    for (const slotId of existingSlotIds) {
+      const key = `${slotId}-${specialBus.id}`;
+      if (!groupMap.has(key)) {
+        groupMap.set(key, { slotId, busId: specialBus.id, students: [] });
+      }
+    }
+    // 아무 시간대도 없으면 방향에 맞는 첫 번째 슬롯에 빈 그룹 추가
+    if (existingSlotIds.size === 0) {
+      const { data: fallbackSlot } = await supabase
+        .from("bus_time_slots")
+        .select("id, label, time")
+        .eq("direction", direction)
+        .eq("is_active", true)
+        .order("time")
+        .limit(1)
+        .maybeSingle();
+      if (fallbackSlot) {
+        const key = `${fallbackSlot.id}-${specialBus.id}`;
+        groupMap.set(key, { slotId: fallbackSlot.id, busId: specialBus.id, students: [] });
+        if (!slotMap.has(fallbackSlot.id)) {
+          slotMap.set(fallbackSlot.id, { label: fallbackSlot.label, time: fallbackSlot.time });
+        }
+      }
+    }
+  }
+
   const groups: BusManifestGroup[] = [...groupMap.values()]
     .map((g) => ({
       bus_time_slot_id: g.slotId,
@@ -556,7 +617,7 @@ export async function getDailyBusManifest(
       return a.bus_label.localeCompare(b.bus_label);
     });
 
-  return { groups, noRides };
+  return { groups, noRides, afterschoolStudents };
 }
 
 // ── 탑승 체크 ──
@@ -712,13 +773,12 @@ export async function uncheckBusStudent(
 
 // ── 변경 요청 관리 ──
 
-export async function listPendingChangeRequests(): Promise<BusChangeRequest[]> {
+export async function listAllChangeRequests(): Promise<BusChangeRequest[]> {
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("bus_change_requests")
     .select("*")
-    .eq("status", "pending")
-    .order("requested_at", { ascending: true });
+    .order("requested_at", { ascending: false });
   if (error) {
     console.error("[listPendingChangeRequests]", error.message);
     return [];
@@ -736,8 +796,10 @@ export async function listPendingChangeRequests(): Promise<BusChangeRequest[]> {
 
   const slotIds = [...new Set((data ?? []).filter((d) => d.new_bus_time_slot_id).map((d) => d.new_bus_time_slot_id))];
   const busIds = [...new Set((data ?? []).filter((d) => d.new_bus_number_id).map((d) => d.new_bus_number_id))];
+  const stopIds = [...new Set((data ?? []).filter((d) => d.new_bus_stop_id).map((d) => d.new_bus_stop_id))];
   let slotMap = new Map<string, { label: string; time: string }>();
   let busMap = new Map<string, string>();
+  let stopMap = new Map<string, string>();
 
   if (slotIds.length) {
     const { data: slots } = await supabase.from("bus_time_slots").select("id, label, time").in("id", slotIds);
@@ -746,6 +808,10 @@ export async function listPendingChangeRequests(): Promise<BusChangeRequest[]> {
   if (busIds.length) {
     const { data: buses } = await supabase.from("bus_numbers").select("id, label").in("id", busIds);
     busMap = new Map((buses ?? []).map((b) => [b.id, b.label]));
+  }
+  if (stopIds.length) {
+    const { data: stops } = await supabase.from("bus_stops").select("id, name").in("id", stopIds);
+    stopMap = new Map((stops ?? []).map((s) => [s.id, s.name]));
   }
 
   return (data ?? []).map((d) => {
@@ -759,29 +825,52 @@ export async function listPendingChangeRequests(): Promise<BusChangeRequest[]> {
       new_time_slot_label: slot?.label,
       new_time_slot_time: slot?.time,
       new_bus_label: d.new_bus_number_id ? busMap.get(d.new_bus_number_id) : undefined,
+      new_bus_stop_name: d.new_bus_stop_id ? stopMap.get(d.new_bus_stop_id) : undefined,
     };
   }) as BusChangeRequest[];
+}
+
+export async function listPendingChangeRequests(): Promise<BusChangeRequest[]> {
+  const all = await listAllChangeRequests();
+  return all.filter((r) => r.status === "pending");
 }
 
 export async function approveChangeRequest(
   requestId: string,
   reviewerId: string,
-  reviewNote?: string
+  overrides?: {
+    newBusTimeSlotId?: string;
+    newBusNumberId?: string;
+    newBusStopId?: string;
+    reviewNote?: string;
+  }
 ): Promise<{ error?: string }> {
   const auth = await verifyAdmin();
   if ("error" in auth) return { error: auth.error };
   const supabase = createAdminClient();
+
+  const updateData: Record<string, unknown> = {
+    status: "approved",
+    reviewed_by: reviewerId,
+    reviewed_at: new Date().toISOString(),
+    review_note: overrides?.reviewNote?.trim() || null,
+    updated_at: new Date().toISOString(),
+  };
+
+  if (overrides?.newBusTimeSlotId !== undefined) {
+    updateData.new_bus_time_slot_id = overrides.newBusTimeSlotId || null;
+  }
+  if (overrides?.newBusNumberId !== undefined) {
+    updateData.new_bus_number_id = overrides.newBusNumberId || null;
+  }
+  if (overrides?.newBusStopId !== undefined) {
+    updateData.new_bus_stop_id = overrides.newBusStopId || null;
+  }
+
   const { error } = await supabase
     .from("bus_change_requests")
-    .update({
-      status: "approved",
-      reviewed_by: reviewerId,
-      reviewed_at: new Date().toISOString(),
-      review_note: reviewNote?.trim() || null,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", requestId)
-    .eq("status", "pending");
+    .update(updateData)
+    .eq("id", requestId);
   if (error) {
     console.error("[approveChangeRequest]", error.message);
     return { error: error.message };
@@ -869,17 +958,13 @@ export async function submitBusChangeRequest(
   if ("error" in auth) return { error: auth.error };
   const supabase = createAdminClient();
 
-  if (changeType === "change" && (!newBusTimeSlotId || !newBusNumberId)) {
-    return { error: "변경할 시간대와 호차를 선택해 주세요." };
-  }
-
   const { error } = await supabase.from("bus_change_requests").insert({
     student_profile_id: studentProfileId,
     request_date: requestDate,
     direction,
     change_type: changeType,
-    new_bus_time_slot_id: changeType === "change" ? newBusTimeSlotId : null,
-    new_bus_number_id: changeType === "change" ? newBusNumberId : null,
+    new_bus_time_slot_id: newBusTimeSlotId || null,
+    new_bus_number_id: newBusNumberId || null,
     reason: reason?.trim() || null,
   });
 

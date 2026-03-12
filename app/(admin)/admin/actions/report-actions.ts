@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { revalidatePath } from "next/cache";
 import type { ReportCard, ReportCardListItem } from "@/lib/types";
 
 /** 선택한 학생·년·월의 리포트카드 1건 조회 (없으면 null). admin/선생/해당 학생만 조회 가능(RLS). */
@@ -85,6 +86,7 @@ export async function upsertReportCard(
     console.error("[upsertReportCard]", error.message, { studentProfileId, year, month });
     return { error: error.message };
   }
+  revalidatePath("/academy");
   return {};
 }
 
@@ -118,5 +120,6 @@ export async function updateReportCardReply(
     console.error("[updateReportCardReply]", error.message, { reportCardId });
     return { error: error.message };
   }
+  revalidatePath("/academy");
   return {};
 }

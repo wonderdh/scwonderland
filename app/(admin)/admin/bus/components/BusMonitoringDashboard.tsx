@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import type { BusManifestGroup, BusManifestEntry, BusTimeSlot } from "@/lib/types";
+import type { BusManifestGroup, BusManifestEntry, BusTimeSlot, AfterSchoolBusEntry } from "@/lib/types";
 import { getAgeColor } from "@/lib/student-age-colors";
 import { getDailyBusManifest } from "../../actions";
 
@@ -172,19 +172,23 @@ function MonitorBusCard({ card }: { card: BusManifestGroup }) {
                     {isChecked ? "✅" : isBoarded ? "🚌" : "⬜"}
                   </span>
                   <div className="flex-1 min-w-0">
-                    <span
-                      className={`block truncate ${
-                        isChecked
-                          ? "text-slate-400 line-through"
-                          : `font-medium ${getAgeColor(student.age).text}`
-                      }`}
-                    >
-                      {student.korean_name || student.english_name}
-                    </span>
+                    {isChecked ? (
+                      <span className="block truncate text-slate-400 line-through">
+                        {student.korean_name || student.english_name}
+                      </span>
+                    ) : (
+                      <span className={`inline-block truncate px-1.5 py-0.5 rounded text-xs font-medium ${getAgeColor(student.age).bg} ${getAgeColor(student.age).text}`}>
+                        {student.korean_name || student.english_name}
+                      </span>
+                    )}
                     {student.is_changed && student.original_bus_label && (
                       <span className="block text-[10px] text-amber-500">
-                        ← {student.original_bus_label}
-                        {student.note ? ` · ${student.note}` : ""}
+                        {student.original_bus_label} → {card.bus_label}
+                      </span>
+                    )}
+                    {student.note && (
+                      <span className="block text-[10px] text-slate-400">
+                        {student.note}
                       </span>
                     )}
                   </div>
@@ -217,6 +221,7 @@ export function BusMonitoringDashboard({
   const [date, setDate] = useState(today);
   const [direction, setDirection] = useState<"pickup" | "dropoff">("dropoff");
   const [groups, setGroups] = useState<BusManifestGroup[]>([]);
+  const [afterschoolStudents, setAfterSchoolStudents] = useState<AfterSchoolBusEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [countdown, setCountdown] = useState(REFRESH_INTERVAL);
   const countdownRef = useRef(REFRESH_INTERVAL);
@@ -225,6 +230,7 @@ export function BusMonitoringDashboard({
     setLoading(true);
     const result = await getDailyBusManifest(date, direction);
     setGroups(result.groups);
+    setAfterSchoolStudents(result.afterschoolStudents);
     setLoading(false);
     setCountdown(REFRESH_INTERVAL);
     countdownRef.current = REFRESH_INTERVAL;
@@ -380,6 +386,33 @@ export function BusMonitoringDashboard({
           </div>
         ))}
       </div>
+
+      {/* 방과후 학생 (하원 시만) */}
+      {afterschoolStudents.length > 0 && direction === "dropoff" && (
+        <div>
+          <div className="flex items-center gap-3 mb-3">
+            <span className="text-sm font-semibold text-violet-700">
+              방과후 ({afterschoolStudents.length}명)
+            </span>
+            <div className="flex-1 border-t border-violet-200" />
+          </div>
+          <div className="rounded-xl border border-violet-200 bg-violet-50/50 p-3">
+            <div className="flex flex-wrap gap-2">
+              {afterschoolStudents.map((student) => {
+                const ageColor = getAgeColor(student.age);
+                return (
+                  <span
+                    key={student.student_profile_id}
+                    className={`inline-block px-2 py-1 rounded text-xs font-medium ${ageColor.bg} ${ageColor.text}`}
+                  >
+                    {student.korean_name || student.english_name}
+                  </span>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

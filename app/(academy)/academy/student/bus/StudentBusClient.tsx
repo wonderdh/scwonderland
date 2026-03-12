@@ -79,8 +79,8 @@ export function StudentBusClient({ studentProfileId }: { studentProfileId: strin
       formDate,
       formDir,
       formType,
-      formType === "change" ? formSlotId : undefined,
-      formType === "change" ? formBusId : undefined,
+      formSlotId || undefined,
+      formBusId || undefined,
       formReason || undefined
     );
     if (result.error) {
@@ -115,6 +115,17 @@ export function StudentBusClient({ studentProfileId }: { studentProfileId: strin
   const pickupSlots = busTimeSlots.filter((s) => s.direction === "pickup");
   const dropoffSlots = busTimeSlots.filter((s) => s.direction === "dropoff");
 
+  // 오늘 날짜 & 요일 계산
+  const now = new Date();
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  const todayDow = now.getDay(); // 0=Sun, 1=Mon...6=Sat
+  const todayDayOfWeek = todayDow === 0 ? 7 : todayDow; // 1=Mon...7=Sun
+
+  // 오늘 날짜의 변경 요청 (대기중 또는 승인됨)
+  const todayChanges = requests.filter(
+    (r) => r.request_date === todayStr && (r.status === "pending" || r.status === "approved")
+  );
+
   return (
     <div className="space-y-6">
       {/* 주간 스케줄 */}
@@ -123,27 +134,118 @@ export function StudentBusClient({ studentProfileId }: { studentProfileId: strin
         {defaults.length === 0 ? (
           <p className="text-sm text-slate-400 py-4">등록된 승하차 스케줄이 없습니다.</p>
         ) : (
-          <div className="grid gap-2">
+          <div className="grid gap-3">
             {[1, 2, 3, 4, 5].map((day) => {
               const dayDefaults = defaults.filter((d) => d.day_of_week === day);
               if (!dayDefaults.length) return null;
+              const isToday = day === todayDayOfWeek;
               return (
-                <div key={day} className="border rounded-lg p-3">
-                  <span className="text-sm font-medium text-slate-700">{DAY_NAMES[day]}요일</span>
-                  <div className="mt-1 flex gap-4 flex-wrap">
-                    {dayDefaults.map((d) => (
-                      <span key={d.id} className="text-xs text-slate-600">
-                        <span className={`inline-block px-1.5 py-0.5 rounded mr-1 ${
-                          d.direction === "pickup" ? "bg-green-100 text-green-700" : "bg-orange-100 text-orange-700"
-                        }`}>
-                          {DIR_LABEL[d.direction]}
-                        </span>
-                        {d.time_slot_label && <span className="font-medium mr-1">{d.time_slot_label}</span>}
-                        {formatTime(d.time_slot_time)} {d.bus_label}
-                        {d.estimated_time && <span className="ml-1 text-slate-400">({formatTime(d.estimated_time)})</span>}
-                        {d.note && <span className="ml-1 text-slate-400">· {d.note}</span>}
-                      </span>
-                    ))}
+                <div key={day}>
+                  <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5 px-1">
+                    {DAY_NAMES[day]}요일{isToday && <span className="ml-1 text-blue-500">(오늘)</span>}
+                  </h3>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {dayDefaults.map((d) => {
+                      const change = isToday
+                        ? todayChanges.find((r) => r.direction === d.direction)
+                        : undefined;
+
+                      return (
+                        <div
+                          key={d.id}
+                          className={`rounded-xl border-l-4 border bg-white shadow-sm p-3 ${
+                            d.direction === "pickup"
+                              ? "border-l-green-500"
+                              : "border-l-orange-500"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                              d.direction === "pickup"
+                                ? "bg-green-100 text-green-700"
+                                : "bg-orange-100 text-orange-700"
+                            }`}>
+                              {DIR_LABEL[d.direction]}
+                            </span>
+                            {d.time_slot_label && (
+                              <span className="text-xs font-medium text-slate-600">{d.time_slot_label}</span>
+                            )}
+                          </div>
+
+                          <div className={change ? "flex gap-3" : ""}>
+                            {/* 기존 스케줄 */}
+                            <div className={`space-y-1 text-sm ${change ? "flex-1" : ""}`}>
+                              <div className="flex items-center gap-2">
+                                <span className="text-slate-400 text-xs w-10 shrink-0">시간</span>
+                                <span className={`font-semibold ${change ? "text-slate-400 line-through" : "text-slate-800"}`}>{formatTime(d.time_slot_time)}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-slate-400 text-xs w-10 shrink-0">호차</span>
+                                <span className={`font-medium ${change ? "text-slate-400 line-through" : "text-slate-700"}`}>{d.bus_label || "-"}</span>
+                              </div>
+                              {d.bus_stop_name && (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-slate-400 text-xs w-10 shrink-0">정류장</span>
+                                  <span className={change ? "text-slate-400 line-through" : "text-slate-700"}>{d.bus_stop_name}</span>
+                                </div>
+                              )}
+                              {!change && d.estimated_time && (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-slate-400 text-xs w-10 shrink-0">예상</span>
+                                  <span className="text-blue-600 font-medium">{formatTime(d.estimated_time)}</span>
+                                </div>
+                              )}
+                              {!change && d.note && (
+                                <div className="flex items-start gap-2">
+                                  <span className="text-slate-400 text-xs w-10 shrink-0 mt-0.5">메모</span>
+                                  <span className="text-slate-500 text-xs">{d.note}</span>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* 변경 정보 */}
+                            {change && (
+                              <div className="flex-1 border-l-2 border-blue-300 pl-3 space-y-1 text-sm">
+                                <div className="flex items-center gap-1.5 mb-1">
+                                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                                    change.change_type === "no_ride"
+                                      ? "bg-red-100 text-red-600"
+                                      : "bg-blue-100 text-blue-700"
+                                  }`}>
+                                    {change.change_type === "no_ride" ? "미탑승" : "변경"}
+                                  </span>
+                                  <span className={`text-xs px-1.5 py-0.5 rounded ${STATUS_COLOR[change.status]}`}>
+                                    {STATUS_LABEL[change.status]}
+                                  </span>
+                                </div>
+                                {change.change_type !== "no_ride" && (
+                                  <>
+                                    {change.new_time_slot_time && (
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-blue-400 text-xs w-10 shrink-0">시간</span>
+                                        <span className="font-semibold text-blue-700">{formatTime(change.new_time_slot_time)}</span>
+                                      </div>
+                                    )}
+                                    {change.new_bus_label && (
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-blue-400 text-xs w-10 shrink-0">호차</span>
+                                        <span className="font-medium text-blue-700">{change.new_bus_label}</span>
+                                      </div>
+                                    )}
+                                  </>
+                                )}
+                                {change.review_note && (
+                                  <div className="flex items-start gap-2">
+                                    <span className="text-blue-400 text-xs w-10 shrink-0 mt-0.5">메모</span>
+                                    <span className="text-blue-600 text-xs">{change.review_note}</span>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               );
@@ -194,35 +296,33 @@ export function StudentBusClient({ studentProfileId }: { studentProfileId: strin
               </div>
             </div>
 
-            {formType === "change" && (
-              <div className="flex gap-3 flex-wrap">
-                <div>
-                  <label className="text-xs text-slate-500 block mb-1">시간대</label>
-                  <select value={formSlotId} onChange={(e) => setFormSlotId(e.target.value)} className="h-9 px-2 border rounded text-sm">
-                    <option value="">선택</option>
-                    {(formDir === "pickup" ? pickupSlots : dropoffSlots).map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.label} ({formatTime(s.time)})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs text-slate-500 block mb-1">호차</label>
-                  <select value={formBusId} onChange={(e) => setFormBusId(e.target.value)} className="h-9 px-2 border rounded text-sm">
-                    <option value="">선택</option>
-                    {busNumbers.map((b) => (
-                      <option key={b.id} value={b.id}>{b.label}</option>
-                    ))}
-                  </select>
-                </div>
+            <div className="flex gap-3 flex-wrap">
+              <div>
+                <label className="text-xs text-slate-500 block mb-1">시간대 (선택)</label>
+                <select value={formSlotId} onChange={(e) => setFormSlotId(e.target.value)} className="h-9 px-2 border rounded text-sm">
+                  <option value="">선택</option>
+                  {(formDir === "pickup" ? pickupSlots : dropoffSlots).map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.label} ({formatTime(s.time)})
+                    </option>
+                  ))}
+                </select>
               </div>
-            )}
+              <div>
+                <label className="text-xs text-slate-500 block mb-1">호차 (선택)</label>
+                <select value={formBusId} onChange={(e) => setFormBusId(e.target.value)} className="h-9 px-2 border rounded text-sm">
+                  <option value="">선택</option>
+                  {busNumbers.map((b) => (
+                    <option key={b.id} value={b.id}>{b.label}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
 
             <div>
-              <label className="text-xs text-slate-500 block mb-1">사유 (선택)</label>
+              <label className="text-xs text-slate-500 block mb-1">세부 사항 (선택)</label>
               <Input
-                placeholder="변경 사유를 입력하세요"
+                placeholder="세부 사항을 입력하세요"
                 value={formReason}
                 onChange={(e) => setFormReason(e.target.value)}
                 className="max-w-xs"

@@ -1,7 +1,8 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { verifyAdmin } from "./auth-helpers";
+import { verifyAdmin, verifyAuthenticated } from "./auth-helpers";
 import type {
   ClassScheduleWithDetails,
   StudentTimetableRow,
@@ -31,6 +32,9 @@ export type GroupTimetableData = {
 export async function getGroupTimetableGrid(
   groupLabel: string,
 ): Promise<GroupTimetableData> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return { periods: [], classes: [], cells: {}, teachers: [], textbooks: [] };
+
   const supabase = createAdminClient();
 
   // 1. 해당 그룹의 교시 목록
@@ -152,6 +156,29 @@ export async function addSingleClassSchedule(
 
   const supabase = createAdminClient();
 
+  // 교사 충돌 검사: 반 배정일 때만 (학생 개인 배정 제외)
+  if (teacherProfileId && classId && !studentProfileId) {
+    const { data: conflict } = await supabase
+      .from("class_schedules")
+      .select("id, class_id")
+      .eq("teacher_profile_id", teacherProfileId)
+      .eq("academy_period_id", academyPeriodId)
+      .eq("day_of_week", dayOfWeek)
+      .is("student_profile_id", null)
+      .neq("class_id", classId)
+      .maybeSingle();
+
+    if (conflict) {
+      const { data: conflictClass } = await supabase
+        .from("classes")
+        .select("name")
+        .eq("id", conflict.class_id)
+        .maybeSingle();
+      const className = conflictClass?.name ?? "다른 반";
+      return { error: `해당 교사는 같은 시간에 이미 ${className}에 배정되어 있습니다.` };
+    }
+  }
+
   // 부분 유니크 인덱스 → Supabase upsert onConflict 미지원, select+insert/update 사용
   let query = supabase
     .from("class_schedules")
@@ -198,6 +225,7 @@ export async function addSingleClassSchedule(
     }
   }
 
+  revalidatePath("/admin/timetable");
   return {};
 }
 
@@ -206,6 +234,9 @@ export async function addSingleClassSchedule(
 export async function listClassSchedules(
   classId: string,
 ): Promise<ClassScheduleWithDetails[]> {
+  const auth = await verifyAuthenticated();
+  if ("error" in auth) return [];
+
   const supabase = createAdminClient();
 
   const { data: schedules, error } = await supabase
@@ -304,6 +335,7 @@ export async function addClassScheduleBatch(
     console.error("[addClassScheduleBatch]", error.message);
     return { error: error.message };
   }
+  revalidatePath("/admin/timetable");
   return {};
 }
 
@@ -325,6 +357,7 @@ export async function deleteClassSchedule(
     console.error("[deleteClassSchedule]", error.message);
     return { error: error.message };
   }
+  revalidatePath("/admin/timetable");
   return {};
 }
 
@@ -333,6 +366,9 @@ export async function deleteClassSchedule(
 export async function getStudentTimetable(
   studentProfileId: string,
 ): Promise<StudentTimetableRow[]> {
+  const auth = await verifyAuthenticated();
+  if ("error" in auth) return [];
+
   const supabase = createAdminClient();
 
   // 1. 학생의 소속 반
@@ -520,6 +556,9 @@ export type StudentTimetableEditData = {
 export async function getStudentTimetableEditable(
   studentProfileId: string,
 ): Promise<StudentTimetableEditData> {
+  const auth = await verifyAuthenticated();
+  if ("error" in auth) return { periods: [], cells: {}, teachers: [], textbooks: [] };
+
   const supabase = createAdminClient();
 
   // 1. 전체 활성 교시
@@ -628,5 +667,6 @@ export async function deleteStudentSchedule(
     console.error("[deleteStudentSchedule]", error.message);
     return { error: error.message };
   }
+  revalidatePath("/admin/timetable");
   return {};
 }

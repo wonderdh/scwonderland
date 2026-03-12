@@ -147,7 +147,7 @@ export function TimetableManager({
             <select
               value={editEndTime}
               onChange={(e) => setEditEndTime(e.target.value)}
-              className="h-8 px-2 border rounded text-xs w-24"
+              className={`h-8 px-2 border rounded text-xs w-24 ${editStartTime && editEndTime && editStartTime >= editEndTime ? "border-red-500" : ""}`}
             >
               <option value="">종료</option>
               {TIME_OPTIONS.map((t) => (
@@ -169,7 +169,7 @@ export function TimetableManager({
               variant="outline"
               className="h-7 text-xs"
               onClick={() => handleUpdate(period.id)}
-              disabled={loading}
+              disabled={loading || (!!editStartTime && !!editEndTime && editStartTime >= editEndTime)}
             >
               저장
             </Button>
@@ -271,12 +271,16 @@ export function TimetableManager({
           size="sm"
           onClick={handleCreate}
           disabled={
-            loading || !newName.trim() || !newStartTime || !newEndTime
+            loading || !newName.trim() || !newStartTime || !newEndTime || (!!newStartTime && !!newEndTime && newStartTime >= newEndTime)
           }
         >
           추가
         </Button>
       </div>
+
+      {newStartTime && newEndTime && newStartTime >= newEndTime && (
+        <p className="text-xs text-red-500">시작 시간은 종료 시간보다 빨라야 합니다.</p>
+      )}
 
       {/* 목록 — 그룹별 */}
       {academyPeriods.length === 0 && (

@@ -7,7 +7,7 @@ paths:
 
 # Server Actions
 
-## admin/actions/ (15개 파일, ~101개 함수, barrel re-export via actions.ts)
+## admin/actions/ (16개 파일, barrel re-export via actions.ts)
 
 **user-actions.ts — 사용자 관리 (12개):**
 - `createStudent(formData)` — 학생 계정 생성 (AdminClient, email_confirm: true)
@@ -93,12 +93,26 @@ paths:
 **attendance-actions.ts — 출결 (5개):**
 - `listAttendanceRecords(studentProfileId)` / `recordAttendance(...)` / `deleteAttendance(recordId)` / `getAttendanceStats(studentProfileId)` / `getClassAttendanceByDate(classId, date)`
 
-**bus-actions.ts — 승하차 관리 (14개):**
-- `listBusNumbers()` / `createBusNumber(...)` / `updateBusNumber(...)` / `deleteBusNumber(busNumberId)` — 호차 CRUD
-- `getStudentBusDefaults(studentProfileId)` / `upsertStudentBusDefault(...)` / `deleteStudentBusDefault(...)` — 기본 배정
-- `getDailyBusManifest(date)` — 일일 매니페스트
+**bus-actions.ts — 승하차 관리 (~47개):**
+- `listBusNumbers()` / `createBusNumber(...)` / `updateBusNumber(...)` / `deleteBusNumber(...)` — 호차 CRUD
+- `listBusTimeSlots()` / `createBusTimeSlot(...)` / `updateBusTimeSlot(...)` / `deleteBusTimeSlot(...)` — 시간대 CRUD
+- `listAllActiveStudentNames()` — 전체 활성 학생 목록 (배정용)
+- `getStudentBusDefaults(studentProfileId)` / `upsertStudentBusDefault(...)` / `deleteStudentBusDefault(...)` / `deleteStudentBusDefaults(ids[])` / `getBulkBusDefaults(...)` — 기본 배정
+- `getDailyBusManifest(date, direction)` — 일일 매니페스트 (groups + noRides + afterschoolStudents 반환)
+- `boardBusStudent(...)` / `unboardBusStudent(...)` / `checkBusStudent(...)` / `uncheckBusStudent(...)` — 탑승/하차 체크
+- `listBusStops(busNumberId)` / `createBusStop(...)` / `updateBusStop(...)` / `deleteBusStop(...)` — 정류장 CRUD
 - `listPendingChangeRequests()` / `approveChangeRequest(...)` / `rejectChangeRequest(...)` — 변경요청 관리
 - `getStudentChangeRequests(studentProfileId)` / `submitBusChangeRequest(...)` / `cancelBusChangeRequest(...)` — 학생 변경요청
+- `createAdminBusChange(...)` / `updateAdminBusChange(...)` / `deleteAdminBusChange(...)` / `getExistingBusChange(...)` — 관리자 당일 변경
+- `listBusStaff()` / `upsertBusStaff(...)` / `deleteBusStaff(...)` — 버스 담당자 관리
+
+**afterschool-actions.ts — 방과후 관리 (6개):**
+- `getOrCreateAfterschoolClass(dayOfWeek)` — 방과후 반 조회/생성
+- `getAfterschoolEnrollments(groupLabel?)` — 방과후 등록 현황
+- `enrollStudent(studentProfileId, classId, dayOfWeek)` — 학생 등록
+- `removeAfterschoolStudent(enrollmentId)` — 학생 제거
+- `listAvailableStudents(classId, dayOfWeek)` — 미등록 학생 목록
+- `bulkUpdateEnrollmentDays(studentProfileId, classId, days[])` — 요일 일괄 수정
 
 ## academy/actions.ts (7개)
 

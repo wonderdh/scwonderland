@@ -1,7 +1,8 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { verifyAdmin } from "./auth-helpers";
+import { verifyAdmin, verifyAuthenticated } from "./auth-helpers";
 import {
   STORAGE_BUCKETS,
   generateStoragePath,
@@ -52,6 +53,9 @@ async function deleteFile(publicUrl: string): Promise<void> {
 export async function listAcademyNotices(
   includeUnpublished = false
 ): Promise<AcademyNotice[]> {
+  const auth = await verifyAuthenticated();
+  if ("error" in auth) return [];
+
   const supabase = createAdminClient();
   let query = supabase
     .from("academy_notices")
@@ -102,6 +106,9 @@ export async function getAcademyNoticeWithAttachments(
   images: AcademyNoticeAttachment[];
   attachments: AcademyNoticeAttachment[];
 } | null> {
+  const auth = await verifyAuthenticated();
+  if ("error" in auth) return null;
+
   const supabase = createAdminClient();
   const { data: notice, error } = await supabase
     .from("academy_notices")
@@ -201,11 +208,16 @@ export async function createAcademyNotice(
     }
 
     if (records.length > 0) {
-      await supabase
+      const { error: attachError } = await supabase
         .from("academy_notice_attachments")
         .insert(records.map((r) => ({ ...r, academy_notice_id: data.id })));
+      if (attachError) {
+        console.error("[createAcademyNotice] 첨부파일 저장", attachError.message);
+        return { error: "첨부파일 저장에 실패했습니다." };
+      }
     }
 
+    revalidatePath("/admin/academy-notices");
     return { id: data.id };
   } catch (err) {
     for (const u of uploadedFiles) await deleteFile(u.url);
@@ -297,9 +309,13 @@ export async function updateAcademyNotice(
     }
 
     if (newRecords.length > 0) {
-      await supabase
+      const { error: attachError } = await supabase
         .from("academy_notice_attachments")
         .insert(newRecords.map((r) => ({ ...r, academy_notice_id: id })));
+      if (attachError) {
+        console.error("[updateAcademyNotice] 첨부파일 저장", attachError.message);
+        return { error: "첨부파일 저장에 실패했습니다." };
+      }
     }
 
     if (removeIds.length > 0) {
@@ -313,6 +329,7 @@ export async function updateAcademyNotice(
       }
     }
 
+    revalidatePath("/admin/academy-notices");
     return {};
   } catch (err) {
     for (const u of uploadedFiles) await deleteFile(u.url);
@@ -347,5 +364,6 @@ export async function deleteAcademyNotice(
     console.error("[deleteAcademyNotice]", error.message);
     return { error: error.message };
   }
+  revalidatePath("/admin/academy-notices");
   return {};
 }

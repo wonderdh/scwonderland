@@ -13,22 +13,24 @@ tools:
 
 # Admin CRUD
 
-학생, 교사, 반, 교재의 생성·조회·수정·삭제를 담당한다.
+학생, 교사, 반, 교재, 방과후의 생성·조회·수정·삭제를 담당한다.
 
 ## 담당 파일
 
-- `app/(admin)/admin/students/` — 학생 관리
-- `app/(admin)/admin/teachers/` — 교사 관리
-- `app/(admin)/admin/classes/` — 반 관리
+- `app/(admin)/admin/students/` — 학생 관리 (상세 탭: 출결, 버스, 교재, 시간표, 리포트, 학습기록)
+- `app/(admin)/admin/teachers/` — 교사 관리 (담당 반, 시간표 탭)
+- `app/(admin)/admin/classes/` — 반 관리 (ClassesManager, ClassScheduleManager)
 - `app/(admin)/admin/textbooks/` — 교재 관리
-- `app/(admin)/admin/actions/user-actions.ts` — 학생/교사 CRUD
-- `app/(admin)/admin/actions/class-actions.ts` — 반 CRUD
-- `app/(admin)/admin/actions/textbook-actions.ts` — 교재 CRUD
-- `app/(admin)/admin/actions/learning-actions.ts` — 교재 진도
-- `app/(admin)/admin/actions/attendance-actions.ts` — 출결
-- `app/(admin)/admin/actions/homework-actions.ts` — 숙제
-- `app/(admin)/admin/actions/report-actions.ts` — 리포트카드
-- `app/(admin)/admin/actions/dashboard-actions.ts` — 대시보드 통계
+- `app/(admin)/admin/afterschool/` — 방과후 관리 (AfterschoolPageClient)
+- `app/(admin)/admin/actions/user-actions.ts` — 학생/교사 CRUD (12개)
+- `app/(admin)/admin/actions/class-actions.ts` — 반 CRUD (11개)
+- `app/(admin)/admin/actions/textbook-actions.ts` — 교재 CRUD (20개)
+- `app/(admin)/admin/actions/learning-actions.ts` — 학습기록 (4개)
+- `app/(admin)/admin/actions/attendance-actions.ts` — 출결 (5개)
+- `app/(admin)/admin/actions/homework-actions.ts` — 숙제 (9개)
+- `app/(admin)/admin/actions/report-actions.ts` — 리포트카드 (4개)
+- `app/(admin)/admin/actions/dashboard-actions.ts` — 대시보드 통계 (1개)
+- `app/(admin)/admin/actions/afterschool-actions.ts` — 방과후 등록 관리 (6개)
 - `lib/types/` — 공유 타입 정의
 
 ## 관련 DB 테이블
@@ -37,13 +39,18 @@ tools:
 
 - `profiles` — 사용자 프로필 (role, deleted_at 소프트 삭제)
 - `students` — 학생 상세 (age, parent_phone)
-- `teachers` — 교사 상세 (is_native)
-- `classes` — 반 (type: kindergarten/afternoon)
+- `teachers` — 교사 상세 (teacher_type: korean/native)
+- `classes` — 반 (group_label: 유치부/오후반/방과후)
 - `class_students` — 반-학생 매핑
+- `class_teachers` — 반-교사 매핑
 - `textbooks` — 교재 (deleted_at 소프트 삭제)
 - `student_textbook_progress` — 교재 진도
 - `attendance` — 출결
-- `homework` — 숙제
+- `homework_assignments` — 숙제 출제
+- `homework_submissions` — 숙제 제출
+- `report_cards` — 리포트카드
+- `learning_records` — 학습기록
+- `afterschool_enrollments` — 방과후 등록 (student_profile_id, class_id, day_of_week)
 
 ## 규칙
 

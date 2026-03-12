@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/Spinner";
 import { Input } from "@/components/ui/input";
-import type { BusManifestGroup, BusManifestEntry, BusTimeSlot, BusNumber, NoRideEntry } from "@/lib/types";
+import type { BusManifestGroup, BusManifestEntry, BusTimeSlot, BusNumber, NoRideEntry, AfterSchoolBusEntry } from "@/lib/types";
 import { getAgeColor } from "@/lib/student-age-colors";
 import {
   getDailyBusManifest,
@@ -66,6 +66,7 @@ export function BusDashboard({ busTimeSlots, busNumbers }: { busTimeSlots: BusTi
   const [direction, setDirection] = useState<"pickup" | "dropoff">("pickup");
   const [groups, setGroups] = useState<BusManifestGroup[]>([]);
   const [noRides, setNoRides] = useState<NoRideEntry[]>([]);
+  const [afterschoolStudents, setAfterSchoolStudents] = useState<AfterSchoolBusEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [adminId, setAdminId] = useState("");
   const [isPending, startTransition] = useTransition();
@@ -81,6 +82,7 @@ export function BusDashboard({ busTimeSlots, busNumbers }: { busTimeSlots: BusTi
     const result = await getDailyBusManifest(date, direction);
     setGroups(result.groups);
     setNoRides(result.noRides);
+    setAfterSchoolStudents(result.afterschoolStudents);
     setLoading(false);
   }, [date, direction]);
 
@@ -133,10 +135,12 @@ export function BusDashboard({ busTimeSlots, busNumbers }: { busTimeSlots: BusTi
             }))
           );
           toast.error(`오류: ${result.error}`);
+        } else {
+          load();
         }
       });
     },
-    [date, direction]
+    [date, direction, load]
   );
 
   const handleCheck = useCallback(
@@ -190,10 +194,12 @@ export function BusDashboard({ busTimeSlots, busNumbers }: { busTimeSlots: BusTi
             }))
           );
           toast.error(`오류: ${result.error}`);
+        } else {
+          load();
         }
       });
     },
-    [date, direction, adminId]
+    [date, direction, adminId, load]
   );
 
   const handleCancelNoRide = useCallback(
@@ -329,6 +335,33 @@ export function BusDashboard({ busTimeSlots, busNumbers }: { busTimeSlots: BusTi
           </div>
         ))}
       </div>
+
+      {/* 방과후 학생 (하원 시만) */}
+      {afterschoolStudents.length > 0 && direction === "dropoff" && (
+        <div>
+          <div className="flex items-center gap-3 mb-3">
+            <span className="text-sm font-semibold text-violet-700">
+              방과후 ({afterschoolStudents.length}명)
+            </span>
+            <div className="flex-1 border-t border-violet-200" />
+          </div>
+          <div className="rounded-xl border border-violet-200 bg-violet-50/50 p-3">
+            <div className="flex flex-wrap gap-1.5">
+              {afterschoolStudents.map((student) => {
+                const ageColor = getAgeColor(student.age);
+                return (
+                  <span
+                    key={student.student_profile_id}
+                    className={`inline-block px-1.5 py-0.5 rounded text-xs font-medium ${ageColor.bg} ${ageColor.text}`}
+                  >
+                    {student.korean_name || student.english_name}
+                  </span>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 미탑승 학생 */}
       {noRideOnly.length > 0 && (
@@ -532,7 +565,7 @@ function BusCard({
                       </span>
                       {student.original_bus_label && (
                         <span className="shrink-0 text-[10px] text-amber-500">
-                          (← {student.original_bus_label})
+                          ({student.original_bus_label} → {card.bus_label})
                         </span>
                       )}
                     </>

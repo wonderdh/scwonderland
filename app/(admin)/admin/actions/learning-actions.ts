@@ -1,6 +1,7 @@
 "use server";
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import { revalidatePath } from "next/cache";
 import { verifyAuthenticated as verifyAuthenticatedUser } from "./auth-helpers";
 import type { LearningRecord } from "@/lib/types";
 
@@ -62,6 +63,7 @@ export async function createLearningRecord(
     console.error("[createLearningRecord]", error.message);
     return { error: error.message };
   }
+  revalidatePath("/academy");
   return { id: data.id };
 }
 
@@ -105,6 +107,7 @@ export async function updateLearningRecord(
     console.error("[updateLearningRecord]", error.message);
     return { error: error.message };
   }
+  revalidatePath("/academy");
   return {};
 }
 
@@ -124,5 +127,6 @@ export async function deleteLearningRecord(
     console.error("[deleteLearningRecord]", error.message);
     return { error: error.message };
   }
+  revalidatePath("/academy");
   return {};
 }
