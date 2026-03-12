@@ -556,7 +556,7 @@ export function BusMonitorClient({
       {afterschoolStudents.length > 0 && (
         <div>
           <div className="flex items-center gap-3 mb-2">
-            <span className="text-lg font-bold text-violet-700">방과후 ({afterschoolStudents.length}명)</span>
+            <span className="text-lg font-bold text-violet-700">방과후</span>
             <div className="flex-1 border-t border-violet-200" />
           </div>
           <div className="rounded-xl border border-violet-200 bg-violet-50/50 p-3">
