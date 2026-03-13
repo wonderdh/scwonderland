@@ -25,6 +25,9 @@ npm run lint     # ESLint 실행
 - `rules/server-actions.md` — 101개 함수 목록 (`actions/` 작업 시)
 - `rules/styling.md` — CSS, 색상 팔레트 (`*.css`, `(site)/` 작업 시)
 
+### 라우트별 문서 (`routes/`)
+특정 페이지 작업 시 `routes/_index.md`에서 해당 라우트 MD 파일을 찾아 참조. 각 MD에는 핵심 파일, 컴포넌트, Server Actions, 타입, 데이터 흐름, 주의사항이 정리되어 있음.
+
 ### 추가 참고사항
 - Tailwind 색상 팔레트: `TEACHER_COLOR_PALETTE` (`-200` 계열), `CLASS_COLOR_PALETTE` (`-100` 계열)
 - `GroupTimetableData` 타입: `schedule-actions.ts`에서 직접 import (크로스 라우트 그룹 경로)

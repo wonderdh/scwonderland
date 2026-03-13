@@ -25,7 +25,7 @@ const megaMenuItems: Record<string, string[]> = {
   programs: ["MAP", "Wonderland", "Wonder K", "Primo School", "Quest Academy"],
   features: ["News"],
   gallery: ["학부모상담", "가맹문의", "캠퍼스"],
-  contact: ["Special Day", "Wonderland E-School", "Library"],
+  contact: ["Special Day", "Wonderland E-School", "Library", "Links"],
 };
 
 export function Navigation() {

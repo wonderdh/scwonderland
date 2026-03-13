@@ -49,6 +49,7 @@ export const itemSlugs: Record<string, Record<string, string>> = {
     "Special Day": "special-day",
     "Wonderland E-School": "e-school",
     Library: "library",
+    Links: "links",
   },
 };
 

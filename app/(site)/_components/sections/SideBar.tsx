@@ -41,40 +41,16 @@ const quickLinks = [
     internal: false,
   },
   {
-    title: "Circle Time",
-    description: "연간 커리큘럼",
-    accentColor: "border-l-violet-500 hover:bg-violet-50",
+    title: "Links",
+    description: "유용한 링크 모음",
+    accentColor: "border-l-orange-500 hover:bg-orange-50",
     icon: (
       <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
       </svg>
     ),
-    href: "/circle-time-curriculum.html",
-    internal: false,
-  },
-  {
-    title: "Children's Music",
-    description: "YouTube 채널",
-    accentColor: "border-l-red-500 hover:bg-red-50",
-    icon: (
-      <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-        <path d="M23.498 6.186a3.016 3.016 0 00-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 00.502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 002.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 002.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
-      </svg>
-    ),
-    href: "https://www.youtube.com/@musicwithnancy/videos",
-    internal: false,
-  },
-  {
-    title: "Creativity",
-    description: "Facebook 페이지",
-    accentColor: "border-l-blue-600 hover:bg-blue-50",
-    icon: (
-      <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-        <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
-      </svg>
-    ),
-    href: "https://www.facebook.com/profile.php?id=61575547892633",
-    internal: false,
+    href: "/experience/links",
+    internal: true,
   },
 ];
 

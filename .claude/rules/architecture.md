@@ -78,6 +78,7 @@ CategoryLayout (menuId로 라우팅)
 | `/experience/special-day` | Special Day | 🔲 placeholder |
 | `/experience/e-school` | E-School | 🔲 placeholder |
 | `/experience/library` | Library | 🔲 placeholder |
+| `/experience/links` | Links (외부 링크 모음) | ✅ |
 
 ### (admin) — 관리자 대시보드 (9개 섹션)
 

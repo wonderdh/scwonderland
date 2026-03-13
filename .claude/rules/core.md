@@ -17,3 +17,4 @@ Next.js 16 (App Router) · React 19 · TypeScript · Tailwind CSS v4 · Supabase
 - 교재 삭제는 soft delete, 사용자 삭제는 soft delete (profiles.deleted_at + Auth ban)
 - 학생 나이별 색상: `getAgeColor(age)` from `lib/student-age-colors.ts` — 학생 이름 표시 시 필수
 - 관리자 UI: 교번·학번·이메일 숨김, 아이디(`email.split("@")[0]`)만 표시
+- **문서 동기화 필수:** 구조 변경 시 관련 MD 파일 즉시 업데이트. 대상: 라우트 추가/삭제/변경, 컴포넌트 추가/삭제, Server Actions 추가/삭제, DB 스키마 변경, 네비게이션 구조 변경, 공유 유틸/타입 변경 등. 업데이트 대상 파일: `rules/` (architecture, components, database, server-actions 등), `routes/*.md`, `CLAUDE.md`
