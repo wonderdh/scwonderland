@@ -546,7 +546,7 @@ export function BusMonitorClient({
         ))}
       </div>
 
-      {/* 방과후 학생 */}
+      {/* 방과후 학생 — 비활성화 (나중에 다시 활성화 예정)
       {afterschoolStudents.length > 0 && (
         <div>
           <div className="flex items-center gap-3 mb-2">
@@ -570,6 +570,7 @@ export function BusMonitorClient({
           </div>
         </div>
       )}
+      */}
 
       {/* 미배정 학생 카드 */}
       {unassignedStudents.length > 0 && (
