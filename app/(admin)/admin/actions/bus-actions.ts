@@ -982,8 +982,7 @@ export async function rejectChangeRequest(
       review_note: reviewNote?.trim() || null,
       updated_at: new Date().toISOString(),
     })
-    .eq("id", requestId)
-    .eq("status", "pending");
+    .eq("id", requestId);
   if (error) {
     console.error("[rejectChangeRequest]", error.message);
     return { error: error.message };

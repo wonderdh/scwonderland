@@ -13,13 +13,9 @@ import {
   unboardBusStudent,
   checkBusStudent,
   uncheckBusStudent,
-  createAdminBusChange,
-  updateAdminBusChange,
-  getExistingBusChange,
   deleteAdminBusChange,
-  listAllActiveStudentNames,
-  listBusStops,
 } from "../../actions";
+import { useBusRealtime } from "@/lib/hooks/use-bus-realtime";
 
 const DIR_LABEL = { pickup: "등원", dropoff: "하원" } as const;
 const DAY_NAMES = ["일", "월", "화", "수", "목", "금", "토"];
@@ -74,7 +70,7 @@ export function BusDashboard({ busTimeSlots, busNumbers }: { busTimeSlots: BusTi
     const slots = busTimeSlots.filter((s) => s.direction === "pickup");
     return slots[0]?.id ?? "";
   });
-  const [showChangeModal, setShowChangeModal] = useState(false);
+  // showChangeModal removed — moved to BusChangeRequestsPanel
 
   useEffect(() => {
     getAdminId().then(setAdminId);
@@ -92,6 +88,9 @@ export function BusDashboard({ busTimeSlots, busNumbers }: { busTimeSlots: BusTi
   useEffect(() => {
     load();
   }, [load]);
+
+  // Realtime 구독 — 다른 기기에서 승하차 처리 시 자동 갱신
+  useBusRealtime(date, load);
 
   const handleBoard = useCallback(
     (
@@ -274,14 +273,6 @@ export function BusDashboard({ busTimeSlots, busNumbers }: { busTimeSlots: BusTi
         <Button size="sm" variant="ghost" onClick={load} disabled={loading}>
           {loading ? <><Spinner size="sm" /> 불러오는 중...</> : "새로고침"}
         </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          className="ml-auto"
-          onClick={() => setShowChangeModal(true)}
-        >
-          당일 변경
-        </Button>
       </div>
 
       <h3 className="text-sm font-semibold text-slate-700">
@@ -445,15 +436,6 @@ export function BusDashboard({ busTimeSlots, busNumbers }: { busTimeSlots: BusTi
       )}
 
       {/* 당일 변경 모달 */}
-      {showChangeModal && (
-        <AdminBusChangeModal
-          date={date}
-          direction={direction}
-          busTimeSlots={busTimeSlots}
-          onClose={() => setShowChangeModal(false)}
-          onSaved={() => { setShowChangeModal(false); load(); }}
-        />
-      )}
     </div>
   );
 }
@@ -611,285 +593,3 @@ function BusCard({
 
 // ── 당일 변경 모달 ──
 
-function AdminBusChangeModal({
-  date,
-  direction,
-  busTimeSlots,
-  onClose,
-  onSaved,
-}: {
-  date: string;
-  direction: "pickup" | "dropoff";
-  busTimeSlots: BusTimeSlot[];
-  onClose: () => void;
-  onSaved: () => void;
-}) {
-  const [students, setStudents] = useState<{ profile_id: string; korean_name: string | null; english_name: string | null; age: number | null }[]>([]);
-  const [search, setSearch] = useState("");
-  const [selectedStudent, setSelectedStudent] = useState<string>("");
-  const [changeType, setChangeType] = useState<"change" | "no_ride" | "absent">("no_ride");
-  const [slotId, setSlotId] = useState("");
-  const [stopId, setStopId] = useState("");
-  const [stops, setStops] = useState<{ id: string; name: string }[]>([]);
-  const [reason, setReason] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [modalDirection, setModalDirection] = useState<"pickup" | "dropoff">(direction);
-
-  // 수정 모드
-  const [existingId, setExistingId] = useState<string | null>(null);
-  const [loadingExisting, setLoadingExisting] = useState(false);
-
-  useEffect(() => {
-    listAllActiveStudentNames().then(setStudents);
-  }, []);
-
-  // 학생+방향 선택 시 기존 변경 요청 확인
-  useEffect(() => {
-    if (!selectedStudent) {
-      setExistingId(null);
-      return;
-    }
-    setLoadingExisting(true);
-    getExistingBusChange(selectedStudent, date, modalDirection).then((existing) => {
-      if (existing) {
-        setExistingId(existing.id);
-        setChangeType(existing.change_type);
-        if (existing.change_type === "change") {
-          setSlotId(existing.new_bus_time_slot_id ?? "");
-          setStopId(existing.new_bus_stop_id ?? "");
-        }
-        setReason(existing.reason ?? "");
-      } else {
-        setExistingId(null);
-      }
-      setLoadingExisting(false);
-    });
-  }, [selectedStudent, modalDirection, date]);
-
-  // 정류장 로드 (전체 활성 정류장)
-  useEffect(() => {
-    listBusStops().then((data) => setStops(data.map((s) => ({ id: s.id, name: s.name }))));
-  }, []);
-
-  const dirSlots = busTimeSlots.filter((s) => s.direction === modalDirection);
-
-  const filtered = search.trim()
-    ? students.filter((s) => {
-        const q = search.trim().toLowerCase();
-        return (
-          (s.korean_name?.toLowerCase().includes(q)) ||
-          (s.english_name?.toLowerCase().includes(q))
-        );
-      })
-    : [];
-
-  async function handleSave() {
-    if (!selectedStudent) {
-      toast.error("학생을 선택해 주세요.");
-      return;
-    }
-    if (changeType === "change" && !slotId) {
-      toast.error("시간대를 선택해 주세요.");
-      return;
-    }
-    setSaving(true);
-
-    const result = existingId
-      ? await updateAdminBusChange(
-          existingId,
-          selectedStudent,
-          date,
-          modalDirection,
-          changeType,
-          changeType === "change" ? slotId : undefined,
-          undefined,
-          changeType === "change" && stopId ? stopId : undefined,
-          reason || undefined
-        )
-      : await createAdminBusChange(
-          selectedStudent,
-          date,
-          modalDirection,
-          changeType,
-          changeType === "change" ? slotId : undefined,
-          undefined,
-          changeType === "change" && stopId ? stopId : undefined,
-          reason || undefined
-        );
-
-    setSaving(false);
-    if (result.error) {
-      toast.error(result.error);
-    } else {
-      toast.success(existingId ? "변경 요청이 수정되었습니다." : "당일 변경이 적용되었습니다.");
-      onSaved();
-    }
-  }
-
-  async function handleDelete() {
-    if (!existingId) return;
-    setSaving(true);
-    const result = await deleteAdminBusChange(existingId);
-    setSaving(false);
-    if (result.error) {
-      toast.error(result.error);
-    } else {
-      toast.success("변경이 삭제되었습니다.");
-      onSaved();
-    }
-  }
-
-  function handleStudentReset() {
-    setSelectedStudent("");
-    setSearch("");
-    setExistingId(null);
-    setChangeType("no_ride");
-    setSlotId("");
-    setStopId("");
-    setReason("");
-  }
-
-  const selectedStudentInfo = students.find((s) => s.profile_id === selectedStudent);
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
-      <div
-        className="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 p-6 space-y-4 max-h-[90vh] overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center gap-2">
-          <h3 className="text-base font-semibold text-slate-800">당일 변경</h3>
-          {existingId && (
-            <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-medium">수정 모드</span>
-          )}
-        </div>
-        <p className="text-xs text-slate-500">{date}</p>
-
-        {/* 학생 검색 */}
-        <div>
-          <label className="text-xs font-medium text-slate-600 block mb-1">학생 선택</label>
-          {selectedStudentInfo ? (
-            <div className="flex items-center gap-2 p-2 border rounded-lg bg-slate-50">
-              <span className={`text-sm font-medium ${getAgeColor(selectedStudentInfo.age).text}`}>
-                {selectedStudentInfo.korean_name || selectedStudentInfo.english_name}
-              </span>
-              {loadingExisting && <span className="text-xs text-slate-400">확인 중...</span>}
-              <button
-                onClick={handleStudentReset}
-                className="ml-auto text-xs text-slate-400 hover:text-slate-600"
-              >
-                변경
-              </button>
-            </div>
-          ) : (
-            <>
-              <Input
-                placeholder="학생 이름 검색..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="text-sm"
-              />
-              {filtered.length > 0 && (
-                <div className="mt-1 border rounded-lg max-h-40 overflow-y-auto divide-y divide-slate-100">
-                  {filtered.slice(0, 20).map((s) => (
-                    <button
-                      key={s.profile_id}
-                      onClick={() => { setSelectedStudent(s.profile_id); setSearch(""); }}
-                      className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50"
-                    >
-                      <span className={getAgeColor(s.age).text}>
-                        {s.korean_name || s.english_name}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </>
-          )}
-        </div>
-
-        {/* 방향 */}
-        <div>
-          <label className="text-xs font-medium text-slate-600 block mb-1">방향</label>
-          <div className="flex gap-2">
-            <Button size="sm" variant={modalDirection === "pickup" ? "default" : "outline"} onClick={() => setModalDirection("pickup")}>등원</Button>
-            <Button size="sm" variant={modalDirection === "dropoff" ? "default" : "outline"} onClick={() => setModalDirection("dropoff")}>하원</Button>
-          </div>
-        </div>
-
-        {/* 변경 유형 */}
-        <div>
-          <label className="text-xs font-medium text-slate-600 block mb-1">변경 유형</label>
-          <div className="flex gap-3">
-            {([["change", "호차 변경"], ["no_ride", "미탑승"], ["absent", "결석"]] as const).map(([val, label]) => (
-              <label key={val} className="flex items-center gap-1.5 text-sm cursor-pointer">
-                <input
-                  type="radio"
-                  name="changeType"
-                  value={val}
-                  checked={changeType === val}
-                  onChange={() => setChangeType(val)}
-                  className="accent-slate-700"
-                />
-                {label}
-              </label>
-            ))}
-          </div>
-          {changeType === "absent" && (
-            <p className="text-xs text-slate-400 mt-1">해당 날짜 승하차 매니페스트에서 제외됩니다.</p>
-          )}
-        </div>
-
-        {/* 호차 변경 시 옵션 */}
-        {changeType === "change" && (
-          <div className="space-y-2">
-            <div>
-              <label className="text-xs font-medium text-slate-600 block mb-1">시간대</label>
-              <select value={slotId} onChange={(e) => setSlotId(e.target.value)} className="w-full h-9 px-2 border rounded text-sm">
-                <option value="">시간대 선택</option>
-                {dirSlots.map((s) => (
-                  <option key={s.id} value={s.id}>{formatTime(s.time)} {s.label}</option>
-                ))}
-              </select>
-            </div>
-            {stops.length > 0 && (
-              <div>
-                <label className="text-xs font-medium text-slate-600 block mb-1">정류장 (선택사항)</label>
-                <select value={stopId} onChange={(e) => setStopId(e.target.value)} className="w-full h-9 px-2 border rounded text-sm">
-                  <option value="">정류장 선택</option>
-                  {stops.map((s) => (
-                    <option key={s.id} value={s.id}>{s.name}</option>
-                  ))}
-                </select>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* 메모 */}
-        <div>
-          <label className="text-xs font-medium text-slate-600 block mb-1">메모 (선택)</label>
-          <Input
-            placeholder="메모 입력..."
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            className="text-sm"
-          />
-        </div>
-
-        {/* 버튼 */}
-        <div className="flex gap-2 pt-2">
-          <Button size="sm" onClick={handleSave} disabled={saving || !selectedStudent}>
-            {saving ? "저장 중..." : existingId ? "수정" : "저장"}
-          </Button>
-          {existingId && (
-            <Button size="sm" variant="destructive" onClick={handleDelete} disabled={saving}>
-              삭제
-            </Button>
-          )}
-          <Button size="sm" variant="outline" onClick={onClose}>취소</Button>
-        </div>
-      </div>
-    </div>
-  );
-}

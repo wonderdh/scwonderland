@@ -115,7 +115,7 @@ function ExternalIcon({ className }: { className?: string }) {
   );
 }
 
-export function AdminSidebar() {
+export function AdminSidebar({ adminId }: { adminId: string }) {
   const pathname = usePathname();
 
   return (
@@ -124,6 +124,9 @@ export function AdminSidebar() {
         <Link href="/admin" className="block">
           <span className="text-sidebar-foreground font-semibold text-sm tracking-tight">Admin Panel</span>
         </Link>
+        {adminId && (
+          <span className="text-[11px] text-sidebar-foreground/50 mt-0.5 block truncate">{adminId}</span>
+        )}
       </div>
       <nav className="flex-1 py-3 px-2">
         <ul className="space-y-0.5">

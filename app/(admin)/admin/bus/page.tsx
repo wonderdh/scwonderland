@@ -6,17 +6,16 @@ import { BusTimeSlotsManager } from "./components/BusTimeSlotsManager";
 import { BusDashboard } from "./components/BusDashboard";
 import { BusChangeRequestsPanel } from "./components/BusChangeRequestsPanel";
 import { BusStaffManager } from "./components/BusStaffManager";
-import { BusMonitoringDashboard } from "./components/BusMonitoringDashboard";
 import { BusOverviewPanel } from "./components/BusOverviewPanel";
 import { BusStopAssignmentManager } from "./components/BusStopAssignmentManager";
 import { BusStudentAssignmentManager } from "./components/BusStudentAssignmentManager";
 import { BusManagePanel } from "./components/BusManagePanel";
 
-const VALID_TABS: BusTabId[] = ["stop-assign", "student-assign", "overview", "dashboard", "monitoring", "bus-manage", "timeslots", "requests", "staff"];
+const VALID_TABS: BusTabId[] = ["overview", "dashboard", "requests", "student-assign", "stop-assign", "bus-manage", "timeslots", "staff"];
 
 function parseTab(tab: string | undefined): BusTabId {
   if (tab && VALID_TABS.includes(tab as BusTabId)) return tab as BusTabId;
-  return "dashboard";
+  return "overview";
 }
 
 export default async function AdminBusPage({
@@ -48,7 +47,6 @@ export default async function AdminBusPage({
         {currentTab === "student-assign" && <BusStudentAssignmentManager busNumbers={busNumbers} busTimeSlots={busTimeSlots} initialStops={busStops} allStudents={allStudentNames} />}
         {currentTab === "overview" && <BusOverviewPanel busNumbers={busNumbers} busTimeSlots={busTimeSlots} />}
         {currentTab === "dashboard" && <BusDashboard busTimeSlots={busTimeSlots} busNumbers={busNumbers} />}
-        {currentTab === "monitoring" && <BusMonitoringDashboard busTimeSlots={busTimeSlots} />}
         {currentTab === "bus-manage" && <BusManagePanel busNumbers={busNumbers} busTimeSlots={busTimeSlots} initialStops={busStops} />}
         {currentTab === "timeslots" && <BusTimeSlotsManager busTimeSlots={busTimeSlots} />}
         {currentTab === "requests" && <BusChangeRequestsPanel adminId={user.id} />}

@@ -168,4 +168,5 @@ export {
   removeAfterschoolStudent,
   listAvailableStudents,
   bulkUpdateEnrollmentDays,
+  listAfterschoolStudentIdsByDay,
 } from "./actions/afterschool-actions";

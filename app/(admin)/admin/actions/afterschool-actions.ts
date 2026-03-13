@@ -191,6 +191,19 @@ export async function listAvailableStudents(
 
 // ── 학생별 방과후 등록 요일 조회 ──
 
+/** 특정 요일에 방과후에 등록된 학생 profile_id 목록 */
+export async function listAfterschoolStudentIdsByDay(
+  day: number,
+): Promise<string[]> {
+  const supabase = createAdminClient();
+  const { data } = await supabase
+    .from("afterschool_enrollments")
+    .select("student_profile_id")
+    .eq("day_of_week", day);
+  // 중복 제거
+  return [...new Set((data ?? []).map((d) => d.student_profile_id))];
+}
+
 export async function getStudentAfterschoolDays(
   studentProfileId: string,
 ): Promise<number[]> {

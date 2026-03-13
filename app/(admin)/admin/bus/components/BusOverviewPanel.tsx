@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { getBulkBusDefaults } from "../../actions";
+import { getBulkBusDefaults, listBusStopDayAssignments } from "../../actions";
 import { getAgeColor } from "@/lib/student-age-colors";
 import type { BusNumber, BusTimeSlot, BusDefaultAssignment } from "@/lib/types";
 
@@ -32,6 +32,7 @@ export function BusOverviewPanel({
   const [day, setDay] = useState(defaultDay);
   const [direction, setDirection] = useState<"pickup" | "dropoff">("pickup");
   const [data, setData] = useState<BusDefaultAssignment[]>([]);
+  const [stopSortOrderMap, setStopSortOrderMap] = useState<Map<string, number>>(new Map());
   const [loading, setLoading] = useState(false);
 
   const filteredSlots = busTimeSlots.filter((s) => s.direction === direction && s.is_active);
@@ -50,8 +51,14 @@ export function BusOverviewPanel({
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const result = await getBulkBusDefaults(day, direction, slotId || undefined);
+      const [result, stopDayData] = await Promise.all([
+        getBulkBusDefaults(day, direction, slotId || undefined),
+        listBusStopDayAssignments(day, direction, slotId || undefined),
+      ]);
       setData(result);
+      const sortMap = new Map<string, number>();
+      for (const a of stopDayData) sortMap.set(a.bus_stop_id, a.sort_order);
+      setStopSortOrderMap(sortMap);
     } finally {
       setLoading(false);
     }
@@ -67,7 +74,7 @@ export function BusOverviewPanel({
   }, [direction, getDefaultSlotId]);
 
   // 호차 → 정류장 → 학생 그룹핑
-  const grouped = groupByBusAndStop(data, busNumbers);
+  const grouped = groupByBusAndStop(data, busNumbers, stopSortOrderMap);
 
   return (
     <div className="space-y-4">
@@ -197,7 +204,8 @@ type BusGroup = {
 
 function groupByBusAndStop(
   data: BusDefaultAssignment[],
-  busNumbers: BusNumber[]
+  busNumbers: BusNumber[],
+  stopSortOrderMap: Map<string, number>
 ): BusGroup[] {
   const busLabelMap = new Map(busNumbers.map((b) => [b.id, b.label]));
   const busOrder = new Map(busNumbers.map((b, i) => [b.id, i]));
@@ -232,11 +240,13 @@ function groupByBusAndStop(
       });
     }
 
-    // 정류장: 미지정을 마지막으로, 나머지는 이름순
+    // 정류장: 미지정을 마지막으로, 나머지는 sort_order순
     stops.sort((a, b) => {
       if (a.stopId === NO_STOP) return 1;
       if (b.stopId === NO_STOP) return -1;
-      return a.stopName.localeCompare(b.stopName);
+      const orderA = stopSortOrderMap.get(a.stopId) ?? 999;
+      const orderB = stopSortOrderMap.get(b.stopId) ?? 999;
+      return orderA - orderB;
     });
 
     result.push({

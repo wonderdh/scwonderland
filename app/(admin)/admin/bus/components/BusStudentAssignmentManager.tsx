@@ -10,6 +10,7 @@ import {
   saveBulkBusDefaults,
   listBusStops,
   listBusStopDayAssignments,
+  listAfterschoolStudentIdsByDay,
 } from "../../actions";
 import { getAgeColor } from "@/lib/student-age-colors";
 
@@ -65,6 +66,9 @@ export function BusStudentAssignmentManager({
   const [otherSlotAssigned, setOtherSlotAssigned] = useState<BusDefaultAssignment[]>([]);
   const [hoveredStudentId, setHoveredStudentId] = useState<string | null>(null);
 
+  // 해당 요일 방과후 학생 ID 세트
+  const [afterschoolIds, setAfterschoolIds] = useState<Set<string>>(new Set());
+
   // 메모 편집
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [editingNoteValue, setEditingNoteValue] = useState("");
@@ -75,15 +79,17 @@ export function BusStudentAssignmentManager({
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
-    const [defaults, stopDayData, allDirDefaults] = await Promise.all([
+    const [defaults, stopDayData, allDirDefaults, asIds] = await Promise.all([
       getBulkBusDefaults(day, direction, timeSlotId || undefined),
       listBusStopDayAssignments(day, direction, timeSlotId || undefined),
       // 같은 요일+방향의 전체 배정 조회 (다른 시간대 배정 학생 필터용)
       getBulkBusDefaults(day, direction),
+      listAfterschoolStudentIdsByDay(day),
     ]);
     setServerAssignments(defaults);
     setLocalAssignments(defaults);
     setDayAssignments(stopDayData);
+    setAfterschoolIds(new Set(asIds));
     // 현재 시간대가 아닌 다른 시간대에 배정된 학생
     const currentIds = new Set(defaults.map((d) => d.student_profile_id));
     setOtherSlotAssigned(
@@ -159,7 +165,7 @@ export function BusStudentAssignmentManager({
 
   // 미배정 학생 (현재 시간대 배정 + 다른 시간대 배정 모두 제외)
   const assignedIds = new Set(localAssignments.map((a) => a.student_profile_id));
-  const unassigned = allStudents.filter((s) => {
+  const filterStudent = (s: StudentItem) => {
     if (assignedIds.has(s.profile_id)) return false;
     if (otherSlotAssignedIds.has(s.profile_id)) return false;
     if (groupFilter !== "전체" && s.group_label !== groupFilter) return false;
@@ -168,7 +174,8 @@ export function BusStudentAssignmentManager({
       return s.korean_name?.toLowerCase().includes(q) || s.english_name?.toLowerCase().includes(q);
     }
     return true;
-  });
+  };
+  const unassigned = allStudents.filter(filterStudent);
 
   // 다른 시간대에 이미 배정된 학생 (검색/그룹 필터 적용)
   const otherSlotFiltered = otherSlotAssigned.filter((a) => {
@@ -340,6 +347,7 @@ export function BusStudentAssignmentManager({
   ) => {
     const ac = getAgeColor(age);
     const hasNote = assigned && localAssignments.find((a) => a.student_profile_id === profileId)?.note;
+    const isAfterschool = afterschoolIds.has(profileId);
     return (
       <span
         key={profileId}
@@ -355,6 +363,7 @@ export function BusStudentAssignmentManager({
         onClick={assigned ? (e) => { e.stopPropagation(); openNoteEditor(profileId, e); } : undefined}
         className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md cursor-grab active:cursor-grabbing hover:shadow-sm select-none ${ac.bg} ${ac.text} border ${ac.border} ${assigned ? "cursor-pointer" : ""}`}
       >
+        {isAfterschool && <span className="text-violet-500 text-[10px] leading-none">●</span>}
         {studentName(name)}
         {hasNote && <span className="w-1.5 h-1.5 rounded-full bg-current opacity-50 shrink-0" />}
       </span>

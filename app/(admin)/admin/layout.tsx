@@ -26,5 +26,7 @@ export default async function AdminLayout({
     redirect("/academy/login?error=admin_only");
   }
 
-  return <AdminLayoutClient>{children}</AdminLayoutClient>;
+  const adminId = user.email?.split("@")[0] ?? "";
+
+  return <AdminLayoutClient adminId={adminId}>{children}</AdminLayoutClient>;
 }
