@@ -44,7 +44,7 @@ export function BusNumbersManager({
 
   // Filters
   const [day, setDay] = useState(1);
-  const [direction, setDirection] = useState<"pickup" | "dropoff">("pickup");
+  const [direction, setDirection] = useState<"pickup" | "dropoff">("dropoff");
   const [timeSlotId, setTimeSlotId] = useState("");
 
   // Master stop list

@@ -24,6 +24,19 @@ const DAYS = [
 // Per-day assignment entry: which bus + sort order
 type StopAssignment = { busNumberId: string; sortOrder: number };
 
+// 복사 모달용 충돌 정보
+type CopyConflict = {
+  stopId: string;
+  stopName: string;
+  existingBusLabel: string;
+  newBusLabel: string;
+};
+
+type CopyDayPreview = {
+  day: number;
+  conflicts: CopyConflict[];
+};
+
 export function BusStopAssignmentManager({
   busNumbers,
   busTimeSlots,
@@ -35,9 +48,9 @@ export function BusStopAssignmentManager({
 }) {
   // Filters
   const [day, setDay] = useState(1);
-  const [direction, setDirection] = useState<"pickup" | "dropoff">("pickup");
+  const [direction, setDirection] = useState<"pickup" | "dropoff">("dropoff");
   const [timeSlotId, setTimeSlotId] = useState(() => {
-    const slots = busTimeSlots.filter((s) => s.direction === "pickup");
+    const slots = busTimeSlots.filter((s) => s.direction === "dropoff");
     return slots[0]?.id ?? "";
   });
 
@@ -57,6 +70,13 @@ export function BusStopAssignmentManager({
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [dragOverTarget, setDragOverTarget] = useState<string | null>(null);
+
+  // 복사 모달
+  const [copyModalOpen, setCopyModalOpen] = useState(false);
+  const [copySelectedDays, setCopySelectedDays] = useState<Set<number>>(new Set());
+  const [copyPreviews, setCopyPreviews] = useState<CopyDayPreview[]>([]);
+  const [copyPreviewLoading, setCopyPreviewLoading] = useState(false);
+  const [copying, setCopying] = useState(false);
 
   const filteredSlots = busTimeSlots.filter((s) => s.direction === direction);
 
@@ -128,7 +148,9 @@ export function BusStopAssignmentManager({
       .sort((a, b) => (dayAssignments.get(a.id)?.sortOrder ?? 0) - (dayAssignments.get(b.id)?.sortOrder ?? 0));
   }
 
-  const unassignedStops = stops.filter((s) => !dayAssignments.has(s.id));
+  const unassignedStops = stops
+    .filter((s) => !dayAssignments.has(s.id))
+    .sort((a, b) => a.name.localeCompare(b.name));
   const filteredUnassigned = search
     ? unassignedStops.filter((s) => s.name.toLowerCase().includes(search.toLowerCase()))
     : unassignedStops;
@@ -290,7 +312,7 @@ export function BusStopAssignmentManager({
     setSaving(false);
   }
 
-  // ── 전체 요일 시간 복사 ──
+  // ── 전체 요일 시간 복사 (정류장 행 버튼) ──
 
   async function handleCopyToAllDays(stopId: string) {
     const time = scheduleMap.get(stopId);
@@ -314,7 +336,88 @@ export function BusStopAssignmentManager({
     setLoading(false);
   }
 
+  // ── 다른 요일에 복사 모달 ──
+
+  const busLabelMap = new Map(busNumbers.map((b) => [b.id, b.label]));
+  const stopNameMap = new Map(stops.map((s) => [s.id, s.name]));
+
+  async function openCopyModal() {
+    if (dayAssignments.size === 0) {
+      toast.error("복사할 배정 데이터가 없습니다.");
+      return;
+    }
+    setCopyModalOpen(true);
+    setCopySelectedDays(new Set());
+    setCopyPreviews([]);
+    setCopyPreviewLoading(true);
+
+    const otherDays = DAYS.filter((d) => d.value !== day);
+    const previews: CopyDayPreview[] = [];
+
+    for (const d of otherDays) {
+      const existing = await listBusStopDayAssignments(d.value, direction, timeSlotId || undefined);
+      const conflicts: CopyConflict[] = [];
+      for (const ex of existing) {
+        const newAssignment = dayAssignments.get(ex.bus_stop_id);
+        if (!newAssignment) continue;
+        if (newAssignment.busNumberId !== ex.bus_number_id) {
+          conflicts.push({
+            stopId: ex.bus_stop_id,
+            stopName: stopNameMap.get(ex.bus_stop_id) ?? ex.bus_stop_id,
+            existingBusLabel: busLabelMap.get(ex.bus_number_id) ?? ex.bus_number_id,
+            newBusLabel: busLabelMap.get(newAssignment.busNumberId) ?? newAssignment.busNumberId,
+          });
+        }
+      }
+      previews.push({ day: d.value, conflicts });
+    }
+
+    setCopyPreviews(previews);
+    setCopyPreviewLoading(false);
+  }
+
+  function toggleCopyDay(d: number) {
+    setCopySelectedDays((prev) => {
+      const next = new Set(prev);
+      if (next.has(d)) next.delete(d);
+      else next.add(d);
+      return next;
+    });
+  }
+
+  async function handleConfirmCopy() {
+    if (copySelectedDays.size === 0) {
+      toast.error("복사할 요일을 선택해 주세요.");
+      return;
+    }
+    setCopying(true);
+    const errors: string[] = [];
+    const assignmentArr = [...dayAssignments.entries()].map(([bus_stop_id, a]) => ({
+      bus_stop_id,
+      bus_number_id: a.busNumberId,
+      sort_order: a.sortOrder,
+    }));
+    for (const targetDay of copySelectedDays) {
+      const r = await saveBusStopDayAssignments(targetDay, assignmentArr, direction, timeSlotId || undefined);
+      if (r.error) {
+        const label = DAYS.find((d) => d.value === targetDay)?.label ?? targetDay;
+        errors.push(`${label}요일: ${r.error}`);
+      }
+    }
+    if (errors.length) {
+      toast.error(`일부 실패: ${errors.join(", ")}`);
+    } else {
+      const labels = [...copySelectedDays].sort().map((d) => DAYS.find((x) => x.value === d)?.label).join(", ");
+      toast.success(`${labels}요일에 복사되었습니다.`);
+    }
+    setCopying(false);
+    setCopyModalOpen(false);
+  }
+
   // ── Render ──
+
+  const currentDayLabel = DAYS.find((d) => d.value === day)?.label ?? "";
+  const currentSlotLabel = filteredSlots.find((s) => s.id === timeSlotId)?.label ?? "";
 
   return (
     <div className="space-y-4">
@@ -367,14 +470,25 @@ export function BusStopAssignmentManager({
           ))}
         </select>
 
-        <Button
-          size="sm"
-          className={`h-8 ml-auto ${hasChanges ? "bg-blue-600 hover:bg-blue-700" : ""}`}
-          onClick={handleSaveAll}
-          disabled={saving || !hasChanges}
-        >
-          {saving ? "저장 중..." : hasChanges ? "저장" : "저장됨"}
-        </Button>
+        <div className="flex items-center gap-2 ml-auto">
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 text-xs"
+            onClick={openCopyModal}
+            disabled={saving || loading}
+          >
+            다른 요일에 복사
+          </Button>
+          <Button
+            size="sm"
+            className={`h-8 ${hasChanges ? "bg-blue-600 hover:bg-blue-700" : ""}`}
+            onClick={handleSaveAll}
+            disabled={saving || !hasChanges}
+          >
+            {saving ? "저장 중..." : hasChanges ? "저장" : "저장됨"}
+          </Button>
+        </div>
       </div>
 
       {hasChanges && (
@@ -481,6 +595,148 @@ export function BusStopAssignmentManager({
           </div>
         </div>
       </div>
+
+      {/* 다른 요일에 복사 모달 */}
+      {copyModalOpen && (
+        <>
+          <div
+            className="fixed inset-0 bg-black/40 z-[9000]"
+            onClick={() => !copying && setCopyModalOpen(false)}
+          />
+          <div className="fixed inset-0 z-[9001] flex items-center justify-center p-4">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
+              {/* 헤더 */}
+              <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-800">다른 요일에 복사</h3>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    {currentDayLabel}요일 · {direction === "pickup" ? "등원" : "하원"} · {currentSlotLabel}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setCopyModalOpen(false)}
+                  disabled={copying}
+                  className="text-slate-400 hover:text-slate-600 text-lg leading-none disabled:opacity-40"
+                >
+                  ×
+                </button>
+              </div>
+
+              {/* 본문 */}
+              <div className="px-5 py-4 space-y-4">
+                {/* 요일 선택 */}
+                <div>
+                  <p className="text-xs font-medium text-slate-600 mb-2">복사할 요일 선택</p>
+                  <div className="flex gap-2">
+                    {DAYS.filter((d) => d.value !== day).map((d) => {
+                      const selected = copySelectedDays.has(d.value);
+                      const preview = copyPreviews.find((p) => p.day === d.value);
+                      const hasConflict = (preview?.conflicts.length ?? 0) > 0;
+                      return (
+                        <button
+                          key={d.value}
+                          onClick={() => toggleCopyDay(d.value)}
+                          className={`relative flex-1 py-2 rounded-lg text-xs font-medium border transition-colors ${
+                            selected
+                              ? "bg-blue-600 text-white border-blue-600"
+                              : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
+                          }`}
+                        >
+                          {d.label}
+                          {hasConflict && (
+                            <span className={`absolute -top-1 -right-1 w-2 h-2 rounded-full ${selected ? "bg-yellow-300" : "bg-amber-400"}`} />
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* 충돌 안내 */}
+                {copyPreviewLoading ? (
+                  <p className="text-xs text-slate-400 text-center py-2 animate-pulse">충돌 확인 중...</p>
+                ) : (
+                  <>
+                    {/* 선택된 요일의 충돌 목록 */}
+                    {copySelectedDays.size > 0 && (() => {
+                      const allConflicts: { day: number; conflicts: CopyConflict[] }[] = [];
+                      for (const d of copySelectedDays) {
+                        const preview = copyPreviews.find((p) => p.day === d);
+                        if (preview && preview.conflicts.length > 0) {
+                          allConflicts.push({ day: d, conflicts: preview.conflicts });
+                        }
+                      }
+                      if (allConflicts.length === 0) {
+                        return (
+                          <p className="text-xs text-emerald-600 bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-100">
+                            충돌 없음 — 선택한 요일에 바로 복사됩니다.
+                          </p>
+                        );
+                      }
+                      return (
+                        <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5 space-y-2">
+                          <p className="text-xs font-semibold text-amber-700">⚠ 충돌 발생 — 아래 정류장이 다른 호차로 이동됩니다</p>
+                          {allConflicts.map(({ day: d, conflicts }) => (
+                            <div key={d}>
+                              <p className="text-[11px] font-medium text-amber-600 mb-1">
+                                {DAYS.find((x) => x.value === d)?.label}요일
+                              </p>
+                              <div className="space-y-0.5">
+                                {conflicts.map((c) => (
+                                  <div key={c.stopId} className="flex items-center gap-1.5 text-[11px] text-amber-700">
+                                    <span className="text-amber-400">📍</span>
+                                    <span className="font-medium">{c.stopName}</span>
+                                    <span className="text-amber-400">:</span>
+                                    <span className="line-through text-amber-400">{c.existingBusLabel}</span>
+                                    <span className="text-amber-400">→</span>
+                                    <span className="font-semibold">{c.newBusLabel}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })()}
+
+                    {/* 선택 전 전체 충돌 개요 */}
+                    {copySelectedDays.size === 0 && copyPreviews.some((p) => p.conflicts.length > 0) && (
+                      <div className="text-xs text-slate-500 space-y-1">
+                        {copyPreviews.filter((p) => p.conflicts.length > 0).map((p) => (
+                          <p key={p.day}>
+                            <span className="text-amber-500">⚠</span>{" "}
+                            {DAYS.find((d) => d.value === p.day)?.label}요일: {p.conflicts.length}개 정류장 충돌
+                          </p>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+
+              {/* 푸터 */}
+              <div className="flex justify-end gap-2 px-5 py-3 border-t border-slate-100">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setCopyModalOpen(false)}
+                  disabled={copying}
+                >
+                  취소
+                </Button>
+                <Button
+                  size="sm"
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                  onClick={handleConfirmCopy}
+                  disabled={copying || copySelectedDays.size === 0 || copyPreviewLoading}
+                >
+                  {copying ? "복사 중..." : `복사 (${copySelectedDays.size}개 요일)`}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

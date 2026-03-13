@@ -30,7 +30,7 @@ export function BusOverviewPanel({
   const defaultDay = jsDay >= 1 && jsDay <= 5 ? jsDay : 1;
 
   const [day, setDay] = useState(defaultDay);
-  const [direction, setDirection] = useState<"pickup" | "dropoff">("pickup");
+  const [direction, setDirection] = useState<"pickup" | "dropoff">("dropoff");
   const [data, setData] = useState<BusDefaultAssignment[]>([]);
   const [stopSortOrderMap, setStopSortOrderMap] = useState<Map<string, number>>(new Map());
   const [loading, setLoading] = useState(false);
@@ -47,7 +47,7 @@ export function BusOverviewPanel({
     [busTimeSlots]
   );
 
-  const [slotId, setSlotId] = useState<string>(() => getDefaultSlotId("pickup"));
+  const [slotId, setSlotId] = useState<string>(() => getDefaultSlotId("dropoff"));
 
   const fetchData = useCallback(async () => {
     const version = ++fetchVersionRef.current;

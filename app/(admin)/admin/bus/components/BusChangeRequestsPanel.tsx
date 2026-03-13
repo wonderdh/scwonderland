@@ -472,7 +472,7 @@ function AdminBusChangeModal({
   const [stops, setStops] = useState<{ id: string; name: string }[]>([]);
   const [reason, setReason] = useState("");
   const [saving, setSaving] = useState(false);
-  const [direction, setDirection] = useState<"pickup" | "dropoff">("pickup");
+  const [direction, setDirection] = useState<"pickup" | "dropoff">("dropoff");
 
   const [existingId, setExistingId] = useState<string | null>(null);
   const [loadingExisting, setLoadingExisting] = useState(false);

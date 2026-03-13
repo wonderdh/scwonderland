@@ -1,0 +1,1 @@
+ALTER TABLE afterschool_enrollments ADD COLUMN IF NOT EXISTS second_period BOOLEAN DEFAULT FALSE NOT NULL;

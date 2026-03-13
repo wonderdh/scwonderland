@@ -38,6 +38,7 @@ export function BusManagePanel({
   const [newStopName, setNewStopName] = useState("");
   const [editingStopId, setEditingStopId] = useState<string | null>(null);
   const [editStopName, setEditStopName] = useState("");
+  const [stopSearch, setStopSearch] = useState("");
 
   const [loading, setLoading] = useState(false);
 
@@ -242,12 +243,39 @@ export function BusManagePanel({
       <section className="space-y-3">
         <h3 className="text-sm font-semibold text-slate-700">정류장 관리</h3>
 
+        <div className="flex items-center gap-2 flex-wrap">
+          <Input
+            placeholder="정류장 검색..."
+            value={stopSearch}
+            onChange={(e) => setStopSearch(e.target.value)}
+            className="h-8 text-sm w-40"
+          />
+          <Input
+            placeholder="새 정류장 이름"
+            value={newStopName}
+            onChange={(e) => setNewStopName(e.target.value)}
+            className="h-8 text-sm w-44"
+            onKeyDown={(e) => { if (e.key === "Enter" && newStopName.trim()) handleCreateStop(); }}
+          />
+          <Button
+            size="sm"
+            className="h-8"
+            onClick={handleCreateStop}
+            disabled={loading || !newStopName.trim()}
+          >
+            추가
+          </Button>
+        </div>
+
         {/* Stop list */}
         <div className="space-y-2">
           {stops.length === 0 && (
             <p className="text-xs text-slate-400 py-6 text-center">등록된 정류장이 없습니다.</p>
           )}
-          {stops.map((stop) => (
+          {[...stops]
+            .sort((a, b) => a.name.localeCompare(b.name))
+            .filter((s) => !stopSearch || s.name.toLowerCase().includes(stopSearch.toLowerCase()))
+            .map((stop) => (
             <div
               key={stop.id}
               className="flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-200 bg-white"
@@ -313,27 +341,6 @@ export function BusManagePanel({
           ))}
         </div>
 
-        {/* Add stop */}
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-slate-500 whitespace-nowrap">새 정류장:</span>
-          <Input
-            placeholder="정류장 이름 (예: 아파트정문)"
-            value={newStopName}
-            onChange={(e) => setNewStopName(e.target.value)}
-            className="max-w-48 h-8 text-sm"
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && newStopName.trim()) handleCreateStop();
-            }}
-          />
-          <Button
-            size="sm"
-            className="h-8"
-            onClick={handleCreateStop}
-            disabled={loading || !newStopName.trim()}
-          >
-            추가
-          </Button>
-        </div>
       </section>
     </div>
   );

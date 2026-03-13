@@ -45,9 +45,9 @@ export function BusStudentAssignmentManager({
   allStudents: StudentItem[];
 }) {
   const [day, setDay] = useState(1);
-  const [direction, setDirection] = useState<"pickup" | "dropoff">("pickup");
+  const [direction, setDirection] = useState<"pickup" | "dropoff">("dropoff");
   const [timeSlotId, setTimeSlotId] = useState(() => {
-    const slots = busTimeSlots.filter((s) => s.direction === "pickup");
+    const slots = busTimeSlots.filter((s) => s.direction === "dropoff");
     return slots[0]?.id ?? "";
   });
   const [stops, setStops] = useState<BusStop[]>(initialStops);
@@ -136,8 +136,15 @@ export function BusStudentAssignmentManager({
   // bus_number_id → BusNumber 조회 맵
   const busById = new Map(busNumbers.map((b) => [b.id, b]));
 
-  // 활성 정류장 목록 (sort_order 순 정렬)
-  const activeStops = stops.filter((s) => s.is_active).sort((a, b) => a.sort_order - b.sort_order);
+  // 활성 정류장 목록 — 요일별 배정 sort_order 우선, 배정 없는 정류장은 전역 sort_order 폴백
+  const dayAssignmentSortMap = new Map(dayAssignments.map((da) => [da.bus_stop_id, da.sort_order]));
+  const activeStops = stops
+    .filter((s) => s.is_active)
+    .sort((a, b) => {
+      const sa = dayAssignmentSortMap.get(a.id) ?? a.sort_order;
+      const sb = dayAssignmentSortMap.get(b.id) ?? b.sort_order;
+      return sa - sb;
+    });
 
   // 정류장을 버스별로 그룹핑:
   //   busId → BusStop[]
@@ -379,7 +386,12 @@ export function BusStudentAssignmentManager({
   // ── 렌더: 정류장 드롭존 ─────────────────────────────────────────────────────
 
   const renderStopZone = (stop: BusStop, derivedBusLabel: string | null) => {
-    const students = assignedByStop.get(stop.id) ?? [];
+    const students = [...(assignedByStop.get(stop.id) ?? [])].sort((a, b) => {
+      const ageA = a.age ?? 99;
+      const ageB = b.age ?? 99;
+      if (ageA !== ageB) return ageA - ageB;
+      return (a.korean_name ?? a.english_name ?? "").localeCompare(b.korean_name ?? b.english_name ?? "");
+    });
     return (
       <div
         key={stop.id}
@@ -623,12 +635,19 @@ export function BusStudentAssignmentManager({
                 </div>
                 <div className="p-3 max-h-[20vh] overflow-y-auto bg-amber-50/30">
                   <div className="flex flex-wrap gap-1.5">
-                    {otherSlotFiltered.map((a) => {
+                    {[...otherSlotFiltered]
+                      .sort((a, b) => {
+                        const ageA = a.age ?? 99;
+                        const ageB = b.age ?? 99;
+                        if (ageA !== ageB) return ageA - ageB;
+                        return (a.korean_name ?? a.english_name ?? "").localeCompare(b.korean_name ?? b.english_name ?? "");
+                      })
+                      .map((a) => {
                       const slot = slotById.get(a.bus_time_slot_id);
                       const slotLabel = slot ? `${slot.label} (${slot.time?.slice(0, 5)})` : "";
                       const stopLabel = a.bus_stop_name ?? "정류장 없음";
-                      const tooltipText = `${slotLabel} · ${stopLabel}`;
                       const ac = getAgeColor(a.age);
+                      const isAfterschool = afterschoolIds.has(a.student_profile_id);
                       return (
                         <span
                           key={a.student_profile_id}
@@ -644,8 +663,9 @@ export function BusStudentAssignmentManager({
                           }}
                         >
                           <span
-                            className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded-md cursor-default opacity-70 ${ac.bg} ${ac.text} border ${ac.border}`}
+                            className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md cursor-default opacity-70 ${ac.bg} ${ac.text} border ${ac.border}`}
                           >
+                            {isAfterschool && <span className="text-violet-500 text-[10px] leading-none">●</span>}
                             {a.korean_name || a.english_name || "이름 없음"}
                           </span>
                         </span>

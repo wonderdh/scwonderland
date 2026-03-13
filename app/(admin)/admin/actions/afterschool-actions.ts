@@ -28,14 +28,19 @@ export async function getOrCreateAfterschoolClass(): Promise<{ id: string; name:
   return { id: created!.id, name: created!.name };
 }
 
-// ── 등록 학생 + 요일 정보 ──
+// ── 등록 학생 + 요일/교시 정보 ──
+
+export type DayEnrollment = {
+  day: number;
+  second_period: boolean;
+};
 
 export type AfterschoolStudentEnrollment = {
   student_profile_id: string;
   korean_name: string | null;
   english_name: string | null;
   age: number | null;
-  days: number[]; // [1,3,5] etc
+  days: DayEnrollment[];
 };
 
 export async function getAfterschoolEnrollments(
@@ -45,13 +50,13 @@ export async function getAfterschoolEnrollments(
 
   const { data: enrollments } = await supabase
     .from("afterschool_enrollments")
-    .select("student_profile_id, day_of_week")
+    .select("student_profile_id, day_of_week, second_period")
     .eq("class_id", classId);
 
-  const studentDaysMap = new Map<string, number[]>();
+  const studentDaysMap = new Map<string, DayEnrollment[]>();
   for (const e of enrollments ?? []) {
     const days = studentDaysMap.get(e.student_profile_id) ?? [];
-    days.push(e.day_of_week);
+    days.push({ day: e.day_of_week, second_period: e.second_period });
     studentDaysMap.set(e.student_profile_id, days);
   }
 
@@ -68,19 +73,20 @@ export async function getAfterschoolEnrollments(
     korean_name: s.korean_name ?? null,
     english_name: s.english_name ?? null,
     age: s.age ?? null,
-    days: (studentDaysMap.get(s.profile_id) ?? []).sort(),
+    days: (studentDaysMap.get(s.profile_id) ?? []).sort((a, b) => a.day - b.day),
   }));
 
   students.sort((a, b) => (a.korean_name ?? "").localeCompare(b.korean_name ?? ""));
   return students;
 }
 
-// ── 학생 등록 (요일 포함) ──
+// ── 학생 등록 (요일 + 교시 포함) ──
 
 export async function enrollStudent(
   classId: string,
   studentProfileId: string,
   days: number[],
+  secondPeriod: boolean,
 ): Promise<{ error?: string }> {
   const auth = await verifyAdmin();
   if ("error" in auth) return { error: auth.error };
@@ -92,6 +98,7 @@ export async function enrollStudent(
     class_id: classId,
     student_profile_id: studentProfileId,
     day_of_week: d,
+    second_period: secondPeriod,
   }));
 
   const { error } = await supabase.from("afterschool_enrollments").insert(rows);
@@ -215,11 +222,11 @@ export async function getStudentAfterschoolDays(
   return (data ?? []).map((d) => d.day_of_week).sort();
 }
 
-// ── 일괄 요일 저장 ──
+// ── 일괄 요일/교시 저장 ──
 
 export async function bulkUpdateEnrollmentDays(
   classId: string,
-  updates: { studentProfileId: string; days: number[] }[],
+  updates: { studentProfileId: string; days: DayEnrollment[] }[],
 ): Promise<{ error?: string }> {
   const auth = await verifyAdmin();
   if ("error" in auth) return { error: auth.error };
@@ -242,7 +249,8 @@ export async function bulkUpdateEnrollmentDays(
     u.days.map((d) => ({
       class_id: classId,
       student_profile_id: u.studentProfileId,
-      day_of_week: d,
+      day_of_week: d.day,
+      second_period: d.second_period,
     })),
   );
 

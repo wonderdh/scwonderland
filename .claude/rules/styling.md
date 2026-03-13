@@ -44,6 +44,26 @@ paths:
 - 텍스트만: `${getAgeColor(age).text}`
 - 적용 범위: 버스 배정/대시보드/모니터, 학생 목록 등 학생 이름 표시되는 모든 곳
 
+## 학생 명단 정렬 규칙
+
+**모든 학생 이름 명단(목록·배지·그리드)은 나이순 → 이름순으로 정렬한다.**
+
+```ts
+students.sort((a, b) => {
+  const ageA = a.age ?? 99;
+  const ageB = b.age ?? 99;
+  if (ageA !== ageB) return ageA - ageB;
+  return (a.korean_name ?? a.english_name ?? "")
+    .localeCompare(b.korean_name ?? b.english_name ?? "");
+});
+```
+
+현재 학급 구성:
+- **유치부**: 5세 (pink) · 6세 (sky) · 7세 (emerald)
+- **오후반**: 추후 추가 예정 — 추가 시 이 목록 업데이트
+
+이 정렬은 배지/태그 나열, 행 목록, 드래그 리스트, 모달 내 학생 목록 등 맥락에 관계없이 적용한다.
+
 ## 반응형 브레이크포인트
 
 - **lg** (1024px+): 데스크톱 (사이드바, 다중 컬럼)

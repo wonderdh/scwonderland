@@ -59,7 +59,7 @@ function groupByTime(groups: BusManifestGroup[]): TimeGroup[] {
 export function BusDashboard({ busTimeSlots, busNumbers }: { busTimeSlots: BusTimeSlot[]; busNumbers: BusNumber[] }) {
   const today = new Date().toISOString().slice(0, 10);
   const [date, setDate] = useState(today);
-  const [direction, setDirection] = useState<"pickup" | "dropoff">("pickup");
+  const [direction, setDirection] = useState<"pickup" | "dropoff">("dropoff");
   const [groups, setGroups] = useState<BusManifestGroup[]>([]);
   const [noRides, setNoRides] = useState<NoRideEntry[]>([]);
   const [afterschoolStudents, setAfterSchoolStudents] = useState<AfterSchoolBusEntry[]>([]);
@@ -67,7 +67,7 @@ export function BusDashboard({ busTimeSlots, busNumbers }: { busTimeSlots: BusTi
   const [adminId, setAdminId] = useState("");
   const [isPending, startTransition] = useTransition();
   const [selectedSlotId, setSelectedSlotId] = useState<string>(() => {
-    const slots = busTimeSlots.filter((s) => s.direction === "pickup");
+    const slots = busTimeSlots.filter((s) => s.direction === "dropoff");
     return slots[0]?.id ?? "";
   });
   // showChangeModal removed — moved to BusChangeRequestsPanel
@@ -338,7 +338,14 @@ export function BusDashboard({ busTimeSlots, busNumbers }: { busTimeSlots: BusTi
           </div>
           <div className="rounded-xl border border-violet-200 bg-violet-50/50 p-3">
             <div className="flex flex-wrap gap-1.5">
-              {afterschoolStudents.map((student) => {
+              {[...afterschoolStudents]
+                .sort((a, b) => {
+                  const ageA = a.age ?? 99;
+                  const ageB = b.age ?? 99;
+                  if (ageA !== ageB) return ageA - ageB;
+                  return (a.korean_name ?? a.english_name ?? "").localeCompare(b.korean_name ?? b.english_name ?? "");
+                })
+                .map((student) => {
                 const ageColor = getAgeColor(student.age);
                 return (
                   <span

@@ -34,7 +34,7 @@ export function BusAssignmentManager({
   allStudents: StudentItem[];
 }) {
   const [day, setDay] = useState(1);
-  const [direction, setDirection] = useState<"pickup" | "dropoff">("pickup");
+  const [direction, setDirection] = useState<"pickup" | "dropoff">("dropoff");
   const [timeSlotId, setTimeSlotId] = useState("");
   const [stops, setStops] = useState<BusStop[]>(initialStops);
   const [loading, setLoading] = useState(false);
