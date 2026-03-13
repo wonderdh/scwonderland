@@ -69,6 +69,9 @@ export function BusStudentAssignmentManager({
   // 해당 요일 방과후 학생 ID 세트
   const [afterschoolIds, setAfterschoolIds] = useState<Set<string>>(new Set());
 
+  // fetch 버전 카운터 (race condition 방지)
+  const fetchVersionRef = useRef(0);
+
   // 메모 편집
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [editingNoteValue, setEditingNoteValue] = useState("");
@@ -78,6 +81,7 @@ export function BusStudentAssignmentManager({
   const filteredSlots = busTimeSlots.filter((s) => s.direction === direction);
 
   const fetchAll = useCallback(async () => {
+    const version = ++fetchVersionRef.current;
     setLoading(true);
     const [defaults, stopDayData, allDirDefaults, asIds] = await Promise.all([
       getBulkBusDefaults(day, direction, timeSlotId || undefined),
@@ -86,6 +90,8 @@ export function BusStudentAssignmentManager({
       getBulkBusDefaults(day, direction),
       listAfterschoolStudentIdsByDay(day),
     ]);
+    // 이미 다른 필터로 변경된 경우 무시
+    if (version !== fetchVersionRef.current) return;
     setServerAssignments(defaults);
     setLocalAssignments(defaults);
     setDayAssignments(stopDayData);
@@ -524,10 +530,16 @@ export function BusStudentAssignmentManager({
             </Button>
           </div>
         )}
-        {loading && <span className="text-sm text-muted-foreground">불러오는 중...</span>}
+        {loading && <span className="text-sm text-muted-foreground animate-pulse">불러오는 중...</span>}
       </div>
 
       {/* 메인 그리드 */}
+      <div className="relative">
+        {loading && (
+          <div className="absolute inset-0 bg-white/70 z-10 flex items-center justify-center rounded-xl">
+            <span className="text-sm text-slate-500 animate-pulse">불러오는 중...</span>
+          </div>
+        )}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* 왼쪽: 정류장별 학생 배정 (버스 그룹 헤더 포함) */}
         <div className="lg:col-span-2 space-y-4">
@@ -645,6 +657,7 @@ export function BusStudentAssignmentManager({
             )}
           </div>
         </div>
+      </div>
       </div>
 
       {/* Fixed tooltip — overflow 영향 안 받음 */}

@@ -442,6 +442,32 @@ export function BusDashboard({ busTimeSlots, busNumbers }: { busTimeSlots: BusTi
 
 // ── 호차 카드 ──
 
+type CardStopGroup = {
+  stopName: string;
+  students: BusManifestEntry[];
+};
+
+function groupCardStudentsByStop(students: BusManifestEntry[]): CardStopGroup[] {
+  const map = new Map<string, BusManifestEntry[]>();
+  const NO_STOP = "__no_stop__";
+  for (const s of students) {
+    const key = s.bus_stop_name ?? NO_STOP;
+    if (!map.has(key)) map.set(key, []);
+    map.get(key)!.push(s);
+  }
+  const groups: CardStopGroup[] = [];
+  for (const [key, list] of map) {
+    groups.push({ stopName: key === NO_STOP ? "" : key, students: list });
+  }
+  // 정류장명순, 미지정은 마지막
+  groups.sort((a, b) => {
+    if (!a.stopName) return 1;
+    if (!b.stopName) return -1;
+    return a.stopName.localeCompare(b.stopName);
+  });
+  return groups;
+}
+
 function BusCard({
   card,
   boardedCount,
@@ -470,6 +496,91 @@ function BusCard({
   isPending: boolean;
 }) {
   const allDone = checkedCount === totalCount && totalCount > 0;
+  const stopGroups = groupCardStudentsByStop(card.students);
+
+  const renderStudent = (student: BusManifestEntry) => {
+    const isBoarded = !!student.boarded_at;
+    const isChecked = !!student.checked_at;
+
+    const rowBg = isChecked
+      ? "bg-green-50/60"
+      : student.is_changed
+        ? "bg-amber-50/60"
+        : isBoarded
+          ? "bg-blue-50/50"
+          : "hover:bg-slate-50";
+
+    return (
+      <div
+        key={student.student_profile_id}
+        className={`flex items-center gap-3 px-4 py-2 ${rowBg}`}
+      >
+        <input
+          type="checkbox"
+          checked={isBoarded || isChecked}
+          disabled={isPending || isChecked}
+          onChange={() =>
+            onBoard(student, card.bus_time_slot_id, card.bus_number_id, !isBoarded)
+          }
+          title="탑승"
+          className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 accent-blue-600"
+        />
+        <input
+          type="checkbox"
+          checked={isChecked}
+          disabled={isPending || !isBoarded}
+          onChange={() =>
+            onCheck(student, card.bus_time_slot_id, card.bus_number_id, !isChecked)
+          }
+          title="하차"
+          className="h-4 w-4 rounded border-slate-300 text-green-600 focus:ring-green-500 accent-green-600"
+        />
+
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <span className={`text-sm font-medium truncate ${getAgeColor(student.age).text}`}>
+              {student.korean_name || student.english_name}
+            </span>
+            {student.is_changed && (
+              <>
+                <span className="shrink-0 text-[10px] bg-amber-200 text-amber-800 px-1.5 py-0.5 rounded font-medium">
+                  변경
+                </span>
+                {student.original_bus_label && (
+                  <span className="shrink-0 text-[10px] text-amber-500">
+                    ({student.original_bus_label} → {card.bus_label})
+                  </span>
+                )}
+              </>
+            )}
+            {student.note && (
+              <span className="text-[10px] text-slate-400 truncate">({student.note})</span>
+            )}
+          </div>
+        </div>
+        <div className="flex items-center gap-1.5 shrink-0">
+          {student.estimated_time && (
+            <span className="text-xs text-slate-400">
+              {formatTime(student.estimated_time)}
+            </span>
+          )}
+          {isBoarded && student.boarded_at && (
+            <>
+              {student.estimated_time && <span className="text-xs text-slate-300">→</span>}
+              <span className="text-xs text-blue-600">
+                탑승 {formatCheckedTime(student.boarded_at)}
+              </span>
+            </>
+          )}
+          {isChecked && student.checked_at && (
+            <span className="text-xs text-green-600">
+              하차 {formatCheckedTime(student.checked_at)}
+            </span>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="rounded-xl border bg-white shadow-sm overflow-hidden">
@@ -483,109 +594,21 @@ function BusCard({
         </span>
       </div>
 
-      {/* 학생 리스트 */}
-      <div className="divide-y divide-slate-100">
-        {card.students.map((student) => {
-          const isBoarded = !!student.boarded_at;
-          const isChecked = !!student.checked_at;
-
-          // 배경색: 변경 학생(amber) → 하차(초록) → 탑승(파란) → 기본
-          const rowBg = isChecked
-            ? "bg-green-50/60"
-            : student.is_changed
-              ? "bg-amber-50/60"
-              : isBoarded
-                ? "bg-blue-50/50"
-                : "hover:bg-slate-50";
-
-          return (
-            <div
-              key={student.student_profile_id}
-              className={`flex items-center gap-3 px-4 py-2.5 ${rowBg}`}
-            >
-              {/* 탑승 체크박스 */}
-              <input
-                type="checkbox"
-                checked={isBoarded || isChecked}
-                disabled={isPending || isChecked}
-                onChange={() =>
-                  onBoard(
-                    student,
-                    card.bus_time_slot_id,
-                    card.bus_number_id,
-                    !isBoarded
-                  )
-                }
-                title="탑승"
-                className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 accent-blue-600"
-              />
-
-              {/* 하차 체크박스 */}
-              <input
-                type="checkbox"
-                checked={isChecked}
-                disabled={isPending || !isBoarded}
-                onChange={() =>
-                  onCheck(
-                    student,
-                    card.bus_time_slot_id,
-                    card.bus_number_id,
-                    !isChecked
-                  )
-                }
-                title="하차"
-                className="h-4 w-4 rounded border-slate-300 text-green-600 focus:ring-green-500 accent-green-600"
-              />
-
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className={`text-sm font-medium truncate ${getAgeColor(student.age).text}`}>
-                    {student.korean_name || student.english_name}
-                  </span>
-                  {student.is_changed && (
-                    <>
-                      <span className="shrink-0 text-[10px] bg-amber-200 text-amber-800 px-1.5 py-0.5 rounded font-medium">
-                        변경
-                      </span>
-                      {student.original_bus_label && (
-                        <span className="shrink-0 text-[10px] text-amber-500">
-                          ({student.original_bus_label} → {card.bus_label})
-                        </span>
-                      )}
-                    </>
-                  )}
-                </div>
-                {(student.bus_stop_name || student.note) && (
-                  <span className="text-xs text-slate-400 truncate block">
-                    {student.bus_stop_name ? `📍 ${student.bus_stop_name}` : ""}{student.bus_stop_name && student.note ? " · " : ""}{student.note ?? ""}
-                  </span>
-                )}
+      {/* 정류장별 학생 리스트 */}
+      <div className="divide-y divide-slate-200">
+        {stopGroups.map((sg, i) => (
+          <div key={sg.stopName || `__nostop_${i}`}>
+            {sg.stopName && (
+              <div className="px-4 py-1.5 bg-slate-50/60 flex items-center gap-1.5">
+                <span className="text-xs font-medium text-slate-500">📍 {sg.stopName}</span>
+                <span className="text-xs text-slate-400">({sg.students.length})</span>
               </div>
-              <div className="flex items-center gap-1.5 shrink-0">
-                {student.estimated_time && (
-                  <span className="text-xs text-slate-400">
-                    {formatTime(student.estimated_time)}
-                  </span>
-                )}
-                {isBoarded && student.boarded_at && (
-                  <>
-                    {student.estimated_time && (
-                      <span className="text-xs text-slate-300">→</span>
-                    )}
-                    <span className="text-xs text-blue-600">
-                      탑승 {formatCheckedTime(student.boarded_at)}
-                    </span>
-                  </>
-                )}
-                {isChecked && student.checked_at && (
-                  <span className="text-xs text-green-600">
-                    하차 {formatCheckedTime(student.checked_at)}
-                  </span>
-                )}
-              </div>
+            )}
+            <div className="divide-y divide-slate-100">
+              {sg.students.map(renderStudent)}
             </div>
-          );
-        })}
+          </div>
+        ))}
       </div>
     </div>
   );

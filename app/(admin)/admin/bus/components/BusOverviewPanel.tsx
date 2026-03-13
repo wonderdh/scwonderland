@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { getBulkBusDefaults, listBusStopDayAssignments } from "../../actions";
 import { getAgeColor } from "@/lib/student-age-colors";
 import type { BusNumber, BusTimeSlot, BusDefaultAssignment } from "@/lib/types";
@@ -34,6 +34,7 @@ export function BusOverviewPanel({
   const [data, setData] = useState<BusDefaultAssignment[]>([]);
   const [stopSortOrderMap, setStopSortOrderMap] = useState<Map<string, number>>(new Map());
   const [loading, setLoading] = useState(false);
+  const fetchVersionRef = useRef(0);
 
   const filteredSlots = busTimeSlots.filter((s) => s.direction === direction && s.is_active);
 
@@ -49,18 +50,20 @@ export function BusOverviewPanel({
   const [slotId, setSlotId] = useState<string>(() => getDefaultSlotId("pickup"));
 
   const fetchData = useCallback(async () => {
+    const version = ++fetchVersionRef.current;
     setLoading(true);
     try {
       const [result, stopDayData] = await Promise.all([
         getBulkBusDefaults(day, direction, slotId || undefined),
         listBusStopDayAssignments(day, direction, slotId || undefined),
       ]);
+      if (version !== fetchVersionRef.current) return;
       setData(result);
       const sortMap = new Map<string, number>();
       for (const a of stopDayData) sortMap.set(a.bus_stop_id, a.sort_order);
       setStopSortOrderMap(sortMap);
     } finally {
-      setLoading(false);
+      if (version === fetchVersionRef.current) setLoading(false);
     }
   }, [day, direction, slotId]);
 
@@ -142,7 +145,12 @@ export function BusOverviewPanel({
           배정된 학생이 없습니다.
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="relative space-y-4">
+          {loading && (
+            <div className="absolute inset-0 bg-white/70 z-10 flex items-center justify-center rounded-xl">
+              <span className="text-sm text-slate-500 animate-pulse">불러오는 중...</span>
+            </div>
+          )}
           {grouped.map((bus) => (
             <div key={bus.busId} className="border border-slate-200 rounded-xl overflow-hidden">
               {/* 호차 헤더 */}

@@ -170,7 +170,18 @@ async function deriveBusFromStopsBulk(
   if (error || !data) return new Map();
 
   const result = new Map<string, string>();
-  // 먼저 slot=null (기본) 매핑 적용
+  // 먼저 시간대별 매핑을 기본값으로 적용 (슬롯 미지정 호출 시 fallback)
+  if (!busTimeSlotId) {
+    for (const row of data) {
+      if (row.bus_time_slot_id) {
+        // 아직 매핑이 없는 정류장만 설정 (첫 번째 발견된 슬롯 우선)
+        if (!result.has(row.bus_stop_id)) {
+          result.set(row.bus_stop_id, row.bus_number_id);
+        }
+      }
+    }
+  }
+  // slot=null (기본) 매핑으로 덮어쓰기
   for (const row of data) {
     if (!row.bus_time_slot_id) {
       result.set(row.bus_stop_id, row.bus_number_id);
