@@ -50,6 +50,11 @@ type StopGroup = {
 
 function groupStudentsByStop(students: BusManifestEntry[]): StopGroup[] {
   const sorted = [...students].sort((a, b) => {
+    // 정류장 배치 순서 우선
+    const sa = a.bus_stop_sort_order ?? 9999;
+    const sb = b.bus_stop_sort_order ?? 9999;
+    if (sa !== sb) return sa - sb;
+    // fallback: 예상 시간 → 이름순
     const ta = a.estimated_time ?? "99:99";
     const tb = b.estimated_time ?? "99:99";
     if (ta !== tb) return ta.localeCompare(tb);

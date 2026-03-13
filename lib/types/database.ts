@@ -410,6 +410,7 @@ export type BusManifestEntry = {
   estimated_time?: string | null;
   note?: string | null;
   bus_stop_name?: string | null;
+  bus_stop_sort_order?: number | null;
   original_slot_time?: string;
   original_bus_label?: string;
   boarded_at?: string | null;

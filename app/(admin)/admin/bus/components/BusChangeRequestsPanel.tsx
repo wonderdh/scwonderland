@@ -468,6 +468,7 @@ function AdminBusChangeModal({
   const [changeType, setChangeType] = useState<"change" | "no_ride" | "absent">("no_ride");
   const [slotId, setSlotId] = useState("");
   const [stopId, setStopId] = useState("");
+  const [stopSearch, setStopSearch] = useState("");
   const [stops, setStops] = useState<{ id: string; name: string }[]>([]);
   const [reason, setReason] = useState("");
   const [saving, setSaving] = useState(false);
@@ -488,10 +489,9 @@ function AdminBusChangeModal({
       if (existing) {
         setExistingId(existing.id);
         setChangeType(existing.change_type);
-        if (existing.change_type === "change") {
-          setSlotId(existing.new_bus_time_slot_id ?? "");
-          setStopId(existing.new_bus_stop_id ?? "");
-        }
+        setSlotId(existing.new_bus_time_slot_id ?? "");
+        setStopId(existing.new_bus_stop_id ?? "");
+        setStopSearch("");
         setReason(existing.reason ?? "");
       } else {
         setExistingId(null);
@@ -502,24 +502,31 @@ function AdminBusChangeModal({
 
   const dirSlots = busTimeSlots.filter((s) => s.direction === direction);
 
-  const filtered = search.trim()
+  const filteredStudents = search.trim()
     ? students.filter((s) => {
         const q = search.trim().toLowerCase();
         return s.korean_name?.toLowerCase().includes(q) || s.english_name?.toLowerCase().includes(q);
       })
     : [];
 
+  const selectedStopInfo = stops.find((s) => s.id === stopId);
+
+  const filteredStops = stopSearch.trim()
+    ? stops.filter((s) => s.name.toLowerCase().includes(stopSearch.trim().toLowerCase()))
+    : stops;
+
   async function handleSave() {
     if (!selectedStudent) { toast.error("학생을 선택해 주세요."); return; }
+    if (!stopId) { toast.error("정류장을 선택해 주세요."); return; }
     if (changeType === "change" && !slotId) { toast.error("시간대를 선택해 주세요."); return; }
     setSaving(true);
     const result = existingId
       ? await updateAdminBusChange(existingId, selectedStudent, date, direction, changeType,
           changeType === "change" ? slotId : undefined, undefined,
-          changeType === "change" && stopId ? stopId : undefined, reason || undefined)
+          stopId, reason || undefined)
       : await createAdminBusChange(selectedStudent, date, direction, changeType,
           changeType === "change" ? slotId : undefined, undefined,
-          changeType === "change" && stopId ? stopId : undefined, reason || undefined);
+          stopId, reason || undefined);
     setSaving(false);
     if (result.error) { toast.error(result.error); }
     else { toast.success(existingId ? "변경 요청이 수정되었습니다." : "당일 변경이 적용되었습니다."); onSaved(); }
@@ -536,7 +543,11 @@ function AdminBusChangeModal({
 
   function handleStudentReset() {
     setSelectedStudent(""); setSearch(""); setExistingId(null);
-    setChangeType("no_ride"); setSlotId(""); setStopId(""); setReason("");
+    setChangeType("no_ride"); setSlotId(""); setStopId(""); setStopSearch(""); setReason("");
+  }
+
+  function handleStopReset() {
+    setStopId(""); setStopSearch("");
   }
 
   const selectedStudentInfo = students.find((s) => s.profile_id === selectedStudent);
@@ -557,7 +568,7 @@ function AdminBusChangeModal({
 
         {/* 학생 검색 */}
         <div>
-          <label className="text-xs font-medium text-slate-600 block mb-1">학생 선택</label>
+          <label className="text-xs font-medium text-slate-600 block mb-1">학생</label>
           {selectedStudentInfo ? (
             <div className="flex items-center gap-2 p-2 border rounded-lg bg-slate-50">
               <span className={`text-sm font-medium ${getAgeColor(selectedStudentInfo.age).text}`}>
@@ -569,9 +580,9 @@ function AdminBusChangeModal({
           ) : (
             <>
               <Input placeholder="학생 이름 검색..." value={search} onChange={(e) => setSearch(e.target.value)} className="text-sm" />
-              {filtered.length > 0 && (
+              {filteredStudents.length > 0 && (
                 <div className="mt-1 border rounded-lg max-h-40 overflow-y-auto divide-y divide-slate-100">
-                  {filtered.slice(0, 20).map((s) => (
+                  {filteredStudents.slice(0, 20).map((s) => (
                     <button key={s.profile_id} onClick={() => { setSelectedStudent(s.profile_id); setSearch(""); }} className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50">
                       <span className={getAgeColor(s.age).text}>{s.korean_name || s.english_name}</span>
                     </button>
@@ -584,7 +595,7 @@ function AdminBusChangeModal({
 
         {/* 방향 */}
         <div>
-          <label className="text-xs font-medium text-slate-600 block mb-1">방향</label>
+          <label className="text-xs font-medium text-slate-600 block mb-1">등하원</label>
           <div className="flex gap-2">
             <Button size="sm" variant={direction === "pickup" ? "default" : "outline"} onClick={() => setDirection("pickup")}>등원</Button>
             <Button size="sm" variant={direction === "dropoff" ? "default" : "outline"} onClick={() => setDirection("dropoff")}>하원</Button>
@@ -595,7 +606,7 @@ function AdminBusChangeModal({
         <div>
           <label className="text-xs font-medium text-slate-600 block mb-1">변경 유형</label>
           <div className="flex gap-3">
-            {([["change", "호차 변경"], ["no_ride", "미탑승"], ["absent", "결석"]] as const).map(([val, label]) => (
+            {([["no_ride", "미탑승"], ["change", "호차 변경"], ["absent", "결석"]] as const).map(([val, label]) => (
               <label key={val} className="flex items-center gap-1.5 text-sm cursor-pointer">
                 <input type="radio" name="changeType" value={val} checked={changeType === val} onChange={() => setChangeType(val)} className="accent-slate-700" />
                 {label}
@@ -605,37 +616,53 @@ function AdminBusChangeModal({
           {changeType === "absent" && <p className="text-xs text-slate-400 mt-1">해당 날짜 승하차 매니페스트에서 제외됩니다.</p>}
         </div>
 
-        {/* 호차 변경 시 옵션 */}
+        {/* 호차 변경 시 시간대 */}
         {changeType === "change" && (
-          <div className="space-y-2">
-            <div>
-              <label className="text-xs font-medium text-slate-600 block mb-1">시간대</label>
-              <select value={slotId} onChange={(e) => setSlotId(e.target.value)} className="w-full h-9 px-2 border rounded text-sm">
-                <option value="">시간대 선택</option>
-                {dirSlots.map((s) => (<option key={s.id} value={s.id}>{formatTime(s.time)} {s.label}</option>))}
-              </select>
-            </div>
-            {stops.length > 0 && (
-              <div>
-                <label className="text-xs font-medium text-slate-600 block mb-1">정류장 (선택사항)</label>
-                <select value={stopId} onChange={(e) => setStopId(e.target.value)} className="w-full h-9 px-2 border rounded text-sm">
-                  <option value="">정류장 선택</option>
-                  {stops.map((s) => (<option key={s.id} value={s.id}>{s.name}</option>))}
-                </select>
-              </div>
-            )}
+          <div>
+            <label className="text-xs font-medium text-slate-600 block mb-1">시간대</label>
+            <select value={slotId} onChange={(e) => setSlotId(e.target.value)} className="w-full h-9 px-2 border rounded text-sm">
+              <option value="">시간대 선택</option>
+              {dirSlots.map((s) => (<option key={s.id} value={s.id}>{formatTime(s.time)} {s.label}</option>))}
+            </select>
           </div>
         )}
 
+        {/* 정류장 검색 (필수) */}
+        <div>
+          <label className="text-xs font-medium text-slate-600 block mb-1">정류장</label>
+          {selectedStopInfo ? (
+            <div className="flex items-center gap-2 p-2 border rounded-lg bg-slate-50">
+              <span className="text-sm">📍</span>
+              <span className="text-sm font-medium text-slate-700">{selectedStopInfo.name}</span>
+              <button onClick={handleStopReset} className="ml-auto text-xs text-slate-400 hover:text-slate-600">변경</button>
+            </div>
+          ) : (
+            <>
+              <Input placeholder="정류장 검색..." value={stopSearch} onChange={(e) => setStopSearch(e.target.value)} className="text-sm" />
+              <div className="mt-1 border rounded-lg max-h-36 overflow-y-auto divide-y divide-slate-100">
+                {filteredStops.length === 0 ? (
+                  <p className="text-xs text-slate-400 py-3 text-center">정류장이 없습니다.</p>
+                ) : (
+                  filteredStops.map((s) => (
+                    <button key={s.id} onClick={() => { setStopId(s.id); setStopSearch(""); }} className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50">
+                      <span className="text-slate-400 mr-1.5">📍</span>{s.name}
+                    </button>
+                  ))
+                )}
+              </div>
+            </>
+          )}
+        </div>
+
         {/* 메모 */}
         <div>
-          <label className="text-xs font-medium text-slate-600 block mb-1">메모 (선택)</label>
+          <label className="text-xs font-medium text-slate-600 block mb-1">메모</label>
           <Input placeholder="메모 입력..." value={reason} onChange={(e) => setReason(e.target.value)} className="text-sm" />
         </div>
 
         {/* 버튼 */}
         <div className="flex gap-2 pt-2">
-          <Button size="sm" onClick={handleSave} disabled={saving || !selectedStudent}>
+          <Button size="sm" onClick={handleSave} disabled={saving || !selectedStudent || !stopId}>
             {saving ? "저장 중..." : existingId ? "수정" : "저장"}
           </Button>
           {existingId && (
