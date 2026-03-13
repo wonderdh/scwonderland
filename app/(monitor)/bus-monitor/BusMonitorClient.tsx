@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import type { BusManifestGroup, BusManifestEntry, BusTimeSlot, AfterSchoolBusEntry } from "@/lib/types";
 import { getAgeColor } from "@/lib/student-age-colors";
@@ -8,8 +8,6 @@ import { getDailyBusManifest, listAllActiveStudentNames } from "@/app/(admin)/ad
 
 const DIR_LABEL = { pickup: "등원", dropoff: "하원" } as const;
 const DAY_NAMES = ["일", "월", "화", "수", "목", "금", "토"];
-const REFRESH_INTERVAL = 30;
-
 // 호차별 색상 팔레트 (Tailwind purge-safe 리터럴)
 const BUS_CARD_COLORS = [
   { bg: "bg-blue-50", border: "border-l-blue-500", text: "text-blue-700" },
@@ -274,7 +272,7 @@ export function BusMonitorClient({
   const [showAll, setShowAll] = useState(true);
   const [currentTime, setCurrentTime] = useState(getCurrentHHMM);
   const [groupFilter, setGroupFilter] = useState<string>("");
-  const [slotFilter, setSlotFilter] = useState<string>("");
+  const [slotFilter, setSlotFilter] = useState<string>(() => busTimeSlots[0]?.id ?? "");
   const [unassignedStudents, setUnassignedStudents] = useState<{korean_name: string | null; english_name: string | null; age?: number | null}[]>([]);
   const [afterschoolStudents, setAfterSchoolStudents] = useState<AfterSchoolBusEntry[]>([]);
 
@@ -344,9 +342,6 @@ export function BusMonitorClient({
 
   useEffect(() => {
     load();
-    // TODO: 자동 새로고침 임시 off
-    // const interval = setInterval(() => load(), REFRESH_INTERVAL * 1000);
-    // return () => clearInterval(interval);
   }, [load]);
 
   // 필터 카테고리 추출 (등록된 시간대 label에서 키워드)
@@ -361,7 +356,7 @@ export function BusMonitorClient({
   const filteredGroups = allGroups
     .filter((tg) => showAll || tg.slotTime >= currentTime)
     .filter((tg) => !groupFilter || tg.slotLabel.includes(groupFilter))
-    .filter((tg) => !slotFilter || tg.cards.some((c) => c.bus_time_slot_id === slotFilter));
+    .filter((tg) => tg.cards.some((c) => c.bus_time_slot_id === slotFilter));
 
   // 호차별 고유 색상 매핑 (라벨 기준 정렬 → 인덱스)
   const busColorMap = (() => {
@@ -460,7 +455,7 @@ export function BusMonitorClient({
             <Button
               size="sm"
               variant={groupFilter === "" ? "default" : "outline"}
-              onClick={() => { setGroupFilter(""); setSlotFilter(""); }}
+              onClick={() => { setGroupFilter(""); setSlotFilter(busTimeSlots[0]?.id ?? ""); }}
             >
               전체
             </Button>
@@ -469,7 +464,7 @@ export function BusMonitorClient({
                 key={gf}
                 size="sm"
                 variant={groupFilter === gf ? "default" : "outline"}
-                onClick={() => { setGroupFilter(gf); setSlotFilter(""); }}
+                onClick={() => { setGroupFilter(gf); const filtered = busTimeSlots.filter(s => s.label.includes(gf)); setSlotFilter(filtered[0]?.id ?? busTimeSlots[0]?.id ?? ""); }}
               >
                 {gf}
               </Button>
@@ -484,7 +479,6 @@ export function BusMonitorClient({
             onChange={(e) => setSlotFilter(e.target.value)}
             className="h-9 px-2 border rounded text-sm"
           >
-            <option value="">전체 시간대</option>
             {filteredSlots.map((s) => (
               <option key={s.id} value={s.id}>
                 {formatTime(s.time)} {s.label} ({s.direction === "pickup" ? "등원" : "하원"})
@@ -539,7 +533,7 @@ export function BusMonitorClient({
             {/* 호차별 모니터링 카드 */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {tg.cards
-                .filter((c) => !slotFilter || c.bus_time_slot_id === slotFilter)
+                .filter((c) => c.bus_time_slot_id === slotFilter)
                 .map((card) => (
                 <MonitorBusCard
                   key={`${card.bus_time_slot_id}-${card.bus_number_id}`}

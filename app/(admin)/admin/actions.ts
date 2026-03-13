@@ -147,7 +147,6 @@ export {
   createBusStop,
   updateBusStop,
   deleteBusStop,
-  assignBusStopToBus,
   listBusStopDayAssignments,
   saveBusStopDayAssignments,
   listBusStopSchedulesBulk,

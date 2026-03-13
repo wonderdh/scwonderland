@@ -122,9 +122,7 @@ export function BusChangeRequestsPanel({ adminId }: { adminId: string }) {
   const completedRequests = requests.filter((r) => r.status !== "pending");
 
   // 선택한 호차에 해당하는 정류장 필터
-  const filteredStops = editBusId
-    ? busStops.filter((s) => s.bus_number_id === editBusId)
-    : busStops;
+  const filteredStops = busStops;
 
   return (
     <div className="space-y-4">

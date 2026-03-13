@@ -13,7 +13,6 @@ import {
 
 const DIR_LABEL = { pickup: "등원", dropoff: "하원" } as const;
 const DAY_NAMES = ["일", "월", "화", "수", "목", "금", "토"];
-const REFRESH_INTERVAL = 30;
 
 function fmt(t: string) {
   return t.slice(0, 5);
@@ -341,7 +340,6 @@ export function BusStaffMonitor({
   const [direction, setDirection] = useState<"pickup" | "dropoff">("pickup");
   const [groups, setGroups] = useState<BusManifestGroup[]>([]);
   const [loading, setLoading] = useState(false);
-  const [countdown, setCountdown] = useState(REFRESH_INTERVAL);
   const [saving, startSaving] = useTransition();
   const [slotFilter, setSlotFilter] = useState<string | null>(null);
 
@@ -360,21 +358,11 @@ export function BusStaffMonitor({
 
     setGroups(filtered);
     setLoading(false);
-    setCountdown(REFRESH_INTERVAL);
   }, [direction, busNumberId]);
 
   useEffect(() => {
     load();
-    const interval = setInterval(() => load(), REFRESH_INTERVAL * 1000);
-    return () => clearInterval(interval);
   }, [load]);
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCountdown((prev) => (prev <= 0 ? REFRESH_INTERVAL : prev - 1));
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
 
   // 고유 시간대 목록
   const timeSlots = useMemo(() => {
@@ -560,7 +548,6 @@ export function BusStaffMonitor({
           disabled={loading}
           className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-600 active:scale-95 transition-colors"
         >
-          <span className="tabular-nums">{countdown}s</span>
           <svg className={`size-3.5 ${loading ? "animate-spin" : ""}`} fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182" />
           </svg>

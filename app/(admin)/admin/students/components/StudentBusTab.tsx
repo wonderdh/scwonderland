@@ -4,12 +4,11 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import type { StudentBusDefault, BusNumber, BusTimeSlot, BusStop } from "@/lib/types";
+import type { StudentBusDefault, BusTimeSlot, BusStop } from "@/lib/types";
 import {
   getStudentBusDefaults,
   upsertStudentBusDefault,
   deleteStudentBusDefaults,
-  listBusNumbers,
   listBusTimeSlots,
   listBusStops,
 } from "../../actions";
@@ -26,7 +25,6 @@ function formatTime(t: string | undefined | null) {
 export function StudentBusTab({ studentProfileId }: { studentProfileId: string }) {
   const router = useRouter();
   const [defaults, setDefaults] = useState<StudentBusDefault[]>([]);
-  const [busNumbers, setBusNumbers] = useState<BusNumber[]>([]);
   const [busTimeSlots, setBusTimeSlots] = useState<BusTimeSlot[]>([]);
   const [busStops, setBusStops] = useState<BusStop[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,29 +39,23 @@ export function StudentBusTab({ studentProfileId }: { studentProfileId: string }
   const [batchDir, setBatchDir] = useState<"pickup" | "dropoff">("pickup");
   const [batchDays, setBatchDays] = useState<Set<number>>(new Set());
   const [batchSlotId, setBatchSlotId] = useState("");
-  const [batchBusId, setBatchBusId] = useState("");
   const [batchStopId, setBatchStopId] = useState("");
-  const [batchEstimatedTime, setBatchEstimatedTime] = useState("");
   const [batchNote, setBatchNote] = useState("");
 
   // 편집 모드
   const [editKey, setEditKey] = useState<string | null>(null); // "day-direction"
   const [editSlotId, setEditSlotId] = useState("");
-  const [editBusId, setEditBusId] = useState("");
   const [editStopId, setEditStopId] = useState("");
-  const [editEstimatedTime, setEditEstimatedTime] = useState("");
   const [editNote, setEditNote] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [d, bn, ts, stops] = await Promise.all([
+    const [d, ts, stops] = await Promise.all([
       getStudentBusDefaults(studentProfileId),
-      listBusNumbers(),
       listBusTimeSlots(),
       listBusStops(),
     ]);
     setDefaults(d);
-    setBusNumbers(bn);
     setBusTimeSlots(ts);
     setBusStops(stops);
     setPendingDeletes(new Set());
@@ -80,16 +72,11 @@ export function StudentBusTab({ studentProfileId }: { studentProfileId: string }
     );
   }
 
-  // 선택된 호차의 정류장 필터
-  function getStopsForBus(busId: string) {
-    return busStops.filter((s) => s.bus_number_id === busId);
-  }
-
   const hasPendingChanges = pendingDeletes.size > 0;
 
   async function handleSave(day: number, dir: "pickup" | "dropoff") {
-    if (!editSlotId || !editBusId) {
-      setError("시간대와 호차를 모두 선택해 주세요.");
+    if (!editSlotId) {
+      setError("시간대를 선택해 주세요.");
       return;
     }
     setSaving(true);
@@ -99,8 +86,7 @@ export function StudentBusTab({ studentProfileId }: { studentProfileId: string }
       day,
       dir,
       editSlotId,
-      editBusId,
-      editEstimatedTime || undefined,
+      undefined,
       editNote || undefined,
       editStopId || undefined
     );
@@ -128,9 +114,7 @@ export function StudentBusTab({ studentProfileId }: { studentProfileId: string }
     setBatchDir("pickup");
     setBatchDays(new Set());
     setBatchSlotId("");
-    setBatchBusId("");
     setBatchStopId("");
-    setBatchEstimatedTime("");
     setBatchNote("");
     setError("");
   }
@@ -140,8 +124,8 @@ export function StudentBusTab({ studentProfileId }: { studentProfileId: string }
       setError("요일을 하나 이상 선택해 주세요.");
       return;
     }
-    if (!batchSlotId || !batchBusId) {
-      setError("시간대와 호차를 모두 선택해 주세요.");
+    if (!batchSlotId) {
+      setError("시간대를 선택해 주세요.");
       return;
     }
     setSaving(true);
@@ -152,8 +136,7 @@ export function StudentBusTab({ studentProfileId }: { studentProfileId: string }
         day,
         batchDir,
         batchSlotId,
-        batchBusId,
-        batchEstimatedTime || undefined,
+        undefined,
         batchNote || undefined,
         batchStopId || undefined
       );
@@ -203,11 +186,6 @@ export function StudentBusTab({ studentProfileId }: { studentProfileId: string }
   const pickupSlots = busTimeSlots.filter((s) => s.direction === "pickup");
   const dropoffSlots = busTimeSlots.filter((s) => s.direction === "dropoff");
 
-  // 일괄 설정 - 선택된 호차의 정류장
-  const batchBusStops = getStopsForBus(batchBusId);
-  // 편집 모드 - 선택된 호차의 정류장
-  const editBusStops = getStopsForBus(editBusId);
-
   // 삭제 대기 중인 항목 정보
   const pendingDeleteItems = defaults.filter((d) => pendingDeletes.has(d.id));
 
@@ -215,7 +193,7 @@ export function StudentBusTab({ studentProfileId }: { studentProfileId: string }
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold text-slate-700">주간 승하차 스케줄</h3>
-        {busNumbers.length > 0 && busTimeSlots.length > 0 && !batchMode && (
+        {busTimeSlots.length > 0 && !batchMode && (
           <Button size="sm" variant="outline" className="h-7 text-xs" onClick={openBatchMode}>
             일괄 설정
           </Button>
@@ -312,23 +290,7 @@ export function StudentBusTab({ studentProfileId }: { studentProfileId: string }
                 ))}
               </select>
             </div>
-            <div>
-              <label className="text-xs font-medium text-slate-600 block mb-1">호차</label>
-              <select
-                value={batchBusId}
-                onChange={(e) => {
-                  setBatchBusId(e.target.value);
-                  setBatchStopId("");
-                }}
-                className="h-8 px-2 border rounded text-xs"
-              >
-                <option value="">선택</option>
-                {busNumbers.map((b) => (
-                  <option key={b.id} value={b.id}>{b.label}</option>
-                ))}
-              </select>
-            </div>
-            {batchBusStops.length > 0 && (
+            {busStops.length > 0 && (
               <div>
                 <label className="text-xs font-medium text-slate-600 block mb-1">정류장</label>
                 <select
@@ -337,21 +299,12 @@ export function StudentBusTab({ studentProfileId }: { studentProfileId: string }
                   className="h-8 px-2 border rounded text-xs"
                 >
                   <option value="">선택 (선택사항)</option>
-                  {batchBusStops.map((s) => (
+                  {busStops.map((s) => (
                     <option key={s.id} value={s.id}>{s.name}</option>
                   ))}
                 </select>
               </div>
             )}
-            <div>
-              <label className="text-xs font-medium text-slate-600 block mb-1">예상시간</label>
-              <Input
-                type="time"
-                value={batchEstimatedTime}
-                onChange={(e) => setBatchEstimatedTime(e.target.value)}
-                className="h-8 text-xs w-28"
-              />
-            </div>
             <div>
               <label className="text-xs font-medium text-slate-600 block mb-1">메모</label>
               <Input
@@ -373,9 +326,9 @@ export function StudentBusTab({ studentProfileId }: { studentProfileId: string }
         </div>
       )}
 
-      {busNumbers.length === 0 || busTimeSlots.length === 0 ? (
+      {busTimeSlots.length === 0 ? (
         <p className="text-sm text-slate-400 py-4">
-          호차 또는 시간대가 등록되지 않았습니다. 먼저{" "}
+          시간대가 등록되지 않았습니다. 먼저{" "}
           <a href="/admin/bus?tab=numbers" className="text-blue-500 underline">승하차 관리</a>
           에서 설정해 주세요.
         </p>
@@ -389,7 +342,6 @@ export function StudentBusTab({ studentProfileId }: { studentProfileId: string }
                 <th className="text-left py-2 px-2">시간대</th>
                 <th className="text-left py-2 px-2">호차</th>
                 <th className="text-left py-2 px-2">정류장</th>
-                <th className="text-left py-2 px-2">예상시간</th>
                 <th className="text-left py-2 px-2">메모</th>
                 <th className="text-right py-2 px-2 w-24"></th>
               </tr>
@@ -422,7 +374,7 @@ export function StudentBusTab({ studentProfileId }: { studentProfileId: string }
                       </td>
                       {deletedDef ? (
                         <>
-                          <td colSpan={5} className="py-2 px-2">
+                          <td colSpan={4} className="py-2 px-2">
                             <span className="text-xs text-red-400 line-through">
                               {formatTime(deletedDef.time_slot_time)} {deletedDef.bus_label} {deletedDef.bus_stop_name ?? ""}
                             </span>
@@ -455,46 +407,24 @@ export function StudentBusTab({ studentProfileId }: { studentProfileId: string }
                               ))}
                             </select>
                           </td>
-                          <td className="py-2 px-2">
-                            <select
-                              value={editBusId}
-                              onChange={(e) => {
-                                setEditBusId(e.target.value);
-                                setEditStopId("");
-                              }}
-                              className="h-8 px-2 border rounded text-xs w-full"
-                            >
-                              <option value="">선택</option>
-                              {busNumbers.map((b) => (
-                                <option key={b.id} value={b.id}>{b.label}</option>
-                              ))}
-                            </select>
+                          <td className="py-2 px-2 text-slate-400 text-xs">
+                            —
                           </td>
                           <td className="py-2 px-2">
-                            {editBusStops.length > 0 ? (
+                            {busStops.length > 0 ? (
                               <select
                                 value={editStopId}
                                 onChange={(e) => setEditStopId(e.target.value)}
                                 className="h-8 px-2 border rounded text-xs w-full"
                               >
                                 <option value="">선택</option>
-                                {editBusStops.map((s) => (
+                                {busStops.map((s) => (
                                   <option key={s.id} value={s.id}>{s.name}</option>
                                 ))}
                               </select>
                             ) : (
-                              <span className="text-xs text-slate-400">
-                                {editBusId ? "정류장 없음" : "호차 선택"}
-                              </span>
+                              <span className="text-xs text-slate-400">정류장 없음</span>
                             )}
-                          </td>
-                          <td className="py-2 px-2">
-                            <Input
-                              type="time"
-                              value={editEstimatedTime}
-                              onChange={(e) => setEditEstimatedTime(e.target.value)}
-                              className="h-8 text-xs w-full"
-                            />
                           </td>
                           <td className="py-2 px-2">
                             <Input
@@ -536,9 +466,6 @@ export function StudentBusTab({ studentProfileId }: { studentProfileId: string }
                             )}
                           </td>
                           <td className="py-2 px-2 text-slate-600">
-                            {def?.estimated_time ? formatTime(def.estimated_time) : <span className="text-slate-300">-</span>}
-                          </td>
-                          <td className="py-2 px-2 text-slate-600">
                             {def?.note ? <span className="text-xs">{def.note}</span> : <span className="text-slate-300">-</span>}
                           </td>
                           <td className="py-2 px-2 text-right space-x-1">
@@ -549,9 +476,7 @@ export function StudentBusTab({ studentProfileId }: { studentProfileId: string }
                               onClick={() => {
                                 setEditKey(key);
                                 setEditSlotId(def?.bus_time_slot_id ?? "");
-                                setEditBusId(def?.bus_number_id ?? "");
                                 setEditStopId(def?.bus_stop_id ?? "");
-                                setEditEstimatedTime(def?.estimated_time ? def.estimated_time.slice(0, 5) : "");
                                 setEditNote(def?.note ?? "");
                               }}
                             >

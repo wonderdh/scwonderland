@@ -1,0 +1,536 @@
+"use client";
+
+import { useState, useCallback, useEffect, useRef } from "react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import type { BusNumber, BusStop, BusTimeSlot } from "@/lib/types";
+import {
+  listBusStopDayAssignments,
+  saveBusStopDayAssignments,
+  listBusStopSchedulesBulk,
+  upsertBusStopSchedule,
+  deleteBusStopSchedule,
+} from "../../actions";
+
+const DAYS = [
+  { value: 1, label: "월" },
+  { value: 2, label: "화" },
+  { value: 3, label: "수" },
+  { value: 4, label: "목" },
+  { value: 5, label: "금" },
+];
+
+// Per-day assignment entry: which bus + sort order
+type StopAssignment = { busNumberId: string; sortOrder: number };
+
+export function BusStopAssignmentManager({
+  busNumbers,
+  busTimeSlots,
+  initialStops,
+}: {
+  busNumbers: BusNumber[];
+  busTimeSlots: BusTimeSlot[];
+  initialStops: BusStop[];
+}) {
+  // Filters
+  const [day, setDay] = useState(1);
+  const [direction, setDirection] = useState<"pickup" | "dropoff">("pickup");
+  const [timeSlotId, setTimeSlotId] = useState(() => {
+    const slots = busTimeSlots.filter((s) => s.direction === "pickup");
+    return slots[0]?.id ?? "";
+  });
+
+  // Master stop list (read-only — CRUD is handled in BusManagePanel)
+  const [stops] = useState<BusStop[]>(initialStops);
+
+  // Per-day assignment: stopId → { busNumberId, sortOrder }
+  const [dayAssignments, setDayAssignments] = useState<Map<string, StopAssignment>>(new Map());
+  const serverAssignments = useRef<Map<string, StopAssignment>>(new Map());
+
+  // Schedule times: stopId → time
+  const [scheduleMap, setScheduleMap] = useState<Map<string, string>>(new Map());
+  const serverSchedules = useRef<Map<string, string>>(new Map());
+
+  // UI
+  const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [dragOverTarget, setDragOverTarget] = useState<string | null>(null);
+
+  const filteredSlots = busTimeSlots.filter((s) => s.direction === direction);
+
+  // ── Fetch ──
+
+  const fetchDayAssignments = useCallback(async () => {
+    let data = await listBusStopDayAssignments(day, direction, timeSlotId || undefined);
+    // 특정 시간대 선택 시 데이터가 없으면 기본(전체) 배정을 복사해서 표시
+    const isSlotFallback = timeSlotId && data.length === 0;
+    if (isSlotFallback) {
+      data = await listBusStopDayAssignments(day, direction, undefined);
+    }
+    const map = new Map<string, StopAssignment>();
+    for (const a of data) map.set(a.bus_stop_id, { busNumberId: a.bus_number_id, sortOrder: a.sort_order });
+    setDayAssignments(map);
+    // fallback 데이터는 서버에 없으므로 serverAssignments를 비워서 dirty 상태로 표시
+    serverAssignments.current = isSlotFallback
+      ? new Map()
+      : new Map(map.entries().map(([k, v]) => [k, { ...v }]));
+  }, [day, direction, timeSlotId]);
+
+  const fetchSchedules = useCallback(async () => {
+    const data = await listBusStopSchedulesBulk(day, direction, timeSlotId || undefined);
+    const map = new Map<string, string>();
+    for (const s of data) map.set(s.bus_stop_id, s.estimated_time?.slice(0, 5) ?? "");
+    setScheduleMap(map);
+    serverSchedules.current = new Map(map);
+  }, [day, direction, timeSlotId]);
+
+  useEffect(() => { fetchDayAssignments(); }, [fetchDayAssignments]);
+  useEffect(() => { fetchSchedules(); }, [fetchSchedules]);
+
+  // ── Dirty detection ──
+
+  function computeHasChanges(): boolean {
+    const allIds = new Set([...dayAssignments.keys(), ...serverAssignments.current.keys()]);
+    for (const id of allIds) {
+      const local = dayAssignments.get(id);
+      const server = serverAssignments.current.get(id);
+      if (!local && server) return true;
+      if (local && !server) return true;
+      if (local && server && (local.busNumberId !== server.busNumberId || local.sortOrder !== server.sortOrder)) return true;
+    }
+    const allSchedIds = new Set([...scheduleMap.keys(), ...serverSchedules.current.keys()]);
+    for (const id of allSchedIds) {
+      if ((scheduleMap.get(id) ?? "") !== (serverSchedules.current.get(id) ?? "")) return true;
+    }
+    return false;
+  }
+
+  const hasChanges = computeHasChanges();
+
+  // ── Filter guard ──
+
+  function guardFilterChange(setter: () => void) {
+    if (hasChanges) {
+      if (!confirm("저장하지 않은 변경사항이 있습니다. 계속하시겠습니까?")) return;
+      setDayAssignments(new Map(serverAssignments.current.entries().map(([k, v]) => [k, { ...v }])));
+      setScheduleMap(new Map(serverSchedules.current));
+    }
+    setter();
+  }
+
+  // ── Derived: get ordered stops for a bus ──
+
+  function getAssignedStops(busId: string): BusStop[] {
+    return stops
+      .filter((s) => dayAssignments.get(s.id)?.busNumberId === busId)
+      .sort((a, b) => (dayAssignments.get(a.id)?.sortOrder ?? 0) - (dayAssignments.get(b.id)?.sortOrder ?? 0));
+  }
+
+  const unassignedStops = stops.filter((s) => !dayAssignments.has(s.id));
+  const filteredUnassigned = search
+    ? unassignedStops.filter((s) => s.name.toLowerCase().includes(search.toLowerCase()))
+    : unassignedStops;
+
+  // ── Drag & Drop ──
+
+  function handleDragStart(e: React.DragEvent, stopId: string) {
+    e.dataTransfer.setData("text/plain", JSON.stringify({ stopId }));
+    e.dataTransfer.effectAllowed = "move";
+  }
+
+  function handleDropOnBus(e: React.DragEvent, busNumberId: string) {
+    e.preventDefault();
+    setDragOverTarget(null);
+    try {
+      const { stopId } = JSON.parse(e.dataTransfer.getData("text/plain"));
+      if (dayAssignments.get(stopId)?.busNumberId === busNumberId) return;
+      setDayAssignments((prev) => {
+        const next = new Map(prev);
+        // 해당 호차의 마지막 순서 뒤에 추가
+        let maxOrder = -1;
+        for (const [, v] of next) {
+          if (v.busNumberId === busNumberId && v.sortOrder > maxOrder) maxOrder = v.sortOrder;
+        }
+        next.set(stopId, { busNumberId, sortOrder: maxOrder + 1 });
+        return next;
+      });
+    } catch { /* ignore */ }
+  }
+
+  function handleDropOnStop(e: React.DragEvent, targetStopId: string, targetBusId: string) {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOverTarget(null);
+    try {
+      const { stopId } = JSON.parse(e.dataTransfer.getData("text/plain"));
+      if (stopId === targetStopId) return;
+
+      setDayAssignments((prev) => {
+        const next = new Map(prev);
+        const sourceBusId = prev.get(stopId)?.busNumberId;
+
+        // 대상 호차의 현재 정렬된 정류장 목록
+        const busStopIds = stops
+          .filter((s) => next.get(s.id)?.busNumberId === targetBusId)
+          .sort((a, b) => (next.get(a.id)?.sortOrder ?? 0) - (next.get(b.id)?.sortOrder ?? 0))
+          .map((s) => s.id);
+
+        // 같은 호차 내 이동이면 드래그 대상을 목록에서 제거
+        const filtered = busStopIds.filter((id) => id !== stopId);
+
+        // 타겟 앞에 삽입
+        const targetIdx = filtered.indexOf(targetStopId);
+        if (targetIdx === -1) {
+          filtered.push(stopId);
+        } else {
+          filtered.splice(targetIdx, 0, stopId);
+        }
+
+        // 다른 호차에서 온 경우 sourceBusId는 이미 filtered에 포함되지 않음
+        void sourceBusId;
+
+        // sort_order 재할당
+        for (let i = 0; i < filtered.length; i++) {
+          next.set(filtered[i], { busNumberId: targetBusId, sortOrder: i });
+        }
+
+        return next;
+      });
+    } catch { /* ignore */ }
+  }
+
+  function handleDropOnUnassigned(e: React.DragEvent) {
+    e.preventDefault();
+    setDragOverTarget(null);
+    try {
+      const { stopId } = JSON.parse(e.dataTransfer.getData("text/plain"));
+      if (!dayAssignments.has(stopId)) return;
+      setDayAssignments((prev) => {
+        const next = new Map(prev);
+        next.delete(stopId);
+        return next;
+      });
+    } catch { /* ignore */ }
+  }
+
+  function handleDragOver(e: React.DragEvent, targetId: string) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    setDragOverTarget(targetId);
+  }
+
+  function handleDragLeave(e: React.DragEvent) {
+    if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+    setDragOverTarget(null);
+  }
+
+  // ── Dirty helper ──
+
+  function isStopDirty(stopId: string): boolean {
+    const local = dayAssignments.get(stopId);
+    const server = serverAssignments.current.get(stopId);
+    if (!local && !server) return false;
+    if (!local || !server) return true;
+    if (local.busNumberId !== server.busNumberId || local.sortOrder !== server.sortOrder) return true;
+    return (scheduleMap.get(stopId) ?? "") !== (serverSchedules.current.get(stopId) ?? "");
+  }
+
+  // ── Time editing (local) ──
+
+  function handleTimeChange(stopId: string, newTime: string) {
+    setScheduleMap((prev) => {
+      const next = new Map(prev);
+      if (newTime) next.set(stopId, newTime);
+      else next.delete(stopId);
+      return next;
+    });
+  }
+
+  // ── Bulk Save ──
+
+  async function handleSaveAll() {
+    setSaving(true);
+    const errors: string[] = [];
+
+    // 1. 배정(호차 + 순서) 저장
+    const assignmentArr = [...dayAssignments.entries()].map(([bus_stop_id, a]) => ({
+      bus_stop_id,
+      bus_number_id: a.busNumberId,
+      sort_order: a.sortOrder,
+    }));
+    const aResult = await saveBusStopDayAssignments(day, assignmentArr, direction, timeSlotId || undefined);
+    if (aResult.error) errors.push(`배정 저장: ${aResult.error}`);
+
+    // 2. 도착 예정 시간 저장
+    const slotId = timeSlotId || undefined;
+    const allSchedIds = new Set([...scheduleMap.keys(), ...serverSchedules.current.keys()]);
+    for (const stopId of allSchedIds) {
+      const local = scheduleMap.get(stopId) ?? "";
+      const server = serverSchedules.current.get(stopId) ?? "";
+      if (local === server) continue;
+      if (local) {
+        const r = await upsertBusStopSchedule(stopId, day, direction, local, slotId);
+        if (r.error) errors.push(`시간 저장: ${r.error}`);
+      } else {
+        const r = await deleteBusStopSchedule(stopId, day, direction, slotId);
+        if (r.error) errors.push(`시간 삭제: ${r.error}`);
+      }
+    }
+
+    if (errors.length) {
+      toast.error(`일부 저장 실패: ${errors.join(", ")}`);
+    } else {
+      toast.success("저장되었습니다.");
+    }
+
+    serverAssignments.current = new Map(dayAssignments.entries().map(([k, v]) => [k, { ...v }]));
+    serverSchedules.current = new Map(scheduleMap);
+    setSaving(false);
+  }
+
+  // ── 전체 요일 시간 복사 ──
+
+  async function handleCopyToAllDays(stopId: string) {
+    const time = scheduleMap.get(stopId);
+    if (!time) {
+      toast.error("복사할 시간을 먼저 입력해 주세요.");
+      return;
+    }
+    const dayLabel = DAYS.find((d) => d.value === day)?.label ?? "";
+    if (!confirm(`${dayLabel}요일 시간(${time})을 전체 요일에 동일하게 적용하시겠습니까?\n(현재 요일 시간이 미저장이면 먼저 저장해 주세요)`)) return;
+
+    setLoading(true);
+    const slotId = timeSlotId || undefined;
+    const errors: string[] = [];
+    for (const d of DAYS) {
+      if (d.value === day) continue;
+      const r = await upsertBusStopSchedule(stopId, d.value, direction, time, slotId);
+      if (r.error) errors.push(`${d.label}: ${r.error}`);
+    }
+    if (errors.length) toast.error(errors.join(", "));
+    else toast.success("전체 요일에 적용되었습니다.");
+    setLoading(false);
+  }
+
+  // ── Render ──
+
+  return (
+    <div className="space-y-4">
+      {/* 툴바: 요일·방향·시간대 필터 + 저장 버튼 */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-1">
+          {DAYS.map((d) => (
+            <button
+              key={d.value}
+              onClick={() => guardFilterChange(() => setDay(d.value))}
+              className={`w-8 h-8 text-xs rounded font-medium transition-colors ${
+                day === d.value
+                  ? "bg-slate-800 text-white"
+                  : "bg-white text-slate-500 hover:bg-slate-100 border border-slate-200"
+              }`}
+            >
+              {d.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex rounded-lg border border-slate-200 overflow-hidden">
+          <button
+            onClick={() => guardFilterChange(() => { setDirection("pickup"); const s = busTimeSlots.find(s => s.direction === "pickup"); setTimeSlotId(s?.id ?? ""); })}
+            className={`px-3 py-1.5 text-xs font-medium transition-colors ${
+              direction === "pickup" ? "bg-blue-600 text-white" : "bg-white text-slate-500 hover:bg-slate-50"
+            }`}
+          >
+            등원
+          </button>
+          <button
+            onClick={() => guardFilterChange(() => { setDirection("dropoff"); const s = busTimeSlots.find(s => s.direction === "dropoff"); setTimeSlotId(s?.id ?? ""); })}
+            className={`px-3 py-1.5 text-xs font-medium transition-colors ${
+              direction === "dropoff" ? "bg-orange-600 text-white" : "bg-white text-slate-500 hover:bg-slate-50"
+            }`}
+          >
+            하원
+          </button>
+        </div>
+
+        <select
+          value={timeSlotId}
+          onChange={(e) => guardFilterChange(() => setTimeSlotId(e.target.value))}
+          className="h-8 text-xs border border-slate-200 rounded px-2 bg-white"
+        >
+          {filteredSlots.map((slot) => (
+            <option key={slot.id} value={slot.id}>
+              {slot.label} ({slot.time.slice(0, 5)})
+            </option>
+          ))}
+        </select>
+
+        <Button
+          size="sm"
+          className={`h-8 ml-auto ${hasChanges ? "bg-blue-600 hover:bg-blue-700" : ""}`}
+          onClick={handleSaveAll}
+          disabled={saving || !hasChanges}
+        >
+          {saving ? "저장 중..." : hasChanges ? "저장" : "저장됨"}
+        </Button>
+      </div>
+
+      {hasChanges && (
+        <p className="text-xs text-amber-600 bg-amber-50 px-3 py-1.5 rounded border border-amber-200">
+          저장하지 않은 변경사항이 있습니다.
+        </p>
+      )}
+
+      {/* 2-패널 레이아웃 */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* 왼쪽: 호차별 배정된 정류장 카드 */}
+        <div className="lg:col-span-2 space-y-3">
+          {busNumbers.length === 0 && (
+            <p className="text-xs text-slate-400 py-8 text-center">등록된 호차가 없습니다.</p>
+          )}
+          {busNumbers.map((bus) => {
+            const busStops = getAssignedStops(bus.id);
+            const isDropTarget = dragOverTarget === `bus-${bus.id}`;
+
+            return (
+              <div
+                key={bus.id}
+                className={`rounded-lg border transition-colors ${
+                  isDropTarget ? "border-emerald-400 bg-emerald-50/50" : "border-slate-200 bg-white"
+                }`}
+                onDragOver={(e) => handleDragOver(e, `bus-${bus.id}`)}
+                onDragLeave={handleDragLeave}
+                onDrop={(e) => handleDropOnBus(e, bus.id)}
+              >
+                {/* 호차 헤더 */}
+                <div className="flex items-center gap-2 px-3 py-2 border-b border-slate-100 bg-slate-50 rounded-t-lg">
+                  <span className="text-sm">🚌</span>
+                  <span className="text-sm font-semibold text-slate-700 flex-1">{bus.label}</span>
+                  <span className="text-xs text-slate-400">{busStops.length}개 정류장</span>
+                </div>
+
+                {/* 배정된 정류장 — 각 행이 재정렬용 드롭 타겟 */}
+                <div className="p-2 space-y-1 min-h-[48px]">
+                  {busStops.map((stop) => (
+                    <div
+                      key={stop.id}
+                      onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setDragOverTarget(`stop-${stop.id}`); }}
+                      onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOverTarget(null); }}
+                      onDrop={(e) => handleDropOnStop(e, stop.id, bus.id)}
+                    >
+                      <StopRow
+                        stop={stop}
+                        time={scheduleMap.get(stop.id) ?? ""}
+                        isDirty={isStopDirty(stop.id)}
+                        isDropTarget={dragOverTarget === `stop-${stop.id}`}
+                        onDragStart={(e) => handleDragStart(e, stop.id)}
+                        onTimeChange={(time) => handleTimeChange(stop.id, time)}
+                        onCopyAllDays={() => handleCopyToAllDays(stop.id)}
+                      />
+                    </div>
+                  ))}
+                  {busStops.length === 0 && (
+                    <p className="text-xs text-slate-300 text-center py-3">여기에 정류장을 드래그하세요</p>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* 오른쪽: 미배정 정류장 패널 (sticky) */}
+        <div
+          className={`lg:col-span-1 rounded-lg border p-3 space-y-3 lg:sticky lg:top-4 lg:self-start transition-colors ${
+            dragOverTarget === "unassigned" ? "border-orange-400 bg-orange-50/50" : "border-slate-200 bg-slate-50"
+          }`}
+          onDragOver={(e) => handleDragOver(e, "unassigned")}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDropOnUnassigned}
+        >
+          <h4 className="text-xs font-semibold text-slate-600">
+            미배정 정류장
+            <span className="ml-1 font-normal text-slate-400">({DAYS.find((d) => d.value === day)?.label}요일)</span>
+          </h4>
+
+          <Input
+            placeholder="검색..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="h-7 text-xs"
+          />
+
+          <div className="space-y-1 max-h-[60vh] overflow-y-auto">
+            {filteredUnassigned.length === 0 && (
+              <p className="text-xs text-slate-400 py-4 text-center">
+                {search ? "검색 결과 없음" : "미배정 정류장 없음"}
+              </p>
+            )}
+            {filteredUnassigned.map((stop) => (
+              <div
+                key={stop.id}
+                draggable
+                onDragStart={(e) => handleDragStart(e, stop.id)}
+                className="flex items-center gap-2 px-2 py-1.5 rounded border cursor-grab active:cursor-grabbing hover:border-slate-300 bg-white border-slate-200 transition-colors"
+              >
+                <span className="text-xs text-slate-400">📍</span>
+                <span className="text-xs text-slate-700 flex-1">{stop.name}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── StopRow (배정된 정류장 행, 왼쪽 패널) ──
+
+function StopRow({
+  stop,
+  time,
+  isDirty,
+  isDropTarget,
+  onDragStart,
+  onTimeChange,
+  onCopyAllDays,
+}: {
+  stop: BusStop;
+  time: string;
+  isDirty: boolean;
+  isDropTarget: boolean;
+  onDragStart: (e: React.DragEvent) => void;
+  onTimeChange: (time: string) => void;
+  onCopyAllDays: () => void;
+}) {
+  return (
+    <div
+      draggable
+      onDragStart={onDragStart}
+      className={`flex items-center gap-2 px-2 py-1.5 rounded border cursor-grab active:cursor-grabbing transition-colors group ${
+        isDropTarget
+          ? "border-blue-400 bg-blue-50 border-dashed"
+          : isDirty
+            ? "bg-amber-50 border-amber-200"
+            : "bg-slate-50 border-slate-100 hover:border-slate-200"
+      }`}
+    >
+      <span className="text-xs text-slate-400">📍</span>
+      <span className="text-xs text-slate-700 min-w-[60px]">{stop.name}</span>
+      <input
+        type="time"
+        value={time}
+        onChange={(e) => onTimeChange(e.target.value)}
+        className="h-6 text-xs border border-slate-200 rounded px-1.5 bg-white w-[90px]"
+      />
+      <button
+        onClick={onCopyAllDays}
+        title="이 시간을 월~금 전체 요일에 동일하게 적용합니다"
+        className="text-[10px] text-slate-400 hover:text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap"
+      >
+        전체 요일 적용
+      </button>
+    </div>
+  );
+}

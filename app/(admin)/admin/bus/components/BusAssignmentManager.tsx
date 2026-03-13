@@ -99,10 +99,11 @@ export function BusAssignmentManager({
     groupedByBus.set(bus.id, { withStop: new Map(), noStop: [] });
   }
   for (const a of localAssignments) {
-    let group = groupedByBus.get(a.bus_number_id);
+    const busId = a.bus_number_id ?? "";
+    let group = groupedByBus.get(busId);
     if (!group) {
       group = { withStop: new Map(), noStop: [] };
-      groupedByBus.set(a.bus_number_id, group);
+      groupedByBus.set(busId, group);
     }
     if (a.bus_stop_id) {
       if (!group.withStop.has(a.bus_stop_id)) group.withStop.set(a.bus_stop_id, []);
@@ -313,7 +314,7 @@ export function BusAssignmentManager({
         <div className="lg:col-span-2 space-y-4">
           {busNumbers.map((bus) => {
             const group = groupedByBus.get(bus.id);
-            const busStops = stops.filter((s) => s.bus_number_id === bus.id);
+            const busStops = stops.filter(() => false); // legacy: bus_number_id removed from bus_stops
             const busAssignmentCount = (group?.noStop.length ?? 0) +
               [...(group?.withStop.values() ?? [])].reduce((sum, arr) => sum + arr.length, 0);
 

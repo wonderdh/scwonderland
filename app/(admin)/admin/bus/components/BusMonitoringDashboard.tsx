@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { BusManifestGroup, BusManifestEntry, BusTimeSlot, AfterSchoolBusEntry } from "@/lib/types";
@@ -9,7 +9,6 @@ import { getDailyBusManifest } from "../../actions";
 
 const DIR_LABEL = { pickup: "등원", dropoff: "하원" } as const;
 const DAY_NAMES = ["일", "월", "화", "수", "목", "금", "토"];
-const REFRESH_INTERVAL = 30;
 
 function formatTime(t: string) {
   return t.slice(0, 5);
@@ -223,8 +222,6 @@ export function BusMonitoringDashboard({
   const [groups, setGroups] = useState<BusManifestGroup[]>([]);
   const [afterschoolStudents, setAfterSchoolStudents] = useState<AfterSchoolBusEntry[]>([]);
   const [loading, setLoading] = useState(false);
-  const [countdown, setCountdown] = useState(REFRESH_INTERVAL);
-  const countdownRef = useRef(REFRESH_INTERVAL);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -232,26 +229,11 @@ export function BusMonitoringDashboard({
     setGroups(result.groups);
     setAfterSchoolStudents(result.afterschoolStudents);
     setLoading(false);
-    setCountdown(REFRESH_INTERVAL);
-    countdownRef.current = REFRESH_INTERVAL;
   }, [date, direction]);
 
-  // 데이터 로드 + 30초 자동 갱신
   useEffect(() => {
     load();
-    const interval = setInterval(() => load(), REFRESH_INTERVAL * 1000);
-    return () => clearInterval(interval);
   }, [load]);
-
-  // 카운트다운 표시
-  useEffect(() => {
-    const timer = setInterval(() => {
-      countdownRef.current -= 1;
-      if (countdownRef.current < 0) countdownRef.current = REFRESH_INTERVAL;
-      setCountdown(countdownRef.current);
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
 
   const d = new Date(date);
   const dayName = DAY_NAMES[d.getDay()];
@@ -278,13 +260,14 @@ export function BusMonitoringDashboard({
 
   // 현재 방향의 시간대 필터
   const directionSlots = busTimeSlots.filter((s) => s.direction === direction);
-  const [selectedSlotId, setSelectedSlotId] = useState("");
+  const [selectedSlotId, setSelectedSlotId] = useState(() => {
+    const slots = busTimeSlots.filter((s) => s.direction === "dropoff");
+    return slots[0]?.id ?? "";
+  });
 
-  const filteredTimeGroups = selectedSlotId
-    ? timeGroups.filter((tg) =>
-        tg.cards.some((c) => c.bus_time_slot_id === selectedSlotId)
-      )
-    : timeGroups;
+  const filteredTimeGroups = timeGroups.filter((tg) =>
+    tg.cards.some((c) => c.bus_time_slot_id === selectedSlotId)
+  );
 
   return (
     <div className="space-y-5">
@@ -303,7 +286,7 @@ export function BusMonitoringDashboard({
             variant={direction === "pickup" ? "default" : "outline"}
             onClick={() => {
               setDirection("pickup");
-              setSelectedSlotId("");
+              setSelectedSlotId(busTimeSlots.find(s => s.direction === "pickup")?.id ?? "");
             }}
           >
             등원
@@ -313,7 +296,7 @@ export function BusMonitoringDashboard({
             variant={direction === "dropoff" ? "default" : "outline"}
             onClick={() => {
               setDirection("dropoff");
-              setSelectedSlotId("");
+              setSelectedSlotId(busTimeSlots.find(s => s.direction === "dropoff")?.id ?? "");
             }}
           >
             하원
@@ -325,7 +308,6 @@ export function BusMonitoringDashboard({
             onChange={(e) => setSelectedSlotId(e.target.value)}
             className="h-9 px-2 border rounded text-sm"
           >
-            <option value="">전체 시간대</option>
             {directionSlots.map((s) => (
               <option key={s.id} value={s.id}>
                 {formatTime(s.time)} {s.label}
@@ -334,9 +316,6 @@ export function BusMonitoringDashboard({
           </select>
         )}
         <div className="flex items-center gap-2 ml-auto">
-          <span className="text-xs text-slate-400">
-            {countdown}초 후 갱신
-          </span>
           <Button
             size="sm"
             variant="ghost"
@@ -374,7 +353,7 @@ export function BusMonitoringDashboard({
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
               {tg.cards
                 .filter(
-                  (c) => !selectedSlotId || c.bus_time_slot_id === selectedSlotId
+                  (c) => c.bus_time_slot_id === selectedSlotId
                 )
                 .map((card) => (
                   <MonitorBusCard

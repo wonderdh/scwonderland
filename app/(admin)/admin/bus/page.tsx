@@ -2,16 +2,17 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { listBusNumbers, listBusTimeSlots, listBusStaff, listBusStops, listAllActiveStudentNames } from "../actions";
 import { BusTabNav, type BusTabId } from "./components/BusTabNav";
-import { BusNumbersManager } from "./components/BusNumbersManager";
 import { BusTimeSlotsManager } from "./components/BusTimeSlotsManager";
 import { BusDashboard } from "./components/BusDashboard";
 import { BusChangeRequestsPanel } from "./components/BusChangeRequestsPanel";
 import { BusStaffManager } from "./components/BusStaffManager";
 import { BusMonitoringDashboard } from "./components/BusMonitoringDashboard";
-import { BusAssignmentManager } from "./components/BusAssignmentManager";
 import { BusOverviewPanel } from "./components/BusOverviewPanel";
+import { BusStopAssignmentManager } from "./components/BusStopAssignmentManager";
+import { BusStudentAssignmentManager } from "./components/BusStudentAssignmentManager";
+import { BusManagePanel } from "./components/BusManagePanel";
 
-const VALID_TABS: BusTabId[] = ["assignments", "overview", "dashboard", "monitoring", "numbers", "timeslots", "requests", "staff"];
+const VALID_TABS: BusTabId[] = ["stop-assign", "student-assign", "overview", "dashboard", "monitoring", "bus-manage", "timeslots", "requests", "staff"];
 
 function parseTab(tab: string | undefined): BusTabId {
   if (tab && VALID_TABS.includes(tab as BusTabId)) return tab as BusTabId;
@@ -34,8 +35,8 @@ export default async function AdminBusPage({
     listBusNumbers(),
     listBusTimeSlots(),
     currentTab === "staff" ? listBusStaff() : Promise.resolve([]),
-    (currentTab === "assignments" || currentTab === "numbers") ? listBusStops() : Promise.resolve([]),
-    currentTab === "assignments" ? listAllActiveStudentNames() : Promise.resolve([]),
+    (currentTab === "stop-assign" || currentTab === "student-assign" || currentTab === "bus-manage") ? listBusStops() : Promise.resolve([]),
+    currentTab === "student-assign" ? listAllActiveStudentNames() : Promise.resolve([]),
   ]);
 
   return (
@@ -43,11 +44,12 @@ export default async function AdminBusPage({
       <h1 className="text-xl font-bold text-slate-800 mb-4">승하차 관리</h1>
       <BusTabNav currentTab={currentTab} />
       <div className="rounded-b-xl border border-t-0 border-slate-200 bg-white p-6">
-        {currentTab === "assignments" && <BusAssignmentManager busNumbers={busNumbers} busTimeSlots={busTimeSlots} initialStops={busStops} allStudents={allStudentNames} />}
+        {currentTab === "stop-assign" && <BusStopAssignmentManager busNumbers={busNumbers} busTimeSlots={busTimeSlots} initialStops={busStops} />}
+        {currentTab === "student-assign" && <BusStudentAssignmentManager busNumbers={busNumbers} busTimeSlots={busTimeSlots} initialStops={busStops} allStudents={allStudentNames} />}
         {currentTab === "overview" && <BusOverviewPanel busNumbers={busNumbers} busTimeSlots={busTimeSlots} />}
         {currentTab === "dashboard" && <BusDashboard busTimeSlots={busTimeSlots} busNumbers={busNumbers} />}
         {currentTab === "monitoring" && <BusMonitoringDashboard busTimeSlots={busTimeSlots} />}
-        {currentTab === "numbers" && <BusNumbersManager busNumbers={busNumbers} busTimeSlots={busTimeSlots} initialStops={busStops} />}
+        {currentTab === "bus-manage" && <BusManagePanel busNumbers={busNumbers} busTimeSlots={busTimeSlots} initialStops={busStops} />}
         {currentTab === "timeslots" && <BusTimeSlotsManager busTimeSlots={busTimeSlots} />}
         {currentTab === "requests" && <BusChangeRequestsPanel adminId={user.id} />}
         {currentTab === "staff" && <BusStaffManager busStaff={busStaff} busNumbers={busNumbers} />}

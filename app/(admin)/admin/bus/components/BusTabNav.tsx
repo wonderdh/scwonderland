@@ -2,14 +2,15 @@
 
 import Link from "next/link";
 
-export type BusTabId = "assignments" | "overview" | "dashboard" | "monitoring" | "numbers" | "timeslots" | "requests" | "staff";
+export type BusTabId = "stop-assign" | "student-assign" | "overview" | "dashboard" | "monitoring" | "bus-manage" | "timeslots" | "requests" | "staff";
 
 const TABS: { id: BusTabId; label: string }[] = [
-  { id: "assignments", label: "배정 관리" },
+  { id: "stop-assign", label: "정류장 배치" },
+  { id: "student-assign", label: "학생 배정" },
   { id: "overview", label: "배정 현황" },
   { id: "dashboard", label: "대시보드" },
   { id: "monitoring", label: "실시간 현황" },
-  { id: "numbers", label: "호차 관리" },
+  { id: "bus-manage", label: "호차/정류장" },
   { id: "timeslots", label: "시간대 관리" },
   { id: "requests", label: "변경 요청" },
   { id: "staff", label: "담당자 관리" },

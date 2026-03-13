@@ -70,7 +70,10 @@ export function BusDashboard({ busTimeSlots, busNumbers }: { busTimeSlots: BusTi
   const [loading, setLoading] = useState(false);
   const [adminId, setAdminId] = useState("");
   const [isPending, startTransition] = useTransition();
-  const [selectedSlotId, setSelectedSlotId] = useState<string>("");
+  const [selectedSlotId, setSelectedSlotId] = useState<string>(() => {
+    const slots = busTimeSlots.filter((s) => s.direction === "pickup");
+    return slots[0]?.id ?? "";
+  });
   const [showChangeModal, setShowChangeModal] = useState(false);
 
   useEffect(() => {
@@ -219,9 +222,7 @@ export function BusDashboard({ busTimeSlots, busNumbers }: { busTimeSlots: BusTi
 
   const d = new Date(date);
   const dayName = DAY_NAMES[d.getDay()];
-  const filteredGroups = selectedSlotId
-    ? groups.filter((g) => g.bus_time_slot_id === selectedSlotId)
-    : groups;
+  const filteredGroups = groups.filter((g) => g.bus_time_slot_id === selectedSlotId);
   const timeGroups = groupByTime(filteredGroups);
 
   const directionSlots = busTimeSlots.filter((s) => s.direction === direction);
@@ -245,14 +246,14 @@ export function BusDashboard({ busTimeSlots, busNumbers }: { busTimeSlots: BusTi
           <Button
             size="sm"
             variant={direction === "pickup" ? "default" : "outline"}
-            onClick={() => { setDirection("pickup"); setSelectedSlotId(""); }}
+            onClick={() => { setDirection("pickup"); setSelectedSlotId(busTimeSlots.find(s => s.direction === "pickup")?.id ?? ""); }}
           >
             등원
           </Button>
           <Button
             size="sm"
             variant={direction === "dropoff" ? "default" : "outline"}
-            onClick={() => { setDirection("dropoff"); setSelectedSlotId(""); }}
+            onClick={() => { setDirection("dropoff"); setSelectedSlotId(busTimeSlots.find(s => s.direction === "dropoff")?.id ?? ""); }}
           >
             하원
           </Button>
@@ -263,7 +264,6 @@ export function BusDashboard({ busTimeSlots, busNumbers }: { busTimeSlots: BusTi
             onChange={(e) => setSelectedSlotId(e.target.value)}
             className="h-9 px-2 border rounded text-sm"
           >
-            <option value="">전체 시간대</option>
             {directionSlots.map((s) => (
               <option key={s.id} value={s.id}>
                 {formatTime(s.time)} {s.label}
@@ -406,22 +406,25 @@ export function BusDashboard({ busTimeSlots, busNumbers }: { busTimeSlots: BusTi
       {absentOnly.length > 0 && (
         <div>
           <div className="flex items-center gap-3 mb-3">
-            <span className="text-sm font-semibold text-slate-600">
+            <span className="text-sm font-semibold text-red-700">
               결석 ({absentOnly.length}명)
             </span>
-            <div className="flex-1 border-t border-slate-300" />
+            <div className="flex-1 border-t border-red-200" />
           </div>
-          <div className="rounded-xl border border-slate-200 bg-slate-100 divide-y divide-slate-200">
+          <div className="rounded-xl border border-red-200 bg-red-50 divide-y divide-red-100">
             {absentOnly.map((student) => (
               <div
                 key={student.student_profile_id}
                 className="px-4 py-2.5 flex items-center gap-3 text-sm"
               >
-                <span className="font-medium text-slate-600">
+                <span className="text-[10px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded font-medium shrink-0">
+                  결석
+                </span>
+                <span className="font-medium text-red-700">
                   {student.korean_name || student.english_name}
                 </span>
                 {student.original_bus_label && (
-                  <span className="text-xs text-slate-400">
+                  <span className="text-xs text-red-400">
                     (원래: {formatTime(student.original_slot_time ?? "")}{" "}
                     {student.original_bus_label})
                   </span>
@@ -430,7 +433,7 @@ export function BusDashboard({ busTimeSlots, busNumbers }: { busTimeSlots: BusTi
                   <button
                     onClick={() => handleCancelNoRide(student.request_id!)}
                     disabled={isPending}
-                    className="ml-auto text-xs text-slate-500 hover:text-slate-700 font-medium"
+                    className="ml-auto text-xs text-red-500 hover:text-red-700 font-medium"
                   >
                     ✕ 취소
                   </button>
@@ -447,7 +450,6 @@ export function BusDashboard({ busTimeSlots, busNumbers }: { busTimeSlots: BusTi
           date={date}
           direction={direction}
           busTimeSlots={busTimeSlots}
-          busNumbers={busNumbers}
           onClose={() => setShowChangeModal(false)}
           onSaved={() => { setShowChangeModal(false); load(); }}
         />
@@ -613,14 +615,12 @@ function AdminBusChangeModal({
   date,
   direction,
   busTimeSlots,
-  busNumbers,
   onClose,
   onSaved,
 }: {
   date: string;
   direction: "pickup" | "dropoff";
   busTimeSlots: BusTimeSlot[];
-  busNumbers: BusNumber[];
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -629,7 +629,6 @@ function AdminBusChangeModal({
   const [selectedStudent, setSelectedStudent] = useState<string>("");
   const [changeType, setChangeType] = useState<"change" | "no_ride" | "absent">("no_ride");
   const [slotId, setSlotId] = useState("");
-  const [busId, setBusId] = useState("");
   const [stopId, setStopId] = useState("");
   const [stops, setStops] = useState<{ id: string; name: string }[]>([]);
   const [reason, setReason] = useState("");
@@ -657,9 +656,7 @@ function AdminBusChangeModal({
         setChangeType(existing.change_type);
         if (existing.change_type === "change") {
           setSlotId(existing.new_bus_time_slot_id ?? "");
-          setBusId(existing.new_bus_number_id ?? "");
-          // stopId는 busId useEffect에서 stops 로드 후 설정
-          setTimeout(() => setStopId(existing.new_bus_stop_id ?? ""), 300);
+          setStopId(existing.new_bus_stop_id ?? "");
         }
         setReason(existing.reason ?? "");
       } else {
@@ -669,15 +666,10 @@ function AdminBusChangeModal({
     });
   }, [selectedStudent, modalDirection, date]);
 
-  // 호차 변경 시 해당 호차 정류장 로드
+  // 정류장 로드 (전체 활성 정류장)
   useEffect(() => {
-    if (busId) {
-      listBusStops(busId).then((data) => setStops(data.map((s) => ({ id: s.id, name: s.name }))));
-    } else {
-      setStops([]);
-      setStopId("");
-    }
-  }, [busId]);
+    listBusStops().then((data) => setStops(data.map((s) => ({ id: s.id, name: s.name }))));
+  }, []);
 
   const dirSlots = busTimeSlots.filter((s) => s.direction === modalDirection);
 
@@ -696,8 +688,8 @@ function AdminBusChangeModal({
       toast.error("학생을 선택해 주세요.");
       return;
     }
-    if (changeType === "change" && (!slotId || !busId)) {
-      toast.error("시간대와 호차를 선택해 주세요.");
+    if (changeType === "change" && !slotId) {
+      toast.error("시간대를 선택해 주세요.");
       return;
     }
     setSaving(true);
@@ -710,7 +702,7 @@ function AdminBusChangeModal({
           modalDirection,
           changeType,
           changeType === "change" ? slotId : undefined,
-          changeType === "change" ? busId : undefined,
+          undefined,
           changeType === "change" && stopId ? stopId : undefined,
           reason || undefined
         )
@@ -720,7 +712,7 @@ function AdminBusChangeModal({
           modalDirection,
           changeType,
           changeType === "change" ? slotId : undefined,
-          changeType === "change" ? busId : undefined,
+          undefined,
           changeType === "change" && stopId ? stopId : undefined,
           reason || undefined
         );
@@ -753,7 +745,6 @@ function AdminBusChangeModal({
     setExistingId(null);
     setChangeType("no_ride");
     setSlotId("");
-    setBusId("");
     setStopId("");
     setReason("");
   }
@@ -845,7 +836,7 @@ function AdminBusChangeModal({
             ))}
           </div>
           {changeType === "absent" && (
-            <p className="text-xs text-slate-400 mt-1">자동으로 특수 호차 → 결석 정류장에 배정됩니다.</p>
+            <p className="text-xs text-slate-400 mt-1">해당 날짜 승하차 매니페스트에서 제외됩니다.</p>
           )}
         </div>
 
@@ -861,18 +852,9 @@ function AdminBusChangeModal({
                 ))}
               </select>
             </div>
-            <div>
-              <label className="text-xs font-medium text-slate-600 block mb-1">호차</label>
-              <select value={busId} onChange={(e) => setBusId(e.target.value)} className="w-full h-9 px-2 border rounded text-sm">
-                <option value="">호차 선택</option>
-                {busNumbers.map((b) => (
-                  <option key={b.id} value={b.id}>{b.label}</option>
-                ))}
-              </select>
-            </div>
             {stops.length > 0 && (
               <div>
-                <label className="text-xs font-medium text-slate-600 block mb-1">정류장</label>
+                <label className="text-xs font-medium text-slate-600 block mb-1">정류장 (선택사항)</label>
                 <select value={stopId} onChange={(e) => setStopId(e.target.value)} className="w-full h-9 px-2 border rounded text-sm">
                   <option value="">정류장 선택</option>
                   {stops.map((s) => (

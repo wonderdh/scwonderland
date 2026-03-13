@@ -113,7 +113,6 @@ export function BusOverviewPanel({
           onChange={(e) => setSlotId(e.target.value)}
           className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm bg-white text-slate-700"
         >
-          <option value="">전체 시간대</option>
           {filteredSlots.map((s) => (
             <option key={s.id} value={s.id}>
               {s.label} ({s.time?.slice(0, 5)})
@@ -208,7 +207,7 @@ function groupByBusAndStop(
   const map = new Map<string, Map<string, BusDefaultAssignment[]>>();
 
   for (const item of data) {
-    const busId = item.bus_number_id;
+    const busId = item.bus_number_id ?? "__unassigned__";
     if (!map.has(busId)) map.set(busId, new Map());
     const stopKey = item.bus_stop_id ?? NO_STOP;
     const stopMap = map.get(busId)!;

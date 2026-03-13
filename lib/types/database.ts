@@ -363,7 +363,6 @@ export type StudentBusDefault = {
   day_of_week: number;
   direction: "pickup" | "dropoff";
   bus_time_slot_id: string;
-  bus_number_id: string;
   bus_stop_id?: string | null;
   bus_stop_name?: string | null;
   estimated_time?: string | null;
@@ -535,7 +534,6 @@ export type BusStaffProfile = {
 
 export type BusStop = {
   id: string;
-  bus_number_id: string | null;
   name: string;
   sort_order: number;
   is_active: boolean;
@@ -572,7 +570,7 @@ export type BusDefaultAssignment = {
   korean_name: string | null;
   english_name: string | null;
   age: number | null;
-  bus_number_id: string;
+  bus_number_id: string | null;
   bus_stop_id: string | null;
   bus_stop_name: string | null;
   bus_time_slot_id: string;
