@@ -255,8 +255,7 @@ export function BusMonitorClient({
     const defaultSlot = getDefaultSlotId(busTimeSlots, "dropoff");
     setSlotFilter(defaultSlot);
     loadData("dropoff", getTodayIsoDay(), defaultSlot);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [busTimeSlots, loadData]);
 
   const handleDirectionChange = (newDir: "pickup" | "dropoff") => {
     if (newDir === direction) return;
