@@ -9,7 +9,7 @@ import {
   removeAfterschoolStudent,
   bulkUpdateEnrollmentDays,
 } from "../../actions";
-import type { AfterschoolStudentEnrollment, DayEnrollment } from "../../actions/afterschool-actions";
+import type { AfterschoolStudentEnrollment, DayEnrollment } from "@/lib/types";
 import { Spinner } from "@/components/Spinner";
 
 const DAY_LABELS = ["월", "화", "수", "목", "금"];

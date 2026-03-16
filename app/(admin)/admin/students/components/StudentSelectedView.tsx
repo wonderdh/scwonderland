@@ -3,6 +3,7 @@
 import type { UserWithProfile } from "@/lib/types";
 import type { updateStudentProfile } from "../../actions";
 import { resetUserPassword, getStudentLinkedCounts } from "../../actions";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
@@ -299,44 +300,26 @@ export function StudentInfoCard({
         )}
       </div>
 
-      {/* 삭제 확인 모달 */}
-      {deleteModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full mx-4">
-            <h3 className="text-base font-semibold text-foreground mb-2">학생 삭제</h3>
-            <p className="text-sm text-muted-foreground mb-1">
-              <span className="font-medium text-foreground">
-                {user.korean_name ?? user.first_name}
-              </span> 학생은 현재
-            </p>
-            <ul className="text-sm mb-4 space-y-1">
-              {deleteModal.attendanceCount > 0 && (
-                <li className="text-amber-700">• 출결 기록 <strong>{deleteModal.attendanceCount}건</strong></li>
-              )}
-              {deleteModal.progressCount > 0 && (
-                <li className="text-amber-700">• 교재 진도 <strong>{deleteModal.progressCount}건</strong></li>
-              )}
-              {deleteModal.busDefaultCount > 0 && (
-                <li className="text-amber-700">• 버스 기본값 <strong>{deleteModal.busDefaultCount}건</strong></li>
-              )}
-              {deleteModal.attendanceCount === 0 && deleteModal.progressCount === 0 && deleteModal.busDefaultCount === 0 && (
-                <li className="text-muted-foreground">• 연관 데이터가 없습니다.</li>
-              )}
-            </ul>
-            <p className="text-sm text-muted-foreground mb-4">
-              삭제 시 모든 연관 데이터가 함께 삭제됩니다. 계속하시겠습니까?
-            </p>
-            <div className="flex justify-end gap-2">
-              <Button variant="ghost" size="sm" onClick={() => setDeleteModal(null)} disabled={delPending}>
-                취소
-              </Button>
-              <Button variant="destructive" size="sm" onClick={handleDeleteConfirm} disabled={delPending}>
-                {delPending ? "삭제 중…" : "삭제"}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        open={!!deleteModal}
+        title="학생 삭제"
+        description={deleteModal ? (() => {
+          const name = user.korean_name ?? user.first_name ?? "이 학생";
+          const lines: string[] = [`${name} 학생의 연관 데이터:`];
+          if (deleteModal.attendanceCount > 0) lines.push(`• 출결 기록 ${deleteModal.attendanceCount}건`);
+          if (deleteModal.progressCount > 0) lines.push(`• 교재 진도 ${deleteModal.progressCount}건`);
+          if (deleteModal.busDefaultCount > 0) lines.push(`• 버스 기본값 ${deleteModal.busDefaultCount}건`);
+          if (deleteModal.attendanceCount === 0 && deleteModal.progressCount === 0 && deleteModal.busDefaultCount === 0) {
+            lines.push("• 연관 데이터가 없습니다.");
+          }
+          lines.push("삭제 시 모든 연관 데이터가 함께 삭제됩니다. 계속하시겠습니까?");
+          return lines.join("\n");
+        })() : undefined}
+        confirmLabel={delPending ? "삭제 중…" : "삭제"}
+        disabled={delPending}
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => setDeleteModal(null)}
+      />
     </div>
   );
 }

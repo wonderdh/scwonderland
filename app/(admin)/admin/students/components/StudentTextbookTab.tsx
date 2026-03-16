@@ -13,6 +13,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { LoadingState } from "@/components/LoadingState";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 
 const STATUS_MAP = {
   not_started: { label: "시작 전", color: "bg-slate-100 text-slate-600" },
@@ -158,6 +159,7 @@ export function StudentTextbookTab({ studentProfileId }: { studentProfileId: str
   const [addOpen, setAddOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<StudentTextbookProgress | null>(null);
   const [removeTarget, setRemoveTarget] = useState<StudentTextbookProgress | null>(null);
+  const [removePending, setRemovePending] = useState(false);
   const [showCompleted, setShowCompleted] = useState(false);
 
   const load = useCallback(async () => {
@@ -280,18 +282,23 @@ export function StudentTextbookTab({ studentProfileId }: { studentProfileId: str
           }}
         />
       )}
-      {removeTarget && (
-        <ConfirmRemoveModal
-          title={removeTarget.textbook_title}
-          onClose={() => setRemoveTarget(null)}
-          onConfirm={async () => {
-            await removeTextbookFromStudent(removeTarget.id);
-            setRemoveTarget(null);
-            load();
-            router.refresh();
-          }}
-        />
-      )}
+      <ConfirmDialog
+        open={!!removeTarget}
+        title="교재 제거"
+        description={removeTarget ? `"${removeTarget.textbook_title}" 교재를 이 학생에서 제거할까요?` : undefined}
+        confirmLabel={removePending ? "제거 중…" : "제거"}
+        disabled={removePending}
+        onConfirm={async () => {
+          if (!removeTarget) return;
+          setRemovePending(true);
+          await removeTextbookFromStudent(removeTarget.id);
+          setRemovePending(false);
+          setRemoveTarget(null);
+          load();
+          router.refresh();
+        }}
+        onCancel={() => setRemoveTarget(null)}
+      />
     </div>
   );
 }
@@ -566,42 +573,3 @@ function EditProgressModal({
   );
 }
 
-function ConfirmRemoveModal({
-  title,
-  onClose,
-  onConfirm,
-}: {
-  title: string;
-  onClose: () => void;
-  onConfirm: () => Promise<void>;
-}) {
-  const [pending, setPending] = useState(false);
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} aria-hidden />
-      <div className="relative w-full max-w-sm rounded-xl border border-slate-200 bg-white p-5 shadow-xl">
-        <h3 className="text-lg font-semibold text-slate-800">교재 제거</h3>
-        <p className="mt-2 text-sm text-slate-600">
-          &quot;{title}&quot; 교재를 이 학생에서 제거할까요?
-        </p>
-        <div className="mt-4 flex justify-end gap-2">
-          <button type="button" onClick={onClose} className="rounded-lg bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-200">
-            취소
-          </button>
-          <button
-            type="button"
-            disabled={pending}
-            onClick={async () => {
-              setPending(true);
-              await onConfirm();
-              setPending(false);
-            }}
-            className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-500 disabled:opacity-50"
-          >
-            {pending ? "제거 중…" : "제거"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}

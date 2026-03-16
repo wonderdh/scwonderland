@@ -631,3 +631,18 @@ export type StudentTextbookProgress = {
   created_at: string;
   updated_at: string;
 };
+
+// ── 방과후 타입 ──
+
+export type DayEnrollment = {
+  day: number;
+  second_period: boolean;
+};
+
+export type AfterschoolStudentEnrollment = {
+  student_profile_id: string;
+  korean_name: string | null;
+  english_name: string | null;
+  age: number | null;
+  days: DayEnrollment[];
+};

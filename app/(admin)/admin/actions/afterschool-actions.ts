@@ -3,6 +3,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { verifyAdmin } from "./auth-helpers";
+import type { DayEnrollment, AfterschoolStudentEnrollment } from "@/lib/types";
 
 // ── 방과후 반 조회 or 자동 생성 ──
 
@@ -29,19 +30,6 @@ export async function getOrCreateAfterschoolClass(): Promise<{ id: string; name:
 }
 
 // ── 등록 학생 + 요일/교시 정보 ──
-
-export type DayEnrollment = {
-  day: number;
-  second_period: boolean;
-};
-
-export type AfterschoolStudentEnrollment = {
-  student_profile_id: string;
-  korean_name: string | null;
-  english_name: string | null;
-  age: number | null;
-  days: DayEnrollment[];
-};
 
 export async function getAfterschoolEnrollments(
   classId: string,

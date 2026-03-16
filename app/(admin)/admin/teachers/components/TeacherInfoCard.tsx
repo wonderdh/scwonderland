@@ -3,6 +3,7 @@
 import type { UserWithProfile } from "@/lib/types";
 import type { updateTeacherProfile } from "../../actions";
 import { resetUserPassword, getTeacherAssignmentCounts } from "../../actions";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
@@ -239,44 +240,25 @@ export function TeacherInfoCard({
         )}
       </div>
 
-      {/* 삭제 확인 모달 */}
-      {deleteModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full mx-4">
-            <h3 className="text-base font-semibold text-foreground mb-2">교사 삭제</h3>
-            <p className="text-sm text-muted-foreground mb-1">
-              <span className="font-medium text-foreground">{user.name ?? user.first_name}</span> 선생님은 현재
-            </p>
-            <ul className="text-sm mb-4 space-y-1">
-              {deleteModal.classCount > 0 && (
-                <li className="text-amber-700">• 반 담임 <strong>{deleteModal.classCount}개</strong></li>
-              )}
-              {deleteModal.scheduleCount > 0 && (
-                <li className="text-amber-700">• 수업 배정 <strong>{deleteModal.scheduleCount}건</strong></li>
-              )}
-              {deleteModal.classCount === 0 && deleteModal.scheduleCount === 0 && (
-                <li className="text-muted-foreground">• 배정된 반/수업 없음</li>
-              )}
-            </ul>
-            <p className="text-sm text-muted-foreground mb-4">
-              삭제 시 모든 배정이 해제됩니다. 계속하시겠습니까?
-            </p>
-            <div className="flex justify-end gap-2">
-              <Button variant="ghost" size="sm" onClick={() => setDeleteModal(null)} disabled={delPending}>
-                취소
-              </Button>
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={handleDeleteConfirm}
-                disabled={delPending}
-              >
-                {delPending ? "삭제 중…" : "삭제"}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        open={!!deleteModal}
+        title="교사 삭제"
+        description={deleteModal ? (() => {
+          const name = user.name ?? user.first_name ?? "이 선생님";
+          const lines: string[] = [`${name} 선생님의 배정 현황:`];
+          if (deleteModal.classCount > 0) lines.push(`• 반 담임 ${deleteModal.classCount}개`);
+          if (deleteModal.scheduleCount > 0) lines.push(`• 수업 배정 ${deleteModal.scheduleCount}건`);
+          if (deleteModal.classCount === 0 && deleteModal.scheduleCount === 0) {
+            lines.push("• 배정된 반/수업 없음");
+          }
+          lines.push("삭제 시 모든 배정이 해제됩니다. 계속하시겠습니까?");
+          return lines.join("\n");
+        })() : undefined}
+        confirmLabel={delPending ? "삭제 중…" : "삭제"}
+        disabled={delPending}
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => setDeleteModal(null)}
+      />
     </div>
   );
 }

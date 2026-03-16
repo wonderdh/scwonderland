@@ -50,4 +50,6 @@ export type {
   Textbook,
   ClassTextbook,
   StudentTextbookProgress,
+  DayEnrollment,
+  AfterschoolStudentEnrollment,
 } from "./database";

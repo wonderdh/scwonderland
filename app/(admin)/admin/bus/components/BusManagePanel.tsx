@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import type { BusNumber, BusStop, BusTimeSlot } from "@/lib/types";
 import {
   createBusNumber,
@@ -41,6 +42,7 @@ export function BusManagePanel({
   const [stopSearch, setStopSearch] = useState("");
 
   const [loading, setLoading] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ type: "bus" | "stop"; id: string; name: string } | null>(null);
 
   // ── Bus CRUD ──
 
@@ -70,16 +72,8 @@ export function BusManagePanel({
     setLoading(false);
   }
 
-  async function handleDeleteBus(id: string, label: string) {
-    if (!confirm(`"${label}" 호차를 삭제하시겠습니까?`)) return;
-    setLoading(true);
-    const result = await deleteBusNumber(id);
-    if (result.error) {
-      toast.error(result.error);
-    } else {
-      router.refresh();
-    }
-    setLoading(false);
+  function handleDeleteBus(id: string, label: string) {
+    setDeleteConfirm({ type: "bus", id, name: label });
   }
 
   // ── Stop CRUD ──
@@ -123,14 +117,28 @@ export function BusManagePanel({
     setLoading(false);
   }
 
-  async function handleDeleteStop(stopId: string, name: string) {
-    if (!confirm(`"${name}" 정류장을 삭제하시겠습니까?`)) return;
+  function handleDeleteStop(stopId: string, name: string) {
+    setDeleteConfirm({ type: "stop", id: stopId, name });
+  }
+
+  async function handleConfirmedDelete() {
+    if (!deleteConfirm) return;
+    setDeleteConfirm(null);
     setLoading(true);
-    const result = await deleteBusStop(stopId);
-    if (result.error) {
-      toast.error(result.error);
+    if (deleteConfirm.type === "bus") {
+      const result = await deleteBusNumber(deleteConfirm.id);
+      if (result.error) {
+        toast.error(result.error);
+      } else {
+        router.refresh();
+      }
     } else {
-      setStops((prev) => prev.filter((s) => s.id !== stopId));
+      const result = await deleteBusStop(deleteConfirm.id);
+      if (result.error) {
+        toast.error(result.error);
+      } else {
+        setStops((prev) => prev.filter((s) => s.id !== deleteConfirm.id));
+      }
     }
     setLoading(false);
   }
@@ -342,6 +350,18 @@ export function BusManagePanel({
         </div>
 
       </section>
+
+      <ConfirmDialog
+        open={!!deleteConfirm}
+        title={deleteConfirm?.type === "bus" ? "호차 삭제" : "정류장 삭제"}
+        description={
+          deleteConfirm?.type === "bus"
+            ? `"${deleteConfirm.name}"을 삭제할까요?`
+            : `"${deleteConfirm?.name}" 정류장을 삭제할까요?`
+        }
+        onConfirm={handleConfirmedDelete}
+        onCancel={() => setDeleteConfirm(null)}
+      />
     </div>
   );
 }
