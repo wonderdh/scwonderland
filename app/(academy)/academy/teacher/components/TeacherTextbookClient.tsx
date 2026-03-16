@@ -13,20 +13,20 @@ import {
   batchUpdateProgress,
 } from "@/app/(admin)/admin/actions";
 import { textbookLabels, batchUpdateLabels } from "@/lib/teacher-labels";
+import { useTeacherType } from "./TeacherTypeContext";
 import { LoadingState } from "@/components/LoadingState";
 
 export function TeacherTextbookClient({
   classes,
   initialClassId,
   initialTextbooks,
-  teacherType,
 }: {
   classes: TeacherClassWithStudents[];
   initialClassId: string | null;
   initialTextbooks: TeacherClassTextbook[];
-  teacherType: "korean" | "native";
 }) {
   const router = useRouter();
+  const teacherType = useTeacherType();
   const L = textbookLabels[teacherType];
   const BL = batchUpdateLabels[teacherType];
   const isNative = teacherType === "native";

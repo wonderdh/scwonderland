@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
 import { TeacherNav } from "./components/TeacherNav";
+import { TeacherTypeProvider } from "./components/TeacherTypeContext";
 
 export default async function TeacherLayout({
   children,
@@ -39,7 +40,9 @@ export default async function TeacherLayout({
   return (
     <div className="mx-auto max-w-4xl">
       <TeacherNav teacherType={teacherType} />
-      {children}
+      <TeacherTypeProvider teacherType={teacherType}>
+        {children}
+      </TeacherTypeProvider>
     </div>
   );
 }

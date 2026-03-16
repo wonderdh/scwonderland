@@ -21,7 +21,6 @@ export default async function TeacherReportsPage({
     <TeacherReportClient
       classes={classes}
       initialClassId={params.class ?? null}
-      teacherType={profile?.teacher_type ?? "native"}
     />
   );
 }

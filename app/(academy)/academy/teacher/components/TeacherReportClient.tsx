@@ -9,6 +9,7 @@ import {
 } from "@/app/(admin)/admin/actions";
 import type { ReportCard } from "@/lib/types";
 import { reportLabels, ENGLISH_MONTHS } from "@/lib/teacher-labels";
+import { useTeacherType } from "./TeacherTypeContext";
 import { LoadingState } from "@/components/LoadingState";
 
 const MONTHS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
@@ -21,12 +22,11 @@ function getDefaultYearMonth() {
 export function TeacherReportClient({
   classes,
   initialClassId,
-  teacherType,
 }: {
   classes: TeacherClassWithStudents[];
   initialClassId: string | null;
-  teacherType: "korean" | "native";
 }) {
+  const teacherType = useTeacherType();
   const L = reportLabels[teacherType];
   const isNative = teacherType === "native";
 
