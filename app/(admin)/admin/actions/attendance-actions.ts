@@ -86,32 +86,7 @@ export async function recordAttendance(
     return { error: error.message };
   }
 
-  // 결석 처리 시 등·하원 버스 변경 요청 자동 생성 (approved)
-  // 결석 취소 시 자동 생성된 변경 요청 삭제
-  const dateObj = new Date(attendanceDate);
-  const dayOfWeek = dateObj.getDay(); // 0=일, 1=월 ~ 5=금
-  if (dayOfWeek >= 1 && dayOfWeek <= 5) {
-    const ABSENT_REASON = "출결 결석 자동 등록";
-    if (status === "absent") {
-      await supabase.from("bus_change_requests").upsert(
-        [
-          { student_profile_id: studentProfileId, request_date: attendanceDate, direction: "pickup",  change_type: "absent", status: "approved", reason: ABSENT_REASON, new_bus_time_slot_id: null, new_bus_number_id: null, new_bus_stop_id: null },
-          { student_profile_id: studentProfileId, request_date: attendanceDate, direction: "dropoff", change_type: "absent", status: "approved", reason: ABSENT_REASON, new_bus_time_slot_id: null, new_bus_number_id: null, new_bus_stop_id: null },
-        ],
-        { onConflict: "student_profile_id,request_date,direction" }
-      );
-    } else {
-      // 결석 취소: 자동 생성된 항목만 삭제 (수동 생성 변경 요청은 유지)
-      await supabase
-        .from("bus_change_requests")
-        .delete()
-        .eq("student_profile_id", studentProfileId)
-        .eq("request_date", attendanceDate)
-        .eq("change_type", "absent")
-        .eq("reason", ABSENT_REASON);
-    }
-  }
-
+  // 버스 연동은 DB 트리거(after_attendance_bus_sync)가 자동 처리
   revalidatePath("/admin/students");
   return {};
 }
