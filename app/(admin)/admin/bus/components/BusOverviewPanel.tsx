@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { getBulkBusDefaults, listBusStopDayAssignments } from "../../actions";
+import { getBulkBusDefaults, listBusStopDayAssignments, listAfterschoolStudentIdsByDay } from "../../actions";
 import { getAgeColor } from "@/lib/student-age-colors";
 import type { BusNumber, BusTimeSlot, BusDefaultAssignment } from "@/lib/types";
 
@@ -33,6 +33,7 @@ export function BusOverviewPanel({
   const [direction, setDirection] = useState<"pickup" | "dropoff">("dropoff");
   const [data, setData] = useState<BusDefaultAssignment[]>([]);
   const [stopSortOrderMap, setStopSortOrderMap] = useState<Map<string, number>>(new Map());
+  const [afterschoolIds, setAfterschoolIds] = useState<Set<string>>(new Set<string>());
   const [loading, setLoading] = useState(false);
   const fetchVersionRef = useRef(0);
 
@@ -53,15 +54,17 @@ export function BusOverviewPanel({
     const version = ++fetchVersionRef.current;
     setLoading(true);
     try {
-      const [result, stopDayData] = await Promise.all([
+      const [result, stopDayData, afterschoolResult] = await Promise.all([
         getBulkBusDefaults(day, direction, slotId || undefined),
         listBusStopDayAssignments(day, direction, slotId || undefined),
+        listAfterschoolStudentIdsByDay(day),
       ]);
       if (version !== fetchVersionRef.current) return;
       setData(result);
       const sortMap = new Map<string, number>();
       for (const a of stopDayData) sortMap.set(a.bus_stop_id, a.sort_order);
       setStopSortOrderMap(sortMap);
+      setAfterschoolIds(new Set(afterschoolResult));
     } finally {
       if (version === fetchVersionRef.current) setLoading(false);
     }
@@ -171,14 +174,18 @@ export function BusOverviewPanel({
                     <div className="flex flex-wrap gap-1.5">
                       {stop.students.map((s) => {
                         const color = getAgeColor(s.age);
+                        const isAfterSchool = afterschoolIds.has(s.student_profile_id);
                         return (
                           <span
                             key={s.student_profile_id}
-                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${color.bg} ${color.text} ${color.border}`}
+                            className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium border ${color.bg} ${color.text} ${color.border}`}
                           >
+                            {isAfterSchool && (
+                              <span className="text-violet-500 text-[10px] leading-none">●</span>
+                            )}
                             {s.korean_name}
                             {s.note && (
-                              <span className="text-[10px] opacity-60">({s.note})</span>
+                              <span className="w-1.5 h-1.5 rounded-full bg-current opacity-50" />
                             )}
                           </span>
                         );
@@ -238,8 +245,13 @@ function groupByBusAndStop(
     let totalCount = 0;
 
     for (const [stopKey, students] of stopMap) {
-      // 이름순 정렬
-      students.sort((a, b) => (a.korean_name ?? "").localeCompare(b.korean_name ?? ""));
+      // 나이순 → 이름순 정렬
+      students.sort((a, b) => {
+        const ageA = a.age ?? 999;
+        const ageB = b.age ?? 999;
+        if (ageA !== ageB) return ageA - ageB;
+        return (a.korean_name ?? "").localeCompare(b.korean_name ?? "", "ko");
+      });
       totalCount += students.length;
       stops.push({
         stopId: stopKey,

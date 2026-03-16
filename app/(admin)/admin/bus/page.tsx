@@ -10,6 +10,7 @@ import { BusOverviewPanel } from "./components/BusOverviewPanel";
 import { BusStopAssignmentManager } from "./components/BusStopAssignmentManager";
 import { BusStudentAssignmentManager } from "./components/BusStudentAssignmentManager";
 import { BusManagePanel } from "./components/BusManagePanel";
+import { BusExportButton } from "./components/BusExportButton";
 
 const VALID_TABS: BusTabId[] = ["overview", "dashboard", "requests", "student-assign", "stop-assign", "bus-manage", "timeslots", "staff"];
 
@@ -40,7 +41,10 @@ export default async function AdminBusPage({
 
   return (
     <div>
-      <h1 className="text-xl font-bold text-slate-800 mb-4">승하차 관리</h1>
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-xl font-bold text-slate-800">승하차 관리</h1>
+        <BusExportButton />
+      </div>
       <BusTabNav currentTab={currentTab} />
       <div className="rounded-b-xl border border-t-0 border-slate-200 bg-white p-6">
         {currentTab === "stop-assign" && <BusStopAssignmentManager busNumbers={busNumbers} busTimeSlots={busTimeSlots} initialStops={busStops} />}

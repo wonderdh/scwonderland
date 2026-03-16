@@ -1842,3 +1842,191 @@ export async function deleteBusStopSchedule(
   }
   return {};
 }
+
+// ── 하원표 엑셀 Export ──
+
+export type DropoffExportRow = {
+  day: number;
+  profile_id: string;
+  slotLabel: string;
+  slotTime: string;
+  busLabel: string;
+  stopName: string;
+  stopSortOrder: number;
+  korean_name: string | null;
+  english_name: string | null;
+  age: number | null;
+  note: string | null;
+};
+
+export type DropoffExportData = {
+  rows: DropoffExportRow[];
+  unassigned: {
+    day: number;
+    profile_id: string;
+    korean_name: string | null;
+    english_name: string | null;
+    age: number | null;
+  }[];
+  slots: BusTimeSlot[];
+  busNumbers: BusNumber[];
+  afterschoolEnrollments: { profile_id: string; day: number }[];
+};
+
+export async function getWeeklyDropoffExportData(): Promise<
+  DropoffExportData | { error: string }
+> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return { error: auth.error };
+
+  const supabase = createAdminClient();
+
+  // 1. 하원 시간대 전체 조회
+  const { data: slotData, error: slotError } = await supabase
+    .from("bus_time_slots")
+    .select("*")
+    .eq("direction", "dropoff")
+    .eq("is_active", true)
+    .order("time");
+  if (slotError) {
+    console.error("[getWeeklyDropoffExportData] slots", slotError.message);
+    return { error: slotError.message };
+  }
+  const slots = (slotData ?? []) as BusTimeSlot[];
+
+  // 2. 활성 학생 전체 조회
+  const { data: studentData, error: studentError } = await supabase
+    .from("students")
+    .select("profile_id, korean_name, english_name, age, profiles!inner(deleted_at)")
+    .is("profiles.deleted_at", null);
+  if (studentError) {
+    console.error("[getWeeklyDropoffExportData] students", studentError.message);
+    return { error: studentError.message };
+  }
+  const allStudents = (studentData ?? []).map((s) => ({
+    profile_id: s.profile_id as string,
+    korean_name: s.korean_name as string | null,
+    english_name: s.english_name as string | null,
+    age: (s.age as number | null) ?? null,
+  }));
+  const allStudentIds = new Set(allStudents.map((s) => s.profile_id));
+
+  // 3. 호차 전체 조회
+  const { data: busData } = await supabase
+    .from("bus_numbers")
+    .select("*")
+    .eq("is_active", true)
+    .order("label");
+  const busNumbers = (busData ?? []) as BusNumber[];
+  const busMap = new Map(busNumbers.map((b) => [b.id, b.label]));
+
+  // 4. 정류장 전체 조회
+  const { data: stopsAll } = await supabase
+    .from("bus_stops")
+    .select("id, name, sort_order")
+    .eq("is_active", true);
+  const stopInfoMap = new Map(
+    (stopsAll ?? []).map((s) => [
+      s.id as string,
+      { name: s.name as string, sort_order: s.sort_order as number },
+    ])
+  );
+
+  const rows: DropoffExportRow[] = [];
+  const unassigned: DropoffExportData["unassigned"] = [];
+
+  for (let day = 1; day <= 5; day++) {
+    // 이 날 배정된 student_profile_id 추적
+    const assignedIds = new Set<string>();
+
+    // 각 시간대별로 기본 배정 조회
+    for (const slot of slots) {
+      const { data: defaults, error: defError } = await supabase
+        .from("student_bus_defaults")
+        .select("student_profile_id, bus_stop_id, bus_time_slot_id, note")
+        .eq("day_of_week", day)
+        .eq("direction", "dropoff")
+        .eq("bus_time_slot_id", slot.id);
+
+      if (defError) {
+        console.error("[getWeeklyDropoffExportData] defaults", defError.message);
+        continue;
+      }
+      if (!defaults?.length) continue;
+
+      // stop→bus 매핑: bus_stop_day_assignments
+      const { data: assignments } = await supabase
+        .from("bus_stop_day_assignments")
+        .select("bus_stop_id, bus_number_id")
+        .eq("day_of_week", day)
+        .eq("direction", "dropoff")
+        .eq("bus_time_slot_id", slot.id);
+
+      const stopToBusId = new Map(
+        (assignments ?? []).map((a) => [
+          a.bus_stop_id as string,
+          a.bus_number_id as string,
+        ])
+      );
+
+      // student 정보 배치 조회
+      const profileIds = defaults.map((d) => d.student_profile_id as string);
+      const { data: studs } = await supabase
+        .from("students")
+        .select("profile_id, korean_name, english_name, age")
+        .in("profile_id", profileIds);
+      const studMap = new Map(
+        (studs ?? []).map((s) => [s.profile_id as string, s])
+      );
+
+      for (const d of defaults) {
+        const pid = d.student_profile_id as string;
+        assignedIds.add(pid);
+        if (!allStudentIds.has(pid)) continue; // 삭제된 학생 스킵
+
+        const stud = studMap.get(pid);
+        const stopId = d.bus_stop_id as string | null;
+        const busId = stopId ? (stopToBusId.get(stopId) ?? null) : null;
+        const stopInfo = stopId ? stopInfoMap.get(stopId) : undefined;
+
+        rows.push({
+          day,
+          profile_id: pid,
+          slotLabel: slot.label,
+          slotTime: slot.time,
+          busLabel: busId ? (busMap.get(busId) ?? "미지정") : "미지정",
+          stopName: stopInfo?.name ?? "",
+          stopSortOrder: stopInfo?.sort_order ?? 9999,
+          korean_name: stud?.korean_name ?? null,
+          english_name: stud?.english_name ?? null,
+          age: stud?.age ?? null,
+          note: d.note as string | null,
+        });
+      }
+    }
+
+    // 미배정 학생: 하원 기본 배정이 없는 학생
+    for (const s of allStudents) {
+      if (!assignedIds.has(s.profile_id)) {
+        unassigned.push({
+          day,
+          profile_id: s.profile_id,
+          korean_name: s.korean_name,
+          english_name: s.english_name,
+          age: s.age,
+        });
+      }
+    }
+  }
+
+  // 방과후 수강 현황 조회
+  const { data: afterschoolData } = await supabase
+    .from("afterschool_enrollments")
+    .select("student_profile_id, day_of_week");
+  const afterschoolEnrollments = (afterschoolData ?? []).map((e) => ({
+    profile_id: e.student_profile_id as string,
+    day: e.day_of_week as number,
+  }));
+
+  return { rows, unassigned, slots, busNumbers, afterschoolEnrollments };
+}
