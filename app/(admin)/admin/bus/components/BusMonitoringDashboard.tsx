@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { BusManifestGroup, BusManifestEntry, BusTimeSlot, AfterSchoolBusEntry } from "@/lib/types";
@@ -171,13 +171,19 @@ export function BusMonitoringDashboard({
   const [groups, setGroups] = useState<BusManifestGroup[]>([]);
   const [afterschoolStudents, setAfterSchoolStudents] = useState<AfterSchoolBusEntry[]>([]);
   const [loading, setLoading] = useState(false);
+  const loadVersionRef = useRef(0);
 
   const load = useCallback(async () => {
+    const version = ++loadVersionRef.current;
     setLoading(true);
-    const result = await getDailyBusManifest(date, direction);
-    setGroups(result.groups);
-    setAfterSchoolStudents(result.afterschoolStudents);
-    setLoading(false);
+    try {
+      const result = await getDailyBusManifest(date, direction);
+      if (loadVersionRef.current !== version) return;
+      setGroups(result.groups);
+      setAfterSchoolStudents(result.afterschoolStudents);
+    } finally {
+      if (loadVersionRef.current === version) setLoading(false);
+    }
   }, [date, direction]);
 
   useEffect(() => {
