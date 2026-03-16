@@ -52,4 +52,6 @@ export type {
   StudentTextbookProgress,
   DayEnrollment,
   AfterschoolStudentEnrollment,
+  DropoffExportRow,
+  DropoffExportData,
 } from "./database";

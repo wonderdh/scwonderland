@@ -17,6 +17,8 @@ import type {
   BusManifestEntry,
   NoRideEntry,
   AfterSchoolBusEntry,
+  DropoffExportRow,
+  DropoffExportData,
 } from "@/lib/types";
 
 // ── 호차 CRUD ──
@@ -1858,35 +1860,6 @@ export async function deleteBusStopSchedule(
   return {};
 }
 
-// ── 하원표 엑셀 Export ──
-
-export type DropoffExportRow = {
-  day: number;
-  profile_id: string;
-  slotLabel: string;
-  slotTime: string;
-  busLabel: string;
-  stopName: string;
-  stopSortOrder: number;
-  korean_name: string | null;
-  english_name: string | null;
-  age: number | null;
-  note: string | null;
-};
-
-export type DropoffExportData = {
-  rows: DropoffExportRow[];
-  unassigned: {
-    day: number;
-    profile_id: string;
-    korean_name: string | null;
-    english_name: string | null;
-    age: number | null;
-  }[];
-  slots: BusTimeSlot[];
-  busNumbers: BusNumber[];
-  afterschoolEnrollments: { profile_id: string; day: number }[];
-};
 
 export async function getWeeklyDropoffExportData(): Promise<
   DropoffExportData | { error: string }

@@ -166,7 +166,7 @@ export {
   getWeeklyDropoffExportData,
 } from "./actions/bus-actions";
 
-export type { DropoffExportRow, DropoffExportData } from "./actions/bus-actions";
+export type { DropoffExportRow, DropoffExportData } from "@/lib/types";
 
 export {
   getOrCreateAfterschoolClass,

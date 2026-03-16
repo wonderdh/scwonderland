@@ -538,7 +538,7 @@ export async function getStudentTimetable(
 
 // ── 학생 개인 시간표 편집용 데이터 ──
 
-export type StudentTimetableEditData = {
+type StudentTimetableEditData = {
   periods: { id: string; name: string; start_time: string; end_time: string; group_label: string | null }[];
   /** key: `${periodId}_${day}` */
   cells: Record<string, {

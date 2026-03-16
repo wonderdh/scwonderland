@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import ExcelJS from "exceljs";
 import { getWeeklyDropoffExportData } from "../../actions/bus-actions";
-import type { DropoffExportRow, DropoffExportData } from "../../actions/bus-actions";
+import type { DropoffExportRow, DropoffExportData } from "@/lib/types";
 
 const DAY_NAMES = ["월", "화", "수", "목", "금"];
 

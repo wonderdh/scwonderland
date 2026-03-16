@@ -646,3 +646,33 @@ export type AfterschoolStudentEnrollment = {
   age: number | null;
   days: DayEnrollment[];
 };
+
+// ── 버스 수출 타입 ──
+
+export type DropoffExportRow = {
+  day: number;
+  profile_id: string;
+  slotLabel: string;
+  slotTime: string;
+  busLabel: string;
+  stopName: string;
+  stopSortOrder: number;
+  korean_name: string | null;
+  english_name: string | null;
+  age: number | null;
+  note: string | null;
+};
+
+export type DropoffExportData = {
+  rows: DropoffExportRow[];
+  unassigned: {
+    day: number;
+    profile_id: string;
+    korean_name: string | null;
+    english_name: string | null;
+    age: number | null;
+  }[];
+  slots: BusTimeSlot[];
+  busNumbers: BusNumber[];
+  afterschoolEnrollments: { profile_id: string; day: number }[];
+};
