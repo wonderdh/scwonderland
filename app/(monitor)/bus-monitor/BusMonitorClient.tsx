@@ -2,24 +2,13 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { Button } from "@/components/ui/button";
-import type { BusManifestGroup, BusManifestEntry, BusTimeSlot } from "@/lib/types";
-import { getAgeColor } from "@/lib/student-age-colors";
+import type { BusManifestGroup, BusTimeSlot } from "@/lib/types";
 import { getDailyBusManifest } from "@/app/(admin)/admin/actions";
-import { groupStudentsByStop, formatTime, formatCheckedTime, type StopGroup } from "@/lib/bus/utils";
+import { formatTime } from "@/lib/bus/utils";
+import { MonitorBusCard, BUS_CARD_COLORS } from "@/app/(admin)/admin/bus/components/MonitorBusCard";
 
 const DIR_LABEL = { pickup: "등원", dropoff: "하원" } as const;
 const DAY_LABELS = ["월", "화", "수", "목", "금"] as const;
-// 호차별 색상 팔레트 (Tailwind purge-safe 리터럴)
-const BUS_CARD_COLORS = [
-  { bg: "bg-blue-50", border: "border-l-blue-500", text: "text-blue-700" },
-  { bg: "bg-emerald-50", border: "border-l-emerald-500", text: "text-emerald-700" },
-  { bg: "bg-amber-50", border: "border-l-amber-500", text: "text-amber-700" },
-  { bg: "bg-purple-50", border: "border-l-purple-500", text: "text-purple-700" },
-  { bg: "bg-rose-50", border: "border-l-rose-500", text: "text-rose-700" },
-  { bg: "bg-cyan-50", border: "border-l-cyan-500", text: "text-cyan-700" },
-  { bg: "bg-indigo-50", border: "border-l-indigo-500", text: "text-indigo-700" },
-  { bg: "bg-orange-50", border: "border-l-orange-500", text: "text-orange-700" },
-] as const;
 
 /** ISO day (1=Mon ~ 5=Fri) → 금주 해당 요일의 YYYY-MM-DD */
 function getDateForIsoDay(isoDay: number): string {
@@ -40,142 +29,6 @@ function getTodayIsoDay(): number {
   if (jsDay === 0) return 5; // 일요일 → 금요일
   if (jsDay === 6) return 5; // 토요일 → 금요일
   return jsDay;
-}
-
-function ProgressBar({ boarded, total }: { boarded: number; total: number }) {
-  const pct = total > 0 ? Math.round((boarded / total) * 100) : 0;
-  const color =
-    pct >= 90 ? "bg-blue-500" : pct >= 50 ? "bg-amber-500" : "bg-red-500";
-
-  return (
-    <div className="flex items-center gap-2">
-      <div className="flex-1 h-1.5 bg-slate-200 rounded-full overflow-hidden">
-        <div
-          className={`h-full ${color} rounded-full transition-all duration-300`}
-          style={{ width: `${pct}%` }}
-        />
-      </div>
-    </div>
-  );
-}
-
-function MonitorBusCard({
-  card,
-  color,
-}: {
-  card: BusManifestGroup;
-  color: (typeof BUS_CARD_COLORS)[number];
-}) {
-  const boardedCount = card.students.filter(
-    (s) => s.boarded_at || s.checked_at
-  ).length;
-  const checkedCount = card.students.filter((s) => s.checked_at).length;
-  const totalCount = card.students.length;
-  const allDone = checkedCount === totalCount && totalCount > 0;
-  const stopGroups = groupStudentsByStop(card.students);
-
-  const renderStudent = (student: BusManifestEntry) => {
-    const isBoarded = !!student.boarded_at;
-    const isChecked = !!student.checked_at;
-
-    const rowBg = isChecked
-      ? "bg-green-50/50"
-      : student.is_changed
-        ? "bg-amber-50"
-        : isBoarded
-          ? "bg-blue-50/40"
-          : "";
-
-    return (
-      <div
-        key={student.student_profile_id}
-        className={`px-3 py-1 flex items-center gap-2 ${rowBg}`}
-      >
-        <span className="text-xl shrink-0">
-          {isChecked ? "✅" : isBoarded ? "🚌" : "⬜"}
-        </span>
-        <div className="flex-1 min-w-0">
-          <span
-            className={`block truncate text-2xl ${
-              isChecked
-                ? "text-slate-400 line-through"
-                : `font-bold ${getAgeColor(student.age).text}`
-            }`}
-          >
-            {student.korean_name || student.english_name}
-          </span>
-          {student.is_changed && student.original_bus_label && (
-            <span className="block truncate text-xs text-amber-500 -mt-0.5">
-              {student.original_bus_label} → {card.bus_label}
-            </span>
-          )}
-          {student.note && (
-            <span className="block truncate text-xs text-slate-400 -mt-0.5">
-              {student.note}
-            </span>
-          )}
-        </div>
-
-        <div className="flex items-center gap-1.5 shrink-0">
-          {isBoarded && student.boarded_at && !isChecked && (
-            <span className="text-base text-blue-600 font-medium">
-              {formatCheckedTime(student.boarded_at)}
-            </span>
-          )}
-          {isChecked && student.checked_at && (
-            <span className="text-base text-green-600 font-medium">
-              {formatCheckedTime(student.checked_at)}
-            </span>
-          )}
-        </div>
-      </div>
-    );
-  };
-
-  const renderStopGroup = (group: StopGroup, gi: number) => (
-    <div key={gi}>
-      {(group.stopName || group.estimatedTime) && (
-        <div className="px-4 py-1 bg-slate-50/60 flex items-center gap-2">
-          <span className="text-sm text-slate-500">▸</span>
-          {group.estimatedTime && (
-            <span className="text-sm font-semibold text-slate-600">
-              {formatTime(group.estimatedTime)}
-            </span>
-          )}
-          {group.stopName && (
-            <span className="text-sm text-slate-500 truncate">
-              📍 {group.stopName}
-            </span>
-          )}
-        </div>
-      )}
-      <div className="grid grid-cols-2">
-        {group.students.map(renderStudent)}
-      </div>
-    </div>
-  );
-
-  return (
-    <div className={`rounded-xl border border-l-4 ${color.border} bg-white shadow-sm overflow-hidden`}>
-      <div
-        className={`px-4 py-2.5 ${allDone ? "bg-green-50" : color.bg}`}
-      >
-        <div className="flex items-center justify-between mb-1">
-          <span className={`text-2xl font-extrabold ${color.text}`}>
-            {card.bus_label}
-          </span>
-          <span className="text-base font-medium text-slate-500">
-            탑승 {boardedCount}/{totalCount} · 하차 {checkedCount}/{totalCount}
-          </span>
-        </div>
-        <ProgressBar boarded={boardedCount} total={totalCount} />
-      </div>
-
-      <div className="divide-y divide-slate-100">
-        {stopGroups.map((g, i) => renderStopGroup(g, i))}
-      </div>
-    </div>
-  );
 }
 
 // 시간대별 그룹
@@ -480,6 +333,7 @@ export function BusMonitorClient({
                 .map((card) => (
                 <MonitorBusCard
                   key={`${card.bus_time_slot_id}-${card.bus_number_id}`}
+                  variant="monitor"
                   card={card}
                   color={busColorMap.get(card.bus_label) ?? BUS_CARD_COLORS[0]}
                 />

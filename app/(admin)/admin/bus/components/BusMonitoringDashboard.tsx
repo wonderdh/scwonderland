@@ -6,159 +6,11 @@ import { Input } from "@/components/ui/input";
 import type { BusManifestGroup, BusManifestEntry, BusTimeSlot, AfterSchoolBusEntry } from "@/lib/types";
 import { getAgeColor } from "@/lib/student-age-colors";
 import { getDailyBusManifest } from "../../actions";
-import { groupStudentsByStop, formatTime, formatCheckedTime } from "@/lib/bus/utils";
+import { formatTime } from "@/lib/bus/utils";
+import { MonitorBusCard } from "./MonitorBusCard";
 
 const DIR_LABEL = { pickup: "등원", dropoff: "하원" } as const;
 const DAY_NAMES = ["일", "월", "화", "수", "목", "금", "토"];
-
-function ProgressBar({
-  boarded,
-  checked,
-  total,
-}: {
-  boarded: number;
-  checked: number;
-  total: number;
-}) {
-  const boardedPct = total > 0 ? Math.round((boarded / total) * 100) : 0;
-  const checkedPct = total > 0 ? Math.round((checked / total) * 100) : 0;
-
-  return (
-    <div className="flex items-center gap-2">
-      <div className="flex-1 h-2 bg-slate-200 rounded-full overflow-hidden relative">
-        {/* 탑승 바 (파란색, 전체 너비) */}
-        <div
-          className="absolute inset-y-0 left-0 bg-blue-400 rounded-full transition-all duration-300"
-          style={{ width: `${boardedPct}%` }}
-        />
-        {/* 하차 바 (초록색, 겹침) */}
-        <div
-          className="absolute inset-y-0 left-0 bg-green-500 rounded-full transition-all duration-300"
-          style={{ width: `${checkedPct}%` }}
-        />
-      </div>
-      <span className="text-xs font-medium text-slate-600 whitespace-nowrap">
-        {boarded}/{total}명
-      </span>
-    </div>
-  );
-}
-
-// 호차별 카드 (정류장 그룹) — 읽기 전용
-function MonitorBusCard({ card }: { card: BusManifestGroup }) {
-  const boardedCount = card.students.filter(
-    (s) => s.boarded_at || s.checked_at
-  ).length;
-  const checkedCount = card.students.filter((s) => s.checked_at).length;
-  const totalCount = card.students.length;
-  const allDone = checkedCount === totalCount && totalCount > 0;
-  const stopGroups = groupStudentsByStop(card.students);
-
-  return (
-    <div className="rounded-xl border bg-white shadow-sm overflow-hidden">
-      {/* 카드 헤더 */}
-      <div
-        className={`px-4 py-3 ${allDone ? "bg-green-50" : "bg-slate-50"}`}
-      >
-        <div className="flex items-center justify-between mb-1.5">
-          <span className="text-sm font-semibold text-slate-700">
-            {card.bus_label}
-          </span>
-          <span className="text-xs font-medium text-slate-500">
-            {allDone
-              ? "완료"
-              : `탑승 ${boardedCount}/${totalCount} · 하차 ${checkedCount}/${totalCount}`}
-          </span>
-        </div>
-        <ProgressBar
-          boarded={boardedCount}
-          checked={checkedCount}
-          total={totalCount}
-        />
-      </div>
-
-      {/* 정류장별 학생 타임라인 */}
-      <div className="divide-y divide-slate-100">
-        {stopGroups.map((group, gi) => (
-          <div key={gi}>
-            {/* 정류장 헤더 */}
-            {(group.stopName || group.estimatedTime) && (
-              <div className="px-4 py-1.5 bg-slate-50/60 flex items-center gap-2">
-                <span className="text-xs text-slate-500">▸</span>
-                {group.estimatedTime && (
-                  <span className="text-xs font-medium text-slate-600">
-                    {formatTime(group.estimatedTime)}
-                  </span>
-                )}
-                {group.stopName && (
-                  <span className="text-xs text-slate-500 truncate">
-                    📍 {group.stopName}
-                  </span>
-                )}
-              </div>
-            )}
-
-            {/* 학생 목록 */}
-            {group.students.map((student) => {
-              const isBoarded = !!student.boarded_at;
-              const isChecked = !!student.checked_at;
-
-              const rowBg = isChecked
-                ? "bg-green-50/40"
-                : student.is_changed
-                  ? "bg-amber-50"
-                  : isBoarded
-                    ? "bg-blue-50/30"
-                    : "";
-
-              return (
-                <div
-                  key={student.student_profile_id}
-                  className={`px-4 py-1.5 pl-8 flex items-center gap-2 text-sm ${rowBg}`}
-                >
-                  <span className="text-xs shrink-0">
-                    {isChecked ? "✅" : isBoarded ? "🚌" : "⬜"}
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    {isChecked ? (
-                      <span className="block truncate text-slate-400 line-through">
-                        {student.korean_name || student.english_name}
-                      </span>
-                    ) : (
-                      <span className={`inline-block truncate px-1.5 py-0.5 rounded text-xs font-medium ${getAgeColor(student.age).bg} ${getAgeColor(student.age).text}`}>
-                        {student.korean_name || student.english_name}
-                      </span>
-                    )}
-                    {student.is_changed && student.original_bus_label && (
-                      <span className="block text-[10px] text-amber-500">
-                        {student.original_bus_label} → {card.bus_label}
-                      </span>
-                    )}
-                    {student.note && (
-                      <span className="block text-[10px] text-slate-400">
-                        {student.note}
-                      </span>
-                    )}
-                  </div>
-                  {isBoarded && student.boarded_at && !isChecked && (
-                    <span className="text-xs text-blue-600 shrink-0">
-                      탑승 {formatCheckedTime(student.boarded_at)}
-                    </span>
-                  )}
-                  {isChecked && student.checked_at && (
-                    <span className="text-xs text-green-600 shrink-0">
-                      하차 {formatCheckedTime(student.checked_at)}
-                    </span>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 export function BusMonitoringDashboard({
   busTimeSlots,
@@ -313,6 +165,7 @@ export function BusMonitoringDashboard({
                 .map((card) => (
                   <MonitorBusCard
                     key={`${card.bus_time_slot_id}-${card.bus_number_id}`}
+                    variant="admin"
                     card={card}
                   />
                 ))}
