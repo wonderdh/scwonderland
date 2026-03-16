@@ -57,7 +57,7 @@ export function StudentBusTab({ studentProfileId }: { studentProfileId: string }
     ]);
     setDefaults(d);
     setBusTimeSlots(ts);
-    setBusStops(stops);
+    setBusStops([...stops].sort((a, b) => a.name.localeCompare(b.name, "ko")));
     setPendingDeletes(new Set());
     setLoading(false);
   }, [studentProfileId]);
