@@ -3,54 +3,29 @@
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { STORAGE_BUCKETS } from "@/lib/supabase/storage";
 import {
-  STORAGE_BUCKETS,
-  generateStoragePath,
-  extractStoragePath,
-  validateFile,
-} from "@/lib/supabase/storage";
+  uploadFilesFromFormData,
+  rollbackUploadedFiles,
+  insertAttachmentRecords,
+  deleteAttachmentsByIds,
+  deleteNoticeCommon,
+} from "@/lib/supabase/notice-crud-helpers";
 import type { ClassNotice, ClassNoticeAttachment } from "@/lib/types";
 import { verifyAuthenticated } from "./auth-helpers";
 
-const BUCKET = STORAGE_BUCKETS.CLASS_NOTICES;
+const CONFIG = {
+  table: "class_notices",
+  attachmentTable: "class_notice_attachments",
+  fkField: "class_notice_id",
+  bucket: STORAGE_BUCKETS.CLASS_NOTICES,
+} as const;
 
-// ── Storage 헬퍼 ──
+const REVALIDATE_PATH = "/admin/class-notices";
 
-async function uploadClassNoticeFile(
-  file: File,
-  fileType: "image" | "attachment"
-): Promise<{ url: string; storagePath: string } | { error: string }> {
-  const category = fileType === "image" ? "image" : "document";
-  const validation = validateFile(file, category);
-  if (!validation.valid) return { error: validation.error };
+// ── 목록 ─────────────────────────────────────────────────────
 
-  const folder = fileType === "image" ? "images" : "files";
-  const storagePath = generateStoragePath(file.name, folder);
-
-  const supabase = createAdminClient();
-  const { error } = await supabase.storage
-    .from(BUCKET)
-    .upload(storagePath, file, { contentType: file.type, upsert: false });
-
-  if (error) {
-    console.error("[uploadClassNoticeFile]", error.message);
-    return { error: `파일 업로드 실패: ${error.message}` };
-  }
-
-  const { data: urlData } = supabase.storage.from(BUCKET).getPublicUrl(storagePath);
-  return { url: urlData.publicUrl, storagePath };
-}
-
-async function deleteClassNoticeFile(publicUrl: string): Promise<void> {
-  const storagePath = extractStoragePath(publicUrl, BUCKET);
-  if (!storagePath) return;
-  const supabase = createAdminClient();
-  await supabase.storage.from(BUCKET).remove([storagePath]);
-}
-
-// ── CRUD ──
-
-/** 특정 반의 공지 목록 */
+/** 특정 반의 공지 목록 (작성자 이름 + 첨부파일 수 조인) */
 export async function listClassNotices(classId: string): Promise<ClassNotice[]> {
   const auth = await verifyAuthenticated();
   if ("error" in auth) return [];
@@ -97,7 +72,9 @@ export async function listClassNotices(classId: string): Promise<ClassNotice[]> 
   })) as ClassNotice[];
 }
 
-/** 공지 상세 + 첨부파일 */
+// ── 상세 ─────────────────────────────────────────────────────
+
+/** 공지 상세 + 첨부파일 + 작성자 이름 */
 export async function getClassNoticeWithAttachments(
   noticeId: string
 ): Promise<{ notice: ClassNotice; attachments: ClassNoticeAttachment[] } | null> {
@@ -113,7 +90,6 @@ export async function getClassNoticeWithAttachments(
 
   if (error || !notice) return null;
 
-  // 작성자 이름
   const { data: teacher } = await supabase
     .from("teachers")
     .select("name")
@@ -133,11 +109,12 @@ export async function getClassNoticeWithAttachments(
   };
 }
 
-/** 반별 공지 생성 */
+// ── 생성 ─────────────────────────────────────────────────────
+
+/** 반별 공지 생성 (교사 본인 글만 — user.id === author_id 검증) */
 export async function createClassNotice(
   formData: FormData
 ): Promise<{ error?: string; id?: string }> {
-  // 인증 검증: 로그인 사용자와 author_id 일치 확인
   const supabaseAuth = await createClient();
   const { data: { user } } = await supabaseAuth.auth.getUser();
   if (!user) return { error: "인증이 필요합니다." };
@@ -150,55 +127,18 @@ export async function createClassNotice(
 
   if (!classId || !authorId) return { error: "필수 정보가 누락되었습니다." };
   if (!title) return { error: "제목을 입력해 주세요." };
-
-  // author_id가 로그인 사용자 본인인지 확인
   if (authorId !== user.id) return { error: "권한이 없습니다." };
 
   const imageFiles = formData.getAll("images") as File[];
   const attachmentFiles = formData.getAll("attachments") as File[];
-  const uploadedFiles: { url: string; storagePath: string }[] = [];
-  const records: Omit<ClassNoticeAttachment, "id" | "class_notice_id" | "created_at">[] = [];
 
   try {
-    for (let i = 0; i < imageFiles.length; i++) {
-      const file = imageFiles[i];
-      if (!file || file.size === 0) continue;
-      const result = await uploadClassNoticeFile(file, "image");
-      if ("error" in result) {
-        for (const u of uploadedFiles) await deleteClassNoticeFile(u.url);
-        return { error: result.error };
-      }
-      uploadedFiles.push(result);
-      records.push({
-        storage_path: result.storagePath,
-        public_url: result.url,
-        original_filename: file.name,
-        mime_type: file.type,
-        file_size: file.size,
-        file_type: "image",
-        sort_order: i,
-      });
+    const uploadResult = await uploadFilesFromFormData(CONFIG.bucket, imageFiles, attachmentFiles);
+    if ("error" in uploadResult) {
+      await rollbackUploadedFiles(CONFIG.bucket, uploadResult.uploadedFiles);
+      return { error: uploadResult.error };
     }
-
-    for (let i = 0; i < attachmentFiles.length; i++) {
-      const file = attachmentFiles[i];
-      if (!file || file.size === 0) continue;
-      const result = await uploadClassNoticeFile(file, "attachment");
-      if ("error" in result) {
-        for (const u of uploadedFiles) await deleteClassNoticeFile(u.url);
-        return { error: result.error };
-      }
-      uploadedFiles.push(result);
-      records.push({
-        storage_path: result.storagePath,
-        public_url: result.url,
-        original_filename: file.name,
-        mime_type: file.type,
-        file_size: file.size,
-        file_type: "attachment",
-        sort_order: i,
-      });
-    }
+    const { uploadedFiles, records } = uploadResult;
 
     const supabase = createAdminClient();
     const { data, error } = await supabase
@@ -208,35 +148,28 @@ export async function createClassNotice(
       .single();
 
     if (error) {
-      for (const u of uploadedFiles) await deleteClassNoticeFile(u.url);
+      await rollbackUploadedFiles(CONFIG.bucket, uploadedFiles);
       console.error("[createClassNotice]", error.message);
       return { error: error.message };
     }
 
-    if (records.length > 0) {
-      const { error: attachErr } = await supabase
-        .from("class_notice_attachments")
-        .insert(records.map((r) => ({ ...r, class_notice_id: data.id })));
-      if (attachErr) {
-        console.error("[createClassNotice] 첨부파일 저장", attachErr.message);
-        return { error: "첨부파일 저장에 실패했습니다." };
-      }
-    }
+    const attResult = await insertAttachmentRecords(supabase, CONFIG, data.id, records);
+    if (attResult.error) return { error: attResult.error };
 
-    revalidatePath("/admin/class-notices");
+    revalidatePath(REVALIDATE_PATH);
     return { id: data.id };
   } catch (err) {
-    for (const u of uploadedFiles) await deleteClassNoticeFile(u.url);
     console.error("[createClassNotice] 예외", err);
     return { error: "공지 생성 중 오류가 발생했습니다." };
   }
 }
 
-/** 반별 공지 수정 */
+// ── 수정 ─────────────────────────────────────────────────────
+
+/** 반별 공지 수정 (교사 본인 글만) */
 export async function updateClassNotice(
   formData: FormData
 ): Promise<{ error?: string }> {
-  // 인증 검증
   const supabaseAuth = await createClient();
   const { data: { user } } = await supabaseAuth.auth.getUser();
   if (!user) return { error: "인증이 필요합니다." };
@@ -257,119 +190,57 @@ export async function updateClassNotice(
   if (!id) return { error: "id가 없습니다." };
   if (!title) return { error: "제목을 입력해 주세요." };
 
-  const supabase = createAdminClient();
-  const uploadedFiles: { url: string; storagePath: string }[] = [];
-  const newRecords: Omit<ClassNoticeAttachment, "id" | "class_notice_id" | "created_at">[] = [];
+  const newImages = formData.getAll("new_images") as File[];
+  const newAttachments = formData.getAll("new_attachments") as File[];
 
   try {
-    const newImages = formData.getAll("new_images") as File[];
-    const newAttachments = formData.getAll("new_attachments") as File[];
-
-    for (let i = 0; i < newImages.length; i++) {
-      const file = newImages[i];
-      if (!file || file.size === 0) continue;
-      const result = await uploadClassNoticeFile(file, "image");
-      if ("error" in result) {
-        for (const u of uploadedFiles) await deleteClassNoticeFile(u.url);
-        return { error: result.error };
-      }
-      uploadedFiles.push(result);
-      newRecords.push({
-        storage_path: result.storagePath, public_url: result.url,
-        original_filename: file.name, mime_type: file.type,
-        file_size: file.size, file_type: "image", sort_order: i,
-      });
+    const uploadResult = await uploadFilesFromFormData(CONFIG.bucket, newImages, newAttachments);
+    if ("error" in uploadResult) {
+      await rollbackUploadedFiles(CONFIG.bucket, uploadResult.uploadedFiles);
+      return { error: uploadResult.error };
     }
+    const { uploadedFiles, records } = uploadResult;
 
-    for (let i = 0; i < newAttachments.length; i++) {
-      const file = newAttachments[i];
-      if (!file || file.size === 0) continue;
-      const result = await uploadClassNoticeFile(file, "attachment");
-      if ("error" in result) {
-        for (const u of uploadedFiles) await deleteClassNoticeFile(u.url);
-        return { error: result.error };
-      }
-      uploadedFiles.push(result);
-      newRecords.push({
-        storage_path: result.storagePath, public_url: result.url,
-        original_filename: file.name, mime_type: file.type,
-        file_size: file.size, file_type: "attachment", sort_order: i,
-      });
-    }
-
+    const supabase = createAdminClient();
     const { error } = await supabase
       .from("class_notices")
       .update({ title, content, is_pinned, updated_at: new Date().toISOString() })
       .eq("id", id);
 
     if (error) {
-      for (const u of uploadedFiles) await deleteClassNoticeFile(u.url);
+      await rollbackUploadedFiles(CONFIG.bucket, uploadedFiles);
       return { error: error.message };
     }
 
-    if (newRecords.length > 0) {
-      const { error: attachErr } = await supabase
-        .from("class_notice_attachments")
-        .insert(newRecords.map((r) => ({ ...r, class_notice_id: id })));
-      if (attachErr) {
-        console.error("[updateClassNotice] 첨부파일 저장", attachErr.message);
-        return { error: "첨부파일 저장에 실패했습니다." };
-      }
-    }
+    const attResult = await insertAttachmentRecords(supabase, CONFIG, id, records);
+    if (attResult.error) return { error: attResult.error };
 
-    if (removeIds.length > 0) {
-      const { data: toDelete } = await supabase
-        .from("class_notice_attachments")
-        .select("id, public_url")
-        .in("id", removeIds);
-      if (toDelete) {
-        for (const att of toDelete) await deleteClassNoticeFile(att.public_url);
-        await supabase.from("class_notice_attachments").delete().in("id", removeIds);
-      }
-    }
+    await deleteAttachmentsByIds(CONFIG.bucket, supabase, CONFIG, removeIds);
 
-    revalidatePath("/admin/class-notices");
+    revalidatePath(REVALIDATE_PATH);
     return {};
   } catch (err) {
-    for (const u of uploadedFiles) await deleteClassNoticeFile(u.url);
+    console.error("[updateClassNotice] 예외", err);
     return { error: "공지 수정 중 오류가 발생했습니다." };
   }
 }
+
+// ── 삭제 ─────────────────────────────────────────────────────
 
 /** 반별 공지 삭제 */
 export async function deleteClassNotice(
   noticeId: string
 ): Promise<{ error?: string }> {
-  // 인증 검증
   const supabaseAuth = await createClient();
   const { data: { user } } = await supabaseAuth.auth.getUser();
   if (!user) return { error: "인증이 필요합니다." };
 
-  const supabase = createAdminClient();
-
-  const { data: attachments } = await supabase
-    .from("class_notice_attachments")
-    .select("public_url")
-    .eq("class_notice_id", noticeId);
-
-  if (attachments) {
-    for (const att of attachments) await deleteClassNoticeFile(att.public_url);
-  }
-
-  const { error } = await supabase
-    .from("class_notices")
-    .delete()
-    .eq("id", noticeId);
-
-  if (error) {
-    console.error("[deleteClassNotice]", error.message);
-    return { error: error.message };
-  }
-  revalidatePath("/admin/class-notices");
-  return {};
+  const result = await deleteNoticeCommon(CONFIG, createAdminClient(), noticeId);
+  if (!result.error) revalidatePath(REVALIDATE_PATH);
+  return result;
 }
 
-// ── Academy 조회용 (학생/교사 포털) ──
+// ── 학생 포털용 ──────────────────────────────────────────────
 
 /** 학생 본인의 소속 반 공지 목록 */
 export async function getMyClassNotices(
@@ -388,7 +259,6 @@ export async function getMyClassNotices(
   if (!memberships?.length) return [];
   const classIds = memberships.map((m) => m.class_id);
 
-  // 반 이름
   const { data: classes } = await supabase
     .from("classes")
     .select("id, name")
