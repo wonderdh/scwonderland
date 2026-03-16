@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import type { BusManifestGroup, BusManifestEntry, BusTimeSlot } from "@/lib/types";
 import { getAgeColor } from "@/lib/student-age-colors";
@@ -295,7 +295,7 @@ export function BusMonitorClient({
   );
 
   // 호차별 고유 색상 매핑
-  const busColorMap = (() => {
+  const busColorMap = useMemo(() => {
     const labels = new Set<string>();
     for (const tg of allGroups) {
       for (const c of tg.cards) labels.add(c.bus_label);
@@ -306,7 +306,7 @@ export function BusMonitorClient({
       map.set(label, BUS_CARD_COLORS[i % BUS_CARD_COLORS.length]);
     });
     return map;
-  })();
+  }, [allGroups]);
 
   // 선택된 요일의 날짜 문자열
   const selectedDate = getDateForIsoDay(dayOfWeek);
