@@ -11,7 +11,7 @@ export async function listClassesWithDetails(): Promise<ClassWithDetails[]> {
   const supabase = createAdminClient();
   const { data: classes, error: classesError } = await supabase
     .from("classes")
-    .select("id, name, group_label, created_at, updated_at")
+    .select("id, name, group_label, color_index, created_at, updated_at")
     .order("name");
   if (classesError) {
     console.error("[listClassesWithDetails]", classesError.message);
@@ -72,6 +72,7 @@ export async function listClassesWithDetails(): Promise<ClassWithDetails[]> {
     id: c.id,
     name: c.name,
     group_label: (c.group_label ?? null) as "유치부" | "방과후" | "오후반" | null,
+    color_index: c.color_index ?? null,
     teachers: teachersByClass.get(c.id) ?? [],
     student_count: countByClass[c.id] ?? 0,
     created_at: c.created_at,
@@ -89,7 +90,7 @@ export async function getClassWithStudents(
   // 직접 단일 반 조회 (N+1 쿼리 제거)
   const { data: classRow, error: classError } = await supabase
     .from("classes")
-    .select("id, name, group_label, created_at, updated_at")
+    .select("id, name, group_label, color_index, created_at, updated_at")
     .eq("id", classId)
     .single();
 
@@ -127,6 +128,7 @@ export async function getClassWithStudents(
     id: classRow.id,
     name: classRow.name,
     group_label: (classRow.group_label ?? null) as "유치부" | "방과후" | "오후반" | null,
+    color_index: classRow.color_index ?? null,
     teachers,
     student_count: studentCount ?? 0,
     created_at: classRow.created_at,
@@ -261,6 +263,7 @@ export async function createClass(
   name: string,
   teacherProfileIds: string[],
   groupLabel?: string,
+  colorIndex?: number | null,
 ): Promise<{ error?: string; id?: string }> {
   const auth = await verifyAdmin();
   if ("error" in auth) return { error: auth.error };
@@ -269,7 +272,7 @@ export async function createClass(
   if (!n) return { error: "반 이름을 입력해 주세요." };
   const { data, error } = await supabase
     .from("classes")
-    .insert({ name: n, group_label: groupLabel || null })
+    .insert({ name: n, group_label: groupLabel || null, color_index: colorIndex ?? null })
     .select("id")
     .single();
   if (error) {
@@ -323,6 +326,7 @@ export async function updateClass(
   name: string,
   teacherProfileIds: string[],
   groupLabel?: string,
+  colorIndex?: number | null,
 ): Promise<{ error?: string }> {
   const auth = await verifyAdmin();
   if ("error" in auth) return { error: auth.error };
@@ -334,6 +338,7 @@ export async function updateClass(
     .update({
       name: n,
       group_label: groupLabel || null,
+      color_index: colorIndex ?? null,
       updated_at: new Date().toISOString(),
     })
     .eq("id", classId);

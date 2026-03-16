@@ -51,6 +51,7 @@ export type ClassWithDetails = {
   id: string;
   name: string;
   group_label: "유치부" | "방과후" | "오후반" | null;
+  color_index: number | null;
   teachers: ClassTeacherInfo[];
   student_count: number;
   created_at: string;

@@ -20,6 +20,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { CLASS_COLOR_PALETTE } from "@/lib/class-colors";
 
 const GROUP_ORDER = ["유치부", "오후반", ""] as const;
 
@@ -900,6 +901,7 @@ function AddClassModal({
 }) {
   const [name, setName] = useState("");
   const [groupLabel, setGroupLabel] = useState("");
+  const [colorIndex, setColorIndex] = useState<number | null>(null);
   const [selectedTeacherIds, setSelectedTeacherIds] = useState<string[]>([]);
   const [teacherSearch, setTeacherSearch] = useState("");
   const [pending, setPending] = useState(false);
@@ -921,7 +923,7 @@ function AddClassModal({
     e.preventDefault();
     setPending(true);
     setError(null);
-    const result = await createClass(name.trim(), selectedTeacherIds, groupLabel);
+    const result = await createClass(name.trim(), selectedTeacherIds, groupLabel, colorIndex);
     setPending(false);
     if (result?.error) {
       setError(result.error);
@@ -965,6 +967,31 @@ function AddClassModal({
               <option value="유치부">유치부</option>
               <option value="오후반">오후반</option>
             </select>
+          </div>
+        </div>
+        <div>
+          <label className="mb-2 block text-sm font-medium text-foreground">
+            색상 <span className="text-muted-foreground font-normal">(시간표 표시색)</span>
+          </label>
+          <div className="flex flex-wrap gap-2 items-center">
+            {CLASS_COLOR_PALETTE.map((c, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => setColorIndex(i)}
+                className={`w-6 h-6 rounded-full ${c.bg} border-2 ${colorIndex === i ? "border-slate-600 scale-110" : "border-transparent"} transition-all`}
+                title={`색상 ${i + 1}`}
+              />
+            ))}
+            <button
+              type="button"
+              onClick={() => setColorIndex(null)}
+              className={`w-6 h-6 rounded-full bg-slate-100 border-2 ${colorIndex === null ? "border-slate-600 scale-110" : "border-transparent"} transition-all`}
+              title="자동"
+            />
+            <span className="text-xs text-muted-foreground ml-1">
+              {colorIndex === null ? "자동 배정" : `색상 ${colorIndex + 1}`}
+            </span>
           </div>
         </div>
         <div>
@@ -1043,6 +1070,7 @@ function EditClassModal({
 }) {
   const [name, setName] = useState(classRow.name);
   const [groupLabel, setGroupLabel] = useState(classRow.group_label ?? "");
+  const [colorIndex, setColorIndex] = useState<number | null>(classRow.color_index ?? null);
   const [selectedTeacherIds, setSelectedTeacherIds] = useState<string[]>(
     classRow.teachers.map((t) => t.profile_id)
   );
@@ -1071,6 +1099,7 @@ function EditClassModal({
       name.trim(),
       selectedTeacherIds,
       groupLabel,
+      colorIndex,
     );
     setPending(false);
     if (result?.error) {
@@ -1114,6 +1143,31 @@ function EditClassModal({
               <option value="유치부">유치부</option>
               <option value="오후반">오후반</option>
             </select>
+          </div>
+        </div>
+        <div>
+          <label className="mb-2 block text-sm font-medium text-foreground">
+            색상 <span className="text-muted-foreground font-normal">(시간표 표시색)</span>
+          </label>
+          <div className="flex flex-wrap gap-2 items-center">
+            {CLASS_COLOR_PALETTE.map((c, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => setColorIndex(i)}
+                className={`w-6 h-6 rounded-full ${c.bg} border-2 ${colorIndex === i ? "border-slate-600 scale-110" : "border-transparent"} transition-all`}
+                title={`색상 ${i + 1}`}
+              />
+            ))}
+            <button
+              type="button"
+              onClick={() => setColorIndex(null)}
+              className={`w-6 h-6 rounded-full bg-slate-100 border-2 ${colorIndex === null ? "border-slate-600 scale-110" : "border-transparent"} transition-all`}
+              title="자동"
+            />
+            <span className="text-xs text-muted-foreground ml-1">
+              {colorIndex === null ? "자동 배정" : `색상 ${colorIndex + 1}`}
+            </span>
           </div>
         </div>
         <div>

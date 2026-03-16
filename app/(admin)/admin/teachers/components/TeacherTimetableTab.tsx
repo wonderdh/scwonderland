@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import type { GroupTimetableData } from "../../actions/schedule-actions";
+import { CLASS_COLOR_PALETTE } from "@/lib/class-colors";
 import {
   addSingleClassSchedule,
   deleteClassSchedule,
@@ -19,21 +20,6 @@ const GROUP_TABS: { key: GroupKey; label: string }[] = [
 
 const DAY_LABELS = ["월", "화", "수", "목", "금"];
 
-// IMPORTANT: All strings must be complete Tailwind class names (no dynamic concat) for purging to work.
-const CLASS_COLOR_PALETTE: { bg: string; text: string }[] = [
-  { bg: "bg-blue-100",    text: "text-blue-800"    },
-  { bg: "bg-emerald-100", text: "text-emerald-800"  },
-  { bg: "bg-violet-100",  text: "text-violet-800"   },
-  { bg: "bg-rose-100",    text: "text-rose-800"     },
-  { bg: "bg-amber-100",   text: "text-amber-800"    },
-  { bg: "bg-cyan-100",    text: "text-cyan-800"     },
-  { bg: "bg-pink-100",    text: "text-pink-800"     },
-  { bg: "bg-orange-100",  text: "text-orange-800"   },
-  { bg: "bg-teal-100",    text: "text-teal-800"     },
-  { bg: "bg-indigo-100",  text: "text-indigo-800"   },
-  { bg: "bg-lime-100",    text: "text-lime-800"     },
-  { bg: "bg-sky-100",     text: "text-sky-800"      },
-];
 
 function buildClassColorMap(
   classes: { id: string; name: string }[],
