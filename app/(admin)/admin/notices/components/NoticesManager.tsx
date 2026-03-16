@@ -299,7 +299,7 @@ function NoticeFormModal({
       return true;
     });
     if (valid.length < files.length) {
-      setError("일부 이미지가 형식 또는 크기 제한으로 제외되었습니다.");
+      toast.error("일부 이미지가 형식 또는 크기 제한으로 제외되었습니다.");
     }
     setNewImageFiles((prev) => [...prev, ...valid]);
     if (imageInputRef.current) imageInputRef.current.value = "";
@@ -321,7 +321,7 @@ function NoticeFormModal({
       return true;
     });
     if (valid.length < files.length) {
-      setError("일부 파일이 형식 또는 크기 제한으로 제외되었습니다.");
+      toast.error("일부 파일이 형식 또는 크기 제한으로 제외되었습니다.");
     }
     setNewAttachmentFiles((prev) => [...prev, ...valid]);
     if (fileInputRef.current) fileInputRef.current.value = "";

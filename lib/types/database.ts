@@ -579,3 +579,55 @@ export type BusDefaultAssignment = {
   estimated_time: string | null;
   note: string | null;
 };
+
+// ── 교재 타입 ──
+
+export type Textbook = {
+  id: string;
+  title: string;
+  series: string | null;
+  level: string | null;
+  category: string;
+  total_units: number;
+  cover_image: string | null;
+  description: string | null;
+  sort_order: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ClassTextbook = {
+  id: string;
+  class_id: string;
+  textbook_id: string;
+  textbook_title: string;
+  textbook_series: string | null;
+  textbook_level: string | null;
+  textbook_category: string;
+  total_units: number;
+  assigned_at: string;
+};
+
+export type StudentTextbookProgress = {
+  id: string;
+  student_profile_id: string;
+  textbook_id: string;
+  textbook_title: string;
+  textbook_series: string | null;
+  textbook_level: string | null;
+  textbook_category: string;
+  textbook_cover_image: string | null;
+  total_units: number;
+  source_type: "class" | "individual";
+  source_class_id: string | null;
+  source_class_name: string | null;
+  status: "not_started" | "in_progress" | "completed";
+  completed_units: number;
+  assigned_at: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+  note: string | null;
+  created_at: string;
+  updated_at: string;
+};

@@ -47,4 +47,7 @@ export type {
   BusStopSchedule,
   BusDefaultAssignment,
   AfterschoolEnrollment,
+  Textbook,
+  ClassTextbook,
+  StudentTextbookProgress,
 } from "./database";

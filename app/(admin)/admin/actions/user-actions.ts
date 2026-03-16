@@ -208,6 +208,26 @@ export async function getTeacherAssignmentCounts(
   };
 }
 
+/** 삭제 전 경고용: 학생의 연관 데이터 건수 조회 */
+export async function getStudentLinkedCounts(
+  userId: string
+): Promise<{ attendanceCount: number; busDefaultCount: number; progressCount: number }> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return { attendanceCount: 0, busDefaultCount: 0, progressCount: 0 };
+
+  const supabase = createAdminClient();
+  const [{ count: attendanceCount }, { count: busDefaultCount }, { count: progressCount }] = await Promise.all([
+    supabase.from("attendance").select("*", { count: "exact", head: true }).eq("student_profile_id", userId),
+    supabase.from("student_bus_defaults").select("*", { count: "exact", head: true }).eq("student_profile_id", userId),
+    supabase.from("student_textbook_progress").select("*", { count: "exact", head: true }).eq("student_profile_id", userId),
+  ]);
+  return {
+    attendanceCount: attendanceCount ?? 0,
+    busDefaultCount: busDefaultCount ?? 0,
+    progressCount: progressCount ?? 0,
+  };
+}
+
 /** 소프트 삭제: deleted_at 설정 + Auth ban */
 export async function deleteUserById(
   formData: FormData

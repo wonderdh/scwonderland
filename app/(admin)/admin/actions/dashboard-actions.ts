@@ -4,6 +4,33 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { verifyAdmin } from "./auth-helpers";
 import type { DashboardStats } from "@/lib/types";
 
+export async function getTodayStats(): Promise<{
+  pendingBusChangeCount: number;
+  todayAttendanceCount: number;
+}> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return { pendingBusChangeCount: 0, todayAttendanceCount: 0 };
+
+  const supabase = createAdminClient();
+  const today = new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
+
+  const [{ count: pendingBusChangeCount }, { count: todayAttendanceCount }] = await Promise.all([
+    supabase
+      .from("bus_change_requests")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "pending"),
+    supabase
+      .from("attendance")
+      .select("*", { count: "exact", head: true })
+      .eq("attendance_date", today),
+  ]);
+
+  return {
+    pendingBusChangeCount: pendingBusChangeCount ?? 0,
+    todayAttendanceCount: todayAttendanceCount ?? 0,
+  };
+}
+
 export async function getDashboardStats(): Promise<DashboardStats> {
   const auth = await verifyAdmin();
   if ("error" in auth) return { studentCount: 0, teacherCount: 0, classCount: 0, reportCardCount: 0, noticeCount: 0 };

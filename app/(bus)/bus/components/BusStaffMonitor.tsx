@@ -137,7 +137,7 @@ function StudentRow({
         }`}
       >
         <span
-          className={`size-8 rounded-full flex items-center justify-center text-sm shrink-0 transition-all ${
+          className={`size-11 rounded-full flex items-center justify-center text-base shrink-0 transition-all ${
             pendingAction === "board"
               ? "bg-blue-500 text-white scale-110"
               : pendingAction === "unboard"

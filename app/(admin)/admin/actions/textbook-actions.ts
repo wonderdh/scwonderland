@@ -4,75 +4,11 @@ import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { verifyAdmin, verifyAuthenticated } from "./auth-helpers";
+import type { Textbook, ClassTextbook, StudentTextbookProgress, ClassTextbookProgressRow } from "@/lib/types";
 
 const COVER_BUCKET = "textbook-covers";
 const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10MB
-
-// ──────────────────────────────────────────────
-// 타입 정의
-// ──────────────────────────────────────────────
-
-export type Textbook = {
-  id: string;
-  title: string;
-  series: string | null;
-  level: string | null;
-  category: string;
-  total_units: number;
-  cover_image: string | null;
-  description: string | null;
-  sort_order: number;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
-};
-
-export type ClassTextbook = {
-  id: string;
-  class_id: string;
-  textbook_id: string;
-  textbook_title: string;
-  textbook_series: string | null;
-  textbook_level: string | null;
-  textbook_category: string;
-  total_units: number;
-  assigned_at: string;
-};
-
-export type StudentTextbookProgress = {
-  id: string;
-  student_profile_id: string;
-  textbook_id: string;
-  textbook_title: string;
-  textbook_series: string | null;
-  textbook_level: string | null;
-  textbook_category: string;
-  textbook_cover_image: string | null;
-  total_units: number;
-  source_type: "class" | "individual";
-  source_class_id: string | null;
-  source_class_name: string | null;
-  status: "not_started" | "in_progress" | "completed";
-  completed_units: number;
-  assigned_at: string | null;
-  started_at: string | null;
-  completed_at: string | null;
-  note: string | null;
-  created_at: string;
-  updated_at: string;
-};
-
-export type ClassTextbookProgressRow = {
-  student_profile_id: string;
-  korean_name: string | null;
-  english_name: string | null;
-  student_number: string | null;
-  progress_id: string | null;
-  status: "not_started" | "in_progress" | "completed";
-  completed_units: number;
-  note: string | null;
-};
 
 // TEXTBOOK_CATEGORIES는 textbook-constants.ts에서 import
 
@@ -294,6 +230,24 @@ export async function deleteTextbook(textbookId: string): Promise<{ error?: stri
 
   revalidatePath("/admin/textbooks");
   return {};
+}
+
+/** 삭제 전 경고용: 교재의 연관 데이터 건수 조회 */
+export async function getTextbookLinkedCounts(
+  textbookId: string
+): Promise<{ progressCount: number; classAssignCount: number }> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return { progressCount: 0, classAssignCount: 0 };
+
+  const supabase = createAdminClient();
+  const [{ count: progressCount }, { count: classAssignCount }] = await Promise.all([
+    supabase.from("student_textbook_progress").select("*", { count: "exact", head: true }).eq("textbook_id", textbookId),
+    supabase.from("class_textbooks").select("*", { count: "exact", head: true }).eq("textbook_id", textbookId),
+  ]);
+  return {
+    progressCount: progressCount ?? 0,
+    classAssignCount: classAssignCount ?? 0,
+  };
 }
 
 // ──────────────────────────────────────────────

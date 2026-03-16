@@ -1,5 +1,6 @@
 export {
   getDashboardStats,
+  getTodayStats,
 } from "./actions/dashboard-actions";
 
 export {
@@ -7,6 +8,7 @@ export {
   createTeacher,
   listUsersByRole,
   getTeacherAssignmentCounts,
+  getStudentLinkedCounts,
   deleteUserById,
   restoreUser,
   permanentlyDeleteUser,
@@ -32,6 +34,7 @@ export {
   createClass,
   updateClass,
   deleteClass,
+  getClassLinkedCounts,
   addStudentToClass,
   removeStudentFromClass,
   listTeachersForSelect,
@@ -50,6 +53,7 @@ export {
   listTextbooks,
   getClassTextbookProgress,
   batchUpdateProgress,
+  getTextbookLinkedCounts,
 } from "./actions/textbook-actions";
 
 export {

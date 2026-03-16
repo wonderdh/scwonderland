@@ -4,20 +4,18 @@ import {
   addStudentToClass,
   createClass,
   deleteClass,
+  getClassLinkedCounts,
   listStudentsNotInClass,
   removeStudentFromClass,
   updateClass,
 } from "../../actions";
-import type { ClassWithDetails, ClassStudentRow } from "@/lib/types";
+import type { ClassWithDetails, ClassStudentRow, ClassTeacherInfo, ClassTextbook, Textbook } from "@/lib/types";
 import {
   assignTextbookToClass,
   removeTextbookFromClass,
   listClassTextbooks,
   listTextbooks,
-  type ClassTextbook,
-  type Textbook,
 } from "../../actions/textbook-actions";
-import type { ClassTeacherInfo } from "@/lib/types";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -96,6 +94,8 @@ export function ClassesManager({
   const [createOpen, setCreateOpen] = useState(false);
   const [editClass, setEditClass] = useState<ClassWithDetails | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ClassWithDetails | null>(null);
+  const [deleteTargetCounts, setDeleteTargetCounts] = useState<{ studentCount: number; homeworkCount: number; noticeCount: number } | null>(null);
+  const [deleteTargetLoading, setDeleteTargetLoading] = useState(false);
   const [addStudentOpen, setAddStudentOpen] = useState<ClassWithDetails | null>(null);
   const [removeStudentTarget, setRemoveStudentTarget] =
     useState<{ classId: string; row: ClassStudentRow } | null>(null);
@@ -420,7 +420,14 @@ export function ClassesManager({
                           textbooks={cardTextbooks[c.id] ?? []}
                           textbooksLoaded={cardTextbooksLoaded[c.id] ?? false}
                           onEdit={() => setEditClass(c)}
-                          onDelete={() => setDeleteTarget(c)}
+                          onDelete={async () => {
+                            setDeleteTarget(c);
+                            setDeleteTargetCounts(null);
+                            setDeleteTargetLoading(true);
+                            const counts = await getClassLinkedCounts(c.id);
+                            setDeleteTargetLoading(false);
+                            setDeleteTargetCounts(counts);
+                          }}
                           onRemoveStudent={(row) =>
                             setRemoveStudentTarget({ classId: c.id, row })
                           }
@@ -674,21 +681,28 @@ export function ClassesManager({
       <ConfirmDialog
         open={!!deleteTarget}
         title="반 삭제"
-        description={
-          deleteTarget
-            ? `"${deleteTarget.name}" 반을 삭제하면 소속 학생 정보만 해제됩니다. 삭제할까요?`
-            : undefined
-        }
+        description={(() => {
+          if (!deleteTarget) return undefined;
+          if (deleteTargetLoading) return `"${deleteTarget.name}" 반의 연관 데이터를 확인하는 중…`;
+          if (!deleteTargetCounts) return `"${deleteTarget.name}" 반을 삭제할까요?`;
+          const parts: string[] = [];
+          if (deleteTargetCounts.studentCount > 0) parts.push(`학생 ${deleteTargetCounts.studentCount}명`);
+          if (deleteTargetCounts.homeworkCount > 0) parts.push(`숙제 ${deleteTargetCounts.homeworkCount}건`);
+          if (deleteTargetCounts.noticeCount > 0) parts.push(`공지 ${deleteTargetCounts.noticeCount}건`);
+          if (parts.length === 0) return `"${deleteTarget.name}" 반을 삭제할까요? 연관 데이터가 없습니다.`;
+          return `"${deleteTarget.name}" 반을 삭제하면 ${parts.join(", ")}이(가) 함께 삭제됩니다. 계속할까요?`;
+        })()}
         confirmLabel="삭제"
         variant="danger"
-        disabled={deleteClassPending}
-        onCancel={() => setDeleteTarget(null)}
+        disabled={deleteClassPending || deleteTargetLoading}
+        onCancel={() => { setDeleteTarget(null); setDeleteTargetCounts(null); }}
         onConfirm={async () => {
           if (!deleteTarget) return;
           setDeleteClassPending(true);
           await deleteClass(deleteTarget.id);
           setDeleteClassPending(false);
           setDeleteTarget(null);
+          setDeleteTargetCounts(null);
           toast.success("반이 삭제되었습니다.");
           router.refresh();
         }}

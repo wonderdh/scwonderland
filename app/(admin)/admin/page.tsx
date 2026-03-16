@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getDashboardStats } from "./actions";
+import { getDashboardStats, getTodayStats } from "./actions";
 import {
   Card,
   CardContent,
@@ -10,7 +10,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 
 export default async function AdminDashboardPage() {
-  const stats = await getDashboardStats();
+  const [stats, todayStats] = await Promise.all([getDashboardStats(), getTodayStats()]);
 
   const statCards = [
     {
@@ -136,6 +136,47 @@ export default async function AdminDashboardPage() {
             </CardContent>
           </Card>
         ))}
+      </div>
+
+      <div>
+        <h2 className="text-lg font-semibold mb-4">오늘의 현황</h2>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Link href="/admin/bus?tab=changes">
+            <Card className="py-4 transition-all hover:shadow-md hover:border-orange-300 cursor-pointer">
+              <CardContent className="flex items-center gap-4">
+                <div className="rounded-xl p-2.5 bg-gradient-to-br from-orange-400 to-amber-500 text-white shadow-md">
+                  <svg className="size-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8 17a2 2 0 100-4 2 2 0 000 4zm8 0a2 2 0 100-4 2 2 0 000 4zM6 3h12a2 2 0 012 2v10a2 2 0 01-2 2H6a2 2 0 01-2-2V5a2 2 0 012-2zm0 4h12M7 21h2m6 0h2" />
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <p className="text-2xl font-bold tracking-tight">
+                    {todayStats.pendingBusChangeCount}
+                    {todayStats.pendingBusChangeCount > 0 && (
+                      <span className="ml-2 text-sm font-normal text-orange-500">처리 필요</span>
+                    )}
+                  </p>
+                  <p className="text-xs text-muted-foreground font-medium">미처리 버스 변경 요청</p>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+          <Link href="/admin/students">
+            <Card className="py-4 transition-all hover:shadow-md hover:border-teal-300 cursor-pointer">
+              <CardContent className="flex items-center gap-4">
+                <div className="rounded-xl p-2.5 bg-gradient-to-br from-teal-500 to-cyan-600 text-white shadow-md">
+                  <svg className="size-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-2xl font-bold tracking-tight">{todayStats.todayAttendanceCount}</p>
+                  <p className="text-xs text-muted-foreground font-medium">오늘 출결 기록</p>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+        </div>
       </div>
 
       <div>

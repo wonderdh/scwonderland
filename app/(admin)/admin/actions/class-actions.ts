@@ -416,6 +416,26 @@ export async function deleteClass(classId: string): Promise<{ error?: string }> 
   return {};
 }
 
+/** 삭제 전 경고용: 반의 연관 데이터 건수 조회 */
+export async function getClassLinkedCounts(
+  classId: string
+): Promise<{ studentCount: number; homeworkCount: number; noticeCount: number }> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return { studentCount: 0, homeworkCount: 0, noticeCount: 0 };
+
+  const supabase = createAdminClient();
+  const [{ count: studentCount }, { count: homeworkCount }, { count: noticeCount }] = await Promise.all([
+    supabase.from("class_students").select("*", { count: "exact", head: true }).eq("class_id", classId),
+    supabase.from("homework_assignments").select("*", { count: "exact", head: true }).eq("class_id", classId),
+    supabase.from("class_notices").select("*", { count: "exact", head: true }).eq("class_id", classId),
+  ]);
+  return {
+    studentCount: studentCount ?? 0,
+    homeworkCount: homeworkCount ?? 0,
+    noticeCount: noticeCount ?? 0,
+  };
+}
+
 export async function addStudentToClass(
   classId: string,
   studentProfileId: string

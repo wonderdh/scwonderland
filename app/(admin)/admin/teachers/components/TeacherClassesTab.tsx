@@ -1,9 +1,9 @@
 "use client";
 
 import { getClassWithStudents } from "../../actions";
-import { listClassTextbooks, type ClassTextbook } from "../../actions/textbook-actions";
+import { listClassTextbooks } from "../../actions/textbook-actions";
 import { TEXTBOOK_CATEGORIES } from "../../actions/textbook-constants";
-import type { ClassWithDetails, ClassStudentRow, ClassTeacherInfo } from "@/lib/types";
+import type { ClassWithDetails, ClassStudentRow, ClassTeacherInfo, ClassTextbook } from "@/lib/types";
 import { useCallback, useEffect, useState } from "react";
 import { LoadingState } from "@/components/LoadingState";
 

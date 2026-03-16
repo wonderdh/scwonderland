@@ -6,9 +6,8 @@ import {
   assignTextbookToStudent,
   removeTextbookFromStudent,
   updateProgress,
-  type StudentTextbookProgress,
-  type Textbook,
 } from "../../actions/textbook-actions";
+import type { StudentTextbookProgress, Textbook } from "@/lib/types";
 import { TEXTBOOK_CATEGORIES } from "../../actions/textbook-constants";
 import Image from "next/image";
 import { useRouter } from "next/navigation";

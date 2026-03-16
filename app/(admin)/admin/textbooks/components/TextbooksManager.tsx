@@ -4,8 +4,9 @@ import {
   createTextbook,
   updateTextbook,
   deleteTextbook,
-  type Textbook,
+  getTextbookLinkedCounts,
 } from "../../actions/textbook-actions";
+import type { Textbook } from "@/lib/types";
 import { TEXTBOOK_CATEGORIES } from "../../actions/textbook-constants";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
@@ -24,6 +25,8 @@ export function TextbooksManager({
   const [createOpen, setCreateOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Textbook | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Textbook | null>(null);
+  const [deleteTargetCounts, setDeleteTargetCounts] = useState<{ progressCount: number; classAssignCount: number } | null>(null);
+  const [deleteTargetLoading, setDeleteTargetLoading] = useState(false);
   const [deletePending, setDeletePending] = useState(false);
 
   const filtered = useMemo(() => {
@@ -107,7 +110,14 @@ export function TextbooksManager({
               key={t.id}
               textbook={t}
               onEdit={() => setEditTarget(t)}
-              onDelete={() => setDeleteTarget(t)}
+              onDelete={async () => {
+                setDeleteTarget(t);
+                setDeleteTargetCounts(null);
+                setDeleteTargetLoading(true);
+                const counts = await getTextbookLinkedCounts(t.id);
+                setDeleteTargetLoading(false);
+                setDeleteTargetCounts(counts);
+              }}
             />
           ))}
         </div>
@@ -147,21 +157,27 @@ export function TextbooksManager({
       <ConfirmDialog
         open={!!deleteTarget}
         title="교재 삭제"
-        description={
-          deleteTarget
-            ? `"${deleteTarget.title}" 교재를 삭제할까요?`
-            : undefined
-        }
+        description={(() => {
+          if (!deleteTarget) return undefined;
+          if (deleteTargetLoading) return `"${deleteTarget.title}" 교재의 연관 데이터를 확인하는 중…`;
+          if (!deleteTargetCounts) return `"${deleteTarget.title}" 교재를 삭제할까요?`;
+          const parts: string[] = [];
+          if (deleteTargetCounts.classAssignCount > 0) parts.push(`반 배정 ${deleteTargetCounts.classAssignCount}건`);
+          if (deleteTargetCounts.progressCount > 0) parts.push(`학생 진도 ${deleteTargetCounts.progressCount}건`);
+          if (parts.length === 0) return `"${deleteTarget.title}" 교재를 삭제할까요? 연관 데이터가 없습니다.`;
+          return `"${deleteTarget.title}" 교재를 삭제하면 ${parts.join(", ")}이(가) 함께 삭제됩니다. 계속할까요?`;
+        })()}
         confirmLabel="삭제"
         variant="danger"
-        disabled={deletePending}
-        onCancel={() => setDeleteTarget(null)}
+        disabled={deletePending || deleteTargetLoading}
+        onCancel={() => { setDeleteTarget(null); setDeleteTargetCounts(null); }}
         onConfirm={async () => {
           if (!deleteTarget) return;
           setDeletePending(true);
           await deleteTextbook(deleteTarget.id);
           setDeletePending(false);
           setDeleteTarget(null);
+          setDeleteTargetCounts(null);
           toast.success("교재가 삭제되었습니다.");
           router.refresh();
         }}
