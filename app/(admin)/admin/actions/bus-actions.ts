@@ -150,54 +150,6 @@ export async function listAllActiveStudentNames(): Promise<
   }));
 }
 
-// ── 정류장→호차 파생 헬퍼 ──
-
-async function deriveBusFromStopsBulk(
-  supabase: ReturnType<typeof createAdminClient>,
-  dayOfWeek: number,
-  direction: "pickup" | "dropoff",
-  busTimeSlotId?: string | null
-): Promise<Map<string, string>> {
-  // bus_stop_day_assignments에서 해당 요일+방향의 stop→bus 매핑 조회
-  // busTimeSlotId 매칭 우선, null fallback
-  let query = supabase
-    .from("bus_stop_day_assignments")
-    .select("bus_stop_id, bus_number_id, bus_time_slot_id")
-    .eq("day_of_week", dayOfWeek)
-    .eq("direction", direction);
-
-  const { data, error } = await query;
-  if (error || !data) return new Map();
-
-  const result = new Map<string, string>();
-  // 먼저 시간대별 매핑을 기본값으로 적용 (슬롯 미지정 호출 시 fallback)
-  if (!busTimeSlotId) {
-    for (const row of data) {
-      if (row.bus_time_slot_id) {
-        // 아직 매핑이 없는 정류장만 설정 (첫 번째 발견된 슬롯 우선)
-        if (!result.has(row.bus_stop_id)) {
-          result.set(row.bus_stop_id, row.bus_number_id);
-        }
-      }
-    }
-  }
-  // slot=null (기본) 매핑으로 덮어쓰기
-  for (const row of data) {
-    if (!row.bus_time_slot_id) {
-      result.set(row.bus_stop_id, row.bus_number_id);
-    }
-  }
-  // 특정 슬롯 매핑으로 덮어쓰기
-  if (busTimeSlotId) {
-    for (const row of data) {
-      if (row.bus_time_slot_id === busTimeSlotId) {
-        result.set(row.bus_stop_id, row.bus_number_id);
-      }
-    }
-  }
-  return result;
-}
-
 // 시간대별 정확한 stop→bus 매핑 + sort_order (단일 쿼리로 모든 슬롯 처리)
 type StopBusInfo = { busId: string; sortOrder: number };
 type StopBusMaps = {
@@ -1606,12 +1558,12 @@ export async function getBulkBusDefaults(
   const profileIds = [...new Set(defaults.map((d) => d.student_profile_id))];
   const stopIds = [...new Set(defaults.filter((d) => d.bus_stop_id).map((d) => d.bus_stop_id))];
 
-  const [studentsResult, stopToBusMap, stopsResult] = await Promise.all([
+  const [studentsResult, stopBusMaps, stopsResult] = await Promise.all([
     supabase
       .from("students")
       .select("profile_id, korean_name, english_name, age")
       .in("profile_id", profileIds),
-    deriveBusFromStopsBulk(supabase, dayOfWeek, direction, busTimeSlotId),
+    buildStopToBusMaps(supabase, dayOfWeek, direction),
     stopIds.length
       ? supabase.from("bus_stops").select("id, name").in("id", stopIds)
       : Promise.resolve({ data: [] as { id: string; name: string }[] }),
@@ -1622,9 +1574,9 @@ export async function getBulkBusDefaults(
 
   return defaults.map((d) => {
     const student = studentMap.get(d.student_profile_id);
-    // 호차 파생: stop→bus 매핑에서 결정
+    // 호차 파생: stop→bus 매핑에서 결정 (행별 슬롯 ID로 정확히 매칭)
     const derivedBusId = d.bus_stop_id
-      ? (stopToBusMap.get(d.bus_stop_id) ?? null)
+      ? stopBusMaps.getBySlot(d.bus_stop_id, d.bus_time_slot_id ?? null)
       : null;
     return {
       id: d.id,
