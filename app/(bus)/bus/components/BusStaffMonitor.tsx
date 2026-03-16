@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useTransition, useMemo } from "react";
 import { toast } from "sonner";
 import type { BusManifestGroup, BusManifestEntry } from "@/lib/types";
+import { getAgeColor } from "@/lib/student-age-colors";
 import {
   getDailyBusManifest,
   boardBusStudent,
@@ -97,6 +98,9 @@ function StudentRow({
   onToggleCheck: () => void;
   onToggleUncheck: () => void;
 }) {
+  // 나이별 색상
+  const ageColor = getAgeColor(student.age);
+
   // 선택된 상태 시각화
   const isSelected = pendingAction !== null;
 
@@ -150,8 +154,8 @@ function StudentRow({
               : isChecked
                 ? "text-slate-400 line-through"
                 : isBoarded
-                  ? "font-semibold text-slate-800"
-                  : "text-slate-700"
+                  ? `font-semibold ${ageColor.text}`
+                  : ageColor.text
           }`}
         >
           {student.korean_name || student.english_name}
