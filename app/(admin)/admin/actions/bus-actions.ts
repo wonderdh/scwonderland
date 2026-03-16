@@ -628,10 +628,48 @@ export async function getDailyBusManifest(
       : null;
 
     if (change) {
-      // 미탑승/결석이면서 정류장 미지정 → noRides로
-      // 정류장 지정 시 → 해당 정류장으로 이동 처리 (change와 동일)
-      const isNoRide = (change.change_type === "no_ride" || change.change_type === "absent") && !change.new_bus_stop_id;
-      if (isNoRide) {
+      // 결석: new_bus_stop_id 유무와 관계없이 항상 원래 호차 그룹에 is_absent=true로 추가
+      if (change.change_type === "absent") {
+        if (derivedBusId) {
+          const key = `${def.bus_time_slot_id}-${derivedBusId}`;
+          if (!groupMap.has(key)) {
+            groupMap.set(key, { slotId: def.bus_time_slot_id, busId: derivedBusId, students: [] });
+          }
+          const stopName = def.bus_stop_id ? stopNameMap.get(def.bus_stop_id) : undefined;
+          const stopTime = def.bus_stop_id ? getStopTime(def.bus_stop_id, def.bus_time_slot_id, direction) : undefined;
+          groupMap.get(key)!.students.push({
+            student_profile_id: def.student_profile_id,
+            korean_name: student.korean_name,
+            english_name: student.english_name,
+            student_number: student.student_number,
+            age: student.age ?? null,
+            is_changed: false,
+            is_absent: true,
+            estimated_time: stopTime ?? def.estimated_time,
+            note: "결석",
+            bus_stop_name: stopName ?? null,
+            bus_stop_sort_order: def.bus_stop_id ? stopBusMaps.getSortOrder(def.bus_stop_id, def.bus_time_slot_id) : null,
+            boarded_at: null,
+            checked_at: null,
+            check_record_id: null,
+          });
+        } else {
+          noRides.push({
+            student_profile_id: def.student_profile_id,
+            korean_name: student.korean_name,
+            english_name: student.english_name,
+            student_number: student.student_number,
+            direction,
+            original_slot_time: getSlotTime(def.bus_time_slot_id),
+            original_bus_label: undefined,
+            change_type: "absent",
+            request_id: change.id,
+          });
+        }
+        continue;
+      }
+      // 미탑승
+      if (change.change_type === "no_ride" && !change.new_bus_stop_id) {
         noRides.push({
           student_profile_id: def.student_profile_id,
           korean_name: student.korean_name,
@@ -640,7 +678,7 @@ export async function getDailyBusManifest(
           direction,
           original_slot_time: getSlotTime(def.bus_time_slot_id),
           original_bus_label: derivedBusId ? busMap.get(derivedBusId) : undefined,
-          change_type: change.change_type as "no_ride" | "absent",
+          change_type: "no_ride",
           request_id: change.id,
         });
         continue;

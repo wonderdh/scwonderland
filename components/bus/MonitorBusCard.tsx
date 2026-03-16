@@ -252,26 +252,34 @@ function renderMonitorStudent(student: BusManifestEntry, card: BusManifestGroup)
     <div
       key={student.student_profile_id}
       className={`px-3 py-1 flex items-center gap-2 ${rowBg}`}
+      style={student.is_absent ? { backgroundColor: "#fff7ed", borderLeft: "4px solid #f97316" } : undefined}
     >
       <span className="text-xl shrink-0">
-        {isChecked ? "✅" : isBoarded ? "🚌" : "⬜"}
+        {isChecked ? "✅" : isBoarded ? "🚌" : student.is_absent ? "🔴" : "⬜"}
       </span>
       <div className="flex-1 min-w-0">
         <span
           className={`block truncate text-2xl ${
             isChecked
               ? "text-slate-400 line-through"
-              : `font-bold ${getAgeColor(student.age).text}`
+              : student.is_absent
+                ? "font-bold text-orange-600"
+                : `font-bold ${getAgeColor(student.age).text}`
           }`}
         >
           {student.korean_name || student.english_name}
         </span>
-        {student.is_changed && student.original_bus_label && (
+        {student.is_absent && (
+          <span className="block truncate text-xs text-orange-500 font-medium -mt-0.5">
+            결석
+          </span>
+        )}
+        {!student.is_absent && student.is_changed && student.original_bus_label && (
           <span className="block truncate text-xs text-amber-500 -mt-0.5">
             {student.original_bus_label} → {card.bus_label}
           </span>
         )}
-        {student.note && (
+        {!student.is_absent && student.note && (
           <span className="block truncate text-xs text-slate-400 -mt-0.5">
             {student.note}
           </span>

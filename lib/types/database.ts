@@ -407,6 +407,7 @@ export type BusManifestEntry = {
   student_number: string | null;
   age: number | null;
   is_changed: boolean;
+  is_absent?: boolean;
   estimated_time?: string | null;
   note?: string | null;
   bus_stop_name?: string | null;
