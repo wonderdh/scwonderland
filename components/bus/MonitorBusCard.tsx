@@ -100,11 +100,12 @@ type MonitorBusCardProps = AdminMonitorBusCardProps | MonitorMonitorBusCardProps
 
 export function MonitorBusCard(props: MonitorBusCardProps) {
   const { card } = props;
-  const boardedCount = card.students.filter(
+  const activeStudents = card.students.filter((s) => !s.is_absent);
+  const boardedCount = activeStudents.filter(
     (s) => s.boarded_at || s.checked_at
   ).length;
-  const checkedCount = card.students.filter((s) => s.checked_at).length;
-  const totalCount = card.students.length;
+  const checkedCount = activeStudents.filter((s) => s.checked_at).length;
+  const totalCount = activeStudents.length;
   const allDone = checkedCount === totalCount && totalCount > 0;
   const stopGroups = groupStudentsByStop(card.students);
 
