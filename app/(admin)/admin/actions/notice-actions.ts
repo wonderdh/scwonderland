@@ -3,21 +3,15 @@
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { verifyAdmin, verifyAuthenticated } from "./auth-helpers";
+import {
+  STORAGE_BUCKETS,
+  generateStoragePath,
+  extractStoragePath,
+  validateFile,
+} from "@/lib/supabase/storage";
 import type { Notice, NoticeAttachment } from "@/lib/types";
 
-const NOTICE_BUCKET = "notice-files";
-
-const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
-const ALLOWED_FILE_TYPES = [
-  "application/pdf",
-  "application/zip",
-  "application/msword",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  "application/vnd.ms-excel",
-  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-];
-const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10MB
-const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
+const BUCKET = STORAGE_BUCKETS.NOTICE_FILES;
 
 // ──────────────────────────────────────────────
 // Storage 헬퍼
@@ -27,32 +21,16 @@ async function uploadNoticeFile(
   file: File,
   fileType: "image" | "attachment"
 ): Promise<{ url: string; storagePath: string } | { error: string }> {
-  const allowed = fileType === "image" ? ALLOWED_IMAGE_TYPES : ALLOWED_FILE_TYPES;
-  const maxSize = fileType === "image" ? MAX_IMAGE_SIZE : MAX_FILE_SIZE;
+  const category = fileType === "image" ? "image" : "document";
+  const validation = validateFile(file, category);
+  if (!validation.valid) return { error: validation.error };
+
   const folder = fileType === "image" ? "images" : "files";
-
-  if (!allowed.includes(file.type)) {
-    return {
-      error:
-        fileType === "image"
-          ? "허용되지 않는 이미지 형식입니다. (JPG, PNG, WebP만 가능)"
-          : "허용되지 않는 파일 형식입니다. (PDF, ZIP, DOCX, XLSX만 가능)",
-    };
-  }
-  if (file.size > maxSize) {
-    return {
-      error: `파일 크기가 ${maxSize / 1024 / 1024}MB를 초과합니다.`,
-    };
-  }
-
-  const ext = file.name.includes(".")
-    ? file.name.substring(file.name.lastIndexOf("."))
-    : "";
-  const storagePath = `${folder}/${Date.now()}_${Math.random().toString(36).substring(2, 8)}${ext}`;
+  const storagePath = generateStoragePath(file.name, folder);
 
   const supabase = createAdminClient();
   const { error } = await supabase.storage
-    .from(NOTICE_BUCKET)
+    .from(BUCKET)
     .upload(storagePath, file, { contentType: file.type, upsert: false });
 
   if (error) {
@@ -60,21 +38,15 @@ async function uploadNoticeFile(
     return { error: `파일 업로드 실패: ${error.message}` };
   }
 
-  const { data: urlData } = supabase.storage
-    .from(NOTICE_BUCKET)
-    .getPublicUrl(storagePath);
-
+  const { data: urlData } = supabase.storage.from(BUCKET).getPublicUrl(storagePath);
   return { url: urlData.publicUrl, storagePath };
 }
 
 async function deleteNoticeFile(publicUrl: string): Promise<void> {
-  const marker = `/storage/v1/object/public/${NOTICE_BUCKET}/`;
-  const idx = publicUrl.indexOf(marker);
-  if (idx === -1) return;
-
-  const storagePath = publicUrl.substring(idx + marker.length);
+  const storagePath = extractStoragePath(publicUrl, BUCKET);
+  if (!storagePath) return;
   const supabase = createAdminClient();
-  await supabase.storage.from(NOTICE_BUCKET).remove([storagePath]);
+  await supabase.storage.from(BUCKET).remove([storagePath]);
 }
 
 // ──────────────────────────────────────────────
