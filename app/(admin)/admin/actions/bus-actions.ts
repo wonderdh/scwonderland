@@ -1461,12 +1461,37 @@ export async function deleteBusStop(id: string): Promise<{ error?: string }> {
   if ("error" in auth) return { error: auth.error };
   const supabase = createAdminClient();
 
-  // null out student_bus_defaults references
-  await supabase
+  // 1. bus_stop_day_assignments 삭제
+  const { error: dayAssignErr } = await supabase
+    .from("bus_stop_day_assignments")
+    .delete()
+    .eq("bus_stop_id", id);
+  if (dayAssignErr) {
+    console.error("[deleteBusStop] day_assignments", dayAssignErr.message);
+    return { error: dayAssignErr.message };
+  }
+
+  // 2. bus_stop_schedules 삭제
+  const { error: schedulesErr } = await supabase
+    .from("bus_stop_schedules")
+    .delete()
+    .eq("bus_stop_id", id);
+  if (schedulesErr) {
+    console.error("[deleteBusStop] schedules", schedulesErr.message);
+    return { error: schedulesErr.message };
+  }
+
+  // 3. student_bus_defaults 참조 null 처리
+  const { error: defaultsErr } = await supabase
     .from("student_bus_defaults")
     .update({ bus_stop_id: null, updated_at: new Date().toISOString() })
     .eq("bus_stop_id", id);
+  if (defaultsErr) {
+    console.error("[deleteBusStop] defaults", defaultsErr.message);
+    return { error: defaultsErr.message };
+  }
 
+  // 4. bus_stops 소프트 삭제
   const { error } = await supabase
     .from("bus_stops")
     .update({ is_active: false, updated_at: new Date().toISOString() })
