@@ -3,11 +3,11 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import type { BusManifestGroup, BusManifestEntry, BusTimeSlot, AfterSchoolBusEntry } from "@/lib/types";
+import type { BusManifestGroup, BusTimeSlot, AfterSchoolBusEntry } from "@/lib/types";
 import { getAgeColor } from "@/lib/student-age-colors";
 import { getDailyBusManifest } from "../../actions";
 import { formatTime } from "@/lib/bus/utils";
-import { MonitorBusCard } from "./MonitorBusCard";
+import { MonitorBusCard } from "@/components/bus/MonitorBusCard";
 
 const DIR_LABEL = { pickup: "등원", dropoff: "하원" } as const;
 const DAY_NAMES = ["일", "월", "화", "수", "목", "금", "토"];

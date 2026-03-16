@@ -33,6 +33,12 @@ type MonitorProgressBarProps = {
 
 type ProgressBarProps = AdminProgressBarProps | MonitorProgressBarProps;
 
+const PROGRESS_COLORS = {
+  high: "bg-blue-500",
+  mid: "bg-amber-500",
+  low: "bg-red-500",
+} as const;
+
 export function ProgressBar(props: ProgressBarProps) {
   if (props.variant === "admin") {
     const { boarded, checked, total } = props;
@@ -63,14 +69,13 @@ export function ProgressBar(props: ProgressBarProps) {
   // variant === "monitor"
   const { boarded, total } = props;
   const pct = total > 0 ? Math.round((boarded / total) * 100) : 0;
-  const color =
-    pct >= 90 ? "bg-blue-500" : pct >= 50 ? "bg-amber-500" : "bg-red-500";
+  const colorKey = pct >= 90 ? "high" : pct >= 50 ? "mid" : "low";
 
   return (
     <div className="flex items-center gap-2">
       <div className="flex-1 h-1.5 bg-slate-200 rounded-full overflow-hidden">
         <div
-          className={`h-full ${color} rounded-full transition-all duration-300`}
+          className={`h-full ${PROGRESS_COLORS[colorKey]} rounded-full transition-all duration-300`}
           style={{ width: `${pct}%` }}
         />
       </div>

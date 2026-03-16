@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import type { BusManifestGroup, BusTimeSlot } from "@/lib/types";
 import { getDailyBusManifest } from "@/app/(admin)/admin/actions";
 import { formatTime } from "@/lib/bus/utils";
-import { MonitorBusCard, BUS_CARD_COLORS } from "@/app/(admin)/admin/bus/components/MonitorBusCard";
+import { MonitorBusCard, BUS_CARD_COLORS } from "@/components/bus/MonitorBusCard";
 
 const DIR_LABEL = { pickup: "등원", dropoff: "하원" } as const;
 const DAY_LABELS = ["월", "화", "수", "목", "금"] as const;
