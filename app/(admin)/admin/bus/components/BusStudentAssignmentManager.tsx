@@ -689,7 +689,7 @@ export function BusStudentAssignmentManager({
         const stopLabel = a.bus_stop_name ?? "정류장 없음";
         return (
           <div
-            className="fixed z-[9999] px-2.5 py-1.5 text-xs bg-slate-800 text-white rounded-lg shadow-lg whitespace-nowrap pointer-events-none"
+            className="fixed z-[100] px-2.5 py-1.5 text-xs bg-slate-800 text-white rounded-lg shadow-lg whitespace-nowrap pointer-events-none"
             style={{ left: tooltipPos.x, top: tooltipPos.y, transform: "translate(-50%, -100%) translateY(-6px)" }}
           >
             {slotLabel} · {stopLabel}
@@ -701,9 +701,9 @@ export function BusStudentAssignmentManager({
       {editingNoteId && notePopupPos && (
         <>
           {/* 배경 클릭 시 닫기 */}
-          <div className="fixed inset-0 z-[9998]" onClick={cancelNote} />
+          <div className="fixed inset-0 z-[99]" onClick={cancelNote} />
           <div
-            className="fixed z-[9999] bg-white border border-slate-200 rounded-lg shadow-xl p-3 w-64"
+            className="fixed z-[100] bg-white border border-slate-200 rounded-lg shadow-xl p-3 w-64"
             style={{ left: notePopupPos.x, top: notePopupPos.y + 6, transform: "translateX(-50%)" }}
           >
             <div className="flex items-center justify-between mb-2">

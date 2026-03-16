@@ -441,6 +441,23 @@ export async function removeStudentFromClass(
   const auth = await verifyAdmin();
   if ("error" in auth) return { error: auth.error };
   const supabase = createAdminClient();
+
+  // 반 소속 정보 조회 (방과후 등록 정리에 필요)
+  const { data: classStudent } = await supabase
+    .from("class_students")
+    .select("class_id, student_profile_id")
+    .eq("id", classStudentId)
+    .single();
+
+  // 방과후 등록 삭제 (방과후 반이 아닌 경우 무해하게 0건 삭제)
+  if (classStudent) {
+    await supabase
+      .from("afterschool_enrollments")
+      .delete()
+      .eq("class_id", classStudent.class_id)
+      .eq("student_profile_id", classStudent.student_profile_id);
+  }
+
   const { error } = await supabase
     .from("class_students")
     .delete()

@@ -13,14 +13,10 @@ import {
   listBusStops,
 } from "../../actions";
 import { LoadingState } from "@/components/LoadingState";
+import { formatTime } from "@/lib/bus/utils";
 
 const DAY_NAMES = ["", "월", "화", "수", "목", "금"];
 const DIR_LABEL = { pickup: "등원", dropoff: "하원" } as const;
-
-function formatTime(t: string | undefined | null) {
-  if (!t) return "-";
-  return t.slice(0, 5);
-}
 
 export function StudentBusTab({ studentProfileId }: { studentProfileId: string }) {
   const router = useRouter();
@@ -376,7 +372,7 @@ export function StudentBusTab({ studentProfileId }: { studentProfileId: string }
                         <>
                           <td colSpan={4} className="py-2 px-2">
                             <span className="text-xs text-red-400 line-through">
-                              {formatTime(deletedDef.time_slot_time)} {deletedDef.bus_label} {deletedDef.bus_stop_name ?? ""}
+                              {deletedDef.time_slot_time ? formatTime(deletedDef.time_slot_time) : "-"} {deletedDef.bus_label} {deletedDef.bus_stop_name ?? ""}
                             </span>
                             <span className="text-xs text-red-500 ml-2">삭제 대기</span>
                           </td>
@@ -448,7 +444,7 @@ export function StudentBusTab({ studentProfileId }: { studentProfileId: string }
                           <td className="py-2 px-2 text-slate-600">
                             {def ? (
                               <>
-                                {formatTime(def.time_slot_time)}
+                                {def.time_slot_time ? formatTime(def.time_slot_time) : "-"}
                                 {def.time_slot_label && <span className="text-xs text-slate-400 ml-1">{def.time_slot_label}</span>}
                               </>
                             ) : (

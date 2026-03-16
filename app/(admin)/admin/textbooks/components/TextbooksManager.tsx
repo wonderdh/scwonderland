@@ -11,6 +11,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 
 export function TextbooksManager({
   initialTextbooks,
@@ -23,6 +24,7 @@ export function TextbooksManager({
   const [createOpen, setCreateOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Textbook | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Textbook | null>(null);
+  const [deletePending, setDeletePending] = useState(false);
 
   const filtered = useMemo(() => {
     let list = initialTextbooks;
@@ -142,18 +144,28 @@ export function TextbooksManager({
           }}
         />
       )}
-      {deleteTarget && (
-        <ConfirmDeleteModal
-          textbook={deleteTarget}
-          onClose={() => setDeleteTarget(null)}
-          onConfirm={async () => {
-            await deleteTextbook(deleteTarget.id);
-            setDeleteTarget(null);
-            toast.success("교재가 삭제되었습니다.");
-            router.refresh();
-          }}
-        />
-      )}
+      <ConfirmDialog
+        open={!!deleteTarget}
+        title="교재 삭제"
+        description={
+          deleteTarget
+            ? `"${deleteTarget.title}" 교재를 삭제할까요?`
+            : undefined
+        }
+        confirmLabel="삭제"
+        variant="danger"
+        disabled={deletePending}
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={async () => {
+          if (!deleteTarget) return;
+          setDeletePending(true);
+          await deleteTextbook(deleteTarget.id);
+          setDeletePending(false);
+          setDeleteTarget(null);
+          toast.success("교재가 삭제되었습니다.");
+          router.refresh();
+        }}
+      />
     </div>
   );
 }
@@ -475,48 +487,3 @@ function TextbookFormModal({
   );
 }
 
-function ConfirmDeleteModal({
-  textbook,
-  onClose,
-  onConfirm,
-}: {
-  textbook: Textbook;
-  onClose: () => void;
-  onConfirm: () => Promise<void>;
-}) {
-  const [pending, setPending] = useState(false);
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} aria-hidden />
-      <div className="relative w-full max-w-sm rounded-xl border border-slate-200 bg-white p-5 shadow-xl">
-        <h3 className="text-lg font-semibold text-slate-800">교재 삭제</h3>
-        <p className="mt-2 text-sm text-slate-600">
-          &quot;{textbook.title}&quot; 교재를 삭제할까요?
-          <br />
-          <span className="text-xs text-slate-400">배정된 진도 기록은 유지됩니다.</span>
-        </p>
-        <div className="mt-4 flex justify-end gap-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-200"
-          >
-            취소
-          </button>
-          <button
-            type="button"
-            disabled={pending}
-            onClick={async () => {
-              setPending(true);
-              await onConfirm();
-              setPending(false);
-            }}
-            className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-500 disabled:opacity-50"
-          >
-            {pending ? "삭제 중…" : "삭제"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}

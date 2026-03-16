@@ -220,7 +220,7 @@ export async function deleteUserById(
 
   const supabase = createAdminClient();
 
-  // 1. 반 담임 배정 삭제
+  // 1. 반 담임 배정 삭제 (교사인 경우)
   const { error: classTeacherError } = await supabase
     .from("class_teachers")
     .delete()
@@ -229,13 +229,40 @@ export async function deleteUserById(
     console.error("[deleteUserById:class_teachers]", classTeacherError.message, { id });
   }
 
-  // 2. 수업 배정 삭제
+  // 2. 수업 배정 삭제 (교사인 경우)
   const { error: scheduleError } = await supabase
     .from("class_schedules")
     .delete()
     .eq("teacher_profile_id", id);
   if (scheduleError) {
     console.error("[deleteUserById:class_schedules]", scheduleError.message, { id });
+  }
+
+  // 3. 반 학생 배정 삭제 (학생인 경우)
+  const { error: classStudentError } = await supabase
+    .from("class_students")
+    .delete()
+    .eq("student_profile_id", id);
+  if (classStudentError) {
+    console.error("[deleteUserById:class_students]", classStudentError.message, { id });
+  }
+
+  // 4. 방과후 등록 삭제 (학생인 경우)
+  const { error: afterschoolError } = await supabase
+    .from("afterschool_enrollments")
+    .delete()
+    .eq("student_profile_id", id);
+  if (afterschoolError) {
+    console.error("[deleteUserById:afterschool_enrollments]", afterschoolError.message, { id });
+  }
+
+  // 5. 버스 기본값 삭제 (학생인 경우)
+  const { error: busDefaultError } = await supabase
+    .from("student_bus_defaults")
+    .delete()
+    .eq("student_profile_id", id);
+  if (busDefaultError) {
+    console.error("[deleteUserById:student_bus_defaults]", busDefaultError.message, { id });
   }
 
   const { error: profileError } = await supabase

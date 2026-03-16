@@ -21,6 +21,7 @@ import type { ClassTeacherInfo } from "@/lib/types";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 
 const GROUP_ORDER = ["유치부", "오후반", ""] as const;
 
@@ -98,6 +99,8 @@ export function ClassesManager({
   const [addStudentOpen, setAddStudentOpen] = useState<ClassWithDetails | null>(null);
   const [removeStudentTarget, setRemoveStudentTarget] =
     useState<{ classId: string; row: ClassStudentRow } | null>(null);
+  const [deleteClassPending, setDeleteClassPending] = useState(false);
+  const [removeStudentPending, setRemoveStudentPending] = useState(false);
 
   // 오른쪽 패널 모드
   const [rightMode, setRightMode] = useState<"students" | "textbooks">("students");
@@ -668,35 +671,45 @@ export function ClassesManager({
           }}
         />
       )}
-      {deleteTarget && (
-        <ConfirmModal
-          title="반 삭제"
-          message={`"${deleteTarget.name}" 반을 삭제하면 소속 학생 정보만 해제됩니다. 삭제할까요?`}
-          confirmLabel="삭제"
-          variant="danger"
-          onClose={() => setDeleteTarget(null)}
-          onConfirm={async () => {
-            await deleteClass(deleteTarget.id);
-            setDeleteTarget(null);
-            toast.success("반이 삭제되었습니다.");
-            router.refresh();
-          }}
-        />
-      )}
-      {removeStudentTarget && (
-        <ConfirmModal
-          title="학생 제외"
-          message="이 반에서 해당 학생을 제외할까요?"
-          confirmLabel="제외"
-          variant="danger"
-          onClose={() => setRemoveStudentTarget(null)}
-          onConfirm={async () => {
-            await removeStudentFromClass(removeStudentTarget.row.id);
-            setRemoveStudentTarget(null);
-            router.refresh();
-          }}
-        />
-      )}
+      <ConfirmDialog
+        open={!!deleteTarget}
+        title="반 삭제"
+        description={
+          deleteTarget
+            ? `"${deleteTarget.name}" 반을 삭제하면 소속 학생 정보만 해제됩니다. 삭제할까요?`
+            : undefined
+        }
+        confirmLabel="삭제"
+        variant="danger"
+        disabled={deleteClassPending}
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={async () => {
+          if (!deleteTarget) return;
+          setDeleteClassPending(true);
+          await deleteClass(deleteTarget.id);
+          setDeleteClassPending(false);
+          setDeleteTarget(null);
+          toast.success("반이 삭제되었습니다.");
+          router.refresh();
+        }}
+      />
+      <ConfirmDialog
+        open={!!removeStudentTarget}
+        title="학생 제외"
+        description="이 반에서 해당 학생을 제외할까요?"
+        confirmLabel="제외"
+        variant="danger"
+        disabled={removeStudentPending}
+        onCancel={() => setRemoveStudentTarget(null)}
+        onConfirm={async () => {
+          if (!removeStudentTarget) return;
+          setRemoveStudentPending(true);
+          await removeStudentFromClass(removeStudentTarget.row.id);
+          setRemoveStudentPending(false);
+          setRemoveStudentTarget(null);
+          router.refresh();
+        }}
+      />
     </div>
   );
 }
@@ -1322,58 +1335,3 @@ function Modal({
   );
 }
 
-function ConfirmModal({
-  title,
-  message,
-  confirmLabel,
-  variant,
-  onClose,
-  onConfirm,
-}: {
-  title: string;
-  message: string;
-  confirmLabel: string;
-  variant: "danger" | "primary";
-  onClose: () => void;
-  onConfirm: () => Promise<void>;
-}) {
-  const [pending, setPending] = useState(false);
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div
-        className="absolute inset-0 bg-black/40"
-        onClick={onClose}
-        aria-hidden
-      />
-      <div className="relative w-full max-w-sm rounded-xl border bg-card p-5 shadow-xl">
-        <h3 className="text-lg font-semibold text-foreground">{title}</h3>
-        <p className="mt-2 text-sm text-muted-foreground">{message}</p>
-        <div className="mt-4 flex justify-end gap-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground hover:bg-secondary/80"
-          >
-            취소
-          </button>
-          <button
-            type="button"
-            disabled={pending}
-            onClick={async () => {
-              setPending(true);
-              await onConfirm();
-              setPending(false);
-            }}
-            className={`rounded-lg px-4 py-2 text-sm font-medium text-white disabled:opacity-50 ${
-              variant === "danger"
-                ? "bg-red-600 hover:bg-red-500"
-                : "bg-emerald-600 hover:bg-emerald-500"
-            }`}
-          >
-            {pending ? "처리 중…" : confirmLabel}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
