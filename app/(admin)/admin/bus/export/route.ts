@@ -299,8 +299,9 @@ export async function GET() {
   const { rows, unassigned, afterschoolEnrollments } = result;
 
   // 전체 학생 목록 (배정 + 미배정 합산, 중복 제거)
+  const seenProfileIds = new Set<string>();
   const assignedStudents = rows
-    .filter((r, i, arr) => arr.findIndex((x) => x.profile_id === r.profile_id) === i)
+    .filter((r) => !seenProfileIds.has(r.profile_id) && seenProfileIds.add(r.profile_id) !== undefined)
     .map((r) => ({
       day: 0,
       profile_id: r.profile_id,
