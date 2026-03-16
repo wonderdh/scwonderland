@@ -301,13 +301,14 @@ export function BusDashboard({ busTimeSlots, busNumbers }: { busTimeSlots: BusTi
 
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
               {tg.cards.map((card) => {
-                const boardedCount = card.students.filter(
+                const activeStudents = card.students.filter((s) => !s.is_absent);
+                const boardedCount = activeStudents.filter(
                   (s) => s.boarded_at || s.checked_at
                 ).length;
-                const checkedCount = card.students.filter(
+                const checkedCount = activeStudents.filter(
                   (s) => s.checked_at
                 ).length;
-                const totalCount = card.students.length;
+                const totalCount = activeStudents.length;
 
                 return (
                   <BusCard
@@ -506,6 +507,28 @@ function BusCard({
   const stopGroups = groupCardStudentsByStop(card.students);
 
   const renderStudent = (student: BusManifestEntry) => {
+    // 결석 학생 별도 렌더링
+    if (student.is_absent) {
+      return (
+        <div
+          key={student.student_profile_id}
+          className="flex items-center gap-3 px-4 py-2"
+          style={{ backgroundColor: "#fff7ed", borderLeft: "4px solid #f97316" }}
+        >
+          <input type="checkbox" checked={false} disabled className="h-4 w-4 rounded border-slate-300 opacity-30" />
+          <input type="checkbox" checked={false} disabled className="h-4 w-4 rounded border-slate-300 opacity-30" />
+          <div className="flex-1 min-w-0 flex items-center gap-2">
+            <span className="text-sm font-medium truncate text-orange-600">
+              {student.korean_name || student.english_name}
+            </span>
+            <span className="shrink-0 text-[10px] bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded font-medium">
+              결석
+            </span>
+          </div>
+        </div>
+      );
+    }
+
     const isBoarded = !!student.boarded_at;
     const isChecked = !!student.checked_at;
 

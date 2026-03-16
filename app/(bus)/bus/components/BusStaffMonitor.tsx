@@ -93,6 +93,26 @@ function StudentRow({
   // 나이별 색상
   const ageColor = getAgeColor(student.age);
 
+  // 결석 학생은 별도 처리
+  if (student.is_absent) {
+    return (
+      <div
+        className="flex items-center gap-3 px-4 py-3"
+        style={{ backgroundColor: "#fff7ed", borderLeft: "4px solid #f97316" }}
+      >
+        <span className="size-8 rounded-full flex items-center justify-center text-sm shrink-0 bg-orange-100 text-orange-500">
+          ✕
+        </span>
+        <div className="flex-1 min-w-0">
+          <span className="block truncate text-[15px] text-orange-600 font-semibold">
+            {student.korean_name || student.english_name}
+          </span>
+          <span className="text-[11px] text-orange-400 font-medium">결석</span>
+        </div>
+      </div>
+    );
+  }
+
   // 선택된 상태 시각화
   const isSelected = pendingAction !== null;
 
@@ -215,9 +235,10 @@ function StaffBusCard({
   onToggleCheck: (student: BusManifestEntry, busTimeSlotId: string, busNumberId: string, direction: "pickup" | "dropoff") => void;
   onToggleUncheck: (student: BusManifestEntry, busTimeSlotId: string, busNumberId: string, direction: "pickup" | "dropoff") => void;
 }) {
-  const total = card.students.length;
-  const boarded = card.students.filter((s) => s.boarded_at || s.checked_at).length;
-  const checked = card.students.filter((s) => s.checked_at).length;
+  const activeStudents = card.students.filter((s) => !s.is_absent);
+  const total = activeStudents.length;
+  const boarded = activeStudents.filter((s) => s.boarded_at || s.checked_at).length;
+  const checked = activeStudents.filter((s) => s.checked_at).length;
   const allDone = checked === total && total > 0;
   const stopGroups = groupStudentsByStop(card.students);
 
