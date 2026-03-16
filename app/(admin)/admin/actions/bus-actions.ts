@@ -1909,6 +1909,69 @@ export async function getWeeklyDropoffExportData(): Promise<
     ])
   );
 
+  // 5. 슬롯 ID 목록 수집 후 student_bus_defaults / bus_stop_day_assignments 1회 병렬 조회
+  const slotIds = slots.map((s) => s.id);
+
+  const [
+    { data: allDefaultsRaw, error: allDefaultsError },
+    { data: allAssignmentsRaw },
+  ] = await Promise.all([
+    slotIds.length > 0
+      ? supabase
+          .from("student_bus_defaults")
+          .select("student_profile_id, bus_stop_id, bus_time_slot_id, day_of_week, note")
+          .eq("direction", "dropoff")
+          .in("bus_time_slot_id", slotIds)
+      : Promise.resolve({ data: [], error: null }),
+    slotIds.length > 0
+      ? supabase
+          .from("bus_stop_day_assignments")
+          .select("bus_stop_id, bus_number_id, bus_time_slot_id, day_of_week")
+          .eq("direction", "dropoff")
+          .in("bus_time_slot_id", slotIds)
+      : Promise.resolve({ data: [], error: null }),
+  ]);
+
+  if (allDefaultsError) {
+    console.error("[getWeeklyDropoffExportData] defaults", allDefaultsError.message);
+    return { error: allDefaultsError.message };
+  }
+
+  // 6. 학생 정보 맵 (step 2에서 이미 조회한 allStudents 재활용)
+  const studMap = new Map(
+    allStudents.map((s) => [s.profile_id, s])
+  );
+
+  // 7. 메모리 필터링을 위한 (day, slotId) 키 기반 맵 구성
+  type DefaultRow = {
+    student_profile_id: string;
+    bus_stop_id: string | null;
+    bus_time_slot_id: string;
+    day_of_week: number;
+    note: string | null;
+  };
+  const defaultsByDaySlot = new Map<string, DefaultRow[]>();
+  for (const d of allDefaultsRaw ?? []) {
+    const key = `${d.day_of_week as number}:${d.bus_time_slot_id as string}`;
+    const list = defaultsByDaySlot.get(key) ?? [];
+    list.push({
+      student_profile_id: d.student_profile_id as string,
+      bus_stop_id: d.bus_stop_id as string | null,
+      bus_time_slot_id: d.bus_time_slot_id as string,
+      day_of_week: d.day_of_week as number,
+      note: d.note as string | null,
+    });
+    defaultsByDaySlot.set(key, list);
+  }
+
+  const assignmentsByDaySlot = new Map<string, Map<string, string>>();
+  for (const a of allAssignmentsRaw ?? []) {
+    const key = `${a.day_of_week as number}:${a.bus_time_slot_id as string}`;
+    const stopToBus = assignmentsByDaySlot.get(key) ?? new Map<string, string>();
+    stopToBus.set(a.bus_stop_id as string, a.bus_number_id as string);
+    assignmentsByDaySlot.set(key, stopToBus);
+  }
+
   const rows: DropoffExportRow[] = [];
   const unassigned: DropoffExportData["unassigned"] = [];
 
@@ -1916,53 +1979,21 @@ export async function getWeeklyDropoffExportData(): Promise<
     // 이 날 배정된 student_profile_id 추적
     const assignedIds = new Set<string>();
 
-    // 각 시간대별로 기본 배정 조회
+    // 각 시간대별로 메모리 필터링
     for (const slot of slots) {
-      const { data: defaults, error: defError } = await supabase
-        .from("student_bus_defaults")
-        .select("student_profile_id, bus_stop_id, bus_time_slot_id, note")
-        .eq("day_of_week", day)
-        .eq("direction", "dropoff")
-        .eq("bus_time_slot_id", slot.id);
-
-      if (defError) {
-        console.error("[getWeeklyDropoffExportData] defaults", defError.message);
-        continue;
-      }
+      const key = `${day}:${slot.id}`;
+      const defaults = defaultsByDaySlot.get(key);
       if (!defaults?.length) continue;
 
-      // stop→bus 매핑: bus_stop_day_assignments
-      const { data: assignments } = await supabase
-        .from("bus_stop_day_assignments")
-        .select("bus_stop_id, bus_number_id")
-        .eq("day_of_week", day)
-        .eq("direction", "dropoff")
-        .eq("bus_time_slot_id", slot.id);
-
-      const stopToBusId = new Map(
-        (assignments ?? []).map((a) => [
-          a.bus_stop_id as string,
-          a.bus_number_id as string,
-        ])
-      );
-
-      // student 정보 배치 조회
-      const profileIds = defaults.map((d) => d.student_profile_id as string);
-      const { data: studs } = await supabase
-        .from("students")
-        .select("profile_id, korean_name, english_name, age")
-        .in("profile_id", profileIds);
-      const studMap = new Map(
-        (studs ?? []).map((s) => [s.profile_id as string, s])
-      );
+      const stopToBusId = assignmentsByDaySlot.get(key) ?? new Map<string, string>();
 
       for (const d of defaults) {
-        const pid = d.student_profile_id as string;
+        const pid = d.student_profile_id;
         assignedIds.add(pid);
         if (!allStudentIds.has(pid)) continue; // 삭제된 학생 스킵
 
         const stud = studMap.get(pid);
-        const stopId = d.bus_stop_id as string | null;
+        const stopId = d.bus_stop_id;
         const busId = stopId ? (stopToBusId.get(stopId) ?? null) : null;
         const stopInfo = stopId ? stopInfoMap.get(stopId) : undefined;
 
@@ -1977,7 +2008,7 @@ export async function getWeeklyDropoffExportData(): Promise<
           korean_name: stud?.korean_name ?? null,
           english_name: stud?.english_name ?? null,
           age: stud?.age ?? null,
-          note: d.note as string | null,
+          note: d.note,
         });
       }
     }
