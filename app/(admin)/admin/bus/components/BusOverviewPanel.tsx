@@ -178,6 +178,7 @@ export function BusOverviewPanel({
                         return (
                           <span
                             key={s.student_profile_id}
+                            title={s.note ?? undefined}
                             className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium border ${color.bg} ${color.text} ${color.border}`}
                           >
                             {isAfterSchool && (
