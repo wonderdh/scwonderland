@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import type { BusManifestGroup, BusManifestEntry, BusTimeSlot } from "@/lib/types";
 import { getAgeColor } from "@/lib/student-age-colors";
 import { getDailyBusManifest } from "@/app/(admin)/admin/actions";
+import { groupStudentsByStop, formatTime, formatCheckedTime, type StopGroup } from "@/lib/bus/utils";
 
 const DIR_LABEL = { pickup: "등원", dropoff: "하원" } as const;
 const DAY_LABELS = ["월", "화", "수", "목", "금"] as const;
@@ -19,15 +20,6 @@ const BUS_CARD_COLORS = [
   { bg: "bg-indigo-50", border: "border-l-indigo-500", text: "text-indigo-700" },
   { bg: "bg-orange-50", border: "border-l-orange-500", text: "text-orange-700" },
 ] as const;
-
-function formatTime(t: string) {
-  return t.slice(0, 5);
-}
-
-function formatCheckedTime(iso: string) {
-  const d = new Date(iso);
-  return `${d.getHours()}:${d.getMinutes().toString().padStart(2, "0")}`;
-}
 
 /** ISO day (1=Mon ~ 5=Fri) → 금주 해당 요일의 YYYY-MM-DD */
 function getDateForIsoDay(isoDay: number): string {
@@ -48,54 +40,6 @@ function getTodayIsoDay(): number {
   if (jsDay === 0) return 5; // 일요일 → 금요일
   if (jsDay === 6) return 5; // 토요일 → 금요일
   return jsDay;
-}
-
-type StopGroup = {
-  stopName: string;
-  estimatedTime: string | null;
-  students: BusManifestEntry[];
-};
-
-function groupStudentsByStop(students: BusManifestEntry[]): StopGroup[] {
-  const sorted = [...students].sort((a, b) => {
-    // 정류장 배치 순서 우선
-    const sa = a.bus_stop_sort_order ?? 9999;
-    const sb = b.bus_stop_sort_order ?? 9999;
-    if (sa !== sb) return sa - sb;
-    // fallback: 예상 시간 → 이름순
-    const ta = a.estimated_time ?? "99:99";
-    const tb = b.estimated_time ?? "99:99";
-    if (ta !== tb) return ta.localeCompare(tb);
-    return (a.bus_stop_name ?? "").localeCompare(b.bus_stop_name ?? "");
-  });
-
-  const groups: StopGroup[] = [];
-  let current: StopGroup | null = null;
-
-  for (const s of sorted) {
-    const key = `${s.bus_stop_name ?? ""}|${s.estimated_time ?? ""}`;
-    if (!current || `${current.stopName}|${current.estimatedTime ?? ""}` !== key) {
-      current = {
-        stopName: s.bus_stop_name ?? "",
-        estimatedTime: s.estimated_time ?? null,
-        students: [],
-      };
-      groups.push(current);
-    }
-    current.students.push(s);
-  }
-
-  // 그룹 내 학생: 나이순 → 이름순
-  for (const g of groups) {
-    g.students.sort((a, b) => {
-      const ageA = a.age ?? 99;
-      const ageB = b.age ?? 99;
-      if (ageA !== ageB) return ageA - ageB;
-      return (a.korean_name ?? a.english_name ?? "").localeCompare(b.korean_name ?? b.english_name ?? "");
-    });
-  }
-
-  return groups;
 }
 
 function ProgressBar({ boarded, total }: { boarded: number; total: number }) {

@@ -11,18 +11,10 @@ import {
   checkBusStudent,
   uncheckBusStudent,
 } from "@/app/(admin)/admin/actions";
+import { formatTime as fmt, formatCheckedTime as fmtISO } from "@/lib/bus/utils";
 
 const DIR_LABEL = { pickup: "등원", dropoff: "하원" } as const;
 const DAY_NAMES = ["일", "월", "화", "수", "목", "금", "토"];
-
-function fmt(t: string) {
-  return t.slice(0, 5);
-}
-
-function fmtISO(iso: string) {
-  const d = new Date(iso);
-  return `${d.getHours()}:${d.getMinutes().toString().padStart(2, "0")}`;
-}
 
 function getToday() {
   const now = new Date();

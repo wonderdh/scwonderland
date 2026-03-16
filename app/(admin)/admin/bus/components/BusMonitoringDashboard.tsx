@@ -6,61 +6,10 @@ import { Input } from "@/components/ui/input";
 import type { BusManifestGroup, BusManifestEntry, BusTimeSlot, AfterSchoolBusEntry } from "@/lib/types";
 import { getAgeColor } from "@/lib/student-age-colors";
 import { getDailyBusManifest } from "../../actions";
+import { groupStudentsByStop, formatTime, formatCheckedTime } from "@/lib/bus/utils";
 
 const DIR_LABEL = { pickup: "등원", dropoff: "하원" } as const;
 const DAY_NAMES = ["일", "월", "화", "수", "목", "금", "토"];
-
-function formatTime(t: string) {
-  return t.slice(0, 5);
-}
-
-function formatCheckedTime(iso: string) {
-  const d = new Date(iso);
-  return `${d.getHours()}:${d.getMinutes().toString().padStart(2, "0")}`;
-}
-
-type StopGroup = {
-  stopName: string;
-  estimatedTime: string | null;
-  students: BusManifestEntry[];
-};
-
-function groupStudentsByStop(students: BusManifestEntry[]): StopGroup[] {
-  const sorted = [...students].sort((a, b) => {
-    const ta = a.estimated_time ?? "99:99";
-    const tb = b.estimated_time ?? "99:99";
-    if (ta !== tb) return ta.localeCompare(tb);
-    return (a.bus_stop_name ?? "").localeCompare(b.bus_stop_name ?? "");
-  });
-
-  const groups: StopGroup[] = [];
-  let current: StopGroup | null = null;
-
-  for (const s of sorted) {
-    const key = `${s.bus_stop_name ?? ""}|${s.estimated_time ?? ""}`;
-    if (!current || `${current.stopName}|${current.estimatedTime ?? ""}` !== key) {
-      current = {
-        stopName: s.bus_stop_name ?? "",
-        estimatedTime: s.estimated_time ?? null,
-        students: [],
-      };
-      groups.push(current);
-    }
-    current.students.push(s);
-  }
-
-  // 그룹 내 학생: 나이순 → 이름순
-  for (const g of groups) {
-    g.students.sort((a, b) => {
-      const ageA = a.age ?? 99;
-      const ageB = b.age ?? 99;
-      if (ageA !== ageB) return ageA - ageB;
-      return (a.korean_name ?? a.english_name ?? "").localeCompare(b.korean_name ?? b.english_name ?? "");
-    });
-  }
-
-  return groups;
-}
 
 function ProgressBar({
   boarded,
