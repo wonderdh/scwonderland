@@ -8,8 +8,8 @@ import {
 } from "../actions";
 import { AdminListSidebar } from "../components/AdminListSidebar";
 import { ScrollToSection } from "../components/ScrollToSection";
-import { UserList } from "../components/UserList";
 import { AddStudentForm } from "./components/AddStudentForm";
+import { StudentGroupedList } from "./components/StudentGroupedList";
 import { StudentInfoCard } from "./components/StudentSelectedView";
 import { StudentTabNav, type StudentTabId } from "./components/StudentTabNav";
 import { StudentClassesView } from "./components/StudentClassesView";
@@ -50,21 +50,19 @@ export default async function AdminStudentsPage({
             onRestore={restoreUser}
             onPermanentDelete={permanentlyDeleteUser}
           />
-        ) : section === "add" ? (
+        ) : section === "add" || !selectedUser ? (
           <>
-            <ScrollToSection section="add" />
+            {section === "add" && <ScrollToSection section="add" />}
             <section id="add" className="mb-8">
+              <h2 className="text-base font-semibold text-slate-800 mb-3">학생 추가</h2>
               <AddStudentForm />
             </section>
             <section>
-              <h2 className="text-lg font-medium text-slate-700 mb-3">학생 목록</h2>
-              <UserList
-                users={users}
-                roleLabel="학생"
-                variant="student"
-                onUpdate={updateStudentProfile}
-                onDelete={deleteUserById}
-              />
+              <h2 className="text-base font-semibold text-slate-800 mb-3">
+                학생 목록
+                <span className="ml-2 text-sm font-normal text-slate-400">{users.length}명</span>
+              </h2>
+              <StudentGroupedList users={users} onUpdate={updateStudentProfile} onDelete={deleteUserById} />
             </section>
           </>
         ) : selectedUser ? (
@@ -89,11 +87,7 @@ export default async function AdminStudentsPage({
               {currentTab === "bus" && <StudentBusTab studentProfileId={selectedUser.id} />}
             </div>
           </>
-        ) : (
-          <div className="py-12 rounded-xl border border-slate-200 border-dashed bg-slate-50/50 flex items-center justify-center flex-1">
-            <p className="text-slate-400 text-sm">왼쪽 목록에서 학생을 선택하세요.</p>
-          </div>
-        )}
+        ) : null}
       </div>
     </div>
   );

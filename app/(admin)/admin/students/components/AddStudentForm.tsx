@@ -46,7 +46,6 @@ export function AddStudentForm() {
           disabled={isPending}
           className="mt-1"
         />
-        <p className="text-xs text-muted-foreground mt-0.5">@ 없이 쓰면 도메인 자동 추가</p>
       </div>
       <div className="min-w-[120px]">
         <Label htmlFor="student-password">
@@ -99,6 +98,19 @@ export function AddStudentForm() {
           disabled={isPending}
           className="mt-1"
         />
+      </div>
+      <div className="min-w-[100px]">
+        <Label htmlFor="student-group">그룹</Label>
+        <select
+          id="student-group"
+          name="group_type"
+          disabled={isPending}
+          className="mt-1 flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <option value="">미지정</option>
+          <option value="유치부">유치부</option>
+          <option value="오후반">오후반</option>
+        </select>
       </div>
       <Button type="submit" disabled={isPending}>{isPending ? <><Spinner size="sm" /> 추가 중...</> : "추가"}</Button>
       <p className="w-full text-xs text-muted-foreground">* 필수 입력</p>

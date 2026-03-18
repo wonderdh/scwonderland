@@ -27,6 +27,7 @@ export function StudentInfoCard({
   const [koreanName, setKoreanName] = useState(user.korean_name ?? user.first_name ?? "");
   const [englishName, setEnglishName] = useState(user.english_name ?? user.last_name ?? "");
   const [age, setAge] = useState(user.age?.toString() ?? "");
+  const [groupType, setGroupType] = useState<"유치부" | "오후반" | "">(user.group_type ?? "");
   const [showPwReset, setShowPwReset] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [pwPending, setPwPending] = useState(false);
@@ -44,6 +45,7 @@ export function StudentInfoCard({
     setKoreanName(user.korean_name ?? user.first_name ?? "");
     setEnglishName(user.english_name ?? user.last_name ?? "");
     setAge(user.age?.toString() ?? "");
+    setGroupType(user.group_type ?? "");
     setError(null);
     setEditing(true);
   };
@@ -54,6 +56,7 @@ export function StudentInfoCard({
     setKoreanName(user.korean_name ?? user.first_name ?? "");
     setEnglishName(user.english_name ?? user.last_name ?? "");
     setAge(user.age?.toString() ?? "");
+    setGroupType(user.group_type ?? "");
   };
 
   const handleSave = async () => {
@@ -68,6 +71,7 @@ export function StudentInfoCard({
     form.set("korean_name", koreanName.trim());
     form.set("english_name", englishName.trim());
     form.set("age", age);
+    form.set("group_type", groupType);
     const result = await onUpdate(form);
     setPending(false);
     if (result?.error) {
@@ -218,7 +222,17 @@ export function StudentInfoCard({
         <div className="py-3 flex gap-4 items-center">
           <dt className="w-28 shrink-0 text-muted-foreground text-sm">그룹</dt>
           <dd className="text-foreground flex-1 min-w-0">
-            {user.group_type ? (
+            {editing ? (
+              <select
+                value={groupType}
+                onChange={(e) => setGroupType(e.target.value as "유치부" | "오후반" | "")}
+                className="flex h-9 w-full max-w-[160px] rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              >
+                <option value="">미지정</option>
+                <option value="유치부">유치부</option>
+                <option value="오후반">오후반</option>
+              </select>
+            ) : user.group_type ? (
               <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${
                 user.group_type === "유치부"
                   ? "bg-amber-100 text-amber-700"

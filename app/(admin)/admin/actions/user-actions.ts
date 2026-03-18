@@ -19,6 +19,8 @@ export async function createStudent(
   const english_name = (formData.get("english_name") as string)?.trim() ?? "";
   const ageStr = formData.get("age") as string;
   const age = ageStr ? parseInt(ageStr, 10) : null;
+  const groupTypeRaw = (formData.get("group_type") as string) ?? "";
+  const group_type = groupTypeRaw === "유치부" || groupTypeRaw === "오후반" ? groupTypeRaw : null;
 
   if (!email || !password || !korean_name) {
     return { error: "아이디, 비밀번호, 한글 이름을 입력해 주세요." };
@@ -46,8 +48,11 @@ export async function createStudent(
     return { error: "사용자 생성에 실패했습니다." };
   }
 
-  if (age !== null && !isNaN(age)) {
-    await supabase.from("students").update({ age }).eq("profile_id", data.user.id);
+  const studentUpdate: Record<string, unknown> = {};
+  if (age !== null && !isNaN(age)) studentUpdate.age = age;
+  if (group_type) studentUpdate.group_type = group_type;
+  if (Object.keys(studentUpdate).length > 0) {
+    await supabase.from("students").update(studentUpdate).eq("profile_id", data.user.id);
   }
 
   revalidatePath("/admin/users");
@@ -436,6 +441,8 @@ export async function updateStudentProfile(
   const english_name = (formData.get("english_name") as string)?.trim() ?? "";
   const ageStr = formData.get("age") as string;
   const age = ageStr ? parseInt(ageStr, 10) : null;
+  const groupTypeRaw = (formData.get("group_type") as string) ?? "";
+  const group_type = groupTypeRaw === "유치부" || groupTypeRaw === "오후반" ? groupTypeRaw : null;
 
   if (!id) return { error: "id가 없습니다." };
   if (!korean_name) return { error: "한글 이름을 입력해 주세요." };
@@ -453,7 +460,7 @@ export async function updateStudentProfile(
 
   const { error: studentError } = await supabase
     .from("students")
-    .update({ korean_name, english_name, age: age !== null && !isNaN(age) ? age : null, updated_at: new Date().toISOString() })
+    .update({ korean_name, english_name, age: age !== null && !isNaN(age) ? age : null, group_type, updated_at: new Date().toISOString() })
     .eq("profile_id", id);
 
   if (studentError) {
