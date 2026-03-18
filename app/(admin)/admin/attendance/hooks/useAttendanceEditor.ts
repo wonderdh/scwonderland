@@ -83,6 +83,16 @@ export function useAttendanceEditor(initialClasses: ClassWithDetails[], today: s
 
   function markAllPresent() {
     setPendingEdits((prev) => {
+      // 모든 학생이 이미 출석이면 → 전원 취소(pending 제거)
+      const allPresent = students.every((s) => {
+        const merged = prev.get(s.student_profile_id)?.status ?? s.status;
+        return merged === "present";
+      });
+      if (allPresent) {
+        const next = new Map(prev);
+        for (const s of students) next.delete(s.student_profile_id);
+        return next;
+      }
       const next = new Map(prev);
       for (const s of students) {
         next.set(s.student_profile_id, { status: "present", note: null });

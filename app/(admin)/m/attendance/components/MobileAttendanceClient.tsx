@@ -126,7 +126,9 @@ export function MobileAttendanceClient({
             disabled={students.length === 0}
             className="text-sm px-3 py-1.5 rounded-md bg-emerald-50 text-emerald-700 hover:bg-emerald-100 disabled:opacity-40 transition-colors"
           >
-            전원 출석
+            {students.length > 0 && students.every((s) => (pendingEdits.get(s.student_profile_id)?.status ?? s.status) === "present")
+              ? "전원 출석 취소"
+              : "전원 출석"}
           </button>
         </div>
 
