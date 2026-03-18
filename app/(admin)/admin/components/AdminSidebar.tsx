@@ -17,6 +17,7 @@ const navItems = [
   { href: "/admin/academy-notices", label: "Academy 공지", icon: AcademyNoticeIcon },
   { href: "/admin/timetable", label: "시간표", icon: TimetableIcon },
   { href: "/admin/bus", label: "승하차", icon: BusIcon },
+  { href: "/admin/attendance", label: "출결 관리", icon: AttendanceCheckIcon },
 ] as const;
 
 function HomeIcon({ className }: { className?: string }) {
@@ -95,6 +96,14 @@ function BusIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M8 17a2 2 0 100-4 2 2 0 000 4zm8 0a2 2 0 100-4 2 2 0 000 4zM6 3h12a2 2 0 012 2v10a2 2 0 01-2 2H6a2 2 0 01-2-2V5a2 2 0 012-2zm0 4h12M7 21h2m6 0h2" />
+    </svg>
+  );
+}
+
+function AttendanceCheckIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
     </svg>
   );
 }

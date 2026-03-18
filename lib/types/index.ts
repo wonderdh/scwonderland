@@ -24,6 +24,7 @@ export type {
   AdminStudentClassItem,
   AttendanceRecord,
   AttendanceStats,
+  StudentWithAttendance,
   StudentProfile,
   StudentClassItem,
   TeacherProfile,

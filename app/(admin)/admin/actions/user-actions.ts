@@ -134,7 +134,7 @@ export async function listUsersByRole(
   }
 
   const ids = profiles.map((p) => p.id);
-  const { data: users } = await supabase.auth.admin.listUsers();
+  const { data: users } = await supabase.auth.admin.listUsers({ perPage: 1000 });
   const idSet = new Set(ids);
   const userMap = new Map(
     (users?.users ?? []).filter((u) => idSet.has(u.id)).map((u) => [u.id, u])
@@ -378,7 +378,7 @@ export async function listDeletedUsers(
   if (profilesError || !profiles?.length) return [];
 
   const ids = profiles.map((p) => p.id);
-  const { data: users } = await supabase.auth.admin.listUsers();
+  const { data: users } = await supabase.auth.admin.listUsers({ perPage: 1000 });
   const idSet = new Set(ids);
   const userMap = new Map(
     (users?.users ?? []).filter((u) => idSet.has(u.id)).map((u) => [u.id, u])

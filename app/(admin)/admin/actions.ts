@@ -69,6 +69,9 @@ export {
   deleteAttendance,
   getAttendanceStats,
   getClassAttendanceByDate,
+  getClassStudentsWithAttendance,
+  bulkRecordAttendance,
+  getStudentAttendanceByDate,
 } from "./actions/attendance-actions";
 
 export {

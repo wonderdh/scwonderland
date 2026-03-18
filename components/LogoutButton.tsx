@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { createPortal } from "react-dom";
 
 type LogoutLabels = {
   button?: string;
@@ -57,7 +58,7 @@ export function LogoutButton({
         <span>{L.button}</span>
       </button>
 
-      {showConfirm && (
+      {showConfirm && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div
             className="absolute inset-0 bg-black/40"
@@ -94,7 +95,8 @@ export function LogoutButton({
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

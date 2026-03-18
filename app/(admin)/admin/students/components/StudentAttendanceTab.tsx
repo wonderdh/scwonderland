@@ -7,9 +7,8 @@ import {
   recordAttendance,
   deleteAttendance,
   getAttendanceStats,
-  getStudentClasses,
 } from "../../actions";
-import type { AttendanceRecord, AttendanceStats, AdminStudentClassItem } from "@/lib/types";
+import type { AttendanceRecord, AttendanceStats } from "@/lib/types";
 import { LoadingState } from "@/components/LoadingState";
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
@@ -36,33 +35,26 @@ export function StudentAttendanceTab({ studentProfileId }: { studentProfileId: s
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [stats, setStats] = useState<AttendanceStats>({ total: 0, present: 0, absent: 0, late: 0, excused: 0 });
-  const [classes, setClasses] = useState<AdminStudentClassItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   // Record form state
   const [showForm, setShowForm] = useState(false);
   const [formDate, setFormDate] = useState("");
-  const [formClassId, setFormClassId] = useState("");
   const [formStatus, setFormStatus] = useState("present");
   const [formNote, setFormNote] = useState("");
   const [saving, setSaving] = useState(false);
 
   const loadData = useCallback(async () => {
     setLoading(true);
-    const [recs, st, cl] = await Promise.all([
+    const [recs, st] = await Promise.all([
       listAttendanceRecords(studentProfileId, year, month),
       getAttendanceStats(studentProfileId, year, month),
-      getStudentClasses(studentProfileId),
     ]);
     setRecords(recs);
     setStats(st);
-    setClasses(cl.classes);
-    if (cl.classes.length > 0 && !formClassId) {
-      setFormClassId(cl.classes[0].id);
-    }
     setLoading(false);
-  }, [studentProfileId, year, month, formClassId]);
+  }, [studentProfileId, year, month]);
 
   useEffect(() => {
     loadData();
@@ -84,7 +76,6 @@ export function StudentAttendanceTab({ studentProfileId }: { studentProfileId: s
     setError(null);
     const result = await recordAttendance(
       studentProfileId,
-      formClassId,
       formDate,
       formStatus,
       formNote || undefined
@@ -212,28 +203,14 @@ export function StudentAttendanceTab({ studentProfileId }: { studentProfileId: s
       {showForm && (
         <div className="rounded-xl border bg-card p-4 space-y-3 shadow-sm">
           <h3 className="text-sm font-semibold text-foreground">출결 기록</h3>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="mb-1 block text-xs text-muted-foreground">날짜</label>
-              <input
-                type="date"
-                value={formDate}
-                onChange={(e) => setFormDate(e.target.value)}
-                className="min-h-[44px] w-full rounded-lg border border-input px-3 py-2 text-sm bg-background sm:min-h-0"
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs text-muted-foreground">반</label>
-              <select
-                value={formClassId}
-                onChange={(e) => setFormClassId(e.target.value)}
-                className="min-h-[44px] w-full rounded-lg border border-input px-3 py-2 text-sm bg-background sm:min-h-0"
-              >
-                {classes.map((c) => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </select>
-            </div>
+          <div>
+            <label className="mb-1 block text-xs text-muted-foreground">날짜</label>
+            <input
+              type="date"
+              value={formDate}
+              onChange={(e) => setFormDate(e.target.value)}
+              className="min-h-[44px] w-full rounded-lg border border-input px-3 py-2 text-sm bg-background sm:min-h-0"
+            />
           </div>
           <div>
             <label className="mb-1 block text-xs text-muted-foreground">상태</label>
@@ -275,7 +252,7 @@ export function StudentAttendanceTab({ studentProfileId }: { studentProfileId: s
             <button
               type="button"
               onClick={handleSave}
-              disabled={saving || !formClassId}
+              disabled={saving}
               className="min-h-[44px] rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 sm:min-h-[40px]"
             >
               {saving ? "저장 중…" : "저장"}
@@ -297,9 +274,6 @@ export function StudentAttendanceTab({ studentProfileId }: { studentProfileId: s
                     {cfg?.label}
                   </span>
                   <span className="text-sm text-foreground">{rec.attendance_date}</span>
-                  {rec.class_name && (
-                    <span className="text-xs text-muted-foreground">{rec.class_name}</span>
-                  )}
                   {rec.note && (
                     <span className="text-xs text-muted-foreground truncate flex-1">{rec.note}</span>
                   )}

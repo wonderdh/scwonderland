@@ -140,11 +140,18 @@ export type AdminStudentClassItem = {
 
 // ── 출결 타입 ──
 
+export type StudentWithAttendance = {
+  student_profile_id: string;
+  korean_name: string | null;
+  english_name: string | null;
+  age: number | null;
+  status: "present" | "absent" | "late" | "excused" | null;
+  note: string | null;
+};
+
 export type AttendanceRecord = {
   id: string;
   student_profile_id: string;
-  class_id: string;
-  class_name?: string;
   attendance_date: string;
   status: "present" | "absent" | "late" | "excused";
   note: string | null;

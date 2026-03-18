@@ -21,6 +21,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { CLASS_COLOR_PALETTE } from "@/lib/class-colors";
+import { getAgeColor } from "@/lib/student-age-colors";
 
 const GROUP_ORDER = ["유치부", "오후반", ""] as const;
 
@@ -67,6 +68,7 @@ type StudentInfo = {
   korean_name: string | null;
   english_name: string | null;
   student_number: string | null;
+  age: number | null;
 };
 
 type FlatClassStudent = {
@@ -77,6 +79,42 @@ type FlatClassStudent = {
   english_name: string | null;
   student_number: string | null;
 };
+
+function UnassignedStudentItem({ s, showAgeBadge }: { s: StudentInfo; showAgeBadge: boolean }) {
+  const ageColor = showAgeBadge && s.age !== null ? getAgeColor(s.age) : null;
+  return (
+    <div
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.effectAllowed = "move";
+        e.dataTransfer.setData(
+          "application/json",
+          JSON.stringify({ type: "student", studentProfileId: s.id })
+        );
+      }}
+      className="flex items-center gap-2 text-sm cursor-grab active:cursor-grabbing rounded-lg px-2.5 py-1.5 hover:bg-muted/50 transition-colors"
+    >
+      <svg className="w-3 h-3 text-muted-foreground/40 shrink-0" fill="currentColor" viewBox="0 0 24 24">
+        <circle cx="9" cy="5" r="1.5" /><circle cx="15" cy="5" r="1.5" />
+        <circle cx="9" cy="12" r="1.5" /><circle cx="15" cy="12" r="1.5" />
+        <circle cx="9" cy="19" r="1.5" /><circle cx="15" cy="19" r="1.5" />
+      </svg>
+      {ageColor && (
+        <span className={`shrink-0 rounded px-1.5 py-0.5 text-xs font-bold ${ageColor.bg} ${ageColor.text}`}>
+          {s.age}세
+        </span>
+      )}
+      <span className="text-foreground text-xs min-w-0 truncate">
+        {[s.korean_name, s.english_name].filter(Boolean).join(" / ") || "—"}
+      </span>
+      {s.student_number && (
+        <span className="font-mono text-muted-foreground text-xs shrink-0">
+          {s.student_number}
+        </span>
+      )}
+    </div>
+  );
+}
 
 export function ClassesManager({
   initialClasses,
@@ -98,14 +136,18 @@ export function ClassesManager({
   const [deleteTargetCounts, setDeleteTargetCounts] = useState<{ studentCount: number; homeworkCount: number; noticeCount: number } | null>(null);
   const [deleteTargetLoading, setDeleteTargetLoading] = useState(false);
   const [addStudentOpen, setAddStudentOpen] = useState<ClassWithDetails | null>(null);
-  const [removeStudentTarget, setRemoveStudentTarget] =
-    useState<{ classId: string; row: ClassStudentRow } | null>(null);
   const [deleteClassPending, setDeleteClassPending] = useState(false);
-  const [removeStudentPending, setRemoveStudentPending] = useState(false);
+
+  // 학생 배정 pending 상태 (저장 전 로컬 변경)
+  const [pendingAdds, setPendingAdds] = useState<Map<string, string>>(new Map()); // profileId → classId
+  const [pendingRemoves, setPendingRemoves] = useState<Set<string>>(new Set()); // rowId
+  const [studentSaving, setStudentSaving] = useState(false);
+  const hasPendingStudentChanges = pendingAdds.size > 0 || pendingRemoves.size > 0;
 
   // 오른쪽 패널 모드
   const [rightMode, setRightMode] = useState<"students" | "textbooks">("students");
   const [rightSearch, setRightSearch] = useState("");
+  const [rightGroupFilter, setRightGroupFilter] = useState<"all" | "유치부" | "오후반">("all");
 
   // 오른쪽 패널: 전체 교재 목록
   const [allTextbooks, setAllTextbooks] = useState<Textbook[]>([]);
@@ -121,9 +163,29 @@ export function ClassesManager({
   // 알림 토스트
   const [notification, setNotification] = useState<{ type: "error" | "success"; message: string } | null>(null);
 
+  // pending 변경을 반영한 실효 학생 배정 목록
+  const effectiveClassStudents = useMemo(() => {
+    const base = allClassStudents.filter((cs) => !pendingRemoves.has(cs.id));
+    const adds: FlatClassStudent[] = [];
+    for (const [profileId, classId] of pendingAdds) {
+      const s = allStudents.find((st) => st.id === profileId);
+      if (s) {
+        adds.push({
+          class_id: classId,
+          id: `pending-${profileId}`,
+          student_profile_id: profileId,
+          korean_name: s.korean_name,
+          english_name: s.english_name,
+          student_number: s.student_number,
+        });
+      }
+    }
+    return [...base, ...adds];
+  }, [allClassStudents, pendingRemoves, pendingAdds, allStudents]);
+
   const studentsByClassId = useMemo(() => {
     const map: Record<string, ClassStudentRow[]> = {};
-    for (const s of allClassStudents) {
+    for (const s of effectiveClassStudents) {
       if (!map[s.class_id]) map[s.class_id] = [];
       map[s.class_id].push({
         id: s.id,
@@ -134,18 +196,18 @@ export function ClassesManager({
       });
     }
     return map;
-  }, [allClassStudents]);
+  }, [effectiveClassStudents]);
 
   // 학생의 소속 반 정보
   const studentClassMap = useMemo(() => {
     const map: Record<string, string[]> = {};
-    for (const cs of allClassStudents) {
+    for (const cs of effectiveClassStudents) {
       if (!map[cs.student_profile_id]) map[cs.student_profile_id] = [];
       const cls = initialClasses.find((c) => c.id === cs.class_id);
       if (cls) map[cs.student_profile_id].push(cls.name);
     }
     return map;
-  }, [allClassStudents, initialClasses]);
+  }, [effectiveClassStudents, initialClasses]);
 
   // 왼쪽 패널 검색 필터 (방과후 제외)
   const filteredClasses = useMemo(() => {
@@ -182,17 +244,34 @@ export function ClassesManager({
     return map;
   }, [filteredClasses]);
 
-  // 오른쪽 패널: 학생 검색 필터
+  // 오른쪽 패널: 미배정 학생만 + 검색/그룹 필터 (나이순 → 이름순)
   const filteredRightStudents = useMemo(() => {
-    if (!rightSearch.trim()) return allStudents;
-    const q = rightSearch.trim().toLowerCase();
-    return allStudents.filter(
-      (s) =>
-        (s.korean_name && s.korean_name.toLowerCase().includes(q)) ||
-        (s.english_name && s.english_name.toLowerCase().includes(q)) ||
-        (s.student_number && s.student_number.toLowerCase().includes(q))
+    let unassigned = allStudents.filter(
+      (s) => !studentClassMap[s.id] || studentClassMap[s.id].length === 0
     );
-  }, [allStudents, rightSearch]);
+    // 그룹 필터
+    if (rightGroupFilter === "유치부") {
+      unassigned = unassigned.filter((s) => s.age !== null && s.age >= 5 && s.age <= 7);
+    } else if (rightGroupFilter === "오후반") {
+      unassigned = unassigned.filter((s) => s.age !== null && s.age > 7);
+    }
+    // 검색 필터
+    if (rightSearch.trim()) {
+      const q = rightSearch.trim().toLowerCase();
+      unassigned = unassigned.filter(
+        (s) =>
+          (s.korean_name && s.korean_name.toLowerCase().includes(q)) ||
+          (s.english_name && s.english_name.toLowerCase().includes(q)) ||
+          (s.student_number && s.student_number.toLowerCase().includes(q))
+      );
+    }
+    // 나이순 → 이름순
+    return [...unassigned].sort((a, b) => {
+      const ageDiff = (a.age ?? 99) - (b.age ?? 99);
+      if (ageDiff !== 0) return ageDiff;
+      return (a.korean_name ?? "").localeCompare(b.korean_name ?? "");
+    });
+  }, [allStudents, studentClassMap, rightSearch, rightGroupFilter]);
 
   // 오른쪽 패널: 교재 검색 필터
   const filteredRightTextbooks = useMemo(() => {
@@ -251,8 +330,8 @@ export function ClassesManager({
     router.refresh();
   };
 
-  // 드롭 핸들러: 학생을 카드에 드롭
-  const handleDropStudentToCard = async (classId: string, e: React.DragEvent) => {
+  // 드롭 핸들러: 학생을 카드에 드롭 (로컬 pending 상태로 변경)
+  const handleDropStudentToCard = (classId: string, e: React.DragEvent) => {
     e.preventDefault();
     setDropTargetClassId(null);
 
@@ -263,32 +342,75 @@ export function ClassesManager({
 
     const { studentProfileId } = parsed;
 
-    // 이미 이 반에 있는지 확인
+    // 이미 이 반에 있는지 확인 (실효 상태 기준)
     const existing = studentsByClassId[classId] ?? [];
     if (existing.some((s) => s.student_profile_id === studentProfileId)) {
       setNotification({ type: "error", message: "이미 이 반에 소속된 학생입니다." });
       return;
     }
 
-    // 다른 반에 소속되어 있으면 기존 반에서 제거
-    const currentEntry = allClassStudents.find(
+    // 다른 반에 배정돼 있으면 해당 반에서도 제거 예약
+    const currentEntry = effectiveClassStudents.find(
       (cs) => cs.student_profile_id === studentProfileId
     );
     if (currentEntry) {
-      await removeStudentFromClass(currentEntry.id);
+      if (currentEntry.id.startsWith("pending-")) {
+        // pending add만 교체
+        setPendingAdds((prev) => new Map([...prev, [studentProfileId, classId]]));
+      } else {
+        // DB 행 제거 예약 + 새 반 추가 예약
+        setPendingRemoves((prev) => new Set([...prev, currentEntry.id]));
+        setPendingAdds((prev) => new Map([...prev, [studentProfileId, classId]]));
+      }
+    } else {
+      setPendingAdds((prev) => new Map([...prev, [studentProfileId, classId]]));
     }
 
-    await addStudentToClass(classId, studentProfileId);
     const studentName = allStudents.find((s) => s.id === studentProfileId);
     const name = studentName?.korean_name ?? studentName?.english_name ?? "학생";
     const targetClassName = initialClasses.find((c) => c.id === classId)?.name ?? "";
-    if (currentEntry) {
-      const fromClassName = initialClasses.find((c) => c.id === currentEntry.class_id)?.name ?? "";
-      setNotification({ type: "success", message: `${name}: ${fromClassName} → ${targetClassName}` });
+    setNotification({ type: "success", message: `${name} → ${targetClassName} (미저장)` });
+  };
+
+  // 학생 제외: 로컬 pending 상태로 변경 (즉시 저장 없음)
+  const handleRemoveStudentPending = (row: ClassStudentRow) => {
+    if (row.id.startsWith("pending-")) {
+      // pending add 취소
+      setPendingAdds((prev) => {
+        const next = new Map(prev);
+        next.delete(row.student_profile_id);
+        return next;
+      });
     } else {
-      setNotification({ type: "success", message: `${name}이(가) ${targetClassName}에 추가되었습니다.` });
+      // DB 행 제거 예약
+      setPendingRemoves((prev) => new Set([...prev, row.id]));
     }
-    router.refresh();
+  };
+
+  // 저장 버튼: pending 변경 일괄 적용
+  const handleSaveStudentChanges = async () => {
+    setStudentSaving(true);
+    try {
+      for (const rowId of pendingRemoves) {
+        await removeStudentFromClass(rowId);
+      }
+      for (const [profileId, classId] of pendingAdds) {
+        await addStudentToClass(classId, profileId);
+      }
+      setPendingAdds(new Map());
+      setPendingRemoves(new Set());
+      toast.success("저장되었습니다.");
+      router.refresh();
+    } catch {
+      toast.error("저장 중 오류가 발생했습니다.");
+    } finally {
+      setStudentSaving(false);
+    }
+  };
+
+  const handleCancelStudentChanges = () => {
+    setPendingAdds(new Map());
+    setPendingRemoves(new Set());
   };
 
   // 드롭 핸들러: 교재를 카드에 드롭
@@ -429,9 +551,7 @@ export function ClassesManager({
                             setDeleteTargetLoading(false);
                             setDeleteTargetCounts(counts);
                           }}
-                          onRemoveStudent={(row) =>
-                            setRemoveStudentTarget({ classId: c.id, row })
-                          }
+                          onRemoveStudent={(row) => handleRemoveStudentPending(row)}
                           onRemoveTextbook={(textbookId) =>
                             handleRemoveTextbookFromCard(c.id, textbookId)
                           }
@@ -497,9 +617,51 @@ export function ClassesManager({
                 <>
                   {/* ===== 학생 목록 ===== */}
                   <div className="flex items-center justify-between">
-                    <h3 className="font-semibold text-foreground">전체 학생</h3>
-                    <span className="text-xs text-muted-foreground">{allStudents.length}명</span>
+                    <h3 className="font-semibold text-foreground">미배정 학생</h3>
+                    <span className="text-xs text-muted-foreground">{filteredRightStudents.length}명</span>
                   </div>
+
+                  {/* 그룹 필터 */}
+                  <div className="flex gap-1">
+                    {(["all", "유치부", "오후반"] as const).map((f) => (
+                      <button
+                        key={f}
+                        type="button"
+                        onClick={() => setRightGroupFilter(f)}
+                        className={`flex-1 rounded-md px-2 py-1 text-xs font-medium transition-colors ${
+                          rightGroupFilter === f
+                            ? "bg-slate-700 text-white"
+                            : "bg-muted text-muted-foreground hover:bg-muted/80"
+                        }`}
+                      >
+                        {f === "all" ? "전체" : f === "유치부" ? "🌅 유치부" : "☁️ 오후반"}
+                      </button>
+                    ))}
+                  </div>
+
+                  {hasPendingStudentChanges && (
+                    <div className="flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2">
+                      <span className="text-xs text-amber-700 flex-1">
+                        변경 {pendingAdds.size + pendingRemoves.size}건 미저장
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleSaveStudentChanges}
+                        disabled={studentSaving}
+                        className="rounded px-2.5 py-1 text-xs font-medium bg-emerald-600 text-white hover:bg-emerald-500 disabled:opacity-50"
+                      >
+                        {studentSaving ? "저장 중…" : "저장"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleCancelStudentChanges}
+                        disabled={studentSaving}
+                        className="rounded px-2.5 py-1 text-xs font-medium bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+                      >
+                        취소
+                      </button>
+                    </div>
+                  )}
                   <input
                     type="search"
                     placeholder="이름 · 학번 검색"
@@ -511,7 +673,7 @@ export function ClassesManager({
                     학생을 드래그하여 왼쪽 반에 추가하세요
                   </p>
 
-                  <div className="max-h-[calc(100vh-360px)] overflow-y-auto space-y-0.5 rounded-xl border border-muted p-1.5">
+                  <div className="max-h-[calc(100vh-360px)] overflow-y-auto rounded-xl border border-muted p-1.5">
                     {filteredRightStudents.length === 0 ? (
                       <div className="flex flex-col items-center justify-center py-8 text-center">
                         <svg className="size-8 text-muted-foreground/30 mb-2" fill="none" viewBox="0 0 24 24" strokeWidth={1} stroke="currentColor">
@@ -521,49 +683,82 @@ export function ClassesManager({
                           {rightSearch.trim() ? "검색 결과가 없습니다." : "등록된 학생이 없습니다."}
                         </p>
                       </div>
+                    ) : rightGroupFilter === "오후반" ? (
+                      /* 오후반 필터: age > 7만, 색상 없이 평면 목록 */
+                      <div className="space-y-0.5">
+                        {filteredRightStudents.map((s) => (
+                          <UnassignedStudentItem key={s.id} s={s} showAgeBadge={false} />
+                        ))}
+                      </div>
                     ) : (
-                      filteredRightStudents.map((s) => {
-                        const classes = studentClassMap[s.id];
+                      /* 전체 or 유치부: 나이별 섹션 */
+                      (() => {
+                        const yuchibuAges = [5, 6, 7] as const;
+                        const yuchibuStudents = filteredRightStudents.filter((s) => s.age !== null && s.age >= 5 && s.age <= 7);
+                        const ohubanStudents = filteredRightStudents.filter((s) => s.age !== null && s.age > 7);
+                        const etcStudents = filteredRightStudents.filter((s) => s.age === null);
                         return (
-                          <div
-                            key={s.id}
-                            draggable
-                            onDragStart={(e) => {
-                              e.dataTransfer.effectAllowed = "move";
-                              e.dataTransfer.setData(
-                                "application/json",
-                                JSON.stringify({ type: "student", studentProfileId: s.id })
-                              );
-                            }}
-                            className="flex items-center gap-2 text-sm cursor-grab active:cursor-grabbing rounded-lg px-2.5 py-1.5 hover:bg-muted/50 transition-colors"
-                          >
-                            <svg className="w-3 h-3 text-muted-foreground/40 shrink-0" fill="currentColor" viewBox="0 0 24 24">
-                              <circle cx="9" cy="5" r="1.5" /><circle cx="15" cy="5" r="1.5" />
-                              <circle cx="9" cy="12" r="1.5" /><circle cx="15" cy="12" r="1.5" />
-                              <circle cx="9" cy="19" r="1.5" /><circle cx="15" cy="19" r="1.5" />
-                            </svg>
-                            <span className="text-foreground text-xs min-w-0 truncate">
-                              {[s.korean_name, s.english_name].filter(Boolean).join(" / ") || "—"}
-                            </span>
-                            {s.student_number && (
-                              <span className="font-mono text-muted-foreground text-xs shrink-0">
-                                {s.student_number}
-                              </span>
+                          <div className="space-y-2">
+                            {/* 유치부 섹션 */}
+                            {yuchibuStudents.length > 0 && (
+                              <div>
+                                {rightGroupFilter === "all" && (
+                                  <div className="flex items-center gap-1.5 px-2 py-1 mb-1">
+                                    <span className="text-xs font-semibold text-amber-700">🌅 유치부</span>
+                                    <span className="text-xs text-amber-600">({yuchibuStudents.length}명)</span>
+                                  </div>
+                                )}
+                                {yuchibuAges.map((age) => {
+                                  const group = filteredRightStudents.filter((s) => s.age === age);
+                                  if (group.length === 0) return null;
+                                  const colors = getAgeColor(age);
+                                  return (
+                                    <div key={age} className="mb-1">
+                                      <div className={`flex items-center gap-1 px-2 py-0.5 rounded-md mb-0.5 ${colors.bg}`}>
+                                        <span className={`text-xs font-bold ${colors.text}`}>{age}세</span>
+                                        <span className={`text-xs ${colors.text} opacity-70`}>({group.length}명)</span>
+                                      </div>
+                                      <div className="space-y-0.5">
+                                        {group.map((s) => (
+                                          <UnassignedStudentItem key={s.id} s={s} showAgeBadge={true} />
+                                        ))}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
                             )}
-                            <span className="ml-auto shrink-0">
-                              {classes && classes.length > 0 ? (
-                                <span className="rounded bg-violet-100 px-1.5 py-0.5 text-[10px] font-medium text-violet-700">
-                                  {classes.join(", ")}
-                                </span>
-                              ) : (
-                                <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">
-                                  미배정
-                                </span>
-                              )}
-                            </span>
+                            {/* 오후반 섹션 (전체 필터일 때만) */}
+                            {rightGroupFilter === "all" && ohubanStudents.length > 0 && (
+                              <div>
+                                <div className="flex items-center gap-1.5 px-2 py-1 mb-1">
+                                  <span className="text-xs font-semibold text-sky-700">☁️ 오후반</span>
+                                  <span className="text-xs text-sky-600">({ohubanStudents.length}명)</span>
+                                </div>
+                                <div className="space-y-0.5">
+                                  {ohubanStudents.map((s) => (
+                                    <UnassignedStudentItem key={s.id} s={s} showAgeBadge={false} />
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            {/* 나이 미설정 학생 (전체 필터일 때만) */}
+                            {rightGroupFilter === "all" && etcStudents.length > 0 && (
+                              <div>
+                                <div className="flex items-center gap-1.5 px-2 py-1 mb-1">
+                                  <span className="text-xs font-semibold text-slate-500">📋 미분류</span>
+                                  <span className="text-xs text-slate-400">({etcStudents.length}명)</span>
+                                </div>
+                                <div className="space-y-0.5">
+                                  {etcStudents.map((s) => (
+                                    <UnassignedStudentItem key={s.id} s={s} showAgeBadge={false} />
+                                  ))}
+                                </div>
+                              </div>
+                            )}
                           </div>
                         );
-                      })
+                      })()
                     )}
                   </div>
                 </>
@@ -708,23 +903,6 @@ export function ClassesManager({
           router.refresh();
         }}
       />
-      <ConfirmDialog
-        open={!!removeStudentTarget}
-        title="학생 제외"
-        description="이 반에서 해당 학생을 제외할까요?"
-        confirmLabel="제외"
-        variant="danger"
-        disabled={removeStudentPending}
-        onCancel={() => setRemoveStudentTarget(null)}
-        onConfirm={async () => {
-          if (!removeStudentTarget) return;
-          setRemoveStudentPending(true);
-          await removeStudentFromClass(removeStudentTarget.row.id);
-          setRemoveStudentPending(false);
-          setRemoveStudentTarget(null);
-          router.refresh();
-        }}
-      />
     </div>
   );
 }
@@ -824,28 +1002,36 @@ function ClassCard({
             </p>
           ) : (
             <ul className="space-y-1">
-              {students.map((s) => (
-                <li
-                  key={s.id}
-                  className="flex items-center justify-between gap-2 text-sm rounded-lg px-2 py-1 hover:bg-muted/50 transition-colors"
-                >
-                  <span className="text-foreground text-xs">
-                    {[s.korean_name, s.english_name].filter(Boolean).join(" / ") || "—"}
-                    {s.student_number && (
-                      <span className="ml-1.5 font-mono text-muted-foreground text-xs">
-                        {s.student_number}
-                      </span>
-                    )}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => onRemoveStudent(s)}
-                    className="rounded bg-destructive/10 px-1.5 py-0.5 text-xs text-destructive hover:bg-destructive/20"
+              {students.map((s) => {
+                const isPending = s.id.startsWith("pending-");
+                return (
+                  <li
+                    key={s.id}
+                    className={`flex items-center justify-between gap-2 text-sm rounded-lg px-2 py-1 transition-colors ${
+                      isPending ? "bg-amber-50 border border-amber-200" : "hover:bg-muted/50"
+                    }`}
                   >
-                    제외
-                  </button>
-                </li>
-              ))}
+                    <span className="text-foreground text-xs">
+                      {[s.korean_name, s.english_name].filter(Boolean).join(" / ") || "—"}
+                      {s.student_number && (
+                        <span className="ml-1.5 font-mono text-muted-foreground text-xs">
+                          {s.student_number}
+                        </span>
+                      )}
+                      {isPending && (
+                        <span className="ml-1.5 text-[10px] text-amber-600">미저장</span>
+                      )}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => onRemoveStudent(s)}
+                      className="rounded bg-destructive/10 px-1.5 py-0.5 text-xs text-destructive hover:bg-destructive/20"
+                    >
+                      제외
+                    </button>
+                  </li>
+                );
+              })}
             </ul>
           )
         ) : !textbooksLoaded ? (

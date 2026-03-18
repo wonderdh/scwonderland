@@ -32,6 +32,7 @@ type StudentInfo = {
   korean_name: string | null;
   english_name: string | null;
   student_number: string | null;
+  age: number | null;
 };
 
 type FlatClassStudent = {

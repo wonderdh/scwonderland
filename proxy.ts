@@ -1,7 +1,17 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+const MOBILE_UA = /Android|iPhone|iPad|iPod|Mobile/i;
+
 export async function proxy(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+  const ua = request.headers.get("user-agent") ?? "";
+
+  // /admin (루트만) → 모바일이면 /m으로 리다이렉트
+  if (pathname === "/admin" && MOBILE_UA.test(ua)) {
+    return NextResponse.redirect(new URL("/m", request.url));
+  }
+
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(

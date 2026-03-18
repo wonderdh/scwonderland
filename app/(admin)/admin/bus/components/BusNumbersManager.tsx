@@ -359,7 +359,7 @@ export function BusNumbersManager({
       const name = newStopName.trim();
       setNewStopName("");
       setStops((prev) => [...prev, {
-        id: result.id!, name,
+        id: result.id!, bus_number_id: null, name,
         sort_order: prev.length, is_active: true, created_at: "", updated_at: "",
       }]);
     }

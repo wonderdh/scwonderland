@@ -7,15 +7,21 @@
 CREATE TABLE attendance (
   id                 uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   student_profile_id uuid NOT NULL REFERENCES profiles(id),
-  class_id           uuid NOT NULL REFERENCES classes(id),
   attendance_date    date NOT NULL DEFAULT CURRENT_DATE,
   status             text NOT NULL DEFAULT 'present',  -- 'present' | 'absent' | 'late' | 'excused'
   note               text,
   recorded_by        uuid REFERENCES profiles(id),
   created_at         timestamptz DEFAULT now(),
   updated_at         timestamptz DEFAULT now(),
-  UNIQUE (student_profile_id, class_id, attendance_date)
+  UNIQUE (student_profile_id, attendance_date)
 );
+
+-- RLS 정책 (teacher: class_students → class_teachers 조인으로 담당 학생 여부 확인)
+-- CREATE POLICY attendance_admin_all ...        (admin 전체 접근)
+-- CREATE POLICY attendance_teacher_select ...   (담당반 학생 SELECT)
+-- CREATE POLICY attendance_teacher_insert ...   (담당반 학생 INSERT)
+-- CREATE POLICY attendance_teacher_update ...   (담당반 학생 UPDATE)
+-- CREATE POLICY attendance_teacher_delete ...   (담당반 학생 DELETE)
 
 -- 숙제 과제
 CREATE TABLE homework_assignments (

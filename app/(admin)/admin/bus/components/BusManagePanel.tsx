@@ -91,6 +91,7 @@ export function BusManagePanel({
         ...prev,
         {
           id: result.id!,
+          bus_number_id: null,
           name,
           sort_order: prev.length,
           is_active: true,

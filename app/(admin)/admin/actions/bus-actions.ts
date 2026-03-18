@@ -1180,6 +1180,28 @@ export async function createAdminBusChange(
     console.error("[createAdminBusChange]", error.message);
     return { error: error.message };
   }
+
+  // 결석 시 출결도 자동 반영
+  if (changeType === "absent") {
+    const { data: classStudents } = await supabase
+      .from("class_students")
+      .select("class_id")
+      .eq("student_profile_id", studentProfileId);
+    if (classStudents?.length) {
+      await supabase.from("attendance").upsert(
+        classStudents.map((cs) => ({
+          student_profile_id: studentProfileId,
+          class_id: cs.class_id,
+          attendance_date: requestDate,
+          status: "absent",
+          note: "버스 결석 자동 등록",
+          recorded_by: auth.userId,
+        })),
+        { onConflict: "student_profile_id,class_id,attendance_date", ignoreDuplicates: false }
+      );
+    }
+  }
+
   return {};
 }
 
@@ -1203,6 +1225,12 @@ export async function updateAdminBusChange(
   const finalBusId = changeType === "change" ? (newBusNumberId ?? null) : null;
   const finalStopId = newBusStopId || null;
 
+  const { data: existing } = await supabase
+    .from("bus_change_requests")
+    .select("student_profile_id, request_date")
+    .eq("id", requestId)
+    .single();
+
   const { error } = await supabase
     .from("bus_change_requests")
     .update({
@@ -1221,6 +1249,28 @@ export async function updateAdminBusChange(
     console.error("[updateAdminBusChange]", error.message);
     return { error: error.message };
   }
+
+  // 결석으로 변경 시 출결도 자동 반영
+  if (changeType === "absent" && existing) {
+    const { data: classStudents } = await supabase
+      .from("class_students")
+      .select("class_id")
+      .eq("student_profile_id", existing.student_profile_id);
+    if (classStudents?.length) {
+      await supabase.from("attendance").upsert(
+        classStudents.map((cs) => ({
+          student_profile_id: existing.student_profile_id,
+          class_id: cs.class_id,
+          attendance_date: existing.request_date,
+          status: "absent",
+          note: "버스 결석 자동 등록",
+          recorded_by: auth.userId,
+        })),
+        { onConflict: "student_profile_id,class_id,attendance_date", ignoreDuplicates: false }
+      );
+    }
+  }
+
   return {};
 }
 

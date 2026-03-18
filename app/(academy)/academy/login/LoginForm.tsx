@@ -38,8 +38,8 @@ export function LoginForm() {
       email: normalizeEmail(email),
       password,
     });
-    setLoading(false);
     if (err) {
+      setLoading(false);
       console.error("[로그인 실패]", err);
       setError(getAuthErrorMessage(err));
       return;
@@ -66,40 +66,50 @@ export function LoginForm() {
           <CardTitle className="text-xl">원더랜드 로그인</CardTitle>
         </CardHeader>
         <CardContent>
-          <form className="space-y-4" onSubmit={handleSubmit}>
-            <div className="space-y-2">
-              <Label htmlFor="login-email">아이디</Label>
-              <Input
-                id="login-email"
-                type="text"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                autoComplete="username"
-                placeholder="test1"
-              />
+          {loading ? (
+            <div className="flex flex-col items-center justify-center gap-3 py-8">
+              <Spinner size="md" />
+              <p className="text-sm text-slate-500 animate-pulse">로그인 중…</p>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="login-password">비밀번호</Label>
-              <Input
-                id="login-password"
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                autoComplete="current-password"
-                placeholder="비밀번호"
-              />
-            </div>
-            {error && (
-              <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700" role="alert">
-                {error}
+          ) : (
+            <form className="space-y-4" onSubmit={handleSubmit}>
+              <div className="space-y-2">
+                <Label htmlFor="login-email">아이디</Label>
+                <Input
+                  id="login-email"
+                  type="text"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  autoComplete="username"
+                  placeholder="test1"
+                />
               </div>
-            )}
-            <Button type="submit" className="w-full bg-gradient-to-r from-red-500 via-orange-500 to-yellow-500 hover:from-red-600 hover:via-orange-600 hover:to-yellow-600 text-white shadow-md" disabled={loading}>
-              {loading ? <><Spinner size="sm" /> 로그인 중…</> : "로그인"}
-            </Button>
-          </form>
+              <div className="space-y-2">
+                <Label htmlFor="login-password">비밀번호</Label>
+                <Input
+                  id="login-password"
+                  type="password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  autoComplete="current-password"
+                  placeholder="비밀번호"
+                />
+              </div>
+              {error && (
+                <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700" role="alert">
+                  {error}
+                </div>
+              )}
+              <Button
+                type="submit"
+                className="w-full bg-gradient-to-r from-red-500 via-orange-500 to-yellow-500 hover:from-red-600 hover:via-orange-600 hover:to-yellow-600 text-white shadow-md"
+              >
+                로그인
+              </Button>
+            </form>
+          )}
         </CardContent>
       </Card>
     </div>

@@ -104,7 +104,6 @@ export function TeacherAttendanceClient({
     setError(null);
     const result = await recordAttendance(
       studentId,
-      selectedClassId,
       today,
       status,
       noteMap[studentId] || undefined
@@ -124,7 +123,6 @@ export function TeacherAttendanceClient({
     for (const s of students) {
       const result = await recordAttendance(
         s.profile_id,
-        selectedClassId,
         today,
         "present"
       );
