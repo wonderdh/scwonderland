@@ -57,6 +57,7 @@ export function AdminBusChangeDnD() {
   const [slotId, setSlotId] = useState("");
   const [stopId, setStopId] = useState("");
   const [stopSearch, setStopSearch] = useState("");
+  const [stopListOpen, setStopListOpen] = useState(false);
   const [reason, setReason] = useState("");
 
   const [saving, setSaving] = useState(false);
@@ -89,15 +90,17 @@ export function AdminBusChangeDnD() {
         setExistingId(existing.id);
         setStopMode(existing.change_type === "no_ride" ? "pickup" : "stop");
         setSlotId(existing.new_bus_time_slot_id ?? def?.bus_time_slot_id ?? "");
-        setStopId(existing.new_bus_stop_id ?? "");
+        setStopId(existing.new_bus_stop_id ?? def?.bus_stop_id ?? "");
         setStopSearch("");
+        setStopListOpen(false);
         setReason(existing.reason ?? "");
       } else {
         setExistingId(null);
         setStopMode("stop");
         setSlotId(def?.bus_time_slot_id ?? "");
-        setStopId("");
+        setStopId(def?.bus_stop_id ?? "");
         setStopSearch("");
+        setStopListOpen(false);
         setReason("");
       }
       setLoadingStudent(false);
@@ -152,6 +155,7 @@ export function AdminBusChangeDnD() {
     setSlotId("");
     setStopId("");
     setStopSearch("");
+    setStopListOpen(false);
     setReason("");
   }
 
@@ -163,6 +167,7 @@ export function AdminBusChangeDnD() {
       if ((mode === "pickup" && !isPickup) || (mode === "stop" && isPickup)) {
         setStopId("");
         setStopSearch("");
+        setStopListOpen(false);
       }
     }
   }
@@ -370,42 +375,47 @@ export function AdminBusChangeDnD() {
             <label className="text-xs font-medium text-slate-600 block mb-1">
               {stopMode === "pickup" ? "픽업 정류장" : "정류장"}
             </label>
-            {stopId && stopMatchesMode ? (
+            {stopId && stopMatchesMode && !stopListOpen ? (
               <div className="flex items-center gap-2 p-2.5 border rounded-lg bg-slate-50">
                 <span className="text-slate-400">📍</span>
                 <span className="text-sm font-medium text-slate-700">{selectedStopInfo!.name}</span>
                 <button
-                  onClick={() => { setStopId(""); setStopSearch(""); }}
+                  onClick={() => { setStopId(""); setStopSearch(""); setStopListOpen(true); }}
                   className="ml-auto text-xs text-slate-400 hover:text-slate-600"
                 >
                   변경
                 </button>
               </div>
             ) : (
-              <>
+              <div className="relative">
                 <Input
                   placeholder={stopMode === "pickup" ? "픽업 정류장 검색..." : "정류장 검색..."}
                   value={stopSearch}
                   onChange={(e) => setStopSearch(e.target.value)}
+                  onFocus={() => setStopListOpen(true)}
+                  onBlur={() => setTimeout(() => setStopListOpen(false), 150)}
                   className="text-sm"
                 />
-                <div className="mt-1 border rounded-lg max-h-36 overflow-y-auto divide-y divide-slate-100 bg-white shadow-sm">
-                  {filteredStops.length === 0 ? (
-                    <p className="text-xs text-slate-400 py-3 text-center">정류장이 없습니다.</p>
-                  ) : (
-                    filteredStops.map((s) => (
-                      <button
-                        key={s.id}
-                        onClick={() => { setStopId(s.id); setStopSearch(""); }}
-                        className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50 flex items-center gap-2"
-                      >
-                        <span className="text-slate-400 shrink-0">📍</span>
-                        <span className="flex-1">{s.name}</span>
-                      </button>
-                    ))
-                  )}
-                </div>
-              </>
+                {stopListOpen && (
+                  <div className="mt-1 border rounded-lg max-h-36 overflow-y-auto divide-y divide-slate-100 bg-white shadow-sm absolute w-full z-10">
+                    {filteredStops.length === 0 ? (
+                      <p className="text-xs text-slate-400 py-3 text-center">정류장이 없습니다.</p>
+                    ) : (
+                      filteredStops.map((s) => (
+                        <button
+                          key={s.id}
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => { setStopId(s.id); setStopSearch(""); setStopListOpen(false); }}
+                          className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50 flex items-center gap-2"
+                        >
+                          <span className="text-slate-400 shrink-0">📍</span>
+                          <span className="flex-1">{s.name}</span>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
             )}
           </div>
 

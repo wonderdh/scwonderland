@@ -118,7 +118,11 @@ export function AdminListSidebar({
                 ? "bg-amber-400"
                 : variant === "students" && user.group_type === "오후반"
                   ? "bg-sky-400"
-                  : null;
+                  : variant === "teachers" && user.teacher_type === "native"
+                    ? "bg-blue-400"
+                    : variant === "teachers"
+                      ? "bg-emerald-400"
+                      : null;
             return (
               <li key={user.id}>
                 <Link

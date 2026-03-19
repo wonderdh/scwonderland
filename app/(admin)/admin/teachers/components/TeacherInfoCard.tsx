@@ -25,6 +25,7 @@ export function TeacherInfoCard({
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [name, setName] = useState(user.name ?? user.first_name ?? "");
+  const [teacherType, setTeacherType] = useState<"korean" | "native">(user.teacher_type ?? "korean");
   const [showPwReset, setShowPwReset] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [pwPending, setPwPending] = useState(false);
@@ -39,6 +40,7 @@ export function TeacherInfoCard({
 
   const handleStartEdit = () => {
     setName(user.name ?? user.first_name ?? "");
+    setTeacherType(user.teacher_type ?? "korean");
     setError(null);
     setEditing(true);
   };
@@ -47,6 +49,7 @@ export function TeacherInfoCard({
     setEditing(false);
     setError(null);
     setName(user.name ?? user.first_name ?? "");
+    setTeacherType(user.teacher_type ?? "korean");
   };
 
   const handleSave = async () => {
@@ -59,6 +62,7 @@ export function TeacherInfoCard({
     const form = new FormData();
     form.set("id", user.id);
     form.set("name", name.trim());
+    form.set("teacher_type", teacherType);
     const result = await onUpdate(form);
     setPending(false);
     if (result?.error) {
@@ -170,7 +174,37 @@ export function TeacherInfoCard({
                 placeholder="이름"
               />
             ) : (
-              (user.name ?? user.first_name) || "—"
+              <span className="flex items-center gap-2">
+                {(user.name ?? user.first_name) || "—"}
+                {user.teacher_type && (
+                  <span className={`inline-flex rounded px-1.5 py-0.5 text-xs font-medium ${
+                    user.teacher_type === "native" ? "bg-blue-100 text-blue-700" : "bg-emerald-100 text-emerald-700"
+                  }`}>
+                    {user.teacher_type === "native" ? "원어민" : "한국인"}
+                  </span>
+                )}
+              </span>
+            )}
+          </dd>
+        </div>
+        <div className="py-3 flex gap-4 items-center">
+          <dt className="w-28 shrink-0 text-muted-foreground text-sm">구분</dt>
+          <dd className="text-foreground flex-1 min-w-0">
+            {editing ? (
+              <select
+                value={teacherType}
+                onChange={(e) => setTeacherType(e.target.value as "korean" | "native")}
+                className="h-9 rounded-md border border-input bg-transparent px-3 text-sm"
+              >
+                <option value="korean">한국인</option>
+                <option value="native">원어민</option>
+              </select>
+            ) : (
+              <span className={`inline-flex rounded px-1.5 py-0.5 text-xs font-medium ${
+                (user.teacher_type ?? "korean") === "native" ? "bg-blue-100 text-blue-700" : "bg-emerald-100 text-emerald-700"
+              }`}>
+                {(user.teacher_type ?? "korean") === "native" ? "원어민" : "한국인"}
+              </span>
             )}
           </dd>
         </div>
