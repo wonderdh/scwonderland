@@ -8,6 +8,8 @@ import { getAgeColor } from "@/lib/student-age-colors";
 import { getDailyBusManifest } from "../../actions";
 import { formatTime } from "@/lib/bus/utils";
 import { MonitorBusCard } from "@/components/bus/MonitorBusCard";
+import { useBusRealtime } from "@/lib/hooks/use-bus-realtime";
+import { applyCheckRecord, applyChangeRequest } from "@/lib/bus/realtime-utils";
 
 const DIR_LABEL = { pickup: "등원", dropoff: "하원" } as const;
 const DAY_NAMES = ["일", "월", "화", "수", "목", "금", "토"];
@@ -41,6 +43,17 @@ export function BusMonitoringDashboard({
   useEffect(() => {
     load();
   }, [load]);
+
+  useBusRealtime(date, {
+    onCheckRecord: (event, row) => {
+      if (!row.student_profile_id) { load(); return; }
+      setGroups((prev) => applyCheckRecord(prev, event, row));
+    },
+    onChangeRequest: (event, row) => {
+      if (!row.student_profile_id || event === "DELETE" || row.change_type === "change") { load(); return; }
+      setGroups((prev) => applyChangeRequest(prev, [], event, row).groups);
+    },
+  }, { enabled: date === today });
 
   const d = new Date(date);
   const dayName = DAY_NAMES[d.getDay()];

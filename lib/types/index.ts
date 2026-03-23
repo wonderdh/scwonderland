@@ -58,4 +58,6 @@ export type {
   ClassScheduleWithDetails,
   StudentTimetableCell,
   StudentTimetableRow,
+  CellEntry,
+  GroupTimetableData,
 } from "./api";

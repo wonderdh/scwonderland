@@ -537,3 +537,23 @@ export type StudentTimetableRow = {
   end_time: string;
   cells: Record<number, StudentTimetableCell | null>; // day_of_week 1~5
 };
+
+// ── 그룹 시간표 그리드 타입 ──
+
+export type CellEntry = {
+  scheduleId: string;
+  label: string | null;
+  teacherId: string | null;
+  teacherName: string | null;
+  teacherType: "korean" | "native";
+  textbookId: string | null;
+};
+
+export type GroupTimetableData = {
+  periods: { id: string; name: string; start_time: string; end_time: string }[];
+  classes: { id: string; name: string; english_name: string | null }[];
+  /** key: `${classId}_${periodId}_${dayOfWeek}`, 슬롯당 복수 교사 지원 */
+  cells: Record<string, CellEntry[]>;
+  teachers: { id: string; name: string; teacher_type: "korean" | "native" }[];
+  textbooks: { id: string; title: string; series: string | null }[];
+};

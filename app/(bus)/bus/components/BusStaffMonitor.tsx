@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback, useTransition, useMemo } from "react";
+import { useState, useEffect, useCallback, useTransition, useMemo, useRef } from "react";
 import { toast } from "sonner";
-import type { BusManifestGroup, BusManifestEntry } from "@/lib/types";
+import type { BusManifestGroup, BusManifestEntry, NoRideEntry } from "@/lib/types";
 import { getAgeColor } from "@/lib/student-age-colors";
 import {
   getDailyBusManifest,
@@ -12,6 +12,8 @@ import {
   uncheckBusStudent,
 } from "@/app/(admin)/admin/actions";
 import { formatTime as fmt, formatCheckedTime as fmtISO } from "@/lib/bus/utils";
+import { useBusRealtime } from "@/lib/hooks/use-bus-realtime";
+import { applyCheckRecord, applyChangeRequest } from "@/lib/bus/realtime-utils";
 
 const DIR_LABEL = { pickup: "등원", dropoff: "하원" } as const;
 const DAY_NAMES = ["일", "월", "화", "수", "목", "금", "토"];
@@ -124,9 +126,10 @@ function StudentRow({
   else if (pendingAction === "uncheck") bgClass = "bg-yellow-50 ring-2 ring-yellow-400 ring-inset";
   else if (isChecked) bgClass = "bg-green-50/60";
   else if (isBoarded) bgClass = "bg-blue-50/50";
+  else if (student.is_changed) bgClass = "bg-amber-50";
 
   return (
-    <div className={`flex items-center gap-3 px-4 py-3 transition-all ${bgClass}`}>
+    <div className={`flex items-center gap-3 px-4 py-3 transition-all ${bgClass} ${student.is_changed && !isChecked && !isBoarded && !isSelected ? "border-l-4 border-l-amber-400" : ""}`}>
       {/* 탑승 토글 */}
       <button
         type="button"
@@ -150,28 +153,37 @@ function StudentRow({
                       ? "bg-green-100 text-green-600"
                       : isBoarded
                         ? "bg-blue-100 text-blue-600"
-                        : "bg-slate-100 text-slate-400"
+                        : student.is_changed
+                          ? "bg-amber-100 text-amber-600"
+                          : "bg-slate-100 text-slate-400"
           }`}
         >
           {pendingAction === "board" ? "●" :
            pendingAction === "unboard" ? "○" :
            pendingAction === "check" ? "✓" :
            pendingAction === "uncheck" ? "↩" :
-           isChecked ? "✓" : isBoarded ? "●" : "○"}
+           isChecked ? "✓" : isBoarded ? "●" : student.is_changed ? "↗" : "○"}
         </span>
-        <span
-          className={`flex-1 truncate text-[15px] ${
-            isSelected
-              ? "font-semibold text-slate-900"
-              : isChecked
-                ? "text-slate-400 line-through"
-                : isBoarded
-                  ? `font-semibold ${ageColor.text}`
-                  : ageColor.text
-          }`}
-        >
-          {student.korean_name || student.english_name}
-        </span>
+        <div className="flex-1 min-w-0">
+          <span
+            className={`block truncate text-[15px] ${
+              isSelected
+                ? "font-semibold text-slate-900"
+                : isChecked
+                  ? "text-slate-400 line-through"
+                  : isBoarded
+                    ? `font-semibold ${ageColor.text}`
+                    : ageColor.text
+            }`}
+          >
+            {student.korean_name || student.english_name}
+          </span>
+          {student.is_changed && student.original_bus_label && !isSelected && (
+            <span className="block text-[11px] text-amber-500 font-medium leading-tight">
+              {student.original_bus_label} → 이 호차
+            </span>
+          )}
+        </div>
       </button>
 
       {/* 타임스탬프 */}
@@ -356,6 +368,7 @@ export function BusStaffMonitor({
   const [date, setDate] = useState(getToday);
   const [direction, setDirection] = useState<"pickup" | "dropoff">("pickup");
   const [groups, setGroups] = useState<BusManifestGroup[]>([]);
+  const [noRides, setNoRides] = useState<NoRideEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, startSaving] = useTransition();
   const [slotFilter, setSlotFilter] = useState<string | null>(null);
@@ -374,6 +387,13 @@ export function BusStaffMonitor({
       : result.groups;
 
     setGroups(filtered);
+
+    // 미탑승/결석: 내 호차에서 원래 배정됐던 학생만
+    const myBusLabel = busNumberId ? filtered[0]?.bus_label : null;
+    const myNoRides = myBusLabel
+      ? result.noRides.filter((r) => r.original_bus_label === myBusLabel)
+      : result.noRides;
+    setNoRides(myNoRides);
     setLoading(false);
   }, [direction, busNumberId]);
 
@@ -538,6 +558,28 @@ export function BusStaffMonitor({
     setPendingChanges(new Map());
   }, []);
 
+  // Realtime: 최신 상태값 접근용 ref (stale closure 방지)
+  const pendingChangesRef = useRef(pendingChanges);
+  pendingChangesRef.current = pendingChanges;
+  const groupsRef = useRef(groups);
+  groupsRef.current = groups;
+  const noRidesRef = useRef(noRides);
+  noRidesRef.current = noRides;
+
+  useBusRealtime(date, {
+    onCheckRecord: (event, row) => {
+      if (!row.student_profile_id) { load(); return; } // 빈 payload → refetch
+      if (pendingChangesRef.current.size > 0) return;  // 선택 중 → 무시
+      setGroups((prev) => applyCheckRecord(prev, event, row));
+    },
+    onChangeRequest: (event, row) => {
+      if (!row.student_profile_id || event === "DELETE" || row.change_type === "change") { load(); return; }
+      const result = applyChangeRequest(groupsRef.current, noRidesRef.current, event, row);
+      setGroups(result.groups);
+      setNoRides(result.noRides);
+    },
+  });
+
   const d = new Date(date);
   const dayName = DAY_NAMES[d.getDay()];
 
@@ -684,6 +726,40 @@ export function BusStaffMonitor({
           />
         ))}
       </div>
+
+      {/* 미탑승 / 결석 섹션 */}
+      {noRides.length > 0 && (
+        <div className="rounded-2xl border border-orange-200 overflow-hidden">
+          <div className="px-4 py-3 bg-orange-50 flex items-center gap-2">
+            <span className="text-sm font-bold text-orange-700">당일 변경</span>
+            <span className="text-xs text-orange-400">{noRides.length}명</span>
+          </div>
+          <div className="divide-y divide-orange-100">
+            {noRides.map((r) => {
+              const isAbsent = r.change_type === "absent";
+              return (
+                <div
+                  key={r.student_profile_id}
+                  className="flex items-center gap-3 px-4 py-3"
+                  style={{ backgroundColor: isAbsent ? "#fff7ed" : "#fafafa", borderLeft: `4px solid ${isAbsent ? "#f97316" : "#94a3b8"}` }}
+                >
+                  <span className={`size-8 rounded-full flex items-center justify-center text-sm shrink-0 ${isAbsent ? "bg-orange-100 text-orange-500" : "bg-slate-100 text-slate-400"}`}>
+                    {isAbsent ? "✕" : "–"}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <span className={`block truncate text-[15px] font-semibold ${isAbsent ? "text-orange-600" : "text-slate-500"}`}>
+                      {r.korean_name || r.english_name}
+                    </span>
+                    <span className={`text-[11px] font-medium ${isAbsent ? "text-orange-400" : "text-slate-400"}`}>
+                      {isAbsent ? "결석" : "미탑승"}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* 하단 고정 저장 바 */}
       {pendingCount > 0 && (

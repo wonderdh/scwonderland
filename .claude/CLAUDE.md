@@ -30,7 +30,7 @@ npm run lint     # ESLint 실행
 
 ### 추가 참고사항
 - Tailwind 색상 팔레트: `TEACHER_COLOR_PALETTE` (`-200` 계열), `CLASS_COLOR_PALETTE` (`-100` 계열)
-- `GroupTimetableData` 타입: `schedule-actions.ts`에서 직접 import (크로스 라우트 그룹 경로)
+- `GroupTimetableData`, `CellEntry` 타입: `@/lib/types`에서 import
 - 소프트 삭제: `TrashView` 공유 컴포넌트 (`?section=trash`), 삭제 전 관련 데이터 정리
 - 원어민 교사 영어 UI: `teacher-labels.ts` 9개 라벨 세트, `academy/layout.tsx`에서 감지
 - DB 초기 데이터: 유치부 6반, 오후반 19개, Native 교사 10명 (`{이름}@scwonderland.com`, Wonder0225!)

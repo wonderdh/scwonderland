@@ -6,6 +6,8 @@ import type { BusManifestGroup, BusTimeSlot } from "@/lib/types";
 import { getDailyBusManifest } from "@/app/(admin)/admin/actions";
 import { formatTime } from "@/lib/bus/utils";
 import { MonitorBusCard, BUS_CARD_COLORS } from "@/components/bus/MonitorBusCard";
+import { useBusRealtime } from "@/lib/hooks/use-bus-realtime";
+import { applyCheckRecord, applyChangeRequest } from "@/lib/bus/realtime-utils";
 
 const DIR_LABEL = { pickup: "등원", dropoff: "하원" } as const;
 const DAY_LABELS = ["월", "화", "수", "목", "금"] as const;
@@ -137,6 +139,44 @@ export function BusMonitorClient({
       loadData(direction, dayOfWeek, slotFilter);
     }
   }, [slotFilter, direction, dayOfWeek, loadData]);
+
+  // Realtime: 오늘 요일 탭에서만 활성화
+  const todayDate = getDateForIsoDay(getTodayIsoDay());
+  const isViewingToday = dayOfWeek === getTodayIsoDay();
+
+  // Realtime 헬퍼: 이벤트 발생 시 현재 슬롯 재로드
+  const reloadToday = useCallback(() => {
+    loadedKeyRef.current = "";
+    if (slotFilter) loadData(direction, dayOfWeek, slotFilter);
+  }, [slotFilter, direction, dayOfWeek, loadData]);
+
+  useBusRealtime(todayDate, {
+    onCheckRecord: (event, row) => {
+      if (!isViewingToday) return;
+      // payload가 비어있으면(unauthenticated) refetch로 폴백
+      if (!row.student_profile_id) { reloadToday(); return; }
+      setAllGroups((prev) =>
+        prev.map((tg) => ({
+          ...tg,
+          cards: applyCheckRecord(tg.cards, event, row),
+        }))
+      );
+    },
+    onChangeRequest: (event, row) => {
+      if (!isViewingToday) return;
+      // payload 비거나 DELETE, 호차변경 → refetch
+      if (!row.student_profile_id || event === "DELETE" || row.change_type === "change") { reloadToday(); return; }
+      setAllGroups((prev) =>
+        prev.map((tg) => {
+          const newCards = tg.cards.map((card) => {
+            const result = applyChangeRequest([card], [], event, row);
+            return { ...card, students: result.groups[0].students };
+          });
+          return { ...tg, cards: newCards };
+        })
+      );
+    },
+  }, { enabled: isViewingToday });
 
   // 해당 direction의 시간대 목록
   const directionSlots = busTimeSlots.filter((s) => s.direction === direction);
