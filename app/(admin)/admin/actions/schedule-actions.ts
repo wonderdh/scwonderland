@@ -7,32 +7,16 @@ import type {
   ClassScheduleWithDetails,
   StudentTimetableRow,
   StudentTimetableCell,
+  CellEntry,
+  GroupTimetableData,
 } from "@/lib/types";
 
 const DAY_RANGE = [1, 2, 3, 4, 5];
 
-// ── 그룹별 시간표 그리드 데이터 조회 ──
-
-export type GroupTimetableData = {
-  periods: { id: string; name: string; start_time: string; end_time: string }[];
-  classes: { id: string; name: string }[];
-  /** key: `${classId}_${periodId}_${dayOfWeek}` */
-  cells: Record<string, {
-    scheduleId: string;
-    label: string | null;
-    teacherId: string | null;
-    teacherName: string | null;
-    teacherType: "korean" | "native";
-    textbookId: string | null;
-  }>;
-  teachers: { id: string; name: string; teacher_type: "korean" | "native" }[];
-  textbooks: { id: string; title: string; series: string | null }[];
-};
-
 export async function getGroupTimetableGrid(
   groupLabel: string,
 ): Promise<GroupTimetableData> {
-  const auth = await verifyAdmin();
+  const auth = await verifyAuthenticated();
   if ("error" in auth) return { periods: [], classes: [], cells: {}, teachers: [], textbooks: [] };
 
   const supabase = createAdminClient();
@@ -52,10 +36,10 @@ export async function getGroupTimetableGrid(
   // 2. 해당 그룹의 반 목록 (group_label로 직접 조회)
   const { data: classRows } = await supabase
     .from("classes")
-    .select("id, name")
+    .select("id, name, english_name")
     .eq("group_label", groupLabel)
     .order("name");
-  const classes = classRows ?? [];
+  const classes = (classRows ?? []) as { id: string; name: string; english_name: string | null }[];
 
   // 3. 해당 교시에 배정된 수업 시간표 전체 (반 배정만, 학생 개인 배정 제외)
   const { data: schedules } = await supabase
@@ -101,11 +85,12 @@ export async function getGroupTimetableGrid(
     .eq("is_active", true)
     .order("title");
 
-  // 7. 셀 맵 구성
+  // 7. 셀 맵 구성 (슬롯당 복수 교사 배열)
   const cells: GroupTimetableData["cells"] = {};
   for (const s of schedules ?? []) {
     const teacher = s.teacher_profile_id ? teacherMap.get(s.teacher_profile_id) : null;
-    cells[`${s.class_id}_${s.academy_period_id}_${s.day_of_week}`] = {
+    const key = `${s.class_id}_${s.academy_period_id}_${s.day_of_week}`;
+    const entry: CellEntry = {
       scheduleId: s.id,
       label: s.label ?? null,
       teacherId: s.teacher_profile_id ?? null,
@@ -113,6 +98,11 @@ export async function getGroupTimetableGrid(
       teacherType: (teacher?.teacher_type ?? "korean") as "korean" | "native",
       textbookId: s.textbook_id ?? null,
     };
+    if (cells[key]) {
+      cells[key].push(entry);
+    } else {
+      cells[key] = [entry];
+    }
   }
 
   return {
@@ -142,6 +132,7 @@ export async function addSingleClassSchedule(
   label: string | null,
   textbookId: string | null = null,
   studentProfileId: string | null = null,
+  force: boolean = false,
 ): Promise<{ error?: string }> {
   const auth = await verifyAdmin();
   if ("error" in auth) return { error: auth.error };
@@ -156,8 +147,8 @@ export async function addSingleClassSchedule(
 
   const supabase = createAdminClient();
 
-  // 교사 충돌 검사: 반 배정일 때만 (학생 개인 배정 제외)
-  if (teacherProfileId && classId && !studentProfileId) {
+  // 교사 충돌 검사: 반 배정일 때만 (학생 개인 배정 제외), force=true면 건너뜀
+  if (teacherProfileId && classId && !studentProfileId && !force) {
     const { data: conflict } = await supabase
       .from("class_schedules")
       .select("id, class_id")
@@ -166,6 +157,7 @@ export async function addSingleClassSchedule(
       .eq("day_of_week", dayOfWeek)
       .is("student_profile_id", null)
       .neq("class_id", classId)
+      .limit(1)
       .maybeSingle();
 
     if (conflict) {
@@ -175,11 +167,11 @@ export async function addSingleClassSchedule(
         .eq("id", conflict.class_id)
         .maybeSingle();
       const className = conflictClass?.name ?? "다른 반";
-      return { error: `해당 교사는 같은 시간에 이미 ${className}에 배정되어 있습니다.` };
+      return { error: `CONFLICT:${className}` };
     }
   }
 
-  // 부분 유니크 인덱스 → Supabase upsert onConflict 미지원, select+insert/update 사용
+  // 기존 행 조회: 반 배정은 teacher_profile_id 도 포함해 조회 (복수 교사 슬롯에서 maybeSingle 오류 방지)
   let query = supabase
     .from("class_schedules")
     .select("id")
@@ -188,6 +180,7 @@ export async function addSingleClassSchedule(
 
   if (classId) {
     query = query.eq("class_id", classId).is("student_profile_id", null);
+    if (teacherProfileId) query = query.eq("teacher_profile_id", teacherProfileId);
   } else {
     query = query.eq("student_profile_id", studentProfileId!).is("class_id", null);
   }
@@ -222,6 +215,87 @@ export async function addSingleClassSchedule(
     if (error) {
       console.error("[addSingleClassSchedule:insert]", error.message);
       return { error: error.message };
+    }
+  }
+
+  revalidatePath("/admin/timetable");
+  return {};
+}
+
+// ── 반 슬롯 전체 교사 덮어쓰기 (복수 교사 배정, GroupTimetableGrid 전용) ──
+
+export async function setClassScheduleSlot(
+  classId: string,
+  academyPeriodId: string,
+  dayOfWeek: number,
+  assignments: { teacherProfileId: string | null; label: string | null; textbookId: string | null }[],
+  force: boolean = false,
+): Promise<{ error?: string }> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return { error: auth.error };
+
+  if (!classId || !academyPeriodId) return { error: "반 또는 교시가 지정되지 않았습니다." };
+  if (dayOfWeek < 1 || dayOfWeek > 5) return { error: "요일이 올바르지 않습니다." };
+
+  const supabase = createAdminClient();
+
+  // 교사 충돌 검사: force=false 일 때만
+  if (!force) {
+    const conflictNames: string[] = [];
+    for (const a of assignments) {
+      if (!a.teacherProfileId) continue;
+      const { data: conflict } = await supabase
+        .from("class_schedules")
+        .select("id, class_id")
+        .eq("teacher_profile_id", a.teacherProfileId)
+        .eq("academy_period_id", academyPeriodId)
+        .eq("day_of_week", dayOfWeek)
+        .is("student_profile_id", null)
+        .neq("class_id", classId)
+        .limit(1)
+        .maybeSingle();
+      if (conflict) {
+        const { data: cc } = await supabase
+          .from("classes")
+          .select("name")
+          .eq("id", conflict.class_id)
+          .maybeSingle();
+        const name = cc?.name ?? "다른 반";
+        if (!conflictNames.includes(name)) conflictNames.push(name);
+      }
+    }
+    if (conflictNames.length > 0) return { error: `CONFLICT:${conflictNames.join(",")}` };
+  }
+
+  // 슬롯의 기존 반 배정 전부 삭제
+  const { error: delError } = await supabase
+    .from("class_schedules")
+    .delete()
+    .eq("class_id", classId)
+    .eq("academy_period_id", academyPeriodId)
+    .eq("day_of_week", dayOfWeek)
+    .is("student_profile_id", null);
+
+  if (delError) {
+    console.error("[setClassScheduleSlot:delete]", delError.message);
+    return { error: delError.message };
+  }
+
+  // 새 배정 삽입
+  if (assignments.length > 0) {
+    const rows = assignments.map((a) => ({
+      class_id: classId,
+      academy_period_id: academyPeriodId,
+      day_of_week: dayOfWeek,
+      teacher_profile_id: a.teacherProfileId ?? null,
+      label: a.label ?? null,
+      textbook_id: a.textbookId ?? null,
+      student_profile_id: null,
+    }));
+    const { error: insError } = await supabase.from("class_schedules").insert(rows);
+    if (insError) {
+      console.error("[setClassScheduleSlot:insert]", insError.message);
+      return { error: insError.message };
     }
   }
 

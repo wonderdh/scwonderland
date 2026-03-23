@@ -2,10 +2,10 @@
 
 import { useState, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import type { GroupTimetableData } from "../../actions/schedule-actions";
+import type { GroupTimetableData, CellEntry } from "@/lib/types";
 import {
   getGroupTimetableGrid,
-  addSingleClassSchedule,
+  setClassScheduleSlot,
   deleteClassSchedule,
 } from "../../actions";
 
@@ -35,7 +35,6 @@ const TEACHER_COLOR_PALETTE: { bg: string; text: string }[] = [
   { bg: "bg-sky-200",     text: "text-sky-800"      },
 ];
 
-// Accepts pre-sorted teachers array so caller controls the sort order (no duplication).
 function buildTeacherColorMap(
   sortedTeachers: { id: string; name: string }[],
 ): Map<string, { bg: string; text: string }> {
@@ -47,20 +46,22 @@ function buildTeacherColorMap(
 }
 
 type PendingCell = {
-  teacherId: string | null;
+  teacherIds: (string | null)[];
   label: string | null;
   textbookId: string | null;
 };
 
 type MergedCell = {
-  label: string | null;
-  teacherId: string | null;
-  teacherName: string | null;
-  teacherType: "korean" | "native";
+  entries: CellEntry[];
   scheduleIds: string[];
   startDay: number;
   span: number;
 };
+
+function cellEntriesEqual(a: CellEntry[], b: CellEntry[]): boolean {
+  if (a.length !== b.length) return false;
+  return a.every((ae, i) => ae.teacherName === b[i].teacherName && ae.label === b[i].label);
+}
 
 function mergeConsecutiveDays(
   classId: string,
@@ -71,37 +72,25 @@ function mergeConsecutiveDays(
   let i = 1;
   while (i <= 5) {
     const key = `${classId}_${periodId}_${i}`;
-    const cell = cells[key];
-    if (!cell) {
+    const entries = cells[key];
+    if (!entries?.length) {
       result.push(null);
       i++;
       continue;
     }
     let span = 1;
-    const scheduleIds = [cell.scheduleId];
+    const scheduleIds = entries.map((e) => e.scheduleId);
     while (i + span <= 5) {
       const nextKey = `${classId}_${periodId}_${i + span}`;
-      const nextCell = cells[nextKey];
-      if (
-        nextCell &&
-        nextCell.teacherName === cell.teacherName &&
-        nextCell.label === cell.label
-      ) {
-        scheduleIds.push(nextCell.scheduleId);
+      const nextEntries = cells[nextKey];
+      if (nextEntries?.length && cellEntriesEqual(entries, nextEntries)) {
+        nextEntries.forEach((e) => scheduleIds.push(e.scheduleId));
         span++;
       } else {
         break;
       }
     }
-    result.push({
-      label: cell.label,
-      teacherId: cell.teacherId,
-      teacherName: cell.teacherName,
-      teacherType: cell.teacherType,
-      scheduleIds,
-      startDay: i,
-      span,
-    });
+    result.push({ entries, scheduleIds, startDay: i, span });
     i += span;
   }
   return result;
@@ -120,18 +109,40 @@ export function GroupTimetableGrid({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  // Toolbar state
-  const [toolTeacherId, setToolTeacherId] = useState("");
+  // Toolbar: 선생님 목록 (복수) + 공유 과목/교재
+  const [toolTeacherIds, setToolTeacherIds] = useState<string[]>([""]);
   const [toolLabel, setToolLabel] = useState("");
   const [toolTextbookId, setToolTextbookId] = useState("");
 
   // Pending changes: key = `${classId}|${periodId}|${day}`
   const [pendingChanges, setPendingChanges] = useState<Map<string, PendingCell>>(new Map());
+  // Pending deletes: scheduleId set
+  const [pendingDeletes, setPendingDeletes] = useState<Set<string>>(new Set());
 
   const refreshData = useCallback(async () => {
     const newData = await getGroupTimetableGrid(groupLabel);
     setData(newData);
   }, [groupLabel]);
+
+  function addTeacherRow() {
+    setToolTeacherIds((prev) => [...prev, ""]);
+  }
+
+  function removeTeacherRow(index: number) {
+    setToolTeacherIds((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  function updateTeacherId(index: number, value: string) {
+    setToolTeacherIds((prev) => prev.map((id, i) => (i === index ? value : id)));
+  }
+
+  function buildAssignments(teacherIds: string[], label: string | null, textbookId: string | null) {
+    return teacherIds.map((tid) => ({
+      teacherProfileId: tid || null,
+      label,
+      textbookId,
+    }));
+  }
 
   function handleCellToggle(classId: string, periodId: string, day: number) {
     const key = `${classId}|${periodId}|${day}`;
@@ -141,7 +152,7 @@ export function GroupTimetableGrid({
         next.delete(key);
       } else {
         next.set(key, {
-          teacherId: toolTeacherId || null,
+          teacherIds: toolTeacherIds.map((id) => id || null),
           label: toolLabel || null,
           textbookId: toolTextbookId || null,
         });
@@ -151,48 +162,76 @@ export function GroupTimetableGrid({
   }
 
   async function handleSave() {
-    if (pendingChanges.size === 0) return;
+    if (pendingChanges.size === 0 && pendingDeletes.size === 0) return;
     setSaving(true);
     setError("");
-    let hasError = false;
+
+    // 삭제 먼저
+    for (const id of pendingDeletes) {
+      const result = await deleteClassSchedule(id);
+      if (result.error) { setError(result.error); setSaving(false); return; }
+    }
+    setPendingDeletes(new Set());
+
+    // 1차 시도: 충돌 수집
+    const conflictKeys: string[] = [];
     for (const [key, pending] of pendingChanges) {
       const [classId, periodId, dayStr] = key.split("|");
-      const result = await addSingleClassSchedule(
-        classId,
-        periodId,
-        parseInt(dayStr, 10),
-        pending.teacherId,
-        pending.label,
-        pending.textbookId,
+      const result = await setClassScheduleSlot(
+        classId, periodId, parseInt(dayStr, 10),
+        buildAssignments(pending.teacherIds.map((id) => id ?? ""), pending.label, pending.textbookId),
+        false,
       );
-      if (result.error) {
+      if (result.error?.startsWith("CONFLICT:")) {
+        conflictKeys.push(key);
+      } else if (result.error) {
         setError(result.error);
-        hasError = true;
-        break;
+        setSaving(false);
+        return;
       }
     }
-    if (!hasError) {
-      setPendingChanges(new Map());
-      await refreshData();
-      router.refresh();
+
+    // 충돌이 있으면 한 번만 확인
+    if (conflictKeys.length > 0) {
+      setSaving(false);
+      const ok = window.confirm(
+        `선생님이 같은 시간에 이미 다른 반에 배정되어 있습니다.\n통합 수업으로 함께 배정하시겠습니까?`
+      );
+      if (!ok) {
+        await refreshData();
+        router.refresh();
+        return;
+      }
+      setSaving(true);
+      for (const key of conflictKeys) {
+        const [classId, periodId, dayStr] = key.split("|");
+        const pending = pendingChanges.get(key)!;
+        const result = await setClassScheduleSlot(
+          classId, periodId, parseInt(dayStr, 10),
+          buildAssignments(pending.teacherIds.map((id) => id ?? ""), pending.label, pending.textbookId),
+          true,
+        );
+        if (result.error) { setError(result.error); setSaving(false); return; }
+      }
     }
+
+    setPendingChanges(new Map());
+    await refreshData();
+    router.refresh();
     setSaving(false);
   }
 
-  async function handleDeleteSchedule(scheduleIds: string[]) {
-    if (!confirm("이 배정을 삭제하시겠습니까?")) return;
-    setLoading(true);
-    setError("");
-    for (const id of scheduleIds) {
-      const result = await deleteClassSchedule(id);
-      if (result.error) {
-        setError(result.error);
-        break;
+  function handleToggleDelete(scheduleIds: string[]) {
+    setPendingDeletes((prev) => {
+      const next = new Set(prev);
+      const allPending = scheduleIds.every((id) => next.has(id));
+      if (allPending) {
+        scheduleIds.forEach((id) => next.delete(id));
+      } else {
+        scheduleIds.forEach((id) => next.add(id));
       }
-    }
-    await refreshData();
-    router.refresh();
-    setLoading(false);
+      return next;
+    });
   }
 
   const mergedData = useMemo(() => {
@@ -214,6 +253,11 @@ export function GroupTimetableGrid({
   const teacherColorMap = useMemo(
     () => buildTeacherColorMap(sortedTeachers),
     [sortedTeachers],
+  );
+
+  const teacherNameMap = useMemo(
+    () => new Map(data.teachers.map((t) => [t.id, t.name])),
+    [data.teachers],
   );
 
   if (data.periods.length === 0) {
@@ -242,34 +286,49 @@ export function GroupTimetableGrid({
       )}
 
       {/* 배정 툴바 */}
-      <div className="flex flex-wrap items-center gap-3 p-3 bg-slate-50 rounded-xl border">
-        <div className="flex items-center gap-1.5">
-          <span className="text-xs text-muted-foreground font-medium shrink-0">선생님</span>
-          <select
-            value={toolTeacherId}
-            onChange={(e) => setToolTeacherId(e.target.value)}
-            className="text-xs border rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-primary"
-          >
-            <option value="">없음</option>
-            {nativeTeachers.length > 0 && (
-              <optgroup label="원어민">
-                {nativeTeachers.map((t) => (
-                  <option key={t.id} value={t.id}>{t.name}</option>
-                ))}
-              </optgroup>
+      <div className="flex flex-col gap-2 p-3 bg-slate-50 rounded-xl border">
+        {/* 선생님 행들 */}
+        {toolTeacherIds.map((teacherId, idx) => (
+          <div key={idx} className="flex flex-wrap items-center gap-2">
+            <span className="text-xs text-muted-foreground font-medium shrink-0 w-10">
+              {idx === 0 ? "선생님" : "추가"}
+            </span>
+            <select
+              value={teacherId}
+              onChange={(e) => updateTeacherId(idx, e.target.value)}
+              className="text-xs border rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-primary"
+            >
+              <option value="">없음</option>
+              {nativeTeachers.length > 0 && (
+                <optgroup label="원어민">
+                  {nativeTeachers.map((t) => (
+                    <option key={t.id} value={t.id}>{t.name}</option>
+                  ))}
+                </optgroup>
+              )}
+              {koreanTeachers.length > 0 && (
+                <optgroup label="한국인">
+                  {koreanTeachers.map((t) => (
+                    <option key={t.id} value={t.id}>{t.name}</option>
+                  ))}
+                </optgroup>
+              )}
+            </select>
+            {toolTeacherIds.length > 1 && (
+              <button
+                type="button"
+                onClick={() => removeTeacherRow(idx)}
+                className="text-xs px-2 py-1.5 rounded-lg border border-red-200 text-red-500 hover:bg-red-50 transition-colors"
+              >
+                제거
+              </button>
             )}
-            {koreanTeachers.length > 0 && (
-              <optgroup label="한국인">
-                {koreanTeachers.map((t) => (
-                  <option key={t.id} value={t.id}>{t.name}</option>
-                ))}
-              </optgroup>
-            )}
-          </select>
-        </div>
+          </div>
+        ))}
 
-        <div className="flex items-center gap-1.5">
-          <span className="text-xs text-muted-foreground font-medium shrink-0">과목</span>
+        {/* 공유 과목 / 교재 */}
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs text-muted-foreground font-medium shrink-0 w-10">과목</span>
           <input
             type="text"
             placeholder="과목명"
@@ -277,14 +336,11 @@ export function GroupTimetableGrid({
             onChange={(e) => setToolLabel(e.target.value)}
             className="text-xs border rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-primary w-24"
           />
-        </div>
-
-        <div className="flex items-center gap-1.5">
           <span className="text-xs text-muted-foreground font-medium shrink-0">교재</span>
           <select
             value={toolTextbookId}
             onChange={(e) => setToolTextbookId(e.target.value)}
-            className="text-xs border rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-primary max-w-40"
+            className="text-xs border rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-primary max-w-36"
           >
             <option value="">없음</option>
             {data.textbooks.map((tb) => (
@@ -295,24 +351,33 @@ export function GroupTimetableGrid({
           </select>
         </div>
 
-        <div className="flex items-center gap-2 ml-auto">
-          {pendingChanges.size > 0 && (
-            <button
-              type="button"
-              onClick={() => setPendingChanges(new Map())}
-              className="text-xs px-2.5 py-1.5 rounded-lg border text-muted-foreground hover:bg-muted/50 transition-colors"
-            >
-              전체해제
-            </button>
-          )}
+        <div className="flex items-center gap-2 pt-1">
           <button
             type="button"
-            onClick={handleSave}
-            disabled={pendingChanges.size === 0 || saving}
-            className="text-xs px-3 py-1.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40 transition-colors font-medium"
+            onClick={addTeacherRow}
+            className="text-xs px-2.5 py-1.5 rounded-lg border border-dashed border-slate-300 text-muted-foreground hover:bg-muted/50 transition-colors"
           >
-            {saving ? "저장 중…" : pendingChanges.size > 0 ? `저장 ${pendingChanges.size}건` : "저장"}
+            + 선생 추가
           </button>
+          <div className="flex items-center gap-2 ml-auto">
+            {(pendingChanges.size > 0 || pendingDeletes.size > 0) && (
+              <button
+                type="button"
+                onClick={() => { setPendingChanges(new Map()); setPendingDeletes(new Set()); }}
+                className="text-xs px-2.5 py-1.5 rounded-lg border text-muted-foreground hover:bg-muted/50 transition-colors"
+              >
+                전체해제
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => handleSave()}
+              disabled={(pendingChanges.size === 0 && pendingDeletes.size === 0) || saving}
+              className="text-xs px-3 py-1.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40 transition-colors font-medium"
+            >
+              {saving ? "저장 중…" : (pendingChanges.size + pendingDeletes.size) > 0 ? `저장 ${pendingChanges.size + pendingDeletes.size}건` : "저장"}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -332,7 +397,7 @@ export function GroupTimetableGrid({
       )}
 
       {/* 시간표 그리드 */}
-      <div className="overflow-x-auto rounded-xl border shadow-sm">
+      <div className={`relative rounded-xl border shadow-sm overflow-x-auto transition-opacity ${saving ? "opacity-40 pointer-events-none select-none" : ""}`}>
         <table className="w-full text-sm border-collapse">
           <thead>
             <tr className="bg-muted/50 border-b">
@@ -369,10 +434,12 @@ export function GroupTimetableGrid({
                         periodId={period.id}
                         mergedCells={mergedCells}
                         pendingChanges={pendingChanges}
+                        pendingDeletes={pendingDeletes}
                         onCellToggle={handleCellToggle}
-                        onDeleteClick={handleDeleteSchedule}
+                        onDeleteToggle={handleToggleDelete}
                         loading={loading || saving}
                         teacherColorMap={teacherColorMap}
+                        teacherNameMap={teacherNameMap}
                       />
                     </td>
                   );
@@ -391,19 +458,23 @@ function PeriodDayGrid({
   periodId,
   mergedCells,
   pendingChanges,
+  pendingDeletes,
   onCellToggle,
-  onDeleteClick,
+  onDeleteToggle,
   loading,
   teacherColorMap,
+  teacherNameMap,
 }: {
   classId: string;
   periodId: string;
   mergedCells: (MergedCell | null)[];
   pendingChanges: Map<string, PendingCell>;
+  pendingDeletes: Set<string>;
   onCellToggle: (classId: string, periodId: string, day: number) => void;
-  onDeleteClick: (scheduleIds: string[]) => void;
+  onDeleteToggle: (scheduleIds: string[]) => void;
   loading: boolean;
   teacherColorMap: Map<string, { bg: string; text: string }>;
+  teacherNameMap: Map<string, string>;
 }) {
   const rows: React.ReactNode[] = [];
   let dayIndex = 1;
@@ -415,15 +486,20 @@ function PeriodDayGrid({
       const pending = pendingChanges.get(pendingKey);
 
       if (pending) {
+        const firstId = pending.teacherIds[0];
+        const color = firstId ? teacherColorMap.get(firstId) : undefined;
+        const bgText = color ? `${color.bg} ${color.text}` : "bg-emerald-100 text-emerald-700";
+        const names = pending.teacherIds.map((tid) => (tid ? (teacherNameMap.get(tid) ?? "") : "")).filter(Boolean).join(" · ");
+        const display = [names, pending.label].filter(Boolean).join(" ") || "✓";
         rows.push(
           <button
             key={day}
             type="button"
             onClick={() => onCellToggle(classId, periodId, day)}
-            className="w-full text-left px-2 py-1 text-[11px] border-b last:border-b-0 bg-emerald-100 text-emerald-700 font-medium transition-colors"
+            className={`w-full text-left px-2 py-1 text-[10px] border-b last:border-b-0 font-medium transition-colors ring-2 ring-amber-400 ring-inset ${bgText}`}
             style={{ height: "24px" }}
           >
-            ✓
+            <span className="truncate block leading-4">{display}</span>
           </button>,
         );
       } else {
@@ -443,48 +519,116 @@ function PeriodDayGrid({
       dayIndex++;
     } else {
       const height = cell.span * 24;
-      const hasTeacher = !!cell.teacherName;
-      const hasLabel = !!cell.label;
-      const teacherColor = cell.teacherId ? teacherColorMap.get(cell.teacherId) : undefined;
-      const bgClass = hasTeacher && teacherColor
-        ? `${teacherColor.bg} ${teacherColor.text}`
-        : hasTeacher
-          ? "bg-slate-200 text-slate-700"
-          : "bg-slate-100/70 text-slate-500";
+      const isPendingDelete = cell.scheduleIds.every((id) => pendingDeletes.has(id));
+
+      if (isPendingDelete) {
+        for (let d = cell.startDay; d < cell.startDay + cell.span; d++) {
+          rows.push(
+            <button
+              key={d}
+              type="button"
+              onClick={() => onDeleteToggle(cell.scheduleIds)}
+              className="w-full text-left px-2 py-1 text-[11px] border-b last:border-b-0 bg-red-50 transition-colors"
+              style={{ height: "24px" }}
+              title="클릭하여 삭제 취소"
+            >
+              <span className={`${DAY_COLORS[d]?.text ?? ""} opacity-30`}>{DAY_LABELS[d - 1]}</span>
+            </button>,
+          );
+        }
+        dayIndex += cell.span;
+        continue;
+      }
 
       const pendingKey = `${classId}|${periodId}|${cell.startDay}`;
       const pending = pendingChanges.get(pendingKey);
-      const ringClass = pending ? "ring-2 ring-amber-400 ring-inset" : "";
 
-      rows.push(
-        <div
-          key={cell.startDay}
-          className={`relative group border-b last:border-b-0 cursor-pointer ${ringClass}`}
-          style={{ height: `${height}px` }}
-          onClick={() => onCellToggle(classId, periodId, cell.startDay)}
-        >
+      // bg: first teacher's color (pending or existing)
+      const firstEntry = cell.entries[0];
+      const firstTeacherColor = firstEntry?.teacherId ? teacherColorMap.get(firstEntry.teacherId) : undefined;
+      const existingBgClass = firstTeacherColor
+        ? `${firstTeacherColor.bg} ${firstTeacherColor.text}`
+        : firstEntry?.teacherName
+          ? "bg-slate-200 text-slate-700"
+          : "bg-slate-100/70 text-slate-500";
+
+      if (pending) {
+        // pending 덮어씌워 표시
+        const firstPendingId = pending.teacherIds[0];
+        const pendingColor = firstPendingId ? teacherColorMap.get(firstPendingId) : undefined;
+        const pendingBgClass = pendingColor
+          ? `${pendingColor.bg} ${pendingColor.text}`
+          : "bg-emerald-100 text-emerald-700";
+        const pendingHeight = height;
+        const pendingNames = pending.teacherIds
+          .map((tid) => (tid ? (teacherNameMap.get(tid) ?? "") : ""))
+          .filter(Boolean)
+          .join(" · ");
+
+        rows.push(
           <div
-            className={`flex flex-col items-center justify-center h-full px-1 text-[11px] font-medium ${bgClass} hover:brightness-95 transition-colors`}
+            key={cell.startDay}
+            className="relative group border-b last:border-b-0 cursor-pointer ring-2 ring-amber-400 ring-inset"
+            style={{ height: `${pendingHeight}px` }}
+            onClick={() => onCellToggle(classId, periodId, cell.startDay)}
           >
-            {hasLabel && <span className="truncate text-[10px] opacity-80">{cell.label}</span>}
-            {hasTeacher && <span className="truncate">{cell.teacherName}</span>}
-            {!hasTeacher && !hasLabel && <span className="truncate opacity-50">—</span>}
-            {cell.span > 1 && (
-              <span className="text-[9px] opacity-50">
-                ({DAY_LABELS[cell.startDay - 1]}~{DAY_LABELS[cell.startDay + cell.span - 2]})
+            <div className={`flex flex-col items-center justify-center h-full px-1 py-0.5 text-[10px] font-medium ${pendingBgClass} hover:brightness-95 transition-colors overflow-hidden`}>
+              <span className="truncate block leading-4 text-center">
+                {[pendingNames, pending.label].filter(Boolean).join(" ") || "—"}
               </span>
-            )}
-          </div>
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); onDeleteClick(cell.scheduleIds); }}
-            className="absolute -top-1 -right-1 hidden group-hover:flex items-center justify-center w-4 h-4 rounded-full bg-red-500 text-white text-[8px] hover:bg-red-600 shadow-sm z-10"
-            title="삭제"
+              {cell.span > 1 && (
+                <span className="text-[9px] opacity-50">
+                  ({DAY_LABELS[cell.startDay - 1]}~{DAY_LABELS[cell.startDay + cell.span - 2]})
+                </span>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onDeleteToggle(cell.scheduleIds); }}
+              className="absolute -top-1 -right-1 hidden group-hover:flex items-center justify-center w-4 h-4 rounded-full bg-red-500 text-white text-[8px] hover:bg-red-600 shadow-sm z-10"
+              title="삭제"
+            >
+              ×
+            </button>
+          </div>,
+        );
+      } else {
+        const teacherNames = cell.entries
+          .map((e) => e.teacherName)
+          .filter(Boolean)
+          .join(" · ");
+        const sharedLabel = cell.entries[0]?.label ?? null;
+
+        rows.push(
+          <div
+            key={cell.startDay}
+            className={`relative group border-b last:border-b-0 cursor-pointer`}
+            style={{ height: `${height}px` }}
+            onClick={() => onCellToggle(classId, periodId, cell.startDay)}
           >
-            ×
-          </button>
-        </div>,
-      );
+            <div
+              className={`flex flex-col items-center justify-center h-full px-1 py-0.5 text-[10px] font-medium ${existingBgClass} hover:brightness-95 transition-colors overflow-hidden`}
+            >
+              <span className="truncate block leading-4 text-center">
+                {[teacherNames, sharedLabel].filter(Boolean).join(" ") || <span className="opacity-50">—</span>}
+              </span>
+              {cell.span > 1 && (
+                <span className="text-[9px] opacity-50">
+                  ({DAY_LABELS[cell.startDay - 1]}~{DAY_LABELS[cell.startDay + cell.span - 2]})
+                </span>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onDeleteToggle(cell.scheduleIds); }}
+              className="absolute -top-1 -right-1 hidden group-hover:flex items-center justify-center w-4 h-4 rounded-full bg-red-500 text-white text-[8px] hover:bg-red-600 shadow-sm z-10"
+              title="삭제"
+            >
+              ×
+            </button>
+          </div>,
+        );
+      }
       dayIndex += cell.span;
     }
   }
@@ -495,15 +639,20 @@ function PeriodDayGrid({
     const pending = pendingChanges.get(pendingKey);
 
     if (pending) {
+      const firstId = pending.teacherIds[0];
+      const color = firstId ? teacherColorMap.get(firstId) : undefined;
+      const bgText = color ? `${color.bg} ${color.text}` : "bg-emerald-100 text-emerald-700";
+      const names = pending.teacherIds.map((tid) => (tid ? (teacherNameMap.get(tid) ?? "") : "")).filter(Boolean).join(" · ");
+      const display = [names, pending.label].filter(Boolean).join(" ") || "✓";
       rows.push(
         <button
           key={day}
           type="button"
           onClick={() => onCellToggle(classId, periodId, day)}
-          className="w-full text-left px-2 py-1 text-[11px] border-b last:border-b-0 bg-emerald-100 text-emerald-700 font-medium transition-colors"
+          className={`w-full text-left px-2 py-1 text-[10px] border-b last:border-b-0 font-medium transition-colors ring-2 ring-amber-400 ring-inset ${bgText}`}
           style={{ height: "24px" }}
         >
-          ✓
+          <span className="truncate block leading-4">{display}</span>
         </button>,
       );
     } else {
