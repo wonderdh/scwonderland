@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import type { GroupTimetableData } from "../../../../(admin)/admin/actions/schedule-actions";
+import type { GroupTimetableData } from "@/lib/types";
 import { CLASS_COLOR_PALETTE } from "@/lib/class-colors";
 
 type GroupKey = "유치부" | "오후반" | "방과후";
@@ -47,8 +47,8 @@ function buildTeacherDaySchedule(
     for (const cls of data.classes) {
       for (let day = 1; day <= 5; day++) {
         const key = `${cls.id}_${period.id}_${day}`;
-        const cell = data.cells[key];
-        if (cell?.teacherId === teacherProfileId) {
+        const cells = data.cells[key];
+        if (cells?.some((c) => c.teacherId === teacherProfileId)) {
           const existing = dayMap.get(day);
           dayMap.set(day, existing ? `${existing} / ${cls.name}` : cls.name);
         }

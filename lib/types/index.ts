@@ -60,4 +60,5 @@ export type {
   StudentTimetableRow,
   CellEntry,
   GroupTimetableData,
+  BusCheckBatchItem,
 } from "./api";

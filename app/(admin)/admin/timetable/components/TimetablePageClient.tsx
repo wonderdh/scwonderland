@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { AcademyPeriod } from "@/lib/types";
-import type { GroupTimetableData } from "../../actions/schedule-actions";
+import type { AcademyPeriod, GroupTimetableData } from "@/lib/types";
 import { TimetableManager } from "./TimetableManager";
 import { GroupTimetableGrid } from "./GroupTimetableGrid";
 

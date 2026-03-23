@@ -916,6 +916,123 @@ export async function uncheckBusStudent(
   return {};
 }
 
+// ── 배치 탑승/하차 처리 ──
+
+export async function batchBusCheckRecord(
+  items: {
+    action: "board" | "unboard" | "check" | "uncheck";
+    studentProfileId: string;
+    busTimeSlotId: string;
+    busNumberId: string;
+    direction: "pickup" | "dropoff";
+  }[],
+  checkDate: string,
+  checkedBy: string
+): Promise<{ error?: string }> {
+  const auth = await verifyAuthenticated();
+  if ("error" in auth) return { error: auth.error };
+  const supabase = createAdminClient();
+  const now = new Date().toISOString();
+
+  const boardItems = items.filter((i) => i.action === "board");
+  const checkItems = items.filter((i) => i.action === "check");
+  const unboardItems = items.filter((i) => i.action === "unboard");
+  const uncheckItems = items.filter((i) => i.action === "uncheck");
+
+  // 탑승: 배치 upsert
+  if (boardItems.length > 0) {
+    const { error } = await supabase.from("bus_check_records").upsert(
+      boardItems.map((i) => ({
+        student_profile_id: i.studentProfileId,
+        check_date: checkDate,
+        direction: i.direction,
+        bus_time_slot_id: i.busTimeSlotId,
+        bus_number_id: i.busNumberId,
+        boarded_at: now,
+      })),
+      { onConflict: "student_profile_id,check_date,direction" }
+    );
+    if (error) {
+      console.error("[batchBusCheckRecord:board]", error.message);
+      return { error: error.message };
+    }
+  }
+
+  // 하차: 배치 upsert
+  if (checkItems.length > 0) {
+    const { error } = await supabase.from("bus_check_records").upsert(
+      checkItems.map((i) => ({
+        student_profile_id: i.studentProfileId,
+        check_date: checkDate,
+        direction: i.direction,
+        bus_time_slot_id: i.busTimeSlotId,
+        bus_number_id: i.busNumberId,
+        checked_at: now,
+        checked_by: checkedBy,
+      })),
+      { onConflict: "student_profile_id,check_date,direction" }
+    );
+    if (error) {
+      console.error("[batchBusCheckRecord:check]", error.message);
+      return { error: error.message };
+    }
+  }
+
+  // 탑승 취소: direction별 UPDATE + 빈 레코드 삭제
+  if (unboardItems.length > 0) {
+    const byDir = new Map<string, string[]>();
+    for (const i of unboardItems) {
+      const arr = byDir.get(i.direction) ?? [];
+      arr.push(i.studentProfileId);
+      byDir.set(i.direction, arr);
+    }
+    for (const [dir, ids] of byDir) {
+      await supabase
+        .from("bus_check_records")
+        .update({ boarded_at: null })
+        .eq("check_date", checkDate)
+        .eq("direction", dir)
+        .in("student_profile_id", ids);
+      await supabase
+        .from("bus_check_records")
+        .delete()
+        .eq("check_date", checkDate)
+        .eq("direction", dir)
+        .in("student_profile_id", ids)
+        .is("boarded_at", null)
+        .is("checked_at", null);
+    }
+  }
+
+  // 하차 취소: direction별 UPDATE + 빈 레코드 삭제
+  if (uncheckItems.length > 0) {
+    const byDir = new Map<string, string[]>();
+    for (const i of uncheckItems) {
+      const arr = byDir.get(i.direction) ?? [];
+      arr.push(i.studentProfileId);
+      byDir.set(i.direction, arr);
+    }
+    for (const [dir, ids] of byDir) {
+      await supabase
+        .from("bus_check_records")
+        .update({ checked_at: null, checked_by: null })
+        .eq("check_date", checkDate)
+        .eq("direction", dir)
+        .in("student_profile_id", ids);
+      await supabase
+        .from("bus_check_records")
+        .delete()
+        .eq("check_date", checkDate)
+        .eq("direction", dir)
+        .in("student_profile_id", ids)
+        .is("boarded_at", null)
+        .is("checked_at", null);
+    }
+  }
+
+  return {};
+}
+
 // ── 변경 요청 관리 ──
 
 export async function listAllChangeRequests(): Promise<BusChangeRequest[]> {

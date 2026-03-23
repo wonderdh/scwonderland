@@ -6,10 +6,7 @@ import type { BusManifestGroup, BusManifestEntry, NoRideEntry } from "@/lib/type
 import { getAgeColor } from "@/lib/student-age-colors";
 import {
   getDailyBusManifest,
-  boardBusStudent,
-  unboardBusStudent,
-  checkBusStudent,
-  uncheckBusStudent,
+  batchBusCheckRecord,
 } from "@/app/(admin)/admin/actions";
 import { formatTime as fmt, formatCheckedTime as fmtISO } from "@/lib/bus/utils";
 import { useBusRealtime } from "@/lib/hooks/use-bus-realtime";
@@ -518,34 +515,20 @@ export function BusStaffMonitor({
     );
 
     startSaving(async () => {
-      const results = await Promise.allSettled(
-        changes.map((ch) => {
-          const sid = ch.student.student_profile_id;
-          switch (ch.action) {
-            case "board":
-              return boardBusStudent(sid, date, ch.direction, ch.busTimeSlotId, ch.busNumberId);
-            case "unboard":
-              return unboardBusStudent(sid, date, ch.direction);
-            case "check":
-              return checkBusStudent(sid, date, ch.direction, ch.busTimeSlotId, ch.busNumberId, staffProfileId);
-            case "uncheck":
-              return uncheckBusStudent(sid, date, ch.direction);
-          }
-        })
+      const result = await batchBusCheckRecord(
+        changes.map((ch) => ({
+          action: ch.action,
+          studentProfileId: ch.student.student_profile_id,
+          busTimeSlotId: ch.busTimeSlotId,
+          busNumberId: ch.busNumberId,
+          direction: ch.direction,
+        })),
+        date,
+        staffProfileId
       );
 
-      const errors: string[] = [];
-      for (const r of results) {
-        if (r.status === "rejected") {
-          errors.push("서버 오류");
-        } else if (r.value.error) {
-          errors.push(r.value.error);
-        }
-      }
-
-      if (errors.length > 0) {
-        toast.error(`${errors.length}건 오류 발생: ${errors[0]}`);
-        // 에러 시 전체 새로고침
+      if (result.error) {
+        toast.error(`오류: ${result.error}`);
         await load();
       } else {
         toast.success(`${changes.length}건 저장 완료`);

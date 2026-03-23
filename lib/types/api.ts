@@ -557,3 +557,13 @@ export type GroupTimetableData = {
   teachers: { id: string; name: string; teacher_type: "korean" | "native" }[];
   textbooks: { id: string; title: string; series: string | null }[];
 };
+
+// ── 버스 배치 체크 타입 ──
+
+export type BusCheckBatchItem = {
+  action: "board" | "unboard" | "check" | "uncheck";
+  studentProfileId: string;
+  busTimeSlotId: string;
+  busNumberId: string;
+  direction: "pickup" | "dropoff";
+};

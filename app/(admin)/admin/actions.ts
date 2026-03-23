@@ -110,6 +110,7 @@ export {
   getStudentTimetable,
   getGroupTimetableGrid,
   addSingleClassSchedule,
+  setClassScheduleSlot,
   getStudentTimetableEditable,
   deleteStudentSchedule,
 } from "./actions/schedule-actions";
@@ -147,6 +148,7 @@ export {
   unboardBusStudent,
   checkBusStudent,
   uncheckBusStudent,
+  batchBusCheckRecord,
   createBusStaff,
   listBusStaff,
   updateBusStaff,

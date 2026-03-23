@@ -9,10 +9,7 @@ import type { BusManifestGroup, BusManifestEntry, BusTimeSlot, BusNumber, NoRide
 import { getAgeColor } from "@/lib/student-age-colors";
 import {
   getDailyBusManifest,
-  boardBusStudent,
-  unboardBusStudent,
-  checkBusStudent,
-  uncheckBusStudent,
+  batchBusCheckRecord,
   deleteAdminBusChange,
 } from "../../actions";
 import { useBusRealtime } from "@/lib/hooks/use-bus-realtime";
@@ -37,6 +34,14 @@ async function getAdminId(): Promise<string> {
   const { data } = await supabase.auth.getUser();
   return data.user?.id ?? "";
 }
+
+type PendingChange = {
+  action: "board" | "unboard" | "check" | "uncheck";
+  student: BusManifestEntry;
+  busTimeSlotId: string;
+  busNumberId: string;
+  direction: "pickup" | "dropoff";
+};
 
 type TimeGroup = {
   slotTime: string;
@@ -66,6 +71,7 @@ export function BusDashboard({ busTimeSlots, busNumbers }: { busTimeSlots: BusTi
   const [loading, setLoading] = useState(false);
   const [adminId, setAdminId] = useState("");
   const [isPending, startTransition] = useTransition();
+  const [pendingChanges, setPendingChanges] = useState<Map<string, PendingChange>>(new Map());
   const [selectedSlotId, setSelectedSlotId] = useState<string>(() => {
     const slots = busTimeSlots.filter((s) => s.direction === "dropoff");
     return slots[0]?.id ?? "";
@@ -108,50 +114,19 @@ export function BusDashboard({ busTimeSlots, busNumbers }: { busTimeSlots: BusTi
       busNumberId: string,
       shouldBoard: boolean
     ) => {
-      // Optimistic update
-      setGroups((prev) =>
-        prev.map((g) => ({
-          ...g,
-          students: g.students.map((s) =>
-            s.student_profile_id === student.student_profile_id
-              ? {
-                  ...s,
-                  boarded_at: shouldBoard ? new Date().toISOString() : null,
-                }
-              : s
-          ),
-        }))
-      );
-
-      startTransition(async () => {
-        const result = shouldBoard
-          ? await boardBusStudent(
-              student.student_profile_id,
-              date,
-              direction,
-              busTimeSlotId,
-              busNumberId
-            )
-          : await unboardBusStudent(student.student_profile_id, date, direction);
-
-        if (result.error) {
-          setGroups((prev) =>
-            prev.map((g) => ({
-              ...g,
-              students: g.students.map((s) =>
-                s.student_profile_id === student.student_profile_id
-                  ? { ...s, boarded_at: student.boarded_at }
-                  : s
-              ),
-            }))
-          );
-          toast.error(`오류: ${result.error}`);
+      const sid = student.student_profile_id;
+      const action = shouldBoard ? "board" : "unboard";
+      setPendingChanges((prev) => {
+        const next = new Map(prev);
+        if (next.get(sid)?.action === action) {
+          next.delete(sid); // 같은 액션 재클릭 → 취소
         } else {
-          load();
+          next.set(sid, { action, student, busTimeSlotId, busNumberId, direction });
         }
+        return next;
       });
     },
-    [date, direction, load]
+    [direction]
   );
 
   const handleCheck = useCallback(
@@ -161,57 +136,68 @@ export function BusDashboard({ busTimeSlots, busNumbers }: { busTimeSlots: BusTi
       busNumberId: string,
       shouldCheck: boolean
     ) => {
-      // Optimistic update
-      setGroups((prev) =>
-        prev.map((g) => ({
-          ...g,
-          students: g.students.map((s) =>
-            s.student_profile_id === student.student_profile_id
-              ? {
-                  ...s,
-                  checked_at: shouldCheck ? new Date().toISOString() : null,
-                  check_record_id: shouldCheck ? "optimistic" : null,
-                }
-              : s
-          ),
-        }))
-      );
-
-      startTransition(async () => {
-        const result = shouldCheck
-          ? await checkBusStudent(
-              student.student_profile_id,
-              date,
-              direction,
-              busTimeSlotId,
-              busNumberId,
-              adminId
-            )
-          : await uncheckBusStudent(student.student_profile_id, date, direction);
-
-        if (result.error) {
-          setGroups((prev) =>
-            prev.map((g) => ({
-              ...g,
-              students: g.students.map((s) =>
-                s.student_profile_id === student.student_profile_id
-                  ? {
-                      ...s,
-                      checked_at: student.checked_at,
-                      check_record_id: student.check_record_id,
-                    }
-                  : s
-              ),
-            }))
-          );
-          toast.error(`오류: ${result.error}`);
+      const sid = student.student_profile_id;
+      const action = shouldCheck ? "check" : "uncheck";
+      setPendingChanges((prev) => {
+        const next = new Map(prev);
+        if (next.get(sid)?.action === action) {
+          next.delete(sid);
         } else {
-          load();
+          next.set(sid, { action, student, busTimeSlotId, busNumberId, direction });
         }
+        return next;
       });
     },
-    [date, direction, adminId, load]
+    [direction]
   );
+
+  const saveAll = useCallback(() => {
+    if (pendingChanges.size === 0) return;
+    const changes = [...pendingChanges.values()];
+    // 낙관적 UI 업데이트
+    const now = new Date().toISOString();
+    setGroups((prev) =>
+      prev.map((g) => ({
+        ...g,
+        students: g.students.map((s) => {
+          const ch = changes.find((c) => c.student.student_profile_id === s.student_profile_id);
+          if (!ch) return s;
+          switch (ch.action) {
+            case "board": return { ...s, boarded_at: now };
+            case "unboard": return { ...s, boarded_at: null };
+            case "check": return { ...s, checked_at: now, check_record_id: "optimistic" };
+            case "uncheck": return { ...s, checked_at: null, check_record_id: null };
+            default: return s;
+          }
+        }),
+      }))
+    );
+    setPendingChanges(new Map());
+
+    startTransition(async () => {
+      const result = await batchBusCheckRecord(
+        changes.map((ch) => ({
+          action: ch.action,
+          studentProfileId: ch.student.student_profile_id,
+          busTimeSlotId: ch.busTimeSlotId,
+          busNumberId: ch.busNumberId,
+          direction: ch.direction,
+        })),
+        date,
+        adminId
+      );
+      if (result.error) {
+        toast.error(`오류: ${result.error}`);
+        await load();
+      } else {
+        toast.success(`${changes.length}건 저장 완료`);
+      }
+    });
+  }, [pendingChanges, date, adminId, load]);
+
+  const clearAll = useCallback(() => {
+    setPendingChanges(new Map());
+  }, []);
 
   const handleCancelNoRide = useCallback(
     (requestId: string) => {
@@ -329,6 +315,7 @@ export function BusDashboard({ busTimeSlots, busNumbers }: { busTimeSlots: BusTi
                     onBoard={handleBoard}
                     onCheck={handleCheck}
                     isPending={isPending}
+                    pendingChanges={pendingChanges}
                   />
                 );
               })}
@@ -452,6 +439,32 @@ export function BusDashboard({ busTimeSlots, busNumbers }: { busTimeSlots: BusTi
         </div>
       )}
 
+      {/* 일괄 저장 바 */}
+      {pendingChanges.size > 0 && (
+        <div className="sticky bottom-4 z-10 flex justify-end">
+          <div className="flex items-center gap-2 bg-slate-800 text-white rounded-xl px-4 py-2.5 shadow-lg">
+            <span className="text-sm text-slate-300">
+              <span className="font-bold text-white">{pendingChanges.size}</span>건 대기 중
+            </span>
+            <button
+              type="button"
+              onClick={clearAll}
+              className="text-xs text-slate-400 hover:text-slate-200 px-2 py-1"
+            >
+              취소
+            </button>
+            <button
+              type="button"
+              onClick={saveAll}
+              disabled={isPending}
+              className="text-sm font-bold bg-blue-500 hover:bg-blue-600 disabled:bg-blue-400 px-4 py-1.5 rounded-lg"
+            >
+              {isPending ? "저장 중..." : "저장"}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* 당일 변경 모달 */}
     </div>
   );
@@ -493,6 +506,7 @@ function BusCard({
   onBoard,
   onCheck,
   isPending,
+  pendingChanges,
 }: {
   card: BusManifestGroup;
   boardedCount: number;
@@ -511,6 +525,7 @@ function BusCard({
     shouldCheck: boolean
   ) => void;
   isPending: boolean;
+  pendingChanges: Map<string, PendingChange>;
 }) {
   const allDone = checkedCount === totalCount && totalCount > 0;
   const stopGroups = groupCardStudentsByStop(card.students);
@@ -538,16 +553,20 @@ function BusCard({
       );
     }
 
-    const isBoarded = !!student.boarded_at;
-    const isChecked = !!student.checked_at;
+    const pending = pendingChanges.get(student.student_profile_id);
+    const isBoarded = pending?.action === "board" ? true : pending?.action === "unboard" ? false : !!student.boarded_at;
+    const isChecked = pending?.action === "check" ? true : pending?.action === "uncheck" ? false : !!student.checked_at;
+    const hasPending = !!pending;
 
-    const rowBg = isChecked
-      ? "bg-green-50/60"
-      : student.is_changed
-        ? "bg-amber-50/60"
-        : isBoarded
-          ? "bg-blue-50/50"
-          : "hover:bg-slate-50";
+    const rowBg = hasPending
+      ? "bg-amber-50 ring-1 ring-amber-300 ring-inset"
+      : isChecked
+        ? "bg-green-50/60"
+        : student.is_changed
+          ? "bg-amber-50/60"
+          : isBoarded
+            ? "bg-blue-50/50"
+            : "hover:bg-slate-50";
 
     return (
       <div
@@ -557,7 +576,7 @@ function BusCard({
         <input
           type="checkbox"
           checked={isBoarded || isChecked}
-          disabled={isPending || isChecked}
+          disabled={isPending}
           onChange={() =>
             onBoard(student, card.bus_time_slot_id, card.bus_number_id, !isBoarded)
           }
@@ -567,7 +586,7 @@ function BusCard({
         <input
           type="checkbox"
           checked={isChecked}
-          disabled={isPending || !isBoarded}
+          disabled={isPending || (!isBoarded && !pending)}
           onChange={() =>
             onCheck(student, card.bus_time_slot_id, card.bus_number_id, !isChecked)
           }
