@@ -30,6 +30,7 @@ export function useBusRealtime(
           event: "*",
           schema: "public",
           table: "bus_check_records",
+          filter: `check_date=eq.${date}`,
         },
         (payload) => {
           const row = (payload.new ?? payload.old) as CheckRecordRow;
@@ -47,6 +48,7 @@ export function useBusRealtime(
           event: "*",
           schema: "public",
           table: "bus_change_requests",
+          filter: `request_date=eq.${date}`,
         },
         (payload) => {
           const row = (payload.new ?? payload.old) as ChangeRequestRow;
