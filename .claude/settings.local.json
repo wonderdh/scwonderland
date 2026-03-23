@@ -1,14 +1,5 @@
 {
   "permissions": {
-    "allow": [
-      "mcp__claude_ai_Notion__notion-fetch",
-      "mcp__claude_ai_Notion__notion-update-page",
-      "mcp__supabase__list_projects",
-      "mcp__supabase__apply_migration",
-      "mcp__supabase__execute_sql",
-      "Skill(claude-md-management:revise-claude-md)",
-      "mcp__supabase__list_tables",
-      "mcp__supabase__search_docs"
-    ]
+    "default_mode": "bypassPermissions"
   }
 }

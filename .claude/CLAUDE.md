@@ -1,8 +1,17 @@
-# SC Wonderland
+# CLAUDE.md
 
-원더랜드 영어학원 웹사이트. 학원 소개(공개), 관리자 대시보드, 학생/교사 포털의 3개 섹션으로 구성.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-**기술 스택:** Next.js 16 (App Router) · React 19 · TypeScript · Tailwind CSS v4 · Supabase (Auth + PostgreSQL + Storage)
+## Project Overview
+
+SC Wonderland — 원더랜드 영어학원 웹사이트. 5개 Route Group으로 구성:
+1. **(site)** — 학원 소개 공개 사이트
+2. **(admin)** — 관리자 대시보드 (`/admin`)
+3. **(academy)** — 학생·교사 포털 (`/academy`)
+4. **(bus)** — 승하차 기사용 인터페이스 (`/bus`)
+5. **(monitor)** — 버스 모니터링 화면 (`/bus-monitor`)
+
+**기술 스택:** Next.js 16 (App Router) · React 19 · TypeScript · Tailwind CSS v4 · Supabase (Auth + PostgreSQL + Storage) · shadcn/ui (Radix UI + CVA + tailwind-merge)
 
 **대상 사용자:** 학부모/일반 방문자(공개 사이트), 관리자(학생·교사·반·시간표·교재·공지·숙제·출결·승하차 관리), 학생(리포트카드·교재·공지·숙제·승하차), 교사(한국인: 반 관리·공지·교재·출결·숙제·승하차 / 원어민: 리포트카드·교재·출결·숙제, 영어 UI)
 
@@ -34,3 +43,4 @@ npm run lint     # ESLint 실행
 - 소프트 삭제: `TrashView` 공유 컴포넌트 (`?section=trash`), 삭제 전 관련 데이터 정리
 - 원어민 교사 영어 UI: `teacher-labels.ts` 9개 라벨 세트, `academy/layout.tsx`에서 감지
 - DB 초기 데이터: 유치부 6반, 오후반 19개, Native 교사 10명 (`{이름}@scwonderland.com`, Wonder0225!)
+- 공유 UI 컴포넌트: `components/ui/` (shadcn/ui), `components/` (AudioRecorder, ConfirmDialog, FileUpload, QueryTabNav 등)
