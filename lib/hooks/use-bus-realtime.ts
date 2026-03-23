@@ -22,7 +22,8 @@ export function useBusRealtime(
     if (!date || !enabled) return;
     const supabase = createClient();
 
-    // 두 테이블을 별도 채널로 분리 — 한 쪽이 실패해도 다른 쪽에 영향 없음
+    // 컬럼 필터 제거: UPSERT INSERT 이벤트가 서버 필터에서 누락되는 문제 방지
+    // 대신 클라이언트에서 날짜 필터링
     const checkChannel = supabase
       .channel(`bus-checks-${date}`)
       .on(
@@ -31,10 +32,11 @@ export function useBusRealtime(
           event: "*",
           schema: "public",
           table: "bus_check_records",
-          filter: `check_date=eq.${date}`,
         },
         (payload) => {
           const row = (payload.new ?? payload.old) as CheckRecordRow;
+          // 클라이언트 필터: 다른 날짜 이벤트 무시
+          if (row.check_date && String(row.check_date) !== date) return;
           callbacksRef.current.onCheckRecord(payload.eventType, row);
         }
       )
@@ -48,10 +50,10 @@ export function useBusRealtime(
           event: "*",
           schema: "public",
           table: "bus_change_requests",
-          filter: `request_date=eq.${date}`,
         },
         (payload) => {
           const row = (payload.new ?? payload.old) as ChangeRequestRow;
+          if (row.request_date && String(row.request_date) !== date) return;
           callbacksRef.current.onChangeRequest(payload.eventType, row);
         }
       )

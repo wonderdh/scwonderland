@@ -529,10 +529,11 @@ export function BusStaffMonitor({
 
       if (result.error) {
         toast.error(`오류: ${result.error}`);
-        await load();
       } else {
         toast.success(`${changes.length}건 저장 완료`);
       }
+      // 성공/실패 무관하게 DB 최신 데이터로 동기화
+      await load();
     });
   }, [pendingChanges, date, staffProfileId, load]);
 
