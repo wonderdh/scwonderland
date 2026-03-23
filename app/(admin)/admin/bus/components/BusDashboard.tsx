@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useTransition } from "react";
+import { useState, useEffect, useCallback, useTransition, useRef } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/Spinner";
@@ -89,8 +89,17 @@ export function BusDashboard({ busTimeSlots, busNumbers }: { busTimeSlots: BusTi
     load();
   }, [load]);
 
-  // Realtime 구독 — 다른 기기에서 승하차 처리 시 자동 갱신
-  useBusRealtime(date, load);
+  // Realtime 구독 — 다른 기기에서 승하차 처리 시 자동 갱신 (전체 refetch 방식 유지)
+  const realtimeDebounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const debouncedLoad = useCallback(() => {
+    clearTimeout(realtimeDebounceRef.current);
+    realtimeDebounceRef.current = setTimeout(load, 500);
+  }, [load]);
+
+  useBusRealtime(date, {
+    onCheckRecord: debouncedLoad,
+    onChangeRequest: debouncedLoad,
+  });
 
   const handleBoard = useCallback(
     (

@@ -44,11 +44,12 @@ paths:
 
 **dashboard-actions.ts (1개):** `getDashboardStats()` — 대시보드 통계 5종 (삭제된 사용자 제외)
 
-**schedule-actions.ts — 시간표 (8개):**
-- `getGroupTimetableGrid(groupLabel)` — 그룹별 시간표 그리드 데이터
-- `addSingleClassSchedule(...)` — 개별 수업 배정
+**schedule-actions.ts — 시간표 (9개):**
+- `getGroupTimetableGrid(groupLabel)` — 그룹별 시간표 그리드 데이터 (`GroupTimetableData` 반환, `verifyAuthenticated` 사용)
+- `addSingleClassSchedule(classId, periodId, dayOfWeek, teacherId, label, textbookId?, studentId?, force?)` — 개별 수업 배정. 반환: `{ error?: string; conflict?: string }` (충돌 시 conflict에 반 이름)
+- `setClassScheduleSlot(classId, periodId, dayOfWeek, assignments[], force?)` — 슬롯 전체 교사 덮어쓰기 (복수 교사 배정, GroupTimetableGrid 전용). 반환: `{ error?: string; conflicts?: string[] }`
 - `listClassSchedules(classId)` — 반 수업 목록
-- `addClassScheduleBatch(schedules[])` — 시간표 일괄 upsert
+- `addClassScheduleBatch(schedules[])` — 시간표 일괄 insert
 - `deleteClassSchedule(scheduleId)` — 수업 배정 삭제
 - `getStudentTimetable(studentProfileId)` — 학생 개인 시간표 조회
 - `getStudentTimetableEditable(studentProfileId)` — 학생 시간표 편집 데이터
