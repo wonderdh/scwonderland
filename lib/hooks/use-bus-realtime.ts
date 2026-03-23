@@ -22,8 +22,6 @@ export function useBusRealtime(
     if (!date || !enabled) return;
     const supabase = createClient();
 
-    // 컬럼 필터 제거: UPSERT INSERT 이벤트가 서버 필터에서 누락되는 문제 방지
-    // 대신 클라이언트에서 날짜 필터링
     const checkChannel = supabase
       .channel(`bus-checks-${date}`)
       .on(
@@ -35,7 +33,6 @@ export function useBusRealtime(
         },
         (payload) => {
           const row = (payload.new ?? payload.old) as CheckRecordRow;
-          // 클라이언트 필터: 다른 날짜 이벤트 무시
           if (row.check_date && String(row.check_date) !== date) return;
           callbacksRef.current.onCheckRecord(payload.eventType, row);
         }
