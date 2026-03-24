@@ -6,6 +6,7 @@ export {
 export {
   createStudent,
   createTeacher,
+  listAdmins,
   listUsersByRole,
   getTeacherAssignmentCounts,
   getStudentLinkedCounts,

@@ -111,6 +111,38 @@ export async function createTeacher(
   return {};
 }
 
+export async function listAdmins(): Promise<{ id: string; email: string; name: string; created_at: string }[]> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return [];
+
+  const supabase = createAdminClient();
+  const { data: profiles } = await supabase
+    .from("profiles")
+    .select("id, first_name, role")
+    .eq("role", "admin")
+    .is("deleted_at", null);
+
+  if (!profiles?.length) return [];
+
+  const { data: users } = await supabase.auth.admin.listUsers({ perPage: 1000 });
+  const idSet = new Set(profiles.map((p) => p.id));
+  const userMap = new Map(
+    (users?.users ?? []).filter((u) => idSet.has(u.id)).map((u) => [u.id, u])
+  );
+
+  return profiles
+    .map((p) => {
+      const u = userMap.get(p.id);
+      return {
+        id: p.id,
+        email: u?.email ?? "",
+        name: p.first_name ?? u?.email?.split("@")[0] ?? "",
+        created_at: u?.created_at ?? "",
+      };
+    })
+    .sort((a, b) => a.created_at.localeCompare(b.created_at));
+}
+
 export async function listUsersByRole(
   role: "student" | "teacher"
 ): Promise<UserWithProfile[]> {

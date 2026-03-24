@@ -175,7 +175,7 @@ export function AdminBusChangeDnD() {
   async function handleSave() {
     if (!selectedStudentId) { toast.error("학생을 선택해 주세요."); return; }
     if (!stopId) { toast.error("정류장을 선택해 주세요."); return; }
-    if (stopMode === "stop" && !slotId) { toast.error("시간대를 선택해 주세요."); return; }
+    if (!slotId) { toast.error("시간대를 선택해 주세요."); return; }
 
     const changeType = stopMode === "pickup" ? "no_ride" : "change";
     const busNumberId = stopMode === "stop" ? (selectedStopInfo?.bus_number_id ?? undefined) : undefined;
@@ -185,7 +185,7 @@ export function AdminBusChangeDnD() {
       ? await updateAdminBusChange(
           existingId, selectedStudentId, date, direction,
           changeType,
-          stopMode === "stop" ? slotId : undefined,
+          slotId,
           busNumberId,
           stopId,
           reason || undefined
@@ -193,7 +193,7 @@ export function AdminBusChangeDnD() {
       : await createAdminBusChange(
           selectedStudentId, date, direction,
           changeType,
-          stopMode === "stop" ? slotId : undefined,
+          slotId,
           busNumberId,
           stopId,
           reason || undefined
@@ -351,10 +351,9 @@ export function AdminBusChangeDnD() {
             </div>
           </div>
 
-          {/* Time slot (정류장 only) */}
-          {stopMode === "stop" && (
-            <div>
-              <label className="text-xs font-medium text-slate-600 block mb-1">시간대</label>
+          {/* Time slot */}
+          <div>
+            <label className="text-xs font-medium text-slate-600 block mb-1">시간대</label>
               <select
                 value={slotId}
                 onChange={(e) => setSlotId(e.target.value)}
@@ -367,8 +366,7 @@ export function AdminBusChangeDnD() {
                   </option>
                 ))}
               </select>
-            </div>
-          )}
+          </div>
 
           {/* Stop selection */}
           <div>

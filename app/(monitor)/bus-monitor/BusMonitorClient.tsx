@@ -382,6 +382,7 @@ export function BusMonitorClient({
           </div>
         ))}
       </div>
+
     </div>
   );
 }

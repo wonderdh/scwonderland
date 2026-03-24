@@ -1076,9 +1076,36 @@ export async function listAllChangeRequests(): Promise<BusChangeRequest[]> {
     stopMap = new Map((stops ?? []).map((s) => [s.id, s.name]));
   }
 
+  // new_bus_time_slot_id 없는 경우 학생 기본 배정에서 시간대 fallback
+  const needsDefaultSlot = (data ?? []).filter((d) => !d.new_bus_time_slot_id);
+  let defaultSlotMap = new Map<string, Map<string, { label: string; time: string }>>();
+  if (needsDefaultSlot.length > 0) {
+    const defStudentIds = [...new Set(needsDefaultSlot.map((d) => d.student_profile_id))];
+    const { data: defaults } = await supabase
+      .from("student_bus_defaults")
+      .select("student_profile_id, direction, bus_time_slot_id")
+      .in("student_profile_id", defStudentIds);
+    if (defaults?.length) {
+      const defSlotIds = [...new Set(defaults.map((d) => d.bus_time_slot_id).filter(Boolean))];
+      if (defSlotIds.length) {
+        const { data: defSlots } = await supabase.from("bus_time_slots").select("id, label, time").in("id", defSlotIds);
+        const defSlotLookup = new Map((defSlots ?? []).map((s) => [s.id, { label: s.label, time: s.time }]));
+        for (const d of defaults) {
+          if (!d.bus_time_slot_id) continue;
+          const key = d.student_profile_id;
+          if (!defaultSlotMap.has(key)) defaultSlotMap.set(key, new Map());
+          const slotInfo = defSlotLookup.get(d.bus_time_slot_id);
+          if (slotInfo) defaultSlotMap.get(key)!.set(d.direction, slotInfo);
+        }
+      }
+    }
+  }
+
   return (data ?? []).map((d) => {
     const student = studentMap.get(d.student_profile_id);
-    const slot = d.new_bus_time_slot_id ? slotMap.get(d.new_bus_time_slot_id) : undefined;
+    const slot = d.new_bus_time_slot_id
+      ? slotMap.get(d.new_bus_time_slot_id)
+      : defaultSlotMap.get(d.student_profile_id)?.get(d.direction);
     return {
       ...d,
       korean_name: student?.korean_name ?? null,
@@ -1274,7 +1301,7 @@ export async function createAdminBusChange(
 
   const supabase = createAdminClient();
 
-  const finalSlotId = changeType === "change" ? (newBusTimeSlotId ?? null) : null;
+  const finalSlotId = newBusTimeSlotId ?? null;
   const finalBusId = changeType === "change" ? (newBusNumberId ?? null) : null;
   const finalStopId = newBusStopId || null;
 
@@ -1338,7 +1365,7 @@ export async function updateAdminBusChange(
 
   const supabase = createAdminClient();
 
-  const finalSlotId = changeType === "change" ? (newBusTimeSlotId ?? null) : null;
+  const finalSlotId = newBusTimeSlotId ?? null;
   const finalBusId = changeType === "change" ? (newBusNumberId ?? null) : null;
   const finalStopId = newBusStopId || null;
 

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { DailyBusChanges } from "@/components/bus/DailyBusChanges";
 
 const cards = [
   {
@@ -92,6 +93,7 @@ export default async function MobileHomePage() {
             </svg>
           </Link>
         ))}
+        <DailyBusChanges />
       </div>
     </div>
   );

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getDashboardStats, getTodayStats } from "./actions";
+import { getDashboardStats, getTodayStats, listAdmins } from "./actions";
 import {
   Card,
   CardContent,
@@ -8,9 +8,10 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { DailyBusChanges } from "@/components/bus/DailyBusChanges";
 
 export default async function AdminDashboardPage() {
-  const [stats, todayStats] = await Promise.all([getDashboardStats(), getTodayStats()]);
+  const [stats, todayStats, admins] = await Promise.all([getDashboardStats(), getTodayStats(), listAdmins()]);
 
   const statCards = [
     {
@@ -207,6 +208,37 @@ export default async function AdminDashboardPage() {
               </Card>
             </Link>
           ))}
+        </div>
+      </div>
+
+      <div className="grid gap-8 lg:grid-cols-2">
+        <DailyBusChanges />
+
+        <div>
+          <h2 className="text-lg font-semibold mb-4">관리자 계정</h2>
+          <Card>
+            <CardContent className="p-0">
+              <div className="divide-y divide-border">
+                {admins.map((admin) => (
+                  <div key={admin.id} className="flex items-center gap-3 px-4 py-3">
+                    <div className="size-8 rounded-full bg-slate-100 flex items-center justify-center text-sm font-medium text-slate-600">
+                      {(admin.name || "A").charAt(0).toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-foreground">{admin.name}</p>
+                      <p className="text-xs text-muted-foreground">{admin.email.split("@")[0]}</p>
+                    </div>
+                    <span className="text-xs text-muted-foreground tabular-nums">
+                      {new Date(admin.created_at).toLocaleDateString("ko-KR")}
+                    </span>
+                  </div>
+                ))}
+                {admins.length === 0 && (
+                  <p className="text-sm text-muted-foreground py-6 text-center">관리자 계정이 없습니다.</p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>
