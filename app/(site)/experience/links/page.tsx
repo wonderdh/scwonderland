@@ -56,8 +56,8 @@ const links = [
     ),
   },
   {
-    title: "Google Drive",
-    description: "원더랜드 공유 드라이브",
+    title: "Teaching Materials",
+    description: "수업자료",
     href: "https://drive.google.com/drive/folders/1JSEPUjUkYrwmrq8SlOLbyEiCypSThyuo?usp=sharing",
     color: "border-yellow-500 bg-yellow-50 hover:bg-yellow-100",
     iconColor: "text-yellow-600",
