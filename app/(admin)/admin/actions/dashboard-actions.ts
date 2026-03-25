@@ -12,7 +12,7 @@ export async function getTodayStats(): Promise<{
   if ("error" in auth) return { pendingBusChangeCount: 0, todayAttendanceCount: 0 };
 
   const supabase = createAdminClient();
-  const today = new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
+  const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
 
   const [{ count: pendingBusChangeCount }, { count: todayAttendanceCount }] = await Promise.all([
     supabase

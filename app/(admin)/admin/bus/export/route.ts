@@ -319,7 +319,7 @@ export async function GET() {
 
   const buffer = await wb.xlsx.writeBuffer();
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
   return new NextResponse(buffer, {
     status: 200,
     headers: {

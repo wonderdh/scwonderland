@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { BusStaffProfile, BusNumber } from "@/lib/types";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import {
   createBusStaff,
   updateBusStaff,
@@ -21,6 +22,7 @@ export function BusStaffManager({
   const router = useRouter();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; profileId?: string; name?: string }>({ open: false });
 
   // 추가 폼
   const [newEmail, setNewEmail] = useState("");
@@ -72,14 +74,19 @@ export function BusStaffManager({
     setLoading(false);
   }
 
-  async function handleDelete(staff: BusStaffProfile) {
+  function handleDeleteClick(staff: BusStaffProfile) {
     const displayName = staff.name || staff.email.split("@")[0];
-    if (!confirm(`"${displayName}" 담당자를 삭제하시겠습니까?`)) return;
+    setDeleteConfirm({ open: true, profileId: staff.profile_id, name: displayName });
+  }
+
+  async function handleDeleteConfirm() {
+    if (!deleteConfirm.profileId) return;
+    setDeleteConfirm({ open: false });
     setLoading(true);
     setError("");
 
     const formData = new FormData();
-    formData.set("userId", staff.profile_id);
+    formData.set("userId", deleteConfirm.profileId);
     const result = await deleteUserById(formData);
     if (result.error) {
       setError(result.error);
@@ -225,7 +232,7 @@ export function BusStaffManager({
                     size="sm"
                     variant="ghost"
                     className="h-7 text-xs text-red-500 hover:text-red-700"
-                    onClick={() => handleDelete(staff)}
+                    onClick={() => handleDeleteClick(staff)}
                     disabled={loading}
                   >
                     삭제
@@ -236,6 +243,14 @@ export function BusStaffManager({
           );
         })}
       </div>
+
+      <ConfirmDialog
+        open={deleteConfirm.open}
+        title="삭제 확인"
+        description={`"${deleteConfirm.name}" 담당자를 삭제하시겠습니까?`}
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => setDeleteConfirm({ open: false })}
+      />
     </div>
   );
 }

@@ -63,7 +63,7 @@ export function StudentAttendanceTab({ studentProfileId }: { studentProfileId: s
   const openForm = (day?: number) => {
     const d = day
       ? `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`
-      : new Date().toISOString().split("T")[0];
+      : (() => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}-${String(n.getDate()).padStart(2, "0")}`; })();
     setFormDate(d);
     setFormStatus("present");
     setFormNote("");

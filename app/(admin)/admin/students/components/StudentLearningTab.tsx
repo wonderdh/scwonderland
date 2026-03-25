@@ -44,7 +44,7 @@ export function StudentLearningTab({ studentProfileId }: { studentProfileId: str
   const [saving, setSaving] = useState(false);
 
   // Form state
-  const [formDate, setFormDate] = useState(() => new Date().toISOString().split("T")[0]);
+  const [formDate, setFormDate] = useState(() => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}-${String(n.getDate()).padStart(2, "0")}`; });
   const [formCategory, setFormCategory] = useState<string>("note");
   const [formTitle, setFormTitle] = useState("");
   const [formContent, setFormContent] = useState("");
@@ -64,7 +64,7 @@ export function StudentLearningTab({ studentProfileId }: { studentProfileId: str
   }, [loadRecords]);
 
   const resetForm = () => {
-    setFormDate(new Date().toISOString().split("T")[0]);
+    const n = new Date(); setFormDate(`${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}-${String(n.getDate()).padStart(2, "0")}`);
     setFormCategory("note");
     setFormTitle("");
     setFormContent("");

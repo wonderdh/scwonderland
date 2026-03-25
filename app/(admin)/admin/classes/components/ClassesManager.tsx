@@ -337,7 +337,8 @@ export function ClassesManager({
 
     const raw = e.dataTransfer.getData("application/json");
     if (!raw) return;
-    const parsed = JSON.parse(raw);
+    let parsed;
+    try { parsed = JSON.parse(raw); } catch { return; }
     if (parsed.type !== "student") return;
 
     const { studentProfileId } = parsed;
@@ -420,7 +421,8 @@ export function ClassesManager({
 
     const raw = e.dataTransfer.getData("application/json");
     if (!raw) return;
-    const parsed = JSON.parse(raw);
+    let parsed;
+    try { parsed = JSON.parse(raw); } catch { return; }
     if (parsed.type !== "textbook") return;
 
     const { textbookId } = parsed;

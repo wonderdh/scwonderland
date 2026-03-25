@@ -24,6 +24,8 @@ import type {
 // ── 호차 CRUD ──
 
 export async function listBusNumbers(): Promise<BusNumber[]> {
+  const auth = await verifyAuthenticated();
+  if ("error" in auth) return [];
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("bus_numbers")
@@ -99,6 +101,8 @@ export async function deleteBusNumber(id: string): Promise<{ error?: string }> {
 // ── 버스 시간대 CRUD ──
 
 export async function listBusTimeSlots(): Promise<BusTimeSlot[]> {
+  const auth = await verifyAuthenticated();
+  if ("error" in auth) return [];
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("bus_time_slots")
@@ -1036,6 +1040,8 @@ export async function batchBusCheckRecord(
 // ── 변경 요청 관리 ──
 
 export async function listAllChangeRequests(): Promise<BusChangeRequest[]> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return [];
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("bus_change_requests")
@@ -1200,6 +1206,164 @@ export async function listAllChangeRequests(): Promise<BusChangeRequest[]> {
   }) as BusChangeRequest[];
 }
 
+export async function listChangeRequestsByDate(date: string): Promise<BusChangeRequest[]> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return [];
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("bus_change_requests")
+    .select("*")
+    .eq("request_date", date)
+    .order("requested_at", { ascending: false });
+  if (error) {
+    console.error("[listChangeRequestsByDate]", error.message);
+    return [];
+  }
+
+  const studentIds = [...new Set((data ?? []).map((d) => d.student_profile_id))];
+  let studentMap = new Map<string, { korean_name: string | null; english_name: string | null; student_number: string | null }>();
+  if (studentIds.length) {
+    const { data: students } = await supabase
+      .from("students")
+      .select("profile_id, korean_name, english_name, student_number")
+      .in("profile_id", studentIds);
+    studentMap = new Map((students ?? []).map((s) => [s.profile_id, s]));
+  }
+
+  const slotIds = [...new Set((data ?? []).filter((d) => d.new_bus_time_slot_id).map((d) => d.new_bus_time_slot_id))];
+  const busIds = [...new Set((data ?? []).filter((d) => d.new_bus_number_id).map((d) => d.new_bus_number_id))];
+  const stopIds = [...new Set((data ?? []).filter((d) => d.new_bus_stop_id).map((d) => d.new_bus_stop_id))];
+  let slotMap = new Map<string, { label: string; time: string }>();
+  let busMap = new Map<string, string>();
+  let stopMap = new Map<string, string>();
+
+  if (slotIds.length) {
+    const { data: slots } = await supabase.from("bus_time_slots").select("id, label, time").in("id", slotIds);
+    slotMap = new Map((slots ?? []).map((s) => [s.id, { label: s.label, time: s.time }]));
+  }
+  if (busIds.length) {
+    const { data: buses } = await supabase.from("bus_numbers").select("id, label").in("id", busIds);
+    busMap = new Map((buses ?? []).map((b) => [b.id, b.label]));
+  }
+  if (stopIds.length) {
+    const { data: stops } = await supabase.from("bus_stops").select("id, name").in("id", stopIds);
+    stopMap = new Map((stops ?? []).map((s) => [s.id, s.name]));
+  }
+
+  // new_bus_time_slot_id 없는 경우 학생 기본 배정에서 시간대 fallback
+  const needsDefaultSlot = (data ?? []).filter((d) => !d.new_bus_time_slot_id);
+  let defaultSlotMap = new Map<string, Map<string, { label: string; time: string }>>();
+  if (needsDefaultSlot.length > 0) {
+    const defStudentIds = [...new Set(needsDefaultSlot.map((d) => d.student_profile_id))];
+    const { data: defaults } = await supabase
+      .from("student_bus_defaults")
+      .select("student_profile_id, direction, bus_time_slot_id")
+      .in("student_profile_id", defStudentIds);
+    if (defaults?.length) {
+      const defSlotIds = [...new Set(defaults.map((d) => d.bus_time_slot_id).filter(Boolean))];
+      if (defSlotIds.length) {
+        const { data: defSlots } = await supabase.from("bus_time_slots").select("id, label, time").in("id", defSlotIds);
+        const defSlotLookup = new Map((defSlots ?? []).map((s) => [s.id, { label: s.label, time: s.time }]));
+        for (const d of defaults) {
+          if (!d.bus_time_slot_id) continue;
+          const key = d.student_profile_id;
+          if (!defaultSlotMap.has(key)) defaultSlotMap.set(key, new Map());
+          const slotInfo = defSlotLookup.get(d.bus_time_slot_id);
+          if (slotInfo) defaultSlotMap.get(key)!.set(d.direction, slotInfo);
+        }
+      }
+    }
+  }
+
+  // 기존 일정 조회 (student_bus_defaults에서 해당 요일+방향)
+  const origDefaults = new Map<string, { slot_id: string; stop_id: string | null }>();
+  if (studentIds.length && data?.length) {
+    const { data: origData } = await supabase
+      .from("student_bus_defaults")
+      .select("student_profile_id, day_of_week, direction, bus_time_slot_id, bus_stop_id")
+      .in("student_profile_id", studentIds);
+    for (const o of origData ?? []) {
+      origDefaults.set(
+        `${o.student_profile_id}:${o.day_of_week}:${o.direction}`,
+        { slot_id: o.bus_time_slot_id, stop_id: o.bus_stop_id }
+      );
+    }
+  }
+
+  // 기존 일정의 슬롯/정류장 정보 조회
+  const origSlotIds = new Set<string>();
+  const origStopIds = new Set<string>();
+  for (const v of origDefaults.values()) {
+    if (v.slot_id) origSlotIds.add(v.slot_id);
+    if (v.stop_id) origStopIds.add(v.stop_id);
+  }
+  const missingSlotIds = [...origSlotIds].filter((id) => !slotMap.has(id));
+  const missingStopIds = [...origStopIds].filter((id) => !stopMap.has(id));
+  if (missingSlotIds.length) {
+    const { data: extraSlots } = await supabase.from("bus_time_slots").select("id, label, time").in("id", missingSlotIds);
+    for (const s of extraSlots ?? []) slotMap.set(s.id, { label: s.label, time: s.time });
+  }
+  if (missingStopIds.length) {
+    const { data: extraStops } = await supabase.from("bus_stops").select("id, name").in("id", missingStopIds);
+    for (const s of extraStops ?? []) stopMap.set(s.id, s.name);
+  }
+
+  // 기존 일정의 호차 조회
+  const origBusLabelMap = new Map<string, string>();
+  const origStopIdsForBus = [...origDefaults.entries()].filter(([, v]) => v.stop_id).map(([k, v]) => ({ key: k, stop_id: v.stop_id! }));
+  if (origStopIdsForBus.length) {
+    const stopIdsForBusQuery = [...new Set(origStopIdsForBus.map((o) => o.stop_id))];
+    const { data: stopAssigns } = await supabase
+      .from("bus_stop_day_assignments")
+      .select("bus_stop_id, bus_number_id, day_of_week, direction")
+      .in("bus_stop_id", stopIdsForBusQuery);
+    const stopBusMap = new Map<string, string>();
+    for (const sa of stopAssigns ?? []) {
+      stopBusMap.set(`${sa.bus_stop_id}:${sa.day_of_week}:${sa.direction}`, sa.bus_number_id);
+    }
+    const missingBusIds = [...new Set([...(stopAssigns ?? []).map((sa) => sa.bus_number_id)])].filter((id) => !busMap.has(id));
+    if (missingBusIds.length) {
+      const { data: extraBuses } = await supabase.from("bus_numbers").select("id, label").in("id", missingBusIds);
+      for (const b of extraBuses ?? []) busMap.set(b.id, b.label);
+    }
+    for (const { key, stop_id } of origStopIdsForBus) {
+      const [, dayStr, dir] = key.split(":");
+      const busNumId = stopBusMap.get(`${stop_id}:${dayStr}:${dir}`);
+      if (busNumId) origBusLabelMap.set(key, busMap.get(busNumId) ?? "");
+    }
+  }
+
+  return (data ?? []).map((d) => {
+    const student = studentMap.get(d.student_profile_id);
+    const slot = d.new_bus_time_slot_id
+      ? slotMap.get(d.new_bus_time_slot_id)
+      : defaultSlotMap.get(d.student_profile_id)?.get(d.direction);
+
+    const dow = new Date(d.request_date + "T00:00:00").getDay();
+    const isoDay = dow === 0 ? 7 : dow;
+    const origKey = `${d.student_profile_id}:${isoDay}:${d.direction}`;
+    const orig = origDefaults.get(origKey);
+    const origSlot = orig?.slot_id ? slotMap.get(orig.slot_id) : undefined;
+    const origStop = orig?.stop_id ? stopMap.get(orig.stop_id) : undefined;
+    const origBus = origBusLabelMap.get(origKey);
+
+    return {
+      ...d,
+      korean_name: student?.korean_name ?? null,
+      english_name: student?.english_name ?? null,
+      student_number: student?.student_number ?? null,
+      new_time_slot_label: slot?.label,
+      new_time_slot_time: slot?.time,
+      new_bus_label: d.new_bus_number_id ? busMap.get(d.new_bus_number_id) : undefined,
+      new_bus_stop_name: d.new_bus_stop_id ? stopMap.get(d.new_bus_stop_id) : undefined,
+      orig_time_slot_time: origSlot?.time,
+      orig_time_slot_label: origSlot?.label,
+      orig_bus_label: origBus,
+      orig_bus_stop_name: origStop,
+    };
+  }) as BusChangeRequest[];
+}
+
 export async function listPendingChangeRequests(): Promise<BusChangeRequest[]> {
   const all = await listAllChangeRequests();
   return all.filter((r) => r.status === "pending");
@@ -1281,7 +1445,7 @@ export async function getStudentChangeRequests(
   studentProfileId: string
 ): Promise<BusChangeRequest[]> {
   const supabase = createAdminClient();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
   const { data, error } = await supabase
     .from("bus_change_requests")
     .select("*")
@@ -1515,6 +1679,8 @@ export async function getExistingBusChange(
   new_bus_stop_id: string | null;
   reason: string | null;
 } | null> {
+  const auth = await verifyAuthenticated();
+  if ("error" in auth) return null;
   const supabase = createAdminClient();
   const { data } = await supabase
     .from("bus_change_requests")
@@ -1548,6 +1714,8 @@ export async function deleteAdminBusChange(
 // ── 정류장 CRUD ──
 
 export async function listBusStops(): Promise<BusStop[]> {
+  const auth = await verifyAuthenticated();
+  if ("error" in auth) return [];
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("bus_stops")

@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import type { BusChangeRequest } from "@/lib/types";
-import { listAllChangeRequests } from "@/app/(admin)/admin/actions";
+import { listChangeRequestsByDate } from "@/app/(admin)/admin/actions";
 import { useBusRealtime } from "@/lib/hooks/use-bus-realtime";
 
 const CHANGE_TYPE_CONFIG = {
@@ -36,16 +36,19 @@ export function DailyBusChanges() {
   const today = getLocalToday();
   const [changes, setChanges] = useState<BusChangeRequest[]>([]);
 
-  const loadChanges = () => {
-    listAllChangeRequests().then((all) => {
-      const filtered = all.filter((c) => String(c.request_date) === today);
-      setChanges(deduplicateAbsent(filtered));
-    });
-  };
+  const loadChanges = useCallback(() => {
+    listChangeRequestsByDate(today)
+      .then((result) => {
+        setChanges(deduplicateAbsent(result));
+      })
+      .catch((err) => {
+        console.error("[DailyBusChanges] loadChanges error:", err);
+      });
+  }, [today]);
 
   useEffect(() => {
     loadChanges();
-  }, []);
+  }, [loadChanges]);
 
   useBusRealtime(today, {
     onCheckRecord: () => {},

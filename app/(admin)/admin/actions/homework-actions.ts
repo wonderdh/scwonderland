@@ -68,6 +68,7 @@ export async function listHomeworkAssignments(
   })) as HomeworkAssignment[];
 }
 
+// TODO: 교사/관리자 역할 검증 필요
 /** 숙제 생성 */
 export async function createHomeworkAssignment(
   classId: string,
@@ -122,6 +123,7 @@ export async function createHomeworkAssignment(
   return { id: data.id };
 }
 
+// TODO: 교사/관리자 역할 검증 필요
 /** 숙제 수정 */
 export async function updateHomeworkAssignment(
   assignmentId: string,
@@ -150,6 +152,7 @@ export async function updateHomeworkAssignment(
   return {};
 }
 
+// TODO: 교사/관리자 역할 검증 필요
 /** 숙제 삭제 */
 export async function deleteHomeworkAssignment(
   assignmentId: string

@@ -10,7 +10,7 @@ import type { Textbook } from "@/lib/types";
 import { TEXTBOOK_CATEGORIES } from "../../actions/textbook-constants";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 
@@ -174,8 +174,12 @@ export function TextbooksManager({
         onConfirm={async () => {
           if (!deleteTarget) return;
           setDeletePending(true);
-          await deleteTextbook(deleteTarget.id);
+          const result = await deleteTextbook(deleteTarget.id);
           setDeletePending(false);
+          if (result?.error) {
+            toast.error(result.error);
+            return;
+          }
           setDeleteTarget(null);
           setDeleteTargetCounts(null);
           toast.success("교재가 삭제되었습니다.");
@@ -276,10 +280,21 @@ function TextbookFormModal({
   });
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(initial?.cover_image ?? null);
+  // Track blob URLs separately so we only revoke those (not server URLs)
+  const coverBlobUrlRef = useRef<string | null>(null);
   const [removeCover, setRemoveCover] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Cleanup blob URL on unmount
+  useEffect(() => {
+    return () => {
+      if (coverBlobUrlRef.current) {
+        URL.revokeObjectURL(coverBlobUrlRef.current);
+      }
+    };
+  }, []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -295,12 +310,23 @@ function TextbookFormModal({
       return;
     }
 
+    // Revoke previous blob URL if any
+    if (coverBlobUrlRef.current) {
+      URL.revokeObjectURL(coverBlobUrlRef.current);
+    }
+
     setCoverFile(file);
     setRemoveCover(false);
-    setCoverPreview(URL.createObjectURL(file));
+    const newUrl = URL.createObjectURL(file);
+    coverBlobUrlRef.current = newUrl;
+    setCoverPreview(newUrl);
   };
 
   const handleRemoveCover = () => {
+    if (coverBlobUrlRef.current) {
+      URL.revokeObjectURL(coverBlobUrlRef.current);
+      coverBlobUrlRef.current = null;
+    }
     setCoverFile(null);
     setCoverPreview(null);
     setRemoveCover(true);

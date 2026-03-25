@@ -15,6 +15,7 @@ import {
 import { LoadingState } from "@/components/LoadingState";
 import { toast } from "sonner";
 import { AdminBusChangeDnD } from "./AdminBusChangeDnD";
+import { formatTime } from "@/lib/bus/utils";
 
 const DIR_LABEL = { pickup: "등원", dropoff: "하원" } as const;
 const TYPE_LABEL = { change: "변경", no_ride: "미탑승", absent: "결석" } as const;
@@ -24,11 +25,6 @@ const STATUS_COLOR = {
   approved: "bg-green-100 text-green-700 border-green-200",
   rejected: "bg-red-100 text-red-700 border-red-200",
 } as const;
-
-function formatTime(t: string | undefined) {
-  if (!t) return "";
-  return t.slice(0, 5);
-}
 
 export function BusChangeRequestsPanel({ adminId }: { adminId: string }) {
   const router = useRouter();
@@ -313,7 +309,7 @@ function RequestCard({
       {(req.new_time_slot_label || req.new_bus_label || req.new_bus_stop_name) && (
         <div className="text-xs text-slate-600 flex gap-3 flex-wrap">
           {req.new_time_slot_label && (
-            <span>시간: {req.new_time_slot_label} ({formatTime(req.new_time_slot_time)})</span>
+            <span>시간: {req.new_time_slot_label} ({formatTime(req.new_time_slot_time ?? "")})</span>
           )}
           {req.new_bus_label && <span>호차: {req.new_bus_label}</span>}
           {req.new_bus_stop_name && <span>정류장: {req.new_bus_stop_name}</span>}

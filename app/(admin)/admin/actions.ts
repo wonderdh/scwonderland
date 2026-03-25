@@ -140,6 +140,7 @@ export {
   getDailyBusManifest,
   listPendingChangeRequests,
   listAllChangeRequests,
+  listChangeRequestsByDate,
   approveChangeRequest,
   rejectChangeRequest,
   getStudentChangeRequests,

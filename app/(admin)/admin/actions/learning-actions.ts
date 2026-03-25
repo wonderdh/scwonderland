@@ -25,6 +25,7 @@ export async function listLearningRecords(
   return (data ?? []) as LearningRecord[];
 }
 
+// TODO: 교사/관리자 역할 검증 필요
 /** 학습 기록 생성 */
 export async function createLearningRecord(
   studentProfileId: string,
@@ -49,7 +50,7 @@ export async function createLearningRecord(
     .from("learning_records")
     .insert({
       student_profile_id: studentProfileId,
-      record_date: record.record_date || new Date().toISOString().split("T")[0],
+      record_date: record.record_date || new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" }),
       category: record.category,
       title: record.title.trim(),
       content: record.content?.trim() || null,
@@ -67,6 +68,7 @@ export async function createLearningRecord(
   return { id: data.id };
 }
 
+// TODO: 교사/관리자 역할 검증 필요
 /** 학습 기록 수정 */
 export async function updateLearningRecord(
   recordId: string,
@@ -111,6 +113,7 @@ export async function updateLearningRecord(
   return {};
 }
 
+// TODO: 교사/관리자 역할 검증 필요
 /** 학습 기록 삭제 */
 export async function deleteLearningRecord(
   recordId: string

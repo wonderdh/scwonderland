@@ -92,6 +92,7 @@ export async function getStudentAttendanceByDate(
   return { status: data?.status ?? null, note: data?.note ?? null };
 }
 
+// TODO: 소유권 검증 필요 (현재 모든 인증 사용자가 삭제 가능)
 /** 출결 기록 삭제 */
 export async function deleteAttendance(
   recordId: string

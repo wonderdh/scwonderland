@@ -2,12 +2,15 @@
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
-import { verifyAdmin } from "./auth-helpers";
+import { verifyAdmin, verifyAuthenticated } from "./auth-helpers";
 import type { DayEnrollment, AfterschoolStudentEnrollment } from "@/lib/types";
 
 // ── 방과후 반 조회 or 자동 생성 ──
 
 export async function getOrCreateAfterschoolClass(): Promise<{ id: string; name: string }> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return { id: "", name: "" };
+
   const supabase = createAdminClient();
 
   const { data: existing } = await supabase
@@ -20,13 +23,14 @@ export async function getOrCreateAfterschoolClass(): Promise<{ id: string; name:
   if (existing) return { id: existing.id, name: existing.name };
 
   // 없으면 자동 생성
-  const { data: created } = await supabase
+  const { data: created, error } = await supabase
     .from("classes")
     .insert({ name: "방과후", group_label: "방과후" })
     .select("id, name")
     .single();
 
-  return { id: created!.id, name: created!.name };
+  if (error || !created) return { id: "", name: "" };
+  return { id: created.id, name: created.name };
 }
 
 // ── 등록 학생 + 요일/교시 정보 ──
@@ -34,6 +38,9 @@ export async function getOrCreateAfterschoolClass(): Promise<{ id: string; name:
 export async function getAfterschoolEnrollments(
   classId: string,
 ): Promise<AfterschoolStudentEnrollment[]> {
+  const auth = await verifyAuthenticated();
+  if ("error" in auth) return [];
+
   const supabase = createAdminClient();
 
   const { data: enrollments } = await supabase
@@ -150,6 +157,9 @@ export async function removeAfterschoolStudent(
 export async function listAvailableStudents(
   classId: string,
 ): Promise<{ id: string; korean_name: string | null; english_name: string | null; age: number | null }[]> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return [];
+
   const supabase = createAdminClient();
 
   const { data: enrolled } = await supabase
@@ -190,6 +200,9 @@ export async function listAvailableStudents(
 export async function listAfterschoolStudentIdsByDay(
   day: number,
 ): Promise<string[]> {
+  const auth = await verifyAuthenticated();
+  if ("error" in auth) return [];
+
   const supabase = createAdminClient();
   const { data } = await supabase
     .from("afterschool_enrollments")
@@ -202,6 +215,9 @@ export async function listAfterschoolStudentIdsByDay(
 export async function getStudentAfterschoolDays(
   studentProfileId: string,
 ): Promise<number[]> {
+  const auth = await verifyAuthenticated();
+  if ("error" in auth) return [];
+
   const supabase = createAdminClient();
   const { data } = await supabase
     .from("afterschool_enrollments")
@@ -214,6 +230,9 @@ export async function getStudentAfterschoolDays(
 export async function getStudentAfterschoolDetail(
   studentProfileId: string,
 ): Promise<{ day_of_week: number; second_period: boolean }[]> {
+  const auth = await verifyAuthenticated();
+  if ("error" in auth) return [];
+
   const supabase = createAdminClient();
   const { data } = await supabase
     .from("afterschool_enrollments")

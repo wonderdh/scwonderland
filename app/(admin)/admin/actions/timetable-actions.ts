@@ -2,12 +2,15 @@
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
-import { verifyAdmin } from "./auth-helpers";
+import { verifyAdmin, verifyAuthenticated } from "./auth-helpers";
 import type { AcademyPeriod } from "@/lib/types";
 
 // ── 수업 시간대 CRUD ──
 
 export async function listAcademyPeriods(): Promise<AcademyPeriod[]> {
+  const auth = await verifyAuthenticated();
+  if ("error" in auth) return [];
+
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("academy_periods")

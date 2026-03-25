@@ -8,7 +8,7 @@ import {
 } from "../../actions/notice-actions";
 import type { Notice, NoticeAttachment } from "@/lib/types";
 import { useRouter } from "next/navigation";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 type NoticeWithCounts = Notice & {
@@ -225,7 +225,11 @@ export function NoticesManager({
           notice={deleteTarget}
           onClose={() => setDeleteTarget(null)}
           onConfirm={async () => {
-            await deleteNotice(deleteTarget.id);
+            const result = await deleteNotice(deleteTarget.id);
+            if (result?.error) {
+              toast.error(result.error);
+              return;
+            }
             setDeleteTarget(null);
             toast.success("공지사항이 삭제되었습니다.");
             router.refresh();
@@ -274,6 +278,7 @@ function NoticeFormModal({
 
   // 새 파일
   const [newImageFiles, setNewImageFiles] = useState<File[]>([]);
+  const [newImagePreviewUrls, setNewImagePreviewUrls] = useState<string[]>([]);
   const [newAttachmentFiles, setNewAttachmentFiles] = useState<File[]>([]);
 
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -282,6 +287,14 @@ function NoticeFormModal({
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Cleanup all preview URLs on unmount
+  useEffect(() => {
+    return () => {
+      newImagePreviewUrls.forEach((url) => URL.revokeObjectURL(url));
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleRemoveExisting = (att: NoticeAttachment) => {
     setRemoveIds((prev) => [...prev, att.id]);
     if (att.file_type === "image") {
@@ -289,6 +302,12 @@ function NoticeFormModal({
     } else {
       setExistingAttachments((prev) => prev.filter((a) => a.id !== att.id));
     }
+  };
+
+  const handleRemoveNewImage = (idx: number) => {
+    URL.revokeObjectURL(newImagePreviewUrls[idx]);
+    setNewImageFiles((prev) => prev.filter((_, i) => i !== idx));
+    setNewImagePreviewUrls((prev) => prev.filter((_, i) => i !== idx));
   };
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -301,7 +320,9 @@ function NoticeFormModal({
     if (valid.length < files.length) {
       toast.error("일부 이미지가 형식 또는 크기 제한으로 제외되었습니다.");
     }
+    const urls = valid.map((f) => URL.createObjectURL(f));
     setNewImageFiles((prev) => [...prev, ...valid]);
+    setNewImagePreviewUrls((prev) => [...prev, ...urls]);
     if (imageInputRef.current) imageInputRef.current.value = "";
   };
 
@@ -527,17 +548,13 @@ function NoticeFormModal({
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={URL.createObjectURL(file)}
+                      src={newImagePreviewUrls[idx]}
                       alt={file.name}
                       className="w-full h-full object-cover"
                     />
                     <button
                       type="button"
-                      onClick={() =>
-                        setNewImageFiles((prev) =>
-                          prev.filter((_, i) => i !== idx)
-                        )
-                      }
+                      onClick={() => handleRemoveNewImage(idx)}
                       className="absolute top-1 right-1 rounded-full bg-black/50 p-0.5 text-white hover:bg-black/70"
                       aria-label="이미지 제거"
                     >

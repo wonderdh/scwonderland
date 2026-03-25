@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { BusTimeSlot } from "@/lib/types";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import {
   createBusTimeSlot,
   updateBusTimeSlot,
@@ -27,6 +28,7 @@ export function BusTimeSlotsManager({ busTimeSlots }: { busTimeSlots: BusTimeSlo
   const [editTime, setEditTime] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; id?: string; label?: string }>({ open: false });
 
   async function handleCreate() {
     setLoading(true);
@@ -55,10 +57,11 @@ export function BusTimeSlotsManager({ busTimeSlots }: { busTimeSlots: BusTimeSlo
     setLoading(false);
   }
 
-  async function handleDelete(id: string, label: string) {
-    if (!confirm(`"${label}" 시간대를 삭제하시겠습니까?`)) return;
+  async function handleDeleteConfirm() {
+    if (!deleteConfirm.id) return;
+    setDeleteConfirm({ open: false });
     setLoading(true);
-    const result = await deleteBusTimeSlot(id);
+    const result = await deleteBusTimeSlot(deleteConfirm.id);
     if (result.error) setError(result.error);
     else router.refresh();
     setLoading(false);
@@ -115,7 +118,7 @@ export function BusTimeSlotsManager({ busTimeSlots }: { busTimeSlots: BusTimeSlo
               size="sm"
               variant="ghost"
               className="h-7 text-xs text-red-500 hover:text-red-700"
-              onClick={() => handleDelete(slot.id, slot.label)}
+              onClick={() => setDeleteConfirm({ open: true, id: slot.id, label: slot.label })}
               disabled={loading}
             >
               삭제
@@ -184,6 +187,14 @@ export function BusTimeSlotsManager({ busTimeSlots }: { busTimeSlots: BusTimeSlo
       {busTimeSlots.length === 0 && (
         <p className="text-xs text-slate-400 py-4">등록된 시간대가 없습니다.</p>
       )}
+
+      <ConfirmDialog
+        open={deleteConfirm.open}
+        title="삭제 확인"
+        description={`"${deleteConfirm.label}" 시간대를 삭제하시겠습니까?`}
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => setDeleteConfirm({ open: false })}
+      />
     </div>
   );
 }

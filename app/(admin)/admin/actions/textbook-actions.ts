@@ -2,7 +2,6 @@
 
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
 import { verifyAdmin, verifyAuthenticated } from "./auth-helpers";
 import type { Textbook, ClassTextbook, StudentTextbookProgress, ClassTextbookProgressRow } from "@/lib/types";
 
@@ -451,7 +450,7 @@ export async function updateProgress(
   // progress 현재 상태 조회
   const { data: current } = await supabase
     .from("student_textbook_progress")
-    .select("textbook_id")
+    .select("textbook_id, started_at")
     .eq("id", progressId)
     .single();
 
@@ -468,16 +467,13 @@ export async function updateProgress(
   const units = Math.max(0, Math.min(completedUnits, totalUnits));
 
   let status: "not_started" | "in_progress" | "completed" = "not_started";
-  let started_at: string | null = null;
   let completed_at: string | null = null;
 
   if (units >= totalUnits) {
     status = "completed";
-    started_at = new Date().toISOString();
     completed_at = new Date().toISOString();
   } else if (units > 0) {
     status = "in_progress";
-    started_at = new Date().toISOString();
   }
 
   const updateData: Record<string, unknown> = {
@@ -485,7 +481,10 @@ export async function updateProgress(
     status,
     updated_at: new Date().toISOString(),
   };
-  if (started_at) updateData.started_at = started_at;
+  // Only set started_at if not already set (preserve original start date)
+  if (!current.started_at && units > 0) {
+    updateData.started_at = new Date().toISOString();
+  }
   if (completed_at) updateData.completed_at = completed_at;
   if (note !== undefined) updateData.note = note;
 
@@ -726,6 +725,9 @@ export async function batchUpdateProgress(
 export async function listTextbooksNotAssignedToStudent(
   studentProfileId: string
 ): Promise<Textbook[]> {
+  const auth = await verifyAuthenticated();
+  if ("error" in auth) return [];
+
   const supabase = createAdminClient();
 
   const { data: assigned } = await supabase

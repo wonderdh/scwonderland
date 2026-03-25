@@ -6,6 +6,6 @@ export default async function AdminAttendancePage() {
     listClassesWithDetails(),
     listAllStudents(),
   ]);
-  const today = new Date().toISOString().split("T")[0];
+  const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
   return <AdminAttendanceClient initialClasses={classes} allStudents={allStudents} today={today} />;
 }

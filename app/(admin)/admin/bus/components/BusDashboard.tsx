@@ -13,13 +13,10 @@ import {
   deleteAdminBusChange,
 } from "../../actions";
 import { useBusRealtime } from "@/lib/hooks/use-bus-realtime";
+import { formatTime } from "@/lib/bus/utils";
 
 const DIR_LABEL = { pickup: "등원", dropoff: "하원" } as const;
 const DAY_NAMES = ["일", "월", "화", "수", "목", "금", "토"];
-
-function formatTime(t: string) {
-  return t.slice(0, 5);
-}
 
 function formatCheckedTime(iso: string) {
   const d = new Date(iso);
@@ -62,7 +59,8 @@ function groupByTime(groups: BusManifestGroup[]): TimeGroup[] {
 }
 
 export function BusDashboard({ busTimeSlots, busNumbers }: { busTimeSlots: BusTimeSlot[]; busNumbers: BusNumber[] }) {
-  const today = new Date().toISOString().slice(0, 10);
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   const [date, setDate] = useState(today);
   const [direction, setDirection] = useState<"pickup" | "dropoff">("dropoff");
   const [groups, setGroups] = useState<BusManifestGroup[]>([]);

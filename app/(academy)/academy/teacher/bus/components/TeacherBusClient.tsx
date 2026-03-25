@@ -15,7 +15,8 @@ function formatTime(t: string) {
 }
 
 export function TeacherBusClient() {
-  const today = new Date().toISOString().slice(0, 10);
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   const [date, setDate] = useState(today);
   const [direction, setDirection] = useState<"pickup" | "dropoff">("pickup");
   const [groups, setGroups] = useState<BusManifestGroup[]>([]);

@@ -8,6 +8,7 @@ import type { updateStudentProfile, deleteUserById } from "../../actions";
 import { getAgeColor } from "@/lib/student-age-colors";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 
 type EditState = {
   korean_name: string;
@@ -42,6 +43,7 @@ function StudentRow({
   const [editing, setEditing] = useState(false);
   const [pending, setPending] = useState(false);
   const [delPending, setDelPending] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; id?: string; name?: string }>({ open: false });
   const [edit, setEdit] = useState<EditState>({
     korean_name: user.korean_name ?? user.first_name ?? "",
     english_name: user.english_name ?? user.last_name ?? "",
@@ -88,9 +90,13 @@ function StudentRow({
     router.refresh();
   };
 
-  const handleDelete = async () => {
+  const handleDeleteClick = () => {
     const name = user.korean_name ?? user.first_name ?? "이 학생";
-    if (!window.confirm(`${name} 학생을 삭제하시겠습니까?`)) return;
+    setDeleteConfirm({ open: true, id: user.id, name });
+  };
+
+  const handleDeleteConfirm = async () => {
+    setDeleteConfirm({ open: false });
     setDelPending(true);
     const form = new FormData();
     form.set("id", user.id);
@@ -183,11 +189,18 @@ function StudentRow({
         size="sm"
         variant="ghost"
         className="h-7 px-2 text-xs text-destructive hover:text-destructive shrink-0"
-        onClick={handleDelete}
+        onClick={handleDeleteClick}
         disabled={delPending}
       >
         {delPending ? "…" : "삭제"}
       </Button>
+      <ConfirmDialog
+        open={deleteConfirm.open}
+        title="삭제 확인"
+        description={`${deleteConfirm.name} 학생을 삭제하시겠습니까?`}
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => setDeleteConfirm({ open: false })}
+      />
     </li>
   );
 }
