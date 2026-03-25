@@ -174,7 +174,7 @@ export function AdminBusChangeDnD() {
 
   async function handleSave() {
     if (!selectedStudentId) { toast.error("학생을 선택해 주세요."); return; }
-    if (!stopId) { toast.error("정류장을 선택해 주세요."); return; }
+    if (stopMode === "stop" && !stopId) { toast.error("정류장을 선택해 주세요."); return; }
     if (!slotId) { toast.error("시간대를 선택해 주세요."); return; }
 
     const changeType = stopMode === "pickup" ? "no_ride" : "change";
@@ -371,7 +371,7 @@ export function AdminBusChangeDnD() {
           {/* Stop selection */}
           <div>
             <label className="text-xs font-medium text-slate-600 block mb-1">
-              {stopMode === "pickup" ? "픽업 정류장" : "정류장"}
+              {stopMode === "pickup" ? "픽업 정류장 (선택사항)" : "정류장"}
             </label>
             {stopId && stopMatchesMode && !stopListOpen ? (
               <div className="flex items-center gap-2 p-2.5 border rounded-lg bg-slate-50">
