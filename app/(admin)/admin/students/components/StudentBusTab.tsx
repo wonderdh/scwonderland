@@ -426,6 +426,7 @@ function CombinedGrid({
                 <div className="text-xs text-slate-600 mt-0.5">
                   {pickup.time_slot_time ? formatTime(pickup.time_slot_time) : "-"}
                   {pickup.bus_label && <span className="ml-1">{pickup.bus_label}</span>}
+                  {pickup.bus_stop_name && <span className="text-slate-400 ml-1">{pickup.bus_stop_name}</span>}
                 </div>
               ) : (
                 <div className="text-xs text-slate-300 mt-0.5">-</div>
@@ -445,6 +446,7 @@ function CombinedGrid({
                 <div className="text-xs text-slate-600 mt-0.5">
                   {dropoff.time_slot_time ? formatTime(dropoff.time_slot_time) : "-"}
                   {dropoff.bus_label && <span className="ml-1">{dropoff.bus_label}</span>}
+                  {dropoff.bus_stop_name && <span className="text-slate-400 ml-1">{dropoff.bus_stop_name}</span>}
                 </div>
               ) : (
                 <div className="text-xs text-slate-300 mt-0.5">-</div>
