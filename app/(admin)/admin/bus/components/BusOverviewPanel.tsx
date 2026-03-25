@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { getBulkBusDefaults, listBusStopDayAssignments, listAfterschoolStudentIdsByDay } from "../../actions";
 import { getAgeColor } from "@/lib/student-age-colors";
 import type { BusNumber, BusTimeSlot, BusDefaultAssignment } from "@/lib/types";
+import { FullOverviewPanel } from "./DropoffOverviewPanel";
 
 const DAYS = [
   { value: 1, label: "월" },
@@ -25,6 +27,31 @@ export function BusOverviewPanel({
   busNumbers: BusNumber[];
   busTimeSlots: BusTimeSlot[];
 }) {
+  return (
+    <Tabs defaultValue="full">
+      <TabsList variant="line" className="mb-4">
+        <TabsTrigger value="full">전체</TabsTrigger>
+        <TabsTrigger value="by-day">요일별</TabsTrigger>
+      </TabsList>
+      <TabsContent value="full">
+        <FullOverviewPanel />
+      </TabsContent>
+      <TabsContent value="by-day">
+        <ByDayContent busNumbers={busNumbers} busTimeSlots={busTimeSlots} />
+      </TabsContent>
+    </Tabs>
+  );
+}
+
+/* ── 요일별 탭 (기존 BusOverviewPanel 내용) ── */
+
+function ByDayContent({
+  busNumbers,
+  busTimeSlots,
+}: {
+  busNumbers: BusNumber[];
+  busTimeSlots: BusTimeSlot[];
+}) {
   const today = new Date();
   const jsDay = today.getDay();
   const defaultDay = jsDay >= 1 && jsDay <= 5 ? jsDay : 1;
@@ -39,7 +66,6 @@ export function BusOverviewPanel({
 
   const filteredSlots = busTimeSlots.filter((s) => s.direction === direction && s.is_active);
 
-  // 초기 시간대: 해당 방향의 첫 번째 활성 슬롯
   const getDefaultSlotId = useCallback(
     (dir: "pickup" | "dropoff") => {
       const slots = busTimeSlots.filter((s) => s.direction === dir && s.is_active);
@@ -74,19 +100,15 @@ export function BusOverviewPanel({
     fetchData();
   }, [fetchData]);
 
-  // direction 변경 시 해당 방향의 첫 번째 슬롯으로 자동 선택
   useEffect(() => {
     setSlotId(getDefaultSlotId(direction));
   }, [direction, getDefaultSlotId]);
 
-  // 호차 → 정류장 → 학생 그룹핑
   const grouped = groupByBusAndStop(data, busNumbers, stopSortOrderMap);
 
   return (
     <div className="space-y-4">
-      {/* 필터 바 */}
       <div className="flex flex-wrap items-center gap-3">
-        {/* 요일 */}
         <div className="flex rounded-lg border border-slate-200 overflow-hidden">
           {DAYS.map((d) => (
             <button
@@ -103,7 +125,6 @@ export function BusOverviewPanel({
           ))}
         </div>
 
-        {/* 등/하원 */}
         <div className="flex rounded-lg border border-slate-200 overflow-hidden">
           {DIRECTIONS.map((dir) => (
             <button
@@ -120,7 +141,6 @@ export function BusOverviewPanel({
           ))}
         </div>
 
-        {/* 시간대 */}
         <select
           value={slotId}
           onChange={(e) => setSlotId(e.target.value)}
@@ -142,7 +162,6 @@ export function BusOverviewPanel({
         </span>
       </div>
 
-      {/* 결과 */}
       {!loading && data.length === 0 ? (
         <div className="text-center py-12 text-slate-400 text-sm">
           배정된 학생이 없습니다.
@@ -156,7 +175,6 @@ export function BusOverviewPanel({
           )}
           {grouped.map((bus) => (
             <div key={bus.busId} className="border border-slate-200 rounded-xl overflow-hidden">
-              {/* 호차 헤더 */}
               <div className="bg-slate-50 px-4 py-2.5 border-b border-slate-200 flex items-center gap-2">
                 <span className="font-semibold text-slate-800 text-sm">{bus.busLabel}</span>
                 <span className="text-xs text-slate-400">{bus.totalCount}명</span>
@@ -165,12 +183,10 @@ export function BusOverviewPanel({
               <div className="divide-y divide-slate-100">
                 {bus.stops.map((stop) => (
                   <div key={stop.stopId} className="px-4 py-2.5 flex items-start gap-3">
-                    {/* 정류장 이름 + 인원 */}
                     <span className="shrink-0 text-xs font-medium text-slate-500 bg-slate-50 rounded px-2 py-1 min-w-[80px] text-center border border-slate-100">
                       {stop.stopName}
                       <span className="ml-1 text-slate-400">({stop.students.length})</span>
                     </span>
-                    {/* 학생 이름 가로 나열 */}
                     <div className="flex flex-wrap gap-1.5">
                       {stop.students.map((s) => {
                         const color = getAgeColor(s.age);
@@ -227,7 +243,6 @@ function groupByBusAndStop(
   const busOrder = new Map(busNumbers.map((b, i) => [b.id, i]));
   const NO_STOP = "__no_stop__";
 
-  // busId → stopId → students
   const map = new Map<string, Map<string, BusDefaultAssignment[]>>();
 
   for (const item of data) {
@@ -246,7 +261,6 @@ function groupByBusAndStop(
     let totalCount = 0;
 
     for (const [stopKey, students] of stopMap) {
-      // 나이순 → 이름순 정렬
       students.sort((a, b) => {
         const ageA = a.age ?? 999;
         const ageB = b.age ?? 999;
@@ -261,7 +275,6 @@ function groupByBusAndStop(
       });
     }
 
-    // 정류장: 미지정을 마지막으로, 나머지는 sort_order순
     stops.sort((a, b) => {
       if (a.stopId === NO_STOP) return 1;
       if (b.stopId === NO_STOP) return -1;
@@ -278,7 +291,6 @@ function groupByBusAndStop(
     });
   }
 
-  // 호차 순서 정렬
   result.sort((a, b) => (busOrder.get(a.busId) ?? 99) - (busOrder.get(b.busId) ?? 99));
 
   return result;

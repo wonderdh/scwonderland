@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { LoadingState } from "@/components/LoadingState";
+import { toPng } from "html-to-image";
 import { getWeeklyDropoffExportData } from "../../actions";
 import { getAgeColor } from "@/lib/student-age-colors";
 import { formatTime } from "@/lib/bus/utils";
@@ -11,13 +13,13 @@ import type { DropoffExportRow, BusTimeSlot, BusNumber } from "@/lib/types";
 
 const DAY_NAMES = ["", "월", "화", "수", "목", "금"];
 
-// 요일별 배경 (연한 톤, 글씨 잘 보이게)
+// 요일별 배경 (무채색~중성톤, 호차 색과 겹치지 않게)
 const DAY_COLORS: Record<number, string> = {
-  1: "bg-red-50/70 text-red-900",
-  2: "bg-orange-50/70 text-orange-900",
-  3: "bg-yellow-50/70 text-yellow-900",
-  4: "bg-green-50/70 text-green-900",
-  5: "bg-blue-50/70 text-blue-900",
+  1: "bg-slate-100 text-slate-900",
+  2: "bg-zinc-100 text-zinc-900",
+  3: "bg-stone-100 text-stone-900",
+  4: "bg-neutral-100 text-neutral-900",
+  5: "bg-gray-200 text-gray-900",
 };
 
 // 호차별 열 배경 (순환, 매우 연한 톤)
@@ -42,7 +44,7 @@ type DayCellData = {
   stops: StopGroup[];
 };
 
-export function DropoffOverviewPanel() {
+export function FullOverviewPanel() {
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<DropoffExportRow[]>([]);
   const [slots, setSlots] = useState<BusTimeSlot[]>([]);
@@ -50,35 +52,41 @@ export function DropoffOverviewPanel() {
   const [unassigned, setUnassigned] = useState<{ day: number; profile_id: string; korean_name: string | null; english_name: string | null; age: number | null }[]>([]);
   const [afterschoolSet, setAfterschoolSet] = useState<Set<string>>(new Set());
   const [activeSlot, setActiveSlot] = useState<string>("");
+  const [direction, setDirection] = useState<"pickup" | "dropoff">("dropoff");
   const [search, setSearch] = useState("");
+  const [downloading, setDownloading] = useState(false);
+  const tableRef = useRef<HTMLDivElement>(null);
+
+  const loadData = useCallback(async (dir: "pickup" | "dropoff") => {
+    setLoading(true);
+    const result = await getWeeklyDropoffExportData(dir);
+    if ("error" in result) {
+      setLoading(false);
+      return;
+    }
+    setRows(result.rows);
+    setSlots(result.slots);
+    setBusNumbers(result.busNumbers);
+    setUnassigned(result.unassigned);
+
+    const asSet = new Set<string>();
+    for (const e of result.afterschoolEnrollments) {
+      asSet.add(`${e.profile_id}-${e.day}`);
+    }
+    setAfterschoolSet(asSet);
+
+    const dirSlots = result.slots.filter((s) => s.direction === dir);
+    if (dirSlots.length > 0) {
+      setActiveSlot(dirSlots[0].id);
+    } else {
+      setActiveSlot("");
+    }
+    setLoading(false);
+  }, []);
 
   useEffect(() => {
-    async function load() {
-      setLoading(true);
-      const result = await getWeeklyDropoffExportData();
-      if ("error" in result) {
-        setLoading(false);
-        return;
-      }
-      setRows(result.rows);
-      setSlots(result.slots);
-      setBusNumbers(result.busNumbers);
-      setUnassigned(result.unassigned);
-
-      const asSet = new Set<string>();
-      for (const e of result.afterschoolEnrollments) {
-        asSet.add(`${e.profile_id}-${e.day}`);
-      }
-      setAfterschoolSet(asSet);
-
-      const dropoffSlots = result.slots.filter((s) => s.direction === "dropoff");
-      if (dropoffSlots.length > 0) {
-        setActiveSlot(dropoffSlots[0].id);
-      }
-      setLoading(false);
-    }
-    load();
-  }, []);
+    loadData(direction);
+  }, [direction, loadData]);
 
   // 검색어로 매칭되는 profileId Set
   const highlightIds = useMemo(() => {
@@ -96,15 +104,45 @@ export function DropoffOverviewPanel() {
     return ids;
   }, [search, rows, unassigned]);
 
+  const handleDownload = useCallback(async () => {
+    if (!tableRef.current) return;
+    setDownloading(true);
+    try {
+      const dirSlots = slots.filter((s) => s.direction === direction);
+      const selectedSlot = dirSlots.find((s) => s.id === activeSlot);
+      const slotTime = selectedSlot ? formatTime(selectedSlot.time) : "";
+      const slotLabel = selectedSlot?.label ?? "";
+      const dataUrl = await toPng(tableRef.current, {
+        backgroundColor: "#ffffff",
+        pixelRatio: 2,
+      });
+      const link = document.createElement("a");
+      const dlLabel = direction === "pickup" ? "등원표" : "하원표";
+      link.download = `${dlLabel}_${slotTime}_${slotLabel}.png`;
+      link.href = dataUrl;
+      link.click();
+    } catch (err) {
+      console.error("이미지 다운로드 실패:", err);
+    }
+    setDownloading(false);
+  }, [slots, activeSlot, direction]);
+
   if (loading) return <LoadingState className="py-8" />;
 
-  const dropoffSlots = slots.filter((s) => s.direction === "dropoff");
+  const dirSlots = slots.filter((s) => s.direction === direction);
 
-  if (dropoffSlots.length === 0) {
-    return <p className="text-sm text-slate-400 py-4">하원 시간대가 등록되지 않았습니다.</p>;
+  const dirLabel = direction === "pickup" ? "등원" : "하원";
+
+  if (dirSlots.length === 0) {
+    return (
+      <div className="space-y-4">
+        <DirectionToggle direction={direction} onChange={setDirection} />
+        <p className="text-sm text-slate-400 py-4">{dirLabel} 시간대가 등록되지 않았습니다.</p>
+      </div>
+    );
   }
 
-  const selectedSlot = dropoffSlots.find((s) => s.id === activeSlot);
+  const selectedSlot = dirSlots.find((s) => s.id === activeSlot);
   const selectedSlotLabel = selectedSlot?.label ?? "";
   const selectedSlotTime = selectedSlot ? formatTime(selectedSlot.time) : "";
 
@@ -156,8 +194,9 @@ export function DropoffOverviewPanel() {
 
   return (
     <div className="space-y-4">
-      {/* 검색 + 시간대 탭 */}
+      {/* 등원/하원 토글 + 검색 + 다운로드 */}
       <div className="flex items-center gap-3 flex-wrap">
+        <DirectionToggle direction={direction} onChange={setDirection} />
         <Input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -169,25 +208,38 @@ export function DropoffOverviewPanel() {
             {highlightIds.size}명 매칭
           </span>
         )}
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-9 text-xs ml-auto"
+          onClick={handleDownload}
+          disabled={downloading || allBusLabels.length === 0}
+        >
+          {downloading ? "다운로드 중..." : `${selectedSlotTime} ${selectedSlotLabel} 이미지 저장`}
+        </Button>
       </div>
 
       <Tabs value={activeSlot} onValueChange={setActiveSlot}>
         <TabsList variant="line">
-          {dropoffSlots.map((s) => (
+          {dirSlots.map((s) => (
             <TabsTrigger key={s.id} value={s.id}>
               {formatTime(s.time)} {s.label}
             </TabsTrigger>
           ))}
         </TabsList>
 
-        {dropoffSlots.map((slot) => (
+        {dirSlots.map((slot) => (
           <TabsContent key={slot.id} value={slot.id}>
             {allBusLabels.length === 0 ? (
               <p className="text-sm text-slate-400 py-4">
                 {selectedSlotTime} {selectedSlotLabel} 시간대에 배정된 학생이 없습니다.
               </p>
             ) : (
-              <div className="overflow-x-auto">
+              <div ref={slot.id === activeSlot ? tableRef : undefined} className="bg-white p-2">
+                <div className="text-sm font-bold text-slate-600 mb-2 text-center">
+                  {dirLabel}표 — {formatTime(slot.time)} {slot.label}
+                </div>
+                <div className="overflow-x-auto">
                 <table className="w-full text-base border-collapse">
                   <thead>
                     <tr className="border-b-2 border-slate-300">
@@ -249,6 +301,7 @@ export function DropoffOverviewPanel() {
                   </tbody>
                 </table>
               </div>
+              </div>
             )}
           </TabsContent>
         ))}
@@ -258,7 +311,7 @@ export function DropoffOverviewPanel() {
       {unassigned.length > 0 && (
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
           <h3 className="text-sm font-bold text-amber-800 mb-2">
-            하원 미배정 학생 ({unassigned.length}건)
+            {dirLabel} 미배정 학생 ({unassigned.length}건)
           </h3>
           <div className="grid grid-cols-5 gap-3">
             {[1, 2, 3, 4, 5].map((day) => {
@@ -316,6 +369,37 @@ export function DropoffOverviewPanel() {
           <span className="w-3 h-3 rounded ring-2 ring-yellow-400 bg-white" /> 검색 매칭
         </span>
       </div>
+    </div>
+  );
+}
+
+/* ── 등원/하원 토글 ── */
+
+function DirectionToggle({
+  direction,
+  onChange,
+}: {
+  direction: "pickup" | "dropoff";
+  onChange: (d: "pickup" | "dropoff") => void;
+}) {
+  return (
+    <div className="flex rounded-lg border border-slate-200 overflow-hidden">
+      {([
+        { value: "pickup" as const, label: "등원" },
+        { value: "dropoff" as const, label: "하원" },
+      ]).map((d) => (
+        <button
+          key={d.value}
+          onClick={() => onChange(d.value)}
+          className={`px-4 py-1.5 text-sm font-medium transition-colors ${
+            direction === d.value
+              ? "bg-blue-600 text-white"
+              : "bg-white text-slate-600 hover:bg-slate-50"
+          }`}
+        >
+          {d.label}
+        </button>
+      ))}
     </div>
   );
 }

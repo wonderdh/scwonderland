@@ -2055,7 +2055,9 @@ export async function deleteBusStopSchedule(
 }
 
 
-export async function getWeeklyDropoffExportData(): Promise<
+export async function getWeeklyDropoffExportData(
+  direction: "pickup" | "dropoff" = "dropoff"
+): Promise<
   DropoffExportData | { error: string }
 > {
   const auth = await verifyAdmin();
@@ -2063,11 +2065,11 @@ export async function getWeeklyDropoffExportData(): Promise<
 
   const supabase = createAdminClient();
 
-  // 1. 하원 시간대 전체 조회
+  // 1. 시간대 전체 조회
   const { data: slotData, error: slotError } = await supabase
     .from("bus_time_slots")
     .select("*")
-    .eq("direction", "dropoff")
+    .eq("direction", direction)
     .eq("is_active", true)
     .order("time");
   if (slotError) {
@@ -2125,14 +2127,14 @@ export async function getWeeklyDropoffExportData(): Promise<
       ? supabase
           .from("student_bus_defaults")
           .select("student_profile_id, bus_stop_id, bus_time_slot_id, day_of_week, note")
-          .eq("direction", "dropoff")
+          .eq("direction", direction)
           .in("bus_time_slot_id", slotIds)
       : Promise.resolve({ data: [], error: null }),
     slotIds.length > 0
       ? supabase
           .from("bus_stop_day_assignments")
           .select("bus_stop_id, bus_number_id, bus_time_slot_id, day_of_week")
-          .eq("direction", "dropoff")
+          .eq("direction", direction)
           .in("bus_time_slot_id", slotIds)
       : Promise.resolve({ data: [], error: null }),
   ]);
