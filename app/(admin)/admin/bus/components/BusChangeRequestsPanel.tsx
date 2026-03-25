@@ -42,6 +42,7 @@ export function BusChangeRequestsPanel({ adminId }: { adminId: string }) {
   // 승인/거절/수정 모드
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editMode, setEditMode] = useState<"approve" | "reject" | "edit">("approve");
+  const [editStopMode, setEditStopMode] = useState<"stop" | "pickup">("stop");
   const [editSlotId, setEditSlotId] = useState("");
   const [editBusId, setEditBusId] = useState("");
   const [editStopId, setEditStopId] = useState("");
@@ -72,6 +73,7 @@ export function BusChangeRequestsPanel({ adminId }: { adminId: string }) {
   function startEdit(req: BusChangeRequest, mode: "approve" | "reject" | "edit") {
     setEditingId(req.id);
     setEditMode(mode);
+    setEditStopMode(req.change_type === "no_ride" ? "pickup" : "stop");
     setEditSlotId(req.new_bus_time_slot_id || "");
     setEditBusId(req.new_bus_number_id || "");
     setEditStopId(req.new_bus_stop_id || "");
@@ -122,8 +124,11 @@ export function BusChangeRequestsPanel({ adminId }: { adminId: string }) {
   const pendingRequests = requests.filter((r) => r.status === "pending");
   const completedRequests = requests.filter((r) => r.status !== "pending");
 
-  // 선택한 호차에 해당하는 정류장 필터
-  const filteredStops = busStops;
+  function handleStopModeChange(mode: "stop" | "pickup") {
+    setEditStopMode(mode);
+    setEditStopId("");
+    if (mode === "pickup") setEditBusId("");
+  }
 
   return (
     <div className="space-y-4">
@@ -151,12 +156,14 @@ export function BusChangeRequestsPanel({ adminId }: { adminId: string }) {
                 editStopId={editStopId}
                 editNote={editNote}
                 onEditSlotId={setEditSlotId}
+                editStopMode={editStopMode}
+                onEditStopMode={handleStopModeChange}
                 onEditBusId={(v) => { setEditBusId(v); setEditStopId(""); }}
                 onEditStopId={setEditStopId}
                 onEditNote={setEditNote}
                 busTimeSlots={busTimeSlots}
                 busNumbers={busNumbers}
-                filteredStops={filteredStops}
+                busStops={busStops}
                 actionLoading={actionLoading === req.id}
                 onApprove={() => startEdit(req, "approve")}
                 onReject={() => startEdit(req, "reject")}
@@ -194,12 +201,14 @@ export function BusChangeRequestsPanel({ adminId }: { adminId: string }) {
                   editStopId={editStopId}
                   editNote={editNote}
                   onEditSlotId={setEditSlotId}
+                  editStopMode={editStopMode}
+                  onEditStopMode={handleStopModeChange}
                   onEditBusId={(v) => { setEditBusId(v); setEditStopId(""); }}
                   onEditStopId={setEditStopId}
                   onEditNote={setEditNote}
                   busTimeSlots={busTimeSlots}
                   busNumbers={busNumbers}
-                  filteredStops={filteredStops}
+                  busStops={busStops}
                   actionLoading={actionLoading === req.id}
                   onApprove={req.status === "rejected" ? () => startEdit(req, "approve") : undefined}
                   onReject={req.status === "approved" ? () => startEdit(req, "reject") : undefined}
@@ -221,17 +230,19 @@ function RequestCard({
   req,
   editing,
   editMode,
+  editStopMode,
   editSlotId,
   editBusId,
   editStopId,
   editNote,
   onEditSlotId,
+  onEditStopMode,
   onEditBusId,
   onEditStopId,
   onEditNote,
   busTimeSlots,
   busNumbers,
-  filteredStops,
+  busStops,
   actionLoading,
   onApprove,
   onReject,
@@ -242,17 +253,19 @@ function RequestCard({
   req: BusChangeRequest;
   editing: boolean;
   editMode: "approve" | "reject" | "edit";
+  editStopMode: "stop" | "pickup";
   editSlotId: string;
   editBusId: string;
   editStopId: string;
   editNote: string;
   onEditSlotId: (v: string) => void;
+  onEditStopMode: (v: "stop" | "pickup") => void;
   onEditBusId: (v: string) => void;
   onEditStopId: (v: string) => void;
   onEditNote: (v: string) => void;
   busTimeSlots: BusTimeSlot[];
   busNumbers: BusNumber[];
-  filteredStops: BusStop[];
+  busStops: BusStop[];
   actionLoading: boolean;
   onApprove?: () => void;
   onReject?: () => void;
@@ -261,6 +274,9 @@ function RequestCard({
   onCancel: () => void;
 }) {
   const dirSlots = busTimeSlots.filter((s) => s.direction === req.direction);
+  const filteredStops = editStopMode === "pickup"
+    ? busStops.filter((s) => s.name.includes("픽업"))
+    : busStops.filter((s) => !s.name.includes("픽업"));
 
   return (
     <div className={`border rounded-lg p-4 space-y-2 ${
@@ -320,6 +336,26 @@ function RequestCard({
 
           {editMode !== "reject" && (
             <>
+              {/* 구분: 정류장 / 픽업 */}
+              <div>
+                <label className="text-xs text-slate-500 block mb-1">구분</label>
+                <div className="flex gap-2">
+                  {(["stop", "pickup"] as const).map((mode) => (
+                    <button
+                      key={mode}
+                      onClick={() => onEditStopMode(mode)}
+                      className={`px-3 py-1 text-xs rounded-lg border font-medium transition-colors ${
+                        editStopMode === mode
+                          ? "bg-slate-700 text-white border-slate-700"
+                          : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                      }`}
+                    >
+                      {mode === "stop" ? "정류장" : "픽업"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <div className="flex gap-3 flex-wrap">
                 <div>
                   <label className="text-xs text-slate-500 block mb-1">시간대</label>
@@ -336,21 +372,25 @@ function RequestCard({
                     ))}
                   </select>
                 </div>
+                {editStopMode === "stop" && (
+                  <div>
+                    <label className="text-xs text-slate-500 block mb-1">호차</label>
+                    <select
+                      value={editBusId}
+                      onChange={(e) => onEditBusId(e.target.value)}
+                      className="h-8 px-2 border rounded text-xs"
+                    >
+                      <option value="">선택 안함</option>
+                      {busNumbers.map((b) => (
+                        <option key={b.id} value={b.id}>{b.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
                 <div>
-                  <label className="text-xs text-slate-500 block mb-1">호차</label>
-                  <select
-                    value={editBusId}
-                    onChange={(e) => onEditBusId(e.target.value)}
-                    className="h-8 px-2 border rounded text-xs"
-                  >
-                    <option value="">선택 안함</option>
-                    {busNumbers.map((b) => (
-                      <option key={b.id} value={b.id}>{b.label}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs text-slate-500 block mb-1">정류장</label>
+                  <label className="text-xs text-slate-500 block mb-1">
+                    {editStopMode === "pickup" ? "픽업 정류장 (선택)" : "정류장"}
+                  </label>
                   <select
                     value={editStopId}
                     onChange={(e) => onEditStopId(e.target.value)}
