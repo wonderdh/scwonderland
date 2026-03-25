@@ -98,7 +98,7 @@ export function DailyBusChanges() {
               {/* PC: 기존→변경 표시 */}
               {origText && (
                 <span className="text-xs text-muted-foreground shrink-0 hidden sm:inline">
-                  <span className="line-through opacity-60">{origText}</span>
+                  <span className="opacity-60">{origText}</span>
                   {ch.change_type !== "absent" && newText && (
                     <span className="ml-1">→ {newText}</span>
                   )}
