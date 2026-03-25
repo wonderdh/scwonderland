@@ -1209,6 +1209,7 @@ export async function approveChangeRequest(
   requestId: string,
   reviewerId: string,
   overrides?: {
+    changeType?: "change" | "no_ride" | "absent";
     newBusTimeSlotId?: string;
     newBusNumberId?: string;
     newBusStopId?: string;
@@ -1227,6 +1228,9 @@ export async function approveChangeRequest(
     updated_at: new Date().toISOString(),
   };
 
+  if (overrides?.changeType !== undefined) {
+    updateData.change_type = overrides.changeType;
+  }
   if (overrides?.newBusTimeSlotId !== undefined) {
     updateData.new_bus_time_slot_id = overrides.newBusTimeSlotId || null;
   }

@@ -86,16 +86,18 @@ export function BusChangeRequestsPanel({ adminId }: { adminId: string }) {
 
   async function handleApproveConfirm(id: string) {
     setActionLoading(id);
+    const changeType = editStopMode === "pickup" ? "no_ride" : "change";
     const result = await approveChangeRequest(id, adminId, {
+      changeType,
       newBusTimeSlotId: editSlotId || undefined,
-      newBusNumberId: editBusId || undefined,
+      newBusNumberId: editStopMode === "stop" ? (editBusId || undefined) : undefined,
       newBusStopId: editStopId || undefined,
       reviewNote: editNote || undefined,
     });
     if (result.error) {
       toast.error(result.error);
     } else {
-      toast.success("변경 요청이 승인되었습니다.");
+      toast.success(editMode === "edit" ? "변경 요청이 수정되었습니다." : "변경 요청이 승인되었습니다.");
     }
     setEditingId(null);
     await load();
@@ -277,6 +279,7 @@ function RequestCard({
   const filteredStops = editStopMode === "pickup"
     ? busStops.filter((s) => s.name.includes("픽업"))
     : busStops.filter((s) => !s.name.includes("픽업"));
+  const filteredBusNumbers = busNumbers.filter((b) => !b.label.includes("픽업"));
 
   return (
     <div className={`border rounded-lg p-4 space-y-2 ${
@@ -381,7 +384,7 @@ function RequestCard({
                       className="h-8 px-2 border rounded text-xs"
                     >
                       <option value="">선택 안함</option>
-                      {busNumbers.map((b) => (
+                      {filteredBusNumbers.map((b) => (
                         <option key={b.id} value={b.id}>{b.label}</option>
                       ))}
                     </select>
