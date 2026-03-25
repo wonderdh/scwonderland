@@ -70,7 +70,7 @@ export function DailyBusChanges() {
 
           const newSlotTime = ch.new_time_slot_time ? ch.new_time_slot_time.slice(0, 5) : "";
           const newSlotLabel = ch.new_time_slot_label ?? "";
-          const newBus = ch.new_bus_label ?? "";
+          const newBus = ch.change_type === "change" ? (ch.new_bus_label ?? "") : "";
           const origSlotTime = ch.orig_time_slot_time ? ch.orig_time_slot_time.slice(0, 5) : "";
           const origSlotLabel = ch.orig_time_slot_label ?? "";
           const origBus = ch.orig_bus_label ?? "";
