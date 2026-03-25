@@ -68,11 +68,22 @@ export function DailyBusChanges() {
           const cfg = CHANGE_TYPE_CONFIG[ch.change_type] ?? CHANGE_TYPE_CONFIG.change;
           const dir = ch.direction === "pickup" ? "등원" : "하원";
 
-          const bus = ch.change_type === "change" && ch.new_bus_label ? `→ ${ch.new_bus_label}` : "";
-          const slotTime = ch.new_time_slot_time ? ch.new_time_slot_time.slice(0, 5) : "";
-          const slotLabel = ch.new_time_slot_label ?? "";
+          const newSlotTime = ch.new_time_slot_time ? ch.new_time_slot_time.slice(0, 5) : "";
+          const newSlotLabel = ch.new_time_slot_label ?? "";
+          const newBus = ch.new_bus_label ?? "";
+          const origSlotTime = ch.orig_time_slot_time ? ch.orig_time_slot_time.slice(0, 5) : "";
+          const origSlotLabel = ch.orig_time_slot_label ?? "";
+          const origBus = ch.orig_bus_label ?? "";
+          const origStop = ch.orig_bus_stop_name ?? "";
           const reason = ch.reason ?? "";
           const dateLabel = formatDate(String(ch.request_date));
+
+          // 기존 일정 문자열
+          const origParts = [origSlotTime, origSlotLabel, origBus, origStop].filter(Boolean);
+          const origText = origParts.length > 0 ? origParts.join(" ") : "";
+          // 변경 일정 문자열
+          const newParts = [newSlotTime, newSlotLabel, newBus].filter(Boolean);
+          const newText = newParts.length > 0 ? newParts.join(" ") : "";
 
           return (
             <div key={ch.id} className="px-4 py-2.5 flex items-center gap-2 text-sm">
@@ -84,13 +95,27 @@ export function DailyBusChanges() {
               {ch.change_type !== "absent" && (
                 <span className="text-muted-foreground shrink-0">{dir}</span>
               )}
-              {bus && <span className="text-muted-foreground shrink-0">{bus}</span>}
-              {slotTime && (
-                <span className="text-xs tabular-nums text-muted-foreground shrink-0">
-                  {slotTime}{slotLabel ? ` ${slotLabel}` : ""}
+              {/* PC: 기존→변경 표시 */}
+              {origText && (
+                <span className="text-xs text-muted-foreground shrink-0 hidden sm:inline">
+                  <span className="line-through opacity-60">{origText}</span>
+                  {ch.change_type !== "absent" && newText && (
+                    <span className="ml-1">→ {newText}</span>
+                  )}
                 </span>
               )}
-
+              {/* 기존 일정 없을 때 변경 일정만 표시 */}
+              {!origText && newText && ch.change_type !== "absent" && (
+                <span className="text-xs tabular-nums text-muted-foreground shrink-0 hidden sm:inline">
+                  {newText}
+                </span>
+              )}
+              {/* 모바일: 간단 표시 */}
+              {newText && ch.change_type !== "absent" && (
+                <span className="text-xs tabular-nums text-muted-foreground shrink-0 sm:hidden">
+                  {newSlotTime}{newSlotLabel ? ` ${newSlotLabel}` : ""}
+                </span>
+              )}
               {reason && (
                 <span className="text-xs text-muted-foreground truncate hidden sm:inline">({reason})</span>
               )}

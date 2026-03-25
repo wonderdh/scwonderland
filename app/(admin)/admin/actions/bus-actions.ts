@@ -1101,11 +1101,88 @@ export async function listAllChangeRequests(): Promise<BusChangeRequest[]> {
     }
   }
 
+  // 기존 일정 조회 (student_bus_defaults에서 해당 요일+방향)
+  const origDefaults = new Map<string, { slot_id: string; stop_id: string | null }>();
+  if (studentIds.length && data?.length) {
+    // request_date에서 요일 계산
+    const studentDirKeys = [...new Set((data ?? []).map((d) => {
+      const dow = new Date(d.request_date + "T00:00:00").getDay();
+      const isoDay = dow === 0 ? 7 : dow; // JS 0=Sun → ISO 7=Sun
+      return `${d.student_profile_id}:${isoDay}:${d.direction}`;
+    }))];
+    const { data: origData } = await supabase
+      .from("student_bus_defaults")
+      .select("student_profile_id, day_of_week, direction, bus_time_slot_id, bus_stop_id")
+      .in("student_profile_id", studentIds);
+    for (const o of origData ?? []) {
+      origDefaults.set(
+        `${o.student_profile_id}:${o.day_of_week}:${o.direction}`,
+        { slot_id: o.bus_time_slot_id, stop_id: o.bus_stop_id }
+      );
+    }
+  }
+
+  // 기존 일정의 슬롯/정류장 정보 조회
+  const origSlotIds = new Set<string>();
+  const origStopIds = new Set<string>();
+  for (const v of origDefaults.values()) {
+    if (v.slot_id) origSlotIds.add(v.slot_id);
+    if (v.stop_id) origStopIds.add(v.stop_id);
+  }
+  // 이미 조회한 slotMap/stopMap에 없는 것만 추가 조회
+  const missingSlotIds = [...origSlotIds].filter((id) => !slotMap.has(id));
+  const missingStopIds = [...origStopIds].filter((id) => !stopMap.has(id));
+  if (missingSlotIds.length) {
+    const { data: extraSlots } = await supabase.from("bus_time_slots").select("id, label, time").in("id", missingSlotIds);
+    for (const s of extraSlots ?? []) slotMap.set(s.id, { label: s.label, time: s.time });
+  }
+  if (missingStopIds.length) {
+    const { data: extraStops } = await supabase.from("bus_stops").select("id, name").in("id", missingStopIds);
+    for (const s of extraStops ?? []) stopMap.set(s.id, s.name);
+  }
+
+  // 기존 일정의 호차 조회 (bus_stop_day_assignments에서 stop→bus 매핑)
+  const origBusLabelMap = new Map<string, string>(); // "student:day:dir" → busLabel
+  const origStopIdsForBus = [...origDefaults.entries()].filter(([, v]) => v.stop_id).map(([k, v]) => ({ key: k, stop_id: v.stop_id! }));
+  if (origStopIdsForBus.length) {
+    const stopIdsForBusQuery = [...new Set(origStopIdsForBus.map((o) => o.stop_id))];
+    const { data: stopAssigns } = await supabase
+      .from("bus_stop_day_assignments")
+      .select("bus_stop_id, bus_number_id, day_of_week, direction")
+      .in("bus_stop_id", stopIdsForBusQuery);
+    // stopId:day:dir → busNumberId
+    const stopBusMap = new Map<string, string>();
+    for (const sa of stopAssigns ?? []) {
+      stopBusMap.set(`${sa.bus_stop_id}:${sa.day_of_week}:${sa.direction}`, sa.bus_number_id);
+    }
+    // busNumberId → label (기존 busMap + 추가)
+    const missingBusIds = [...new Set([...(stopAssigns ?? []).map((sa) => sa.bus_number_id)])].filter((id) => !busMap.has(id));
+    if (missingBusIds.length) {
+      const { data: extraBuses } = await supabase.from("bus_numbers").select("id, label").in("id", missingBusIds);
+      for (const b of extraBuses ?? []) busMap.set(b.id, b.label);
+    }
+    for (const { key, stop_id } of origStopIdsForBus) {
+      const [, dayStr, dir] = key.split(":");
+      const busNumId = stopBusMap.get(`${stop_id}:${dayStr}:${dir}`);
+      if (busNumId) origBusLabelMap.set(key, busMap.get(busNumId) ?? "");
+    }
+  }
+
   return (data ?? []).map((d) => {
     const student = studentMap.get(d.student_profile_id);
     const slot = d.new_bus_time_slot_id
       ? slotMap.get(d.new_bus_time_slot_id)
       : defaultSlotMap.get(d.student_profile_id)?.get(d.direction);
+
+    // 기존 일정
+    const dow = new Date(d.request_date + "T00:00:00").getDay();
+    const isoDay = dow === 0 ? 7 : dow;
+    const origKey = `${d.student_profile_id}:${isoDay}:${d.direction}`;
+    const orig = origDefaults.get(origKey);
+    const origSlot = orig?.slot_id ? slotMap.get(orig.slot_id) : undefined;
+    const origStop = orig?.stop_id ? stopMap.get(orig.stop_id) : undefined;
+    const origBus = origBusLabelMap.get(origKey);
+
     return {
       ...d,
       korean_name: student?.korean_name ?? null,
@@ -1115,6 +1192,10 @@ export async function listAllChangeRequests(): Promise<BusChangeRequest[]> {
       new_time_slot_time: slot?.time,
       new_bus_label: d.new_bus_number_id ? busMap.get(d.new_bus_number_id) : undefined,
       new_bus_stop_name: d.new_bus_stop_id ? stopMap.get(d.new_bus_stop_id) : undefined,
+      orig_time_slot_time: origSlot?.time,
+      orig_time_slot_label: origSlot?.label,
+      orig_bus_label: origBus,
+      orig_bus_stop_name: origStop,
     };
   }) as BusChangeRequest[];
 }

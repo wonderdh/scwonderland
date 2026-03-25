@@ -339,6 +339,10 @@ export type BusChangeRequest = {
   korean_name?: string | null;
   english_name?: string | null;
   student_number?: string | null;
+  orig_time_slot_time?: string;
+  orig_time_slot_label?: string;
+  orig_bus_label?: string;
+  orig_bus_stop_name?: string;
   created_at: string;
   updated_at: string;
 };
