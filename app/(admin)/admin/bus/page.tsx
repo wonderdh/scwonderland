@@ -11,6 +11,7 @@ import { BusStopAssignmentManager } from "./components/BusStopAssignmentManager"
 import { BusStudentAssignmentManager } from "./components/BusStudentAssignmentManager";
 import { BusManagePanel } from "./components/BusManagePanel";
 import { BusExportButton } from "./components/BusExportButton";
+import { DailyBusChanges } from "@/components/bus/DailyBusChanges";
 const VALID_TABS: BusTabId[] = ["overview", "dashboard", "requests", "student-assign", "stop-assign", "bus-manage", "timeslots", "staff"];
 
 function parseTab(tab: string | undefined): BusTabId {
@@ -54,6 +55,9 @@ export default async function AdminBusPage({
         {currentTab === "timeslots" && <BusTimeSlotsManager busTimeSlots={busTimeSlots} />}
         {currentTab === "requests" && <BusChangeRequestsPanel adminId={user.id} />}
         {currentTab === "staff" && <BusStaffManager busStaff={busStaff} busNumbers={busNumbers} />}
+      </div>
+      <div className="mt-6">
+        <DailyBusChanges />
       </div>
     </div>
   );
