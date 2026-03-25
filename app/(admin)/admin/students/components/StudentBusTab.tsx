@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import type { StudentBusDefault, BusTimeSlot, BusStop } from "@/lib/types";
 import {
   getStudentBusDefaults,
@@ -11,12 +13,21 @@ import {
   deleteStudentBusDefaults,
   listBusTimeSlots,
   listBusStops,
+  getStudentAfterschoolDetail,
 } from "../../actions";
 import { LoadingState } from "@/components/LoadingState";
 import { formatTime } from "@/lib/bus/utils";
 
 const DAY_NAMES = ["", "월", "화", "수", "목", "금"];
 const DIR_LABEL = { pickup: "등원", dropoff: "하원" } as const;
+
+// 방과후 등록 상태별 카드 색상
+type AfterschoolStatus = "none" | "first_only" | "both";
+const AFTERSCHOOL_STYLES: Record<AfterschoolStatus, { border: string; bg: string; badge: string; label: string }> = {
+  none: { border: "", bg: "", badge: "", label: "" },
+  first_only: { border: "border-violet-300", bg: "bg-violet-50/60", badge: "bg-violet-100 text-violet-700", label: "방과후 1교시" },
+  both: { border: "border-indigo-300", bg: "bg-indigo-50/60", badge: "bg-indigo-100 text-indigo-700", label: "방과후 1·2교시" },
+};
 
 export function StudentBusTab({ studentProfileId }: { studentProfileId: string }) {
   const router = useRouter();
@@ -27,34 +38,41 @@ export function StudentBusTab({ studentProfileId }: { studentProfileId: string }
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  // 삭제 대기 목록 (로컬에서 먼저 제거, 저장 시 일괄 삭제)
-  const [pendingDeletes, setPendingDeletes] = useState<Set<string>>(new Set());
+  // 방과후 등록 상태 (요일 → 상태)
+  const [afterschoolMap, setAfterschoolMap] = useState<Map<number, AfterschoolStatus>>(new Map());
 
-  // 일괄 설정 모드
-  const [batchMode, setBatchMode] = useState(false);
-  const [batchDir, setBatchDir] = useState<"pickup" | "dropoff">("pickup");
-  const [batchDays, setBatchDays] = useState<Set<number>>(new Set());
-  const [batchSlotId, setBatchSlotId] = useState("");
-  const [batchStopId, setBatchStopId] = useState("");
-  const [batchNote, setBatchNote] = useState("");
+  // 서브탭
+  const [activeTab, setActiveTab] = useState<string>("combined");
 
-  // 편집 모드
-  const [editKey, setEditKey] = useState<string | null>(null); // "day-direction"
+  // 편집 상태 (통합: 개별+일괄)
+  const [editingDay, setEditingDay] = useState<number | null>(null);
+  const [checkedDays, setCheckedDays] = useState<Set<number>>(new Set());
   const [editSlotId, setEditSlotId] = useState("");
   const [editStopId, setEditStopId] = useState("");
   const [editNote, setEditNote] = useState("");
 
+  // 삭제 확인
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+
   const load = useCallback(async () => {
     setLoading(true);
-    const [d, ts, stops] = await Promise.all([
+    const [d, ts, stops, afterschool] = await Promise.all([
       getStudentBusDefaults(studentProfileId),
       listBusTimeSlots(),
       listBusStops(),
+      getStudentAfterschoolDetail(studentProfileId),
     ]);
     setDefaults(d);
     setBusTimeSlots(ts);
     setBusStops([...stops].sort((a, b) => a.name.localeCompare(b.name, "ko")));
-    setPendingDeletes(new Set());
+
+    // 방과후 맵 구성
+    const asMap = new Map<number, AfterschoolStatus>();
+    for (const e of afterschool) {
+      asMap.set(e.day_of_week, e.second_period ? "both" : "first_only");
+    }
+    setAfterschoolMap(asMap);
+
     setLoading(false);
   }, [studentProfileId]);
 
@@ -62,42 +80,37 @@ export function StudentBusTab({ studentProfileId }: { studentProfileId: string }
     load();
   }, [load]);
 
+  const currentDirection = activeTab === "dropoff" ? "dropoff" : "pickup";
+
   function getDefault(day: number, dir: "pickup" | "dropoff") {
-    return defaults.find(
-      (d) => d.day_of_week === day && d.direction === dir && !pendingDeletes.has(d.id)
-    );
+    return defaults.find((d) => d.day_of_week === day && d.direction === dir);
   }
 
-  const hasPendingChanges = pendingDeletes.size > 0;
-
-  async function handleSave(day: number, dir: "pickup" | "dropoff") {
-    if (!editSlotId) {
-      setError("시간대를 선택해 주세요.");
-      return;
+  function openEdit(day: number, dir?: "pickup" | "dropoff") {
+    const direction = dir ?? currentDirection;
+    if (dir && activeTab === "combined") {
+      setActiveTab(dir);
     }
-    setSaving(true);
+    setEditingDay(day);
+    setCheckedDays(new Set([day]));
+    const existing = getDefault(day, direction);
+    setEditSlotId(existing?.bus_time_slot_id ?? "");
+    setEditStopId(existing?.bus_stop_id ?? "");
+    setEditNote(existing?.note ?? "");
     setError("");
-    const result = await upsertStudentBusDefault(
-      studentProfileId,
-      day,
-      dir,
-      editSlotId,
-      undefined,
-      editNote || undefined,
-      editStopId || undefined
-    );
-    if (result.error) {
-      setError(result.error);
-    } else {
-      setEditKey(null);
-      await load();
-      router.refresh();
-    }
-    setSaving(false);
   }
 
-  function toggleBatchDay(day: number) {
-    setBatchDays((prev) => {
+  function closeEdit() {
+    setEditingDay(null);
+    setCheckedDays(new Set());
+    setEditSlotId("");
+    setEditStopId("");
+    setEditNote("");
+    setError("");
+  }
+
+  function toggleDay(day: number) {
+    setCheckedDays((prev) => {
       const next = new Set(prev);
       if (next.has(day)) next.delete(day);
       else next.add(day);
@@ -105,36 +118,27 @@ export function StudentBusTab({ studentProfileId }: { studentProfileId: string }
     });
   }
 
-  function openBatchMode() {
-    setBatchMode(true);
-    setBatchDir("pickup");
-    setBatchDays(new Set());
-    setBatchSlotId("");
-    setBatchStopId("");
-    setBatchNote("");
-    setError("");
-  }
-
-  async function handleBatchSave() {
-    if (batchDays.size === 0) {
+  async function handleSave() {
+    if (checkedDays.size === 0) {
       setError("요일을 하나 이상 선택해 주세요.");
       return;
     }
-    if (!batchSlotId) {
+    if (!editSlotId) {
       setError("시간대를 선택해 주세요.");
       return;
     }
     setSaving(true);
     setError("");
-    for (const day of batchDays) {
+    const dir = currentDirection;
+    for (const day of checkedDays) {
       const result = await upsertStudentBusDefault(
         studentProfileId,
         day,
-        batchDir,
-        batchSlotId,
+        dir,
+        editSlotId,
         undefined,
-        batchNote || undefined,
-        batchStopId || undefined
+        editNote || undefined,
+        editStopId || undefined
       );
       if (result.error) {
         setError(result.error);
@@ -142,364 +146,446 @@ export function StudentBusTab({ studentProfileId }: { studentProfileId: string }
         return;
       }
     }
-    setBatchMode(false);
+    closeEdit();
     await load();
     router.refresh();
     setSaving(false);
   }
 
-  function handleMarkDelete(id: string) {
-    setPendingDeletes((prev) => new Set(prev).add(id));
-  }
-
-  function handleUndoDelete(id: string) {
-    setPendingDeletes((prev) => {
-      const next = new Set(prev);
-      next.delete(id);
-      return next;
-    });
-  }
-
-  async function handleCommitDeletes() {
+  async function handleDelete() {
+    const dir = currentDirection;
+    const ids = Array.from(checkedDays)
+      .map((day) => getDefault(day, dir)?.id)
+      .filter((id): id is string => !!id);
+    if (ids.length === 0) return;
     setSaving(true);
     setError("");
-    const result = await deleteStudentBusDefaults(Array.from(pendingDeletes));
+    const result = await deleteStudentBusDefaults(ids);
     if (result.error) {
       setError(result.error);
     } else {
+      closeEdit();
       await load();
       router.refresh();
     }
     setSaving(false);
+    setDeleteConfirmOpen(false);
   }
 
-  function handleCancelAllDeletes() {
-    setPendingDeletes(new Set());
-  }
+  // 체크된 요일 중 기존 데이터가 있는 개수
+  const checkedWithData = Array.from(checkedDays).filter(
+    (day) => !!getDefault(day, currentDirection)
+  ).length;
 
   if (loading) return <LoadingState className="py-4" />;
 
   const pickupSlots = busTimeSlots.filter((s) => s.direction === "pickup");
   const dropoffSlots = busTimeSlots.filter((s) => s.direction === "dropoff");
 
-  // 삭제 대기 중인 항목 정보
-  const pendingDeleteItems = defaults.filter((d) => pendingDeletes.has(d.id));
+  if (busTimeSlots.length === 0) {
+    return (
+      <p className="text-sm text-slate-400 py-4">
+        시간대가 등록되지 않았습니다. 먼저{" "}
+        <a href="/admin/bus?tab=numbers" className="text-blue-500 underline">승하차 관리</a>
+        에서 설정해 주세요.
+      </p>
+    );
+  }
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-slate-700">주간 승하차 스케줄</h3>
-        {busTimeSlots.length > 0 && !batchMode && (
-          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={openBatchMode}>
-            일괄 설정
-          </Button>
+      <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v); closeEdit(); }}>
+        <TabsList variant="line">
+          <TabsTrigger value="combined">종합</TabsTrigger>
+          <TabsTrigger value="pickup">등원</TabsTrigger>
+          <TabsTrigger value="dropoff">하원</TabsTrigger>
+        </TabsList>
+
+        {error && (
+          <p className="text-xs text-red-500 bg-red-50 px-3 py-2 rounded">{error}</p>
+        )}
+
+        {/* 등원 탭 */}
+        <TabsContent value="pickup">
+          <DirectionGrid
+            direction="pickup"
+            defaults={defaults}
+            editingDay={editingDay}
+            afterschoolMap={afterschoolMap}
+            onCellClick={(day) => openEdit(day)}
+          />
+          {editingDay !== null && (
+            <EditPanel
+              direction="pickup"
+              checkedDays={checkedDays}
+              onToggleDay={toggleDay}
+              slots={pickupSlots}
+              stops={busStops}
+              slotId={editSlotId}
+              stopId={editStopId}
+              note={editNote}
+              onSlotChange={setEditSlotId}
+              onStopChange={setEditStopId}
+              onNoteChange={setEditNote}
+              onSave={handleSave}
+              onCancel={closeEdit}
+              onDelete={checkedWithData > 0 ? () => setDeleteConfirmOpen(true) : undefined}
+              saving={saving}
+            />
+          )}
+        </TabsContent>
+
+        {/* 하원 탭 */}
+        <TabsContent value="dropoff">
+          <DirectionGrid
+            direction="dropoff"
+            defaults={defaults}
+            editingDay={editingDay}
+            afterschoolMap={afterschoolMap}
+            onCellClick={(day) => openEdit(day)}
+          />
+          {editingDay !== null && (
+            <EditPanel
+              direction="dropoff"
+              checkedDays={checkedDays}
+              onToggleDay={toggleDay}
+              slots={dropoffSlots}
+              stops={busStops}
+              slotId={editSlotId}
+              stopId={editStopId}
+              note={editNote}
+              onSlotChange={setEditSlotId}
+              onStopChange={setEditStopId}
+              onNoteChange={setEditNote}
+              onSave={handleSave}
+              onCancel={closeEdit}
+              onDelete={checkedWithData > 0 ? () => setDeleteConfirmOpen(true) : undefined}
+              saving={saving}
+            />
+          )}
+        </TabsContent>
+
+        {/* 종합 탭 */}
+        <TabsContent value="combined">
+          <CombinedGrid
+            defaults={defaults}
+            afterschoolMap={afterschoolMap}
+            onCellClick={(day, dir) => openEdit(day, dir)}
+          />
+        </TabsContent>
+      </Tabs>
+
+      <ConfirmDialog
+        open={deleteConfirmOpen}
+        title="승하차 설정 삭제"
+        description={`선택한 ${checkedWithData}개 요일의 ${DIR_LABEL[currentDirection]} 설정을 삭제하시겠습니까?`}
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteConfirmOpen(false)}
+        disabled={saving}
+      />
+    </div>
+  );
+}
+
+/* ── 방향별 카드 그리드 ── */
+
+function DirectionGrid({
+  direction,
+  defaults,
+  editingDay,
+  afterschoolMap,
+  onCellClick,
+}: {
+  direction: "pickup" | "dropoff";
+  defaults: StudentBusDefault[];
+  editingDay: number | null;
+  afterschoolMap: Map<number, AfterschoolStatus>;
+  onCellClick: (day: number) => void;
+}) {
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-3">
+      {[1, 2, 3, 4, 5].map((day) => {
+        const def = defaults.find((d) => d.day_of_week === day && d.direction === direction);
+        const isEditing = editingDay === day;
+        const asStatus = afterschoolMap.get(day) ?? "none";
+        return (
+          <DayCell
+            key={day}
+            day={day}
+            data={def}
+            isEditing={isEditing}
+            afterschool={asStatus}
+            onClick={() => onCellClick(day)}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+/* ── 요일 카드 (단일 방향) ── */
+
+function DayCell({
+  day,
+  data,
+  isEditing,
+  afterschool,
+  onClick,
+}: {
+  day: number;
+  data: StudentBusDefault | undefined;
+  isEditing: boolean;
+  afterschool: AfterschoolStatus;
+  onClick: () => void;
+}) {
+  const hasData = !!data;
+  const asStyle = AFTERSCHOOL_STYLES[afterschool];
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`text-left rounded-lg border p-3 transition-all w-full min-h-[80px] ${
+        isEditing
+          ? "ring-2 ring-blue-500 border-blue-300 bg-blue-50/50"
+          : hasData
+            ? `${afterschool !== "none" ? `${asStyle.border} ${asStyle.bg}` : "border-slate-200 bg-white"} hover:shadow-sm`
+            : `border-dashed ${afterschool !== "none" ? `${asStyle.border} ${asStyle.bg}` : "border-slate-300 bg-slate-50/50"} hover:border-slate-400`
+      }`}
+    >
+      <div className="flex items-center gap-1.5 mb-1.5">
+        <span className="text-xs font-semibold text-slate-500">{DAY_NAMES[day]}</span>
+        {afterschool !== "none" && (
+          <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${asStyle.badge}`}>
+            {asStyle.label}
+          </span>
         )}
       </div>
-
-      {error && (
-        <p className="text-xs text-red-500 bg-red-50 px-3 py-2 rounded">{error}</p>
-      )}
-
-      {/* 삭제 대기 저장 바 */}
-      {hasPendingChanges && (
-        <div className="flex items-center justify-between bg-amber-50 border border-amber-200 rounded-lg px-4 py-2.5">
-          <div className="text-xs text-amber-800">
-            <span className="font-medium">{pendingDeletes.size}건</span> 삭제 대기 중
-            {pendingDeleteItems.length > 0 && (
-              <span className="ml-1.5 text-amber-600">
-                ({pendingDeleteItems.map((d) => `${DAY_NAMES[d.day_of_week]} ${DIR_LABEL[d.direction]}`).join(", ")})
-              </span>
+      {hasData ? (
+        <div className="space-y-0.5">
+          <div className="text-sm font-medium text-slate-800">
+            {data.time_slot_time ? formatTime(data.time_slot_time) : "-"}
+            {data.time_slot_label && (
+              <span className="text-xs text-slate-400 ml-1">{data.time_slot_label}</span>
             )}
           </div>
-          <div className="flex gap-2">
+          {data.bus_label && (
+            <div className="text-xs text-slate-600">{data.bus_label}</div>
+          )}
+          {data.bus_stop_name && (
+            <div className="text-xs text-slate-500">{data.bus_stop_name}</div>
+          )}
+          {data.note && (
+            <div className="text-xs text-slate-400 truncate">{data.note}</div>
+          )}
+        </div>
+      ) : (
+        <div className="text-xs text-slate-400">미설정</div>
+      )}
+    </button>
+  );
+}
+
+/* ── 종합 탭 그리드 ── */
+
+function CombinedGrid({
+  defaults,
+  afterschoolMap,
+  onCellClick,
+}: {
+  defaults: StudentBusDefault[];
+  afterschoolMap: Map<number, AfterschoolStatus>;
+  onCellClick: (day: number, dir: "pickup" | "dropoff") => void;
+}) {
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-3">
+      {[1, 2, 3, 4, 5].map((day) => {
+        const pickup = defaults.find((d) => d.day_of_week === day && d.direction === "pickup");
+        const dropoff = defaults.find((d) => d.day_of_week === day && d.direction === "dropoff");
+        const asStatus = afterschoolMap.get(day) ?? "none";
+        const asStyle = AFTERSCHOOL_STYLES[asStatus];
+        return (
+          <div key={day} className={`rounded-lg border overflow-hidden ${asStatus !== "none" ? `${asStyle.border} ${asStyle.bg}` : "border-slate-200 bg-white"}`}>
+            <div className="flex items-center gap-1.5 px-3 pt-2 pb-1">
+              <span className="text-xs font-semibold text-slate-500">{DAY_NAMES[day]}</span>
+              {asStatus !== "none" && (
+                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${asStyle.badge}`}>
+                  {asStyle.label}
+                </span>
+              )}
+            </div>
+            {/* 등원 */}
+            <button
+              type="button"
+              onClick={() => onCellClick(day, "pickup")}
+              className="w-full text-left px-3 py-1.5 hover:bg-green-50/50 transition-colors"
+            >
+              <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-green-100 text-green-700">
+                등원
+              </span>
+              {pickup ? (
+                <div className="text-xs text-slate-600 mt-0.5">
+                  {pickup.time_slot_time ? formatTime(pickup.time_slot_time) : "-"}
+                  {pickup.bus_label && <span className="ml-1">{pickup.bus_label}</span>}
+                </div>
+              ) : (
+                <div className="text-xs text-slate-300 mt-0.5">-</div>
+              )}
+            </button>
+            <div className="border-t border-slate-100" />
+            {/* 하원 */}
+            <button
+              type="button"
+              onClick={() => onCellClick(day, "dropoff")}
+              className="w-full text-left px-3 py-1.5 hover:bg-orange-50/50 transition-colors"
+            >
+              <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-orange-100 text-orange-700">
+                하원
+              </span>
+              {dropoff ? (
+                <div className="text-xs text-slate-600 mt-0.5">
+                  {dropoff.time_slot_time ? formatTime(dropoff.time_slot_time) : "-"}
+                  {dropoff.bus_label && <span className="ml-1">{dropoff.bus_label}</span>}
+                </div>
+              ) : (
+                <div className="text-xs text-slate-300 mt-0.5">-</div>
+              )}
+            </button>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ── 편집 패널 ── */
+
+function EditPanel({
+  direction,
+  checkedDays,
+  onToggleDay,
+  slots,
+  stops,
+  slotId,
+  stopId,
+  note,
+  onSlotChange,
+  onStopChange,
+  onNoteChange,
+  onSave,
+  onCancel,
+  onDelete,
+  saving,
+}: {
+  direction: "pickup" | "dropoff";
+  checkedDays: Set<number>;
+  onToggleDay: (day: number) => void;
+  slots: BusTimeSlot[];
+  stops: BusStop[];
+  slotId: string;
+  stopId: string;
+  note: string;
+  onSlotChange: (v: string) => void;
+  onStopChange: (v: string) => void;
+  onNoteChange: (v: string) => void;
+  onSave: () => void;
+  onCancel: () => void;
+  onDelete?: () => void;
+  saving: boolean;
+}) {
+  return (
+    <div className="mt-3 border rounded-lg p-4 bg-slate-50 space-y-3">
+      <div className="flex items-center gap-2 text-sm font-medium text-slate-700">
+        편집 — {DIR_LABEL[direction]}
+      </div>
+
+      {/* 요일 체크박스 */}
+      <div>
+        <label className="text-xs font-medium text-slate-600 block mb-1">적용 요일</label>
+        <div className="flex gap-1.5">
+          {[1, 2, 3, 4, 5].map((day) => (
+            <button
+              key={day}
+              type="button"
+              onClick={() => onToggleDay(day)}
+              className={`w-9 h-9 rounded-lg text-xs font-medium border transition-colors ${
+                checkedDays.has(day)
+                  ? "bg-blue-500 text-white border-blue-500"
+                  : "bg-white text-slate-600 border-slate-300 hover:border-blue-300"
+              }`}
+            >
+              {DAY_NAMES[day]}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* 폼 필드 */}
+      <div className="flex flex-wrap gap-3 items-end">
+        <div className="min-w-[140px]">
+          <label className="text-xs font-medium text-slate-600 block mb-1">시간대</label>
+          <select
+            value={slotId}
+            onChange={(e) => onSlotChange(e.target.value)}
+            className="h-9 px-2 border rounded-lg text-sm w-full bg-white"
+          >
+            <option value="">선택</option>
+            {slots.map((s) => (
+              <option key={s.id} value={s.id}>
+                {formatTime(s.time)} {s.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        {stops.length > 0 && (
+          <div className="min-w-[120px]">
+            <label className="text-xs font-medium text-slate-600 block mb-1">정류장</label>
+            <select
+              value={stopId}
+              onChange={(e) => onStopChange(e.target.value)}
+              className="h-9 px-2 border rounded-lg text-sm w-full bg-white"
+            >
+              <option value="">선택 (선택사항)</option>
+              {stops.map((s) => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
+        <div className="flex-1 min-w-[120px]">
+          <label className="text-xs font-medium text-slate-600 block mb-1">메모</label>
+          <Input
+            value={note}
+            onChange={(e) => onNoteChange(e.target.value)}
+            placeholder="추가 메모"
+            className="h-9 text-sm"
+          />
+        </div>
+      </div>
+
+      {/* 액션 버튼 */}
+      <div className="flex items-center justify-between pt-1">
+        <div>
+          {onDelete && (
             <Button
               size="sm"
               variant="ghost"
-              className="h-7 text-xs text-slate-600"
-              onClick={handleCancelAllDeletes}
+              className="h-8 text-xs text-red-500 hover:text-red-600 hover:bg-red-50"
+              onClick={onDelete}
               disabled={saving}
             >
-              취소
+              삭제
             </Button>
-            <Button
-              size="sm"
-              className="h-7 text-xs bg-red-500 hover:bg-red-600 text-white"
-              onClick={handleCommitDeletes}
-              disabled={saving}
-            >
-              {saving ? "삭제 중..." : "삭제 저장"}
-            </Button>
-          </div>
+          )}
         </div>
-      )}
-
-      {batchMode && (
-        <div className="border rounded-lg p-4 bg-slate-50 space-y-3">
-          <div className="flex flex-wrap gap-4 items-end">
-            <div>
-              <label className="text-xs font-medium text-slate-600 block mb-1">방향</label>
-              <select
-                value={batchDir}
-                onChange={(e) => {
-                  setBatchDir(e.target.value as "pickup" | "dropoff");
-                  setBatchSlotId("");
-                }}
-                className="h-8 px-2 border rounded text-xs"
-              >
-                <option value="pickup">등원</option>
-                <option value="dropoff">하원</option>
-              </select>
-            </div>
-            <div>
-              <label className="text-xs font-medium text-slate-600 block mb-1">요일</label>
-              <div className="flex gap-1">
-                {[1, 2, 3, 4, 5].map((day) => (
-                  <button
-                    key={day}
-                    type="button"
-                    onClick={() => toggleBatchDay(day)}
-                    className={`w-8 h-8 rounded text-xs font-medium border ${
-                      batchDays.has(day)
-                        ? "bg-blue-500 text-white border-blue-500"
-                        : "bg-white text-slate-600 border-slate-300 hover:border-blue-300"
-                    }`}
-                  >
-                    {DAY_NAMES[day]}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-4 items-end">
-            <div>
-              <label className="text-xs font-medium text-slate-600 block mb-1">시간대</label>
-              <select
-                value={batchSlotId}
-                onChange={(e) => setBatchSlotId(e.target.value)}
-                className="h-8 px-2 border rounded text-xs"
-              >
-                <option value="">선택</option>
-                {(batchDir === "pickup" ? pickupSlots : dropoffSlots).map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {formatTime(s.time)} {s.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            {busStops.length > 0 && (
-              <div>
-                <label className="text-xs font-medium text-slate-600 block mb-1">정류장</label>
-                <select
-                  value={batchStopId}
-                  onChange={(e) => setBatchStopId(e.target.value)}
-                  className="h-8 px-2 border rounded text-xs"
-                >
-                  <option value="">선택 (선택사항)</option>
-                  {busStops.map((s) => (
-                    <option key={s.id} value={s.id}>{s.name}</option>
-                  ))}
-                </select>
-              </div>
-            )}
-            <div>
-              <label className="text-xs font-medium text-slate-600 block mb-1">메모</label>
-              <Input
-                value={batchNote}
-                onChange={(e) => setBatchNote(e.target.value)}
-                placeholder="추가 메모"
-                className="h-8 text-xs w-40"
-              />
-            </div>
-          </div>
-          <div className="flex justify-end gap-2 pt-1">
-            <Button size="sm" className="h-7 text-xs" onClick={handleBatchSave} disabled={saving}>
-              {saving ? "저장 중..." : "저장"}
-            </Button>
-            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setBatchMode(false)}>
-              취소
-            </Button>
-          </div>
+        <div className="flex gap-2">
+          <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={onCancel} disabled={saving}>
+            취소
+          </Button>
+          <Button size="sm" className="h-8 text-xs" onClick={onSave} disabled={saving}>
+            {saving ? "저장 중..." : "저장"}
+          </Button>
         </div>
-      )}
-
-      {busTimeSlots.length === 0 ? (
-        <p className="text-sm text-slate-400 py-4">
-          시간대가 등록되지 않았습니다. 먼저{" "}
-          <a href="/admin/bus?tab=numbers" className="text-blue-500 underline">승하차 관리</a>
-          에서 설정해 주세요.
-        </p>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b">
-                <th className="text-left py-2 px-2 w-12">요일</th>
-                <th className="text-left py-2 px-2">방향</th>
-                <th className="text-left py-2 px-2">시간대</th>
-                <th className="text-left py-2 px-2">호차</th>
-                <th className="text-left py-2 px-2">정류장</th>
-                <th className="text-left py-2 px-2">메모</th>
-                <th className="text-right py-2 px-2 w-24"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {[1, 2, 3, 4, 5].map((day) =>
-                (["pickup", "dropoff"] as const).map((dir) => {
-                  const def = getDefault(day, dir);
-                  // 삭제 대기 중인 원본 항목 (되돌리기 표시용)
-                  const deletedDef = defaults.find(
-                    (d) => d.day_of_week === day && d.direction === dir && pendingDeletes.has(d.id)
-                  );
-                  const key = `${day}-${dir}`;
-                  const isEditing = editKey === key;
-                  const relevantSlots = dir === "pickup" ? pickupSlots : dropoffSlots;
-
-                  return (
-                    <tr key={key} className={`border-b ${deletedDef ? "bg-red-50/50" : "hover:bg-slate-50"}`}>
-                      {dir === "pickup" && (
-                        <td rowSpan={2} className="py-2 px-2 font-medium text-center align-middle border-r">
-                          {DAY_NAMES[day]}
-                        </td>
-                      )}
-                      <td className="py-2 px-2">
-                        <span className={`text-xs px-1.5 py-0.5 rounded ${
-                          dir === "pickup" ? "bg-green-100 text-green-700" : "bg-orange-100 text-orange-700"
-                        }`}>
-                          {DIR_LABEL[dir]}
-                        </span>
-                      </td>
-                      {deletedDef ? (
-                        <>
-                          <td colSpan={4} className="py-2 px-2">
-                            <span className="text-xs text-red-400 line-through">
-                              {deletedDef.time_slot_time ? formatTime(deletedDef.time_slot_time) : "-"} {deletedDef.bus_label} {deletedDef.bus_stop_name ?? ""}
-                            </span>
-                            <span className="text-xs text-red-500 ml-2">삭제 대기</span>
-                          </td>
-                          <td className="py-2 px-2 text-right">
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-6 text-xs text-blue-500"
-                              onClick={() => handleUndoDelete(deletedDef.id)}
-                            >
-                              되돌리기
-                            </Button>
-                          </td>
-                        </>
-                      ) : isEditing ? (
-                        <>
-                          <td className="py-2 px-2">
-                            <select
-                              value={editSlotId}
-                              onChange={(e) => setEditSlotId(e.target.value)}
-                              className="h-8 px-2 border rounded text-xs w-full"
-                            >
-                              <option value="">선택</option>
-                              {relevantSlots.map((s) => (
-                                <option key={s.id} value={s.id}>
-                                  {formatTime(s.time)} {s.label}
-                                </option>
-                              ))}
-                            </select>
-                          </td>
-                          <td className="py-2 px-2 text-slate-400 text-xs">
-                            —
-                          </td>
-                          <td className="py-2 px-2">
-                            {busStops.length > 0 ? (
-                              <select
-                                value={editStopId}
-                                onChange={(e) => setEditStopId(e.target.value)}
-                                className="h-8 px-2 border rounded text-xs w-full"
-                              >
-                                <option value="">선택</option>
-                                {busStops.map((s) => (
-                                  <option key={s.id} value={s.id}>{s.name}</option>
-                                ))}
-                              </select>
-                            ) : (
-                              <span className="text-xs text-slate-400">정류장 없음</span>
-                            )}
-                          </td>
-                          <td className="py-2 px-2">
-                            <Input
-                              value={editNote}
-                              onChange={(e) => setEditNote(e.target.value)}
-                              placeholder="추가 메모"
-                              className="h-8 text-xs w-full"
-                            />
-                          </td>
-                          <td className="py-2 px-2 text-right space-x-1">
-                            <Button size="sm" className="h-6 text-xs" onClick={() => handleSave(day, dir)} disabled={saving}>
-                              저장
-                            </Button>
-                            <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={() => setEditKey(null)}>
-                              취소
-                            </Button>
-                          </td>
-                        </>
-                      ) : (
-                        <>
-                          <td className="py-2 px-2 text-slate-600">
-                            {def ? (
-                              <>
-                                {def.time_slot_time ? formatTime(def.time_slot_time) : "-"}
-                                {def.time_slot_label && <span className="text-xs text-slate-400 ml-1">{def.time_slot_label}</span>}
-                              </>
-                            ) : (
-                              <span className="text-slate-300">-</span>
-                            )}
-                          </td>
-                          <td className="py-2 px-2 text-slate-600">
-                            {def ? def.bus_label : <span className="text-slate-300">-</span>}
-                          </td>
-                          <td className="py-2 px-2 text-slate-600">
-                            {def?.bus_stop_name ? (
-                              <span className="text-xs">{def.bus_stop_name}</span>
-                            ) : (
-                              <span className="text-slate-300">-</span>
-                            )}
-                          </td>
-                          <td className="py-2 px-2 text-slate-600">
-                            {def?.note ? <span className="text-xs">{def.note}</span> : <span className="text-slate-300">-</span>}
-                          </td>
-                          <td className="py-2 px-2 text-right space-x-1">
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-6 text-xs"
-                              onClick={() => {
-                                setEditKey(key);
-                                setEditSlotId(def?.bus_time_slot_id ?? "");
-                                setEditStopId(def?.bus_stop_id ?? "");
-                                setEditNote(def?.note ?? "");
-                              }}
-                            >
-                              {def ? "수정" : "설정"}
-                            </Button>
-                            {def && (
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-6 text-xs text-red-500"
-                                onClick={() => handleMarkDelete(def.id)}
-                                disabled={saving}
-                              >
-                                삭제
-                              </Button>
-                            )}
-                          </td>
-                        </>
-                      )}
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
+      </div>
     </div>
   );
 }

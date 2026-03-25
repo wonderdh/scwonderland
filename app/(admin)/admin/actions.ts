@@ -182,4 +182,5 @@ export {
   listAvailableStudents,
   bulkUpdateEnrollmentDays,
   listAfterschoolStudentIdsByDay,
+  getStudentAfterschoolDetail,
 } from "./actions/afterschool-actions";

@@ -210,6 +210,18 @@ export async function getStudentAfterschoolDays(
   return (data ?? []).map((d) => d.day_of_week).sort();
 }
 
+/** 학생의 방과후 등록 정보 (요일 + 2교시 여부) */
+export async function getStudentAfterschoolDetail(
+  studentProfileId: string,
+): Promise<{ day_of_week: number; second_period: boolean }[]> {
+  const supabase = createAdminClient();
+  const { data } = await supabase
+    .from("afterschool_enrollments")
+    .select("day_of_week, second_period")
+    .eq("student_profile_id", studentProfileId);
+  return (data ?? []).sort((a, b) => a.day_of_week - b.day_of_week);
+}
+
 // ── 일괄 요일/교시 저장 ──
 
 export async function bulkUpdateEnrollmentDays(
