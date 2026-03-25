@@ -56,6 +56,18 @@ const links = [
     ),
   },
   {
+    title: "Google Drive",
+    description: "원더랜드 공유 드라이브",
+    href: "https://drive.google.com/drive/folders/1JSEPUjUkYrwmrq8SlOLbyEiCypSThyuo?usp=sharing",
+    color: "border-yellow-500 bg-yellow-50 hover:bg-yellow-100",
+    iconColor: "text-yellow-600",
+    icon: (
+      <svg className="h-8 w-8" fill="currentColor" viewBox="0 0 24 24">
+        <path d="M7.71 3.5L1.15 15l3.43 5.96h6.58l3.43-5.96L8.03 3.5H7.71zm.79 1.72l5.27 9.14H3.23l5.27-9.14zm7.21-1.72L9.15 15l3.43 5.96h6.58L22.59 15l-6.56-11.5h-.32zm.79 1.72l5.27 9.14h-10.54l5.27-9.14z" />
+      </svg>
+    ),
+  },
+  {
     title: "CMS Kids",
     description: "CMS 에듀케이션 키즈",
     href: "https://cmskids.cmsedu.co.kr/",
