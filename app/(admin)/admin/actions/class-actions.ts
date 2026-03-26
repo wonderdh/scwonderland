@@ -58,10 +58,18 @@ export async function listClassesWithDetails(): Promise<ClassWithDetails[]> {
     teachersByClass.set(ct.class_id, list);
   }
 
-  const { data: members } = await supabase
-    .from("class_students")
-    .select("class_id");
+  const [{ data: members }, { data: schedules }] = await Promise.all([
+    supabase.from("class_students").select("class_id"),
+    supabase.from("class_schedules").select("class_id"),
+  ]);
   const countByClass = (members ?? []).reduce(
+    (acc, row) => {
+      acc[row.class_id] = (acc[row.class_id] ?? 0) + 1;
+      return acc;
+    },
+    {} as Record<string, number>
+  );
+  const scheduleCountByClass = (schedules ?? []).reduce(
     (acc, row) => {
       acc[row.class_id] = (acc[row.class_id] ?? 0) + 1;
       return acc;
@@ -75,6 +83,7 @@ export async function listClassesWithDetails(): Promise<ClassWithDetails[]> {
     color_index: c.color_index ?? null,
     teachers: teachersByClass.get(c.id) ?? [],
     student_count: countByClass[c.id] ?? 0,
+    schedule_count: scheduleCountByClass[c.id] ?? 0,
     created_at: c.created_at,
     updated_at: c.updated_at,
   }));
@@ -131,6 +140,7 @@ export async function getClassWithStudents(
     color_index: classRow.color_index ?? null,
     teachers,
     student_count: studentCount ?? 0,
+    schedule_count: 0,
     created_at: classRow.created_at,
     updated_at: classRow.updated_at,
   };

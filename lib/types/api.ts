@@ -36,6 +36,7 @@ export type ClassWithDetails = {
   color_index: number | null;
   teachers: ClassTeacherInfo[];
   student_count: number;
+  schedule_count: number;
   created_at: string;
   updated_at: string;
 };

@@ -130,6 +130,7 @@ export function ClassesManager({
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [groupFilter, setGroupFilter] = useState("all");
+  const [activeOnly, setActiveOnly] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [editClass, setEditClass] = useState<ClassWithDetails | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ClassWithDetails | null>(null);
@@ -216,6 +217,7 @@ export function ClassesManager({
       groupFilter === "all"
         ? nonAfterschool
         : nonAfterschool.filter((c) => (c.group_label ?? "") === groupFilter);
+    if (activeOnly) result = result.filter((c) => c.schedule_count > 0);
     if (!search.trim()) return result;
     const q = search.trim().toLowerCase();
     return result.filter((c) => {
@@ -229,7 +231,7 @@ export function ClassesManager({
           (s.student_number && s.student_number.toLowerCase().includes(q))
       );
     });
-  }, [initialClasses, search, groupFilter, studentsByClassId]);
+  }, [initialClasses, search, groupFilter, activeOnly, studentsByClassId]);
 
   const groupedFilteredClasses = useMemo(() => {
     const map = new Map<string, ClassWithDetails[]>([
@@ -507,6 +509,17 @@ export function ClassesManager({
                 <option value="오후반">☁️ 오후반</option>
                 <option value="">미지정</option>
               </select>
+              <button
+                type="button"
+                onClick={() => setActiveOnly((v) => !v)}
+                className={`shrink-0 rounded-lg border px-2.5 py-1.5 text-sm transition-colors ${
+                  activeOnly
+                    ? "border-emerald-400 bg-emerald-50 text-emerald-700"
+                    : "border-input bg-background text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                활성 수업만
+              </button>
             </div>
             <p className="text-xs text-muted-foreground">
               {rightMode === "students"
@@ -518,7 +531,7 @@ export function ClassesManager({
           <div className="space-y-2 max-h-[calc(100vh-240px)] overflow-y-auto pr-1">
             {filteredClasses.length === 0 ? (
               <div className="rounded-xl border bg-muted/30 p-8 text-center text-sm text-muted-foreground">
-                {search.trim() || groupFilter !== "all" ? "검색 결과가 없습니다." : "등록된 반이 없습니다. 반 추가로 생성하세요."}
+                {search.trim() || groupFilter !== "all" || activeOnly ? "검색 결과가 없습니다." : "등록된 반이 없습니다. 반 추가로 생성하세요."}
               </div>
             ) : (
               GROUP_ORDER.map((group) => {
