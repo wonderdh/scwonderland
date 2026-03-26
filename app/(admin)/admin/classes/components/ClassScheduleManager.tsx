@@ -152,6 +152,8 @@ export function ClassScheduleManager({
 
   const nativeTeachers = teachers.filter((t) => t.teacher_type === "native");
   const koreanTeachers = teachers.filter((t) => t.teacher_type === "korean");
+  const toolTeacherName = teachers.find((t) => t.id === toolTeacherId)?.name ?? null;
+  const toolTeacherColor = toolTeacherId ? teacherColorMap.get(toolTeacherId) : null;
 
   const sortedTeachers = useMemo(
     () => [...teachers].sort((a, b) => a.name.localeCompare(b.name)),
@@ -214,24 +216,24 @@ export function ClassScheduleManager({
     if (pendingChanges.size === 0 || !selectedClassId) return;
     setSaving(true);
     setError("");
-    let hasError = false;
-    for (const [key, pending] of pendingChanges) {
-      const [periodId, dayStr] = key.split("|");
-      const result = await addSingleClassSchedule(
-        selectedClassId,
-        periodId,
-        parseInt(dayStr, 10),
-        pending.teacherId,
-        pending.label,
-        pending.textbookId,
-      );
-      if (result.error) {
-        setError(result.error);
-        hasError = true;
-        break;
-      }
-    }
-    if (!hasError) {
+    const entries = [...pendingChanges.entries()];
+    const results = await Promise.all(
+      entries.map(([key, pending]) => {
+        const [periodId, dayStr] = key.split("|");
+        return addSingleClassSchedule(
+          selectedClassId,
+          periodId,
+          parseInt(dayStr, 10),
+          pending.teacherId,
+          pending.label,
+          pending.textbookId,
+        );
+      }),
+    );
+    const firstError = results.find((r) => r.error);
+    if (firstError) {
+      setError(firstError.error!);
+    } else {
       setPendingChanges(new Map());
       await loadSchedules(selectedClassId);
       router.refresh();
@@ -438,7 +440,7 @@ export function ClassScheduleManager({
                   이 그룹에 등록된 교시가 없습니다.
                 </div>
               ) : (
-                <div className="overflow-x-auto rounded-xl border shadow-sm">
+                <div className={`overflow-x-auto rounded-xl border shadow-sm transition-opacity ${saving ? "opacity-40 pointer-events-none" : ""}`}>
                   <table className="w-full text-sm border-collapse">
                     <thead>
                       <tr className="bg-muted/50 border-b">
@@ -516,13 +518,21 @@ export function ClassScheduleManager({
                                   type="button"
                                   onClick={() => handleCellToggle(period.id, day)}
                                   disabled={saving}
-                                  className={`w-full rounded-lg py-3 text-xs transition-colors ${
+                                  className={`w-full rounded-lg py-2 text-xs transition-colors ${
                                     pending
-                                      ? "bg-emerald-100 text-emerald-700 font-medium"
+                                      ? "bg-emerald-50 font-medium"
                                       : "text-muted-foreground/30 hover:bg-muted/50"
                                   }`}
                                 >
-                                  {pending ? "✓" : "-"}
+                                  {pending ? (
+                                    toolTeacherName && toolTeacherColor ? (
+                                      <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium ${toolTeacherColor.bg} ${toolTeacherColor.text}`}>
+                                        {toolTeacherName}
+                                      </span>
+                                    ) : (
+                                      <span className="text-emerald-700">✓</span>
+                                    )
+                                  ) : "-"}
                                 </button>
                               </td>
                             );

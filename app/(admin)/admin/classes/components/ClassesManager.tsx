@@ -130,6 +130,7 @@ export function ClassesManager({
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [groupFilter, setGroupFilter] = useState("all");
+  const [teacherFilter, setTeacherFilter] = useState("");
   const [activeOnly, setActiveOnly] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [editClass, setEditClass] = useState<ClassWithDetails | null>(null);
@@ -218,6 +219,7 @@ export function ClassesManager({
         ? nonAfterschool
         : nonAfterschool.filter((c) => (c.group_label ?? "") === groupFilter);
     if (activeOnly) result = result.filter((c) => c.schedule_count > 0);
+    if (teacherFilter) result = result.filter((c) => c.teachers.some((t) => t.profile_id === teacherFilter));
     if (!search.trim()) return result;
     const q = search.trim().toLowerCase();
     return result.filter((c) => {
@@ -231,7 +233,7 @@ export function ClassesManager({
           (s.student_number && s.student_number.toLowerCase().includes(q))
       );
     });
-  }, [initialClasses, search, groupFilter, activeOnly, studentsByClassId]);
+  }, [initialClasses, search, groupFilter, teacherFilter, activeOnly, studentsByClassId]);
 
   const groupedFilteredClasses = useMemo(() => {
     const map = new Map<string, ClassWithDetails[]>([
@@ -509,6 +511,27 @@ export function ClassesManager({
                 <option value="오후반">☁️ 오후반</option>
                 <option value="">미지정</option>
               </select>
+              <select
+                value={teacherFilter}
+                onChange={(e) => setTeacherFilter(e.target.value)}
+                className="rounded-lg border border-input px-2.5 py-1.5 text-sm text-foreground bg-background shrink-0"
+              >
+                <option value="">선생님 전체</option>
+                {teachers.filter((t) => t.teacher_type === "native").length > 0 && (
+                  <optgroup label="원어민">
+                    {teachers.filter((t) => t.teacher_type === "native").map((t) => (
+                      <option key={t.id} value={t.id}>{t.name}</option>
+                    ))}
+                  </optgroup>
+                )}
+                {teachers.filter((t) => t.teacher_type === "korean").length > 0 && (
+                  <optgroup label="한국인">
+                    {teachers.filter((t) => t.teacher_type === "korean").map((t) => (
+                      <option key={t.id} value={t.id}>{t.name}</option>
+                    ))}
+                  </optgroup>
+                )}
+              </select>
               <button
                 type="button"
                 onClick={() => setActiveOnly((v) => !v)}
@@ -531,7 +554,7 @@ export function ClassesManager({
           <div className="space-y-2 max-h-[calc(100vh-240px)] overflow-y-auto pr-1">
             {filteredClasses.length === 0 ? (
               <div className="rounded-xl border bg-muted/30 p-8 text-center text-sm text-muted-foreground">
-                {search.trim() || groupFilter !== "all" || activeOnly ? "검색 결과가 없습니다." : "등록된 반이 없습니다. 반 추가로 생성하세요."}
+                {search.trim() || groupFilter !== "all" || teacherFilter || activeOnly ? "검색 결과가 없습니다." : "등록된 반이 없습니다. 반 추가로 생성하세요."}
               </div>
             ) : (
               GROUP_ORDER.map((group) => {
