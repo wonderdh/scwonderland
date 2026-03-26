@@ -20,6 +20,7 @@ import { StudentAttendanceTab } from "./components/StudentAttendanceTab";
 import { StudentBusTab } from "./components/StudentBusTab";
 import { StudentTimetableTab } from "./components/StudentTimetableTab";
 import { TrashView } from "../components/TrashView";
+import { BulkPasswordResetDialog } from "./components/BulkPasswordResetDialog";
 
 const VALID_TABS: StudentTabId[] = ["info", "learning", "report", "textbook", "timetable", "attendance", "bus"];
 
@@ -58,10 +59,13 @@ export default async function AdminStudentsPage({
               <AddStudentForm />
             </section>
             <section>
-              <h2 className="text-base font-semibold text-slate-800 mb-3">
-                학생 목록
-                <span className="ml-2 text-sm font-normal text-slate-400">{users.length}명</span>
-              </h2>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-base font-semibold text-slate-800">
+                  학생 목록
+                  <span className="ml-2 text-sm font-normal text-slate-400">{users.length}명</span>
+                </h2>
+                <BulkPasswordResetDialog users={users} />
+              </div>
               <StudentGroupedList users={users} onUpdate={updateStudentProfile} onDelete={deleteUserById} />
             </section>
           </>

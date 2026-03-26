@@ -571,6 +571,31 @@ export async function resetUserPassword(
   return {};
 }
 
+export async function bulkResetStudentPasswords(
+  students: { id: string; password: string }[]
+): Promise<{ success: number; failed: number; error?: string }> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return { success: 0, failed: 0, error: auth.error };
+
+  if (!students.length) return { success: 0, failed: 0 };
+
+  const supabase = createAdminClient();
+  let success = 0;
+  let failed = 0;
+
+  for (const { id, password } of students) {
+    const { error } = await supabase.auth.admin.updateUserById(id, { password });
+    if (error) {
+      console.error("[bulkResetStudentPasswords]", error.message, { id });
+      failed++;
+    } else {
+      success++;
+    }
+  }
+
+  return { success, failed };
+}
+
 export async function listAllStudents(): Promise<
   { id: string; korean_name: string | null; english_name: string | null; student_number: string | null; age: number | null }[]
 > {

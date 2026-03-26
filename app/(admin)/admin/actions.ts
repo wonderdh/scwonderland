@@ -17,6 +17,7 @@ export {
   updateStudentProfile,
   updateTeacherProfile,
   resetUserPassword,
+  bulkResetStudentPasswords,
   listAllStudents,
 } from "./actions/user-actions";
 

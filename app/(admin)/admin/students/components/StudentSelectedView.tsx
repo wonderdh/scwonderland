@@ -285,6 +285,19 @@ export function StudentInfoCard({
                 className="flex-1"
               />
               <Button
+                variant="outline"
+                size="sm"
+                className="shrink-0"
+                type="button"
+                onClick={() => {
+                  const prefix = user.email?.split("@")[0] ?? "";
+                  const rand = Math.floor(1000 + Math.random() * 9000);
+                  setNewPassword(`${prefix}${rand}`);
+                }}
+              >
+                자동 생성
+              </Button>
+              <Button
                 size="sm"
                 className="bg-amber-600 hover:bg-amber-500 text-white shrink-0"
                 onClick={handleResetPassword}
