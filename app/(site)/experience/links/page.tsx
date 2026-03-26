@@ -68,9 +68,9 @@ const links = [
     ),
   },
   {
-    title: "CMS Kids",
-    description: "CMS 에듀케이션 키즈",
-    href: "https://cmskids.cmsedu.co.kr/",
+    title: "ucrea",
+    description: "유크리에이티브 학습 플랫폼",
+    href: "https://ucrea.co.kr/",
     color: "border-emerald-500 bg-emerald-50 hover:bg-emerald-100",
     iconColor: "text-emerald-600",
     icon: (
