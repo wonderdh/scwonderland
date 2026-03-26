@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { verifyAdmin, verifyAuthenticated } from "./auth-helpers";
+import { logger } from "@/lib/logger";
 import type { ClassWithDetails, ClassStudentRow, ClassTeacherInfo, AdminStudentClassItem } from "@/lib/types";
 
 export async function listClassesWithDetails(): Promise<ClassWithDetails[]> {
@@ -300,6 +301,7 @@ export async function createClass(
     }
   }
 
+  logger.info("[createClass]", "반 생성 완료", { id: data.id, name: n, groupLabel });
   revalidatePath("/admin/classes");
 
   // 유치부 자동 배정: 모든 교시×요일 슬롯을 빈 상태로 생성
@@ -372,6 +374,7 @@ export async function updateClass(
     }
   }
 
+  logger.info("[updateClass]", "반 수정 완료", { classId, name: n, groupLabel });
   revalidatePath("/admin/classes");
 
   // 유치부 자동 배정: 비어있는 슬롯만 추가 (기존 배정 보존)
@@ -427,6 +430,7 @@ export async function deleteClass(classId: string): Promise<{ error?: string }> 
     console.error("[deleteClass]", error.message, { classId });
     return { error: error.message };
   }
+  logger.info("[deleteClass]", "반 삭제 완료", { classId });
   revalidatePath("/admin/classes");
   return {};
 }
@@ -466,6 +470,7 @@ export async function addStudentToClass(
     console.error("[addStudentToClass]", error.message, { classId, studentProfileId });
     return { error: error.message };
   }
+  logger.info("[addStudentToClass]", "학생 반 배정", { classId, studentProfileId });
   revalidatePath("/admin/classes");
   return {};
 }
@@ -501,6 +506,7 @@ export async function removeStudentFromClass(
     console.error("[removeStudentFromClass]", error.message, { classStudentId });
     return { error: error.message };
   }
+  logger.info("[removeStudentFromClass]", "학생 반 제외", { classStudentId });
   revalidatePath("/admin/classes");
   return {};
 }

@@ -152,8 +152,6 @@ export function ClassScheduleManager({
 
   const nativeTeachers = teachers.filter((t) => t.teacher_type === "native");
   const koreanTeachers = teachers.filter((t) => t.teacher_type === "korean");
-  const toolTeacherName = teachers.find((t) => t.id === toolTeacherId)?.name ?? null;
-  const toolTeacherColor = toolTeacherId ? teacherColorMap.get(toolTeacherId) : null;
 
   const sortedTeachers = useMemo(
     () => [...teachers].sort((a, b) => a.name.localeCompare(b.name)),
@@ -164,6 +162,9 @@ export function ClassScheduleManager({
     () => buildTeacherColorMap(sortedTeachers),
     [sortedTeachers],
   );
+
+  const toolTeacherName = teachers.find((t) => t.id === toolTeacherId)?.name ?? null;
+  const toolTeacherColor = toolTeacherId ? teacherColorMap.get(toolTeacherId) : null;
 
   const loadSchedules = useCallback(async (classId: string) => {
     setLoading(true);

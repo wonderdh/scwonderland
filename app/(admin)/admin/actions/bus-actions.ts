@@ -3,6 +3,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { normalizeEmail } from "@/lib/auth-utils";
 import { verifyAdmin, verifyAuthenticated } from "./auth-helpers";
+import { logger } from "@/lib/logger";
 import type {
   BusNumber,
   BusTimeSlot,
@@ -796,6 +797,7 @@ export async function boardBusStudent(
     console.error("[boardBusStudent]", error.message);
     return { error: error.message };
   }
+  logger.info("[boardBusStudent]", "탑승 처리", { studentProfileId, checkDate, direction });
   return {};
 }
 
@@ -873,6 +875,7 @@ export async function checkBusStudent(
     console.error("[checkBusStudent]", error.message);
     return { error: error.message };
   }
+  logger.info("[checkBusStudent]", "하차 체크", { studentProfileId, checkDate, direction });
   return {};
 }
 
@@ -1034,6 +1037,13 @@ export async function batchBusCheckRecord(
     }
   }
 
+  logger.info("[batchBusCheckRecord]", "배치 처리 완료", {
+    checkDate,
+    board: boardItems.length,
+    check: checkItems.length,
+    unboard: unboardItems.length,
+    uncheck: uncheckItems.length,
+  });
   return {};
 }
 
@@ -1413,6 +1423,7 @@ export async function approveChangeRequest(
     console.error("[approveChangeRequest]", error.message);
     return { error: error.message };
   }
+  logger.info("[approveChangeRequest]", "변경 요청 승인", { requestId, reviewerId });
   return {};
 }
 
@@ -1438,6 +1449,7 @@ export async function rejectChangeRequest(
     console.error("[rejectChangeRequest]", error.message);
     return { error: error.message };
   }
+  logger.info("[rejectChangeRequest]", "변경 요청 거절", { requestId, reviewerId });
   return {};
 }
 

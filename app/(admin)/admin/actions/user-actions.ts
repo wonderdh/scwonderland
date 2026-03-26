@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { normalizeEmail } from "@/lib/auth-utils";
 import { revalidatePath } from "next/cache";
 import { verifyAdmin } from "./auth-helpers";
+import { logger } from "@/lib/logger";
 import type { UserWithProfile } from "@/lib/types";
 
 export async function createStudent(
@@ -55,6 +56,7 @@ export async function createStudent(
     await supabase.from("students").update(studentUpdate).eq("profile_id", data.user.id);
   }
 
+  logger.info("[createStudent]", "학생 생성 완료", { email, korean_name, group_type });
   revalidatePath("/admin", "layout");
   return {};
 }
@@ -107,6 +109,7 @@ export async function createTeacher(
       .eq("profile_id", data.user.id);
   }
 
+  logger.info("[createTeacher]", "교사 생성 완료", { email, name, teacher_type });
   revalidatePath("/admin", "layout");
   return {};
 }
@@ -275,6 +278,8 @@ export async function deleteUserById(
   const id = (formData.get("id") as string)?.trim();
   if (!id) return { error: "id가 없습니다." };
 
+  logger.info("[deleteUserById]", "사용자 삭제 시작", { id });
+
   const supabase = createAdminClient();
 
   // 1. 반 담임 배정 삭제 (교사인 경우)
@@ -338,6 +343,7 @@ export async function deleteUserById(
     console.error("[deleteUserById:ban]", banError.message, { id });
   }
 
+  logger.info("[deleteUserById]", "사용자 삭제 완료", { id });
   revalidatePath("/admin", "layout");
   return {};
 }
@@ -369,6 +375,7 @@ export async function restoreUser(
     console.error("[restoreUser:unban]", unbanError.message, { userId });
   }
 
+  logger.info("[restoreUser]", "사용자 복구 완료", { userId });
   revalidatePath("/admin", "layout");
   return {};
 }
@@ -388,6 +395,7 @@ export async function permanentlyDeleteUser(
     console.error("[permanentlyDeleteUser]", error.message, { userId });
     return { error: error.message };
   }
+  logger.info("[permanentlyDeleteUser]", "사용자 영구 삭제 완료", { userId });
   revalidatePath("/admin", "layout");
   return {};
 }

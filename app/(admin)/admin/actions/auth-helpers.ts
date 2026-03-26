@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { logger } from "@/lib/logger";
 
 /**
  * 관리자 권한 검증: 인증 + role=admin 확인
@@ -13,7 +14,10 @@ export async function verifyAdmin(): Promise<
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { error: "인증이 필요합니다." };
+  if (!user) {
+    logger.warn("[verifyAdmin]", "인증 없이 접근 시도");
+    return { error: "인증이 필요합니다." };
+  }
 
   const { data: profile } = await supabase
     .from("profiles")
@@ -22,6 +26,7 @@ export async function verifyAdmin(): Promise<
     .single();
 
   if (profile?.role !== "admin") {
+    logger.warn("[verifyAdmin]", "관리자 권한 없음", { userId: user.id, role: profile?.role ?? "없음" });
     return { error: "관리자만 접근 가능합니다." };
   }
   return { userId: user.id };
@@ -38,6 +43,9 @@ export async function verifyAuthenticated(): Promise<
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { error: "인증이 필요합니다." };
+  if (!user) {
+    logger.warn("[verifyAuthenticated]", "인증 없이 접근 시도");
+    return { error: "인증이 필요합니다." };
+  }
   return { userId: user.id };
 }

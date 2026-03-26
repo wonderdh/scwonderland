@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { verifyAuthenticated, verifyAdmin } from "./auth-helpers";
+import { logger } from "@/lib/logger";
 import type { AttendanceRecord, AttendanceStats, StudentWithAttendance } from "@/lib/types";
 
 /** 학생의 출결 기록 목록 (최신순) */
@@ -70,6 +71,7 @@ export async function recordAttendance(
     return { error: error.message };
   }
 
+  logger.info("[recordAttendance]", "출결 기록", { studentProfileId, attendanceDate, status });
   // 버스 연동은 DB 트리거(after_attendance_bus_sync)가 자동 처리
   revalidatePath("/admin/students");
   return {};

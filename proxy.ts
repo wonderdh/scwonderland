@@ -38,8 +38,9 @@ export async function proxy(request: NextRequest) {
   // 세션 갱신 (실패해도 요청은 그대로 통과시키기)
   try {
     await supabase.auth.getUser();
-  } catch {
+  } catch (e) {
     // Supabase 422 등 에러 시에도 페이지는 정상 응답
+    console.error("[proxy] 세션 갱신 실패", { pathname, error: e instanceof Error ? e.message : String(e) });
   }
 
   return response;
