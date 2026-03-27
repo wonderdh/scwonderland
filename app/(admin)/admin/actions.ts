@@ -39,6 +39,7 @@ export {
   getClassLinkedCounts,
   addStudentToClass,
   removeStudentFromClass,
+  batchUpdateClassStudents,
   listTeachersForSelect,
   listStudentsNotInClass,
 } from "./actions/class-actions";
@@ -55,6 +56,7 @@ export {
   listTextbooks,
   getClassTextbookProgress,
   batchUpdateProgress,
+  batchUpdateClassTextbooks,
   getTextbookLinkedCounts,
 } from "./actions/textbook-actions";
 

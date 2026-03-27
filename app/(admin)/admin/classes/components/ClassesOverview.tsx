@@ -70,14 +70,19 @@ function TeacherBadges({ teachers }: { teachers: ClassTeacherInfo[] }) {
   );
 }
 
+type TeacherOption = { id: string; name: string; teacher_type: "korean" | "native" };
+
 export function ClassesOverview({
   classes,
   allClassStudents,
+  teachers,
 }: {
   classes: ClassWithDetails[];
   allClassStudents: FlatClassStudent[];
+  teachers: TeacherOption[];
 }) {
   const [groupFilter, setGroupFilter] = useState("all");
+  const [teacherFilter, setTeacherFilter] = useState("");
 
   // 방과후 반 제외 (방과후 관리 페이지에서 별도 관리)
   const filteredOutClasses = useMemo(
@@ -96,10 +101,13 @@ export function ClassesOverview({
   }, [allClassStudents]);
 
   const grouped = useMemo(() => {
-    const filtered =
+    let filtered =
       groupFilter === "all"
         ? filteredOutClasses
         : filteredOutClasses.filter((c) => (c.group_label ?? "") === groupFilter);
+    if (teacherFilter) {
+      filtered = filtered.filter((c) => c.teachers.some((t) => t.profile_id === teacherFilter));
+    }
     const map = new Map<GroupKey, ClassWithDetails[]>();
     for (const g of GROUP_ORDER) map.set(g, []);
     for (const c of filtered) {
@@ -107,7 +115,7 @@ export function ClassesOverview({
       map.get(key)!.push(c);
     }
     return map;
-  }, [filteredOutClasses, groupFilter]);
+  }, [filteredOutClasses, groupFilter, teacherFilter]);
 
   const activeGroups = GROUP_ORDER.filter((g) => (grouped.get(g) ?? []).length > 0);
 
@@ -126,9 +134,8 @@ export function ClassesOverview({
 
   return (
     <div className="space-y-6">
-      {/* 그룹 필터 드롭다운 */}
-      <div className="flex items-center gap-3">
-        <label className="text-sm font-medium text-muted-foreground shrink-0">그룹 필터</label>
+      {/* 필터 */}
+      <div className="flex items-center gap-3 flex-wrap">
         <select
           value={groupFilter}
           onChange={(e) => setGroupFilter(e.target.value)}
@@ -143,6 +150,27 @@ export function ClassesOverview({
               </option>
             );
           })}
+        </select>
+        <select
+          value={teacherFilter}
+          onChange={(e) => setTeacherFilter(e.target.value)}
+          className="rounded-lg border border-input px-3 py-1.5 text-sm text-foreground bg-background"
+        >
+          <option value="">선생님 전체</option>
+          {teachers.filter((t) => t.teacher_type === "native").length > 0 && (
+            <optgroup label="원어민">
+              {teachers.filter((t) => t.teacher_type === "native").map((t) => (
+                <option key={t.id} value={t.id}>{t.name}</option>
+              ))}
+            </optgroup>
+          )}
+          {teachers.filter((t) => t.teacher_type === "korean").length > 0 && (
+            <optgroup label="한국인">
+              {teachers.filter((t) => t.teacher_type === "korean").map((t) => (
+                <option key={t.id} value={t.id}>{t.name}</option>
+              ))}
+            </optgroup>
+          )}
         </select>
       </div>
 

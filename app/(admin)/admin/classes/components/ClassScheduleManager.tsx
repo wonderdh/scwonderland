@@ -96,6 +96,7 @@ export function ClassScheduleManager({
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [groupFilter, setGroupFilter] = useState("all");
+  const [teacherFilter, setTeacherFilter] = useState("");
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -108,6 +109,8 @@ export function ClassScheduleManager({
 
   // Pending changes: key = `${periodId}|${day}`
   const [pendingChanges, setPendingChanges] = useState<Map<string, PendingCell>>(new Map());
+  // Pending deletes: scheduleIds marked for deletion (applied on save)
+  const [pendingDeletes, setPendingDeletes] = useState<Set<string>>(new Set());
 
   // Existing schedules: key = `${periodId}_${day}`
   const [existingCells, setExistingCells] = useState<Map<string, ScheduleCell>>(new Map());
@@ -129,6 +132,7 @@ export function ClassScheduleManager({
       groupFilter === "all"
         ? nonAfterschool
         : nonAfterschool.filter((c) => (c.group_label ?? "") === groupFilter);
+    if (teacherFilter) result = result.filter((c) => c.teachers.some((t) => t.profile_id === teacherFilter));
     if (!search.trim()) return result;
     const q = search.trim().toLowerCase();
     return result.filter(
@@ -136,7 +140,7 @@ export function ClassScheduleManager({
         c.name.toLowerCase().includes(q) ||
         (c.group_label && c.group_label.toLowerCase().includes(q)),
     );
-  }, [classes, search, groupFilter]);
+  }, [classes, search, groupFilter, teacherFilter]);
 
   const groupedFilteredClasses = useMemo(() => {
     const map = new Map<string, ClassWithDetails[]>([
@@ -194,6 +198,7 @@ export function ClassScheduleManager({
     setSelectedClassId(classId);
     setError("");
     setPendingChanges(new Map());
+    setPendingDeletes(new Set());
   }
 
   function handleCellToggle(periodId: string, day: number) {
@@ -214,46 +219,65 @@ export function ClassScheduleManager({
   }
 
   async function handleSave() {
-    if (pendingChanges.size === 0 || !selectedClassId) return;
+    if (pendingChanges.size === 0 && pendingDeletes.size === 0) return;
+    if (!selectedClassId) return;
     setSaving(true);
     setError("");
-    const entries = [...pendingChanges.entries()];
-    const results = await Promise.all(
-      entries.map(([key, pending]) => {
-        const [periodId, dayStr] = key.split("|");
-        return addSingleClassSchedule(
-          selectedClassId,
-          periodId,
-          parseInt(dayStr, 10),
-          pending.teacherId,
-          pending.label,
-          pending.textbookId,
-        );
-      }),
-    );
-    const firstError = results.find((r) => r.error);
-    if (firstError) {
-      setError(firstError.error!);
-    } else {
-      setPendingChanges(new Map());
-      await loadSchedules(selectedClassId);
-      router.refresh();
+
+    // 삭제 먼저 처리
+    if (pendingDeletes.size > 0) {
+      const deleteResults = await Promise.all(
+        [...pendingDeletes].map((id) => deleteClassSchedule(id)),
+      );
+      const deleteError = deleteResults.find((r) => r.error);
+      if (deleteError) {
+        setError(deleteError.error!);
+        setSaving(false);
+        return;
+      }
     }
+
+    // 추가 처리
+    if (pendingChanges.size > 0) {
+      const entries = [...pendingChanges.entries()];
+      const results = await Promise.all(
+        entries.map(([key, pending]) => {
+          const [periodId, dayStr] = key.split("|");
+          return addSingleClassSchedule(
+            selectedClassId,
+            periodId,
+            parseInt(dayStr, 10),
+            pending.teacherId,
+            pending.label,
+            pending.textbookId,
+          );
+        }),
+      );
+      const firstError = results.find((r) => r.error);
+      if (firstError) {
+        setError(firstError.error!);
+        setSaving(false);
+        return;
+      }
+    }
+
+    setPendingChanges(new Map());
+    setPendingDeletes(new Set());
+    await loadSchedules(selectedClassId);
+    router.refresh();
     setSaving(false);
   }
 
-  async function handleDeleteCell(scheduleId: string) {
-    if (!confirm("이 배정을 삭제하시겠습니까?")) return;
-    setError("");
-    const result = await deleteClassSchedule(scheduleId);
-    if (result.error) {
-      setError(result.error);
-      return;
-    }
-    if (selectedClassId) {
-      await loadSchedules(selectedClassId);
-      router.refresh();
-    }
+  function handleDeleteCell(scheduleId: string) {
+    setPendingDeletes((prev) => {
+      const next = new Set(prev);
+      if (next.has(scheduleId)) {
+        next.delete(scheduleId); // 취소
+      } else {
+        next.add(scheduleId);
+      }
+      return next;
+    });
   }
 
   return (
@@ -280,6 +304,27 @@ export function ClassScheduleManager({
               <option value="">미지정</option>
             </select>
           </div>
+          <select
+            value={teacherFilter}
+            onChange={(e) => setTeacherFilter(e.target.value)}
+            className="w-full rounded-lg border border-input px-2.5 py-2 text-sm text-foreground bg-background"
+          >
+            <option value="">선생님 전체</option>
+            {nativeTeachers.length > 0 && (
+              <optgroup label="원어민">
+                {nativeTeachers.map((t) => (
+                  <option key={t.id} value={t.id}>{t.name}</option>
+                ))}
+              </optgroup>
+            )}
+            {koreanTeachers.length > 0 && (
+              <optgroup label="한국인">
+                {koreanTeachers.map((t) => (
+                  <option key={t.id} value={t.id}>{t.name}</option>
+                ))}
+              </optgroup>
+            )}
+          </select>
           <div className="max-h-[32rem] overflow-y-auto space-y-1.5 rounded-xl border p-2">
             {filteredClasses.length === 0 ? (
               <p className="text-xs text-muted-foreground text-center py-4">
@@ -311,10 +356,29 @@ export function ClassScheduleManager({
                             : "hover:bg-muted/50 text-foreground"
                         }`}
                       >
-                        <span className="font-medium">{c.name}</span>
-                        <span className="ml-2 text-xs opacity-70">
-                          {c.student_count}명
-                        </span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-medium">{c.name}</span>
+                          <span className="text-xs opacity-70">{c.student_count}명</span>
+                        </div>
+                        {c.teachers.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {c.teachers.map((t) => {
+                              const color = teacherColorMap.get(t.profile_id);
+                              return (
+                                <span
+                                  key={t.profile_id}
+                                  className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium ${
+                                    selectedClassId === c.id
+                                      ? "bg-white/20 text-white"
+                                      : `${color?.bg ?? "bg-slate-200"} ${color?.text ?? "text-slate-700"}`
+                                  }`}
+                                >
+                                  {t.name}
+                                </span>
+                              );
+                            })}
+                          </div>
+                        )}
                       </button>
                     ))}
                   </div>
@@ -332,12 +396,30 @@ export function ClassScheduleManager({
             </div>
           ) : (
             <div className="space-y-4">
-              <h3 className="text-base font-semibold text-foreground">
-                {selectedClass.name}
-                <span className="ml-2 text-sm font-normal text-muted-foreground">
-                  수업 시간표
-                </span>
-              </h3>
+              <div className="flex flex-wrap items-center gap-2">
+                <h3 className="text-base font-semibold text-foreground">
+                  {selectedClass.name}
+                  <span className="ml-2 text-sm font-normal text-muted-foreground">
+                    수업 시간표
+                  </span>
+                </h3>
+                {selectedClass.teachers.length > 0 && (
+                  <div className="flex items-center gap-1 flex-wrap">
+                    <span className="text-xs text-muted-foreground">담당:</span>
+                    {selectedClass.teachers.map((t) => {
+                      const color = teacherColorMap.get(t.profile_id);
+                      return (
+                        <span
+                          key={t.profile_id}
+                          className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-medium ${color?.bg ?? "bg-slate-200"} ${color?.text ?? "text-slate-700"}`}
+                        >
+                          {t.name}
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
 
               {error && (
                 <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>
@@ -398,10 +480,10 @@ export function ClassScheduleManager({
                 </div>
 
                 <div className="flex items-center gap-2 ml-auto">
-                  {pendingChanges.size > 0 && (
+                  {(pendingChanges.size > 0 || pendingDeletes.size > 0) && (
                     <button
                       type="button"
-                      onClick={() => setPendingChanges(new Map())}
+                      onClick={() => { setPendingChanges(new Map()); setPendingDeletes(new Set()); }}
                       className="text-xs px-2.5 py-1.5 rounded-lg border text-muted-foreground hover:bg-muted/50 transition-colors"
                     >
                       전체해제
@@ -410,10 +492,10 @@ export function ClassScheduleManager({
                   <button
                     type="button"
                     onClick={handleSave}
-                    disabled={pendingChanges.size === 0 || saving}
+                    disabled={(pendingChanges.size === 0 && pendingDeletes.size === 0) || saving}
                     className="text-xs px-3 py-1.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40 transition-colors font-medium"
                   >
-                    {saving ? <><Spinner size="sm" /> 저장 중…</> : pendingChanges.size > 0 ? `저장 ${pendingChanges.size}건` : "저장"}
+                    {saving ? <><Spinner size="sm" /> 저장 중…</> : (pendingChanges.size + pendingDeletes.size) > 0 ? `저장 ${pendingChanges.size + pendingDeletes.size}건` : "저장"}
                   </button>
                 </div>
               </div>
@@ -473,24 +555,47 @@ export function ClassScheduleManager({
                             const existing = existingCells.get(cellKey);
                             const pending = pendingChanges.get(pendingKey);
 
+                            // 셀 배경: 원어민=파란계열, 한국인=초록계열, 없음=기본
+                            const savedBg = existing
+                              ? existing.teacherId
+                                ? existing.teacherType === "native"
+                                  ? "bg-blue-50 border border-blue-200"
+                                  : "bg-emerald-50 border border-emerald-200"
+                                : "bg-slate-50 border border-slate-200"
+                              : null;
+
+                            const pendingTeacherType = pending?.teacherId
+                              ? teachers.find((t) => t.id === pending.teacherId)?.teacher_type
+                              : null;
+                            const pendingBg = pendingTeacherType === "native"
+                              ? "bg-blue-100"
+                              : pendingTeacherType === "korean"
+                              ? "bg-emerald-100"
+                              : "bg-amber-50";
+
                             if (existing) {
+                              const isPendingDelete = pendingDeletes.has(existing.scheduleId);
                               return (
                                 <td key={day} className="py-2 px-2 text-center align-middle border-r last:border-r-0">
                                   <div
                                     className={`relative group rounded-lg p-2 cursor-pointer transition-colors ${
-                                      pending ? "ring-2 ring-amber-400 ring-inset bg-amber-50" : "bg-primary/5 border border-primary/20"
+                                      isPendingDelete
+                                        ? "bg-red-50 ring-2 ring-red-400 ring-inset"
+                                        : pending ? `ring-2 ring-amber-400 ring-inset ${pendingBg}` : savedBg
                                     }`}
                                     onClick={() => handleCellToggle(period.id, day)}
                                   >
                                     {existing.label && (
-                                      <span className="block text-[10px] text-muted-foreground mb-0.5">
+                                      <span className={`block text-[10px] text-muted-foreground mb-0.5 ${isPendingDelete ? "line-through opacity-50" : ""}`}>
                                         {existing.label}
                                       </span>
                                     )}
                                     {existing.teacherName ? (
                                       <span
                                         className={`inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium ${
-                                          existing.teacherId && teacherColorMap.has(existing.teacherId)
+                                          isPendingDelete
+                                            ? "bg-red-100 text-red-400 line-through"
+                                            : existing.teacherId && teacherColorMap.has(existing.teacherId)
                                             ? `${teacherColorMap.get(existing.teacherId)!.bg} ${teacherColorMap.get(existing.teacherId)!.text}`
                                             : "bg-slate-200 text-slate-700"
                                         }`}
@@ -498,15 +603,19 @@ export function ClassScheduleManager({
                                         {existing.teacherName}
                                       </span>
                                     ) : !existing.label ? (
-                                      <span className="text-xs text-muted-foreground">—</span>
+                                      <span className={`text-xs text-muted-foreground ${isPendingDelete ? "line-through opacity-50" : ""}`}>—</span>
                                     ) : null}
                                     <button
                                       type="button"
                                       onClick={(e) => { e.stopPropagation(); handleDeleteCell(existing.scheduleId); }}
-                                      className="absolute -top-1.5 -right-1.5 hidden group-hover:flex items-center justify-center w-5 h-5 rounded-full bg-red-500 text-white text-[10px] hover:bg-red-600 shadow-sm"
-                                      title="삭제"
+                                      className={`absolute -top-1.5 -right-1.5 items-center justify-center w-5 h-5 rounded-full text-white text-[10px] shadow-sm ${
+                                        isPendingDelete
+                                          ? "flex bg-red-600 hover:bg-red-700"
+                                          : "hidden group-hover:flex bg-red-500 hover:bg-red-600"
+                                      }`}
+                                      title={isPendingDelete ? "삭제 취소" : "삭제"}
                                     >
-                                      ×
+                                      {isPendingDelete ? "↩" : "×"}
                                     </button>
                                   </div>
                                 </td>
@@ -521,18 +630,22 @@ export function ClassScheduleManager({
                                   disabled={saving}
                                   className={`w-full rounded-lg py-2 text-xs transition-colors ${
                                     pending
-                                      ? "bg-emerald-50 font-medium"
+                                      ? `${pendingBg} font-medium`
                                       : "text-muted-foreground/30 hover:bg-muted/50"
                                   }`}
                                 >
                                   {pending ? (
-                                    toolTeacherName && toolTeacherColor ? (
-                                      <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium ${toolTeacherColor.bg} ${toolTeacherColor.text}`}>
-                                        {toolTeacherName}
-                                      </span>
-                                    ) : (
-                                      <span className="text-emerald-700">✓</span>
-                                    )
+                                    (() => {
+                                      const pName = pending.teacherId ? teachers.find((t) => t.id === pending.teacherId)?.name : null;
+                                      const pColor = pending.teacherId ? teacherColorMap.get(pending.teacherId) : null;
+                                      return pName && pColor ? (
+                                        <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium ${pColor.bg} ${pColor.text}`}>
+                                          {pName}
+                                        </span>
+                                      ) : (
+                                        <span className="text-emerald-700">✓</span>
+                                      );
+                                    })()
                                   ) : "-"}
                                 </button>
                               </td>

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { verifyAdmin, verifyAuthenticated } from "./auth-helpers";
+import { logger } from "@/lib/logger";
 import type { Textbook, ClassTextbook, StudentTextbookProgress, ClassTextbookProgressRow } from "@/lib/types";
 
 const COVER_BUCKET = "textbook-covers";
@@ -738,4 +739,58 @@ export async function listTextbooksNotAssignedToStudent(
 
   const allTextbooks = await listTextbooks();
   return allTextbooks.filter((t) => !assignedIds.has(t.id));
+}
+
+export async function batchUpdateClassTextbooks(
+  removes: { classId: string; textbookId: string }[],
+  adds: { classId: string; textbookId: string }[]
+): Promise<{ error?: string }> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return { error: auth.error };
+  const supabase = createAdminClient();
+
+  for (const { classId, textbookId } of removes) {
+    const { error } = await supabase
+      .from("class_textbooks")
+      .delete()
+      .eq("class_id", classId)
+      .eq("textbook_id", textbookId);
+    if (error) return { error: error.message };
+  }
+
+  for (const { classId, textbookId } of adds) {
+    const { error: insertError } = await supabase
+      .from("class_textbooks")
+      .insert({ class_id: classId, textbook_id: textbookId });
+    if (insertError) {
+      if (insertError.message.includes("duplicate") || insertError.message.includes("unique")) continue;
+      return { error: insertError.message };
+    }
+    // 반 소속 학생들에게 progress 레코드 생성
+    const { data: classStudents } = await supabase
+      .from("class_students")
+      .select("student_profile_id")
+      .eq("class_id", classId);
+    if (classStudents?.length) {
+      await supabase.from("student_textbook_progress").upsert(
+        classStudents.map((cs) => ({
+          student_profile_id: cs.student_profile_id,
+          textbook_id: textbookId,
+          source_type: "class" as const,
+          source_class_id: classId,
+          status: "not_started" as const,
+          completed_units: 0,
+        })),
+        { onConflict: "student_profile_id,textbook_id,source_class_id", ignoreDuplicates: true }
+      );
+    }
+  }
+
+  logger.info("[batchUpdateClassTextbooks]", "교재 배정 일괄 저장", {
+    removes: removes.length,
+    adds: adds.length,
+  });
+  revalidatePath("/admin/classes");
+  revalidatePath("/admin/textbooks");
+  return {};
 }

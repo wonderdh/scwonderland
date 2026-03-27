@@ -562,3 +562,45 @@ export async function listStudentsNotInClass(
       student_number: s.student_number ?? null,
     }));
 }
+
+export async function batchUpdateClassStudents(
+  removes: string[],
+  adds: { classId: string; profileId: string }[]
+): Promise<{ error?: string }> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return { error: auth.error };
+  const supabase = createAdminClient();
+
+  if (removes.length > 0) {
+    // afterschool_enrollments 정리
+    const { data: classStudents } = await supabase
+      .from("class_students")
+      .select("class_id, student_profile_id")
+      .in("id", removes);
+    if (classStudents?.length) {
+      for (const cs of classStudents) {
+        await supabase
+          .from("afterschool_enrollments")
+          .delete()
+          .eq("class_id", cs.class_id)
+          .eq("student_profile_id", cs.student_profile_id);
+      }
+    }
+    const { error } = await supabase.from("class_students").delete().in("id", removes);
+    if (error) return { error: error.message };
+  }
+
+  if (adds.length > 0) {
+    const { error } = await supabase
+      .from("class_students")
+      .insert(adds.map((a) => ({ class_id: a.classId, student_profile_id: a.profileId })));
+    if (error) return { error: error.message };
+  }
+
+  logger.info("[batchUpdateClassStudents]", "학생 배정 일괄 저장", {
+    removes: removes.length,
+    adds: adds.length,
+  });
+  revalidatePath("/admin/classes");
+  return {};
+}

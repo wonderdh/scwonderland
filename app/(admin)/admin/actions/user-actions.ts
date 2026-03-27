@@ -605,7 +605,7 @@ export async function bulkResetStudentPasswords(
 }
 
 export async function listAllStudents(): Promise<
-  { id: string; korean_name: string | null; english_name: string | null; student_number: string | null; age: number | null }[]
+  { id: string; korean_name: string | null; english_name: string | null; student_number: string | null; age: number | null; group_type: string | null }[]
 > {
   const auth = await verifyAdmin();
   if ("error" in auth) return [];
@@ -623,7 +623,7 @@ export async function listAllStudents(): Promise<
 
   const { data: students } = await supabase
     .from("students")
-    .select("profile_id, korean_name, english_name, student_number, age")
+    .select("profile_id, korean_name, english_name, student_number, age, group_type")
     .in("profile_id", activeIds)
     .order("korean_name");
   return (students ?? []).map((s) => ({
@@ -632,5 +632,6 @@ export async function listAllStudents(): Promise<
     english_name: s.english_name ?? null,
     student_number: s.student_number ?? null,
     age: s.age ?? null,
+    group_type: s.group_type ?? null,
   }));
 }

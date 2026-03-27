@@ -33,6 +33,7 @@ type StudentInfo = {
   english_name: string | null;
   student_number: string | null;
   age: number | null;
+  group_type: string | null;
 };
 
 type FlatClassStudent = {
@@ -99,6 +100,7 @@ export function ClassesPageClient({
           <ClassesOverview
             classes={initialClasses}
             allClassStudents={allClassStudents}
+            teachers={teachers}
           />
         )}
         {currentTab === "manage" && (

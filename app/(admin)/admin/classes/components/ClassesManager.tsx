@@ -2,20 +2,19 @@
 
 import {
   addStudentToClass,
+  batchUpdateClassStudents,
   createClass,
   deleteClass,
   getClassLinkedCounts,
   listStudentsNotInClass,
-  removeStudentFromClass,
   updateClass,
 } from "../../actions";
 import type { ClassWithDetails, ClassStudentRow, ClassTeacherInfo, ClassTextbook, Textbook } from "@/lib/types";
 import {
-  assignTextbookToClass,
-  removeTextbookFromClass,
   listClassTextbooks,
   listTextbooks,
 } from "../../actions/textbook-actions";
+import { batchUpdateClassTextbooks } from "../../actions";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -69,6 +68,7 @@ type StudentInfo = {
   english_name: string | null;
   student_number: string | null;
   age: number | null;
+  group_type: string | null;
 };
 
 type FlatClassStudent = {
@@ -146,6 +146,22 @@ export function ClassesManager({
   const [studentSaving, setStudentSaving] = useState(false);
   const hasPendingStudentChanges = pendingAdds.size > 0 || pendingRemoves.size > 0;
 
+  // 교재 배정 pending 상태
+  const [pendingTextbookAdds, setPendingTextbookAdds] = useState<Map<string, Set<string>>>(new Map()); // classId → Set<textbookId>
+  const [pendingTextbookRemoves, setPendingTextbookRemoves] = useState<Map<string, Set<string>>>(new Map()); // classId → Set<textbookId>
+  const [textbookSaving, setTextbookSaving] = useState(false);
+  const hasPendingTextbookChanges = useMemo(() => {
+    for (const set of pendingTextbookAdds.values()) if (set.size > 0) return true;
+    for (const set of pendingTextbookRemoves.values()) if (set.size > 0) return true;
+    return false;
+  }, [pendingTextbookAdds, pendingTextbookRemoves]);
+  const totalPendingTextbookCount = useMemo(() => {
+    let n = 0;
+    for (const set of pendingTextbookAdds.values()) n += set.size;
+    for (const set of pendingTextbookRemoves.values()) n += set.size;
+    return n;
+  }, [pendingTextbookAdds, pendingTextbookRemoves]);
+
   // 오른쪽 패널 모드
   const [rightMode, setRightMode] = useState<"students" | "textbooks">("students");
   const [rightSearch, setRightSearch] = useState("");
@@ -158,6 +174,35 @@ export function ClassesManager({
   // 왼쪽 카드: per-class textbooks
   const [cardTextbooks, setCardTextbooks] = useState<Record<string, ClassTextbook[]>>({});
   const [cardTextbooksLoaded, setCardTextbooksLoaded] = useState<Record<string, boolean>>({});
+
+  // 교재 pending을 반영한 실효 카드 교재 목록
+  const effectiveCardTextbooks = useMemo(() => {
+    const result: Record<string, ClassTextbook[]> = {};
+    for (const c of initialClasses) {
+      const base = (cardTextbooks[c.id] ?? []).filter(
+        (ct) => !(pendingTextbookRemoves.get(c.id)?.has(ct.textbook_id))
+      );
+      const adds: ClassTextbook[] = [];
+      for (const textbookId of (pendingTextbookAdds.get(c.id) ?? new Set())) {
+        const tb = allTextbooks.find((t) => t.id === textbookId);
+        if (tb) {
+          adds.push({
+            id: `pending-${textbookId}`,
+            class_id: c.id,
+            textbook_id: textbookId,
+            textbook_title: tb.title,
+            textbook_series: tb.series ?? null,
+            textbook_level: tb.level ?? null,
+            textbook_category: tb.category,
+            total_units: tb.total_units,
+            assigned_at: new Date().toISOString(),
+          });
+        }
+      }
+      result[c.id] = [...base, ...adds];
+    }
+    return result;
+  }, [cardTextbooks, pendingTextbookAdds, pendingTextbookRemoves, allTextbooks, initialClasses]);
 
   // 드래그 앤 드롭: 호버 중인 카드
   const [dropTargetClassId, setDropTargetClassId] = useState<string | null>(null);
@@ -255,9 +300,9 @@ export function ClassesManager({
     );
     // 그룹 필터
     if (rightGroupFilter === "유치부") {
-      unassigned = unassigned.filter((s) => s.age !== null && s.age >= 5 && s.age <= 7);
+      unassigned = unassigned.filter((s) => s.group_type === "유치부");
     } else if (rightGroupFilter === "오후반") {
-      unassigned = unassigned.filter((s) => s.age !== null && s.age > 7);
+      unassigned = unassigned.filter((s) => s.group_type === "오후반");
     }
     // 검색 필터
     if (rightSearch.trim()) {
@@ -327,11 +372,27 @@ export function ClassesManager({
     }
   }, [notification]);
 
-  // 교재 제거 (왼쪽 카드)
-  const handleRemoveTextbookFromCard = async (classId: string, textbookId: string) => {
-    await removeTextbookFromClass(classId, textbookId);
-    loadCardTextbooks(classId);
-    router.refresh();
+  // 교재 제거: 로컬 pending 상태로 변경 (즉시 저장 없음)
+  const handleRemoveTextbookFromCard = (classId: string, textbookId: string) => {
+    const isPendingAdd = pendingTextbookAdds.get(classId)?.has(textbookId);
+    if (isPendingAdd) {
+      setPendingTextbookAdds((prev) => {
+        const next = new Map(prev);
+        const classAdds = new Set(next.get(classId) ?? []);
+        classAdds.delete(textbookId);
+        if (classAdds.size === 0) next.delete(classId);
+        else next.set(classId, classAdds);
+        return next;
+      });
+    } else {
+      setPendingTextbookRemoves((prev) => {
+        const next = new Map(prev);
+        const classRemoves = new Set(next.get(classId) ?? []);
+        classRemoves.add(textbookId);
+        next.set(classId, classRemoves);
+        return next;
+      });
+    }
   };
 
   // 드롭 핸들러: 학생을 카드에 드롭 (로컬 pending 상태로 변경)
@@ -392,15 +453,16 @@ export function ClassesManager({
     }
   };
 
-  // 저장 버튼: pending 변경 일괄 적용
+  // 저장 버튼: pending 변경 일괄 적용 (단일 server action 호출)
   const handleSaveStudentChanges = async () => {
     setStudentSaving(true);
     try {
-      for (const rowId of pendingRemoves) {
-        await removeStudentFromClass(rowId);
-      }
-      for (const [profileId, classId] of pendingAdds) {
-        await addStudentToClass(classId, profileId);
+      const removes = [...pendingRemoves];
+      const adds = [...pendingAdds].map(([profileId, classId]) => ({ classId, profileId }));
+      const result = await batchUpdateClassStudents(removes, adds);
+      if (result?.error) {
+        toast.error(result.error);
+        return;
       }
       setPendingAdds(new Map());
       setPendingRemoves(new Set());
@@ -418,8 +480,8 @@ export function ClassesManager({
     setPendingRemoves(new Set());
   };
 
-  // 드롭 핸들러: 교재를 카드에 드롭
-  const handleDropTextbookToCard = async (classId: string, e: React.DragEvent) => {
+  // 드롭 핸들러: 교재를 카드에 드롭 (로컬 pending 상태로 변경)
+  const handleDropTextbookToCard = (classId: string, e: React.DragEvent) => {
     e.preventDefault();
     setDropTargetClassId(null);
 
@@ -431,21 +493,77 @@ export function ClassesManager({
 
     const { textbookId } = parsed;
 
-    // 이미 배정되어 있는지 확인
-    const existing = cardTextbooks[classId] ?? [];
+    // 이미 배정되어 있는지 확인 (실효 상태 기준)
+    const existing = effectiveCardTextbooks[classId] ?? [];
     if (existing.some((ct) => ct.textbook_id === textbookId)) {
       setNotification({ type: "error", message: "이미 이 반에 배정된 교재입니다." });
       return;
     }
 
-    const result = await assignTextbookToClass(classId, textbookId);
-    if (result?.error) {
-      setNotification({ type: "error", message: result.error });
+    // pending remove에 있으면 취소 (재추가)
+    if (pendingTextbookRemoves.get(classId)?.has(textbookId)) {
+      setPendingTextbookRemoves((prev) => {
+        const next = new Map(prev);
+        const classRemoves = new Set(next.get(classId) ?? []);
+        classRemoves.delete(textbookId);
+        if (classRemoves.size === 0) next.delete(classId);
+        else next.set(classId, classRemoves);
+        return next;
+      });
       return;
     }
-    loadCardTextbooks(classId);
-    setNotification({ type: "success", message: "교재가 배정되었습니다." });
-    router.refresh();
+
+    setPendingTextbookAdds((prev) => {
+      const next = new Map(prev);
+      const classAdds = new Set(next.get(classId) ?? []);
+      classAdds.add(textbookId);
+      next.set(classId, classAdds);
+      return next;
+    });
+
+    const tbName = allTextbooks.find((t) => t.id === textbookId)?.title ?? "교재";
+    const className = initialClasses.find((c) => c.id === classId)?.name ?? "";
+    setNotification({ type: "success", message: `${tbName} → ${className} (미저장)` });
+  };
+
+  // 저장: 교재 pending 변경 일괄 적용 (단일 server action 호출)
+  const handleSaveTextbookChanges = async () => {
+    setTextbookSaving(true);
+    try {
+      const removes: { classId: string; textbookId: string }[] = [];
+      for (const [classId, textbookIds] of pendingTextbookRemoves) {
+        for (const textbookId of textbookIds) removes.push({ classId, textbookId });
+      }
+      const adds: { classId: string; textbookId: string }[] = [];
+      for (const [classId, textbookIds] of pendingTextbookAdds) {
+        for (const textbookId of textbookIds) adds.push({ classId, textbookId });
+      }
+      const result = await batchUpdateClassTextbooks(removes, adds);
+      if (result?.error) {
+        toast.error(result.error);
+        return;
+      }
+      const affectedClassIds = new Set([
+        ...pendingTextbookAdds.keys(),
+        ...pendingTextbookRemoves.keys(),
+      ]);
+      for (const classId of affectedClassIds) {
+        await loadCardTextbooks(classId);
+      }
+      setPendingTextbookAdds(new Map());
+      setPendingTextbookRemoves(new Map());
+      toast.success("저장되었습니다.");
+      router.refresh();
+    } catch {
+      toast.error("저장 중 오류가 발생했습니다.");
+    } finally {
+      setTextbookSaving(false);
+    }
+  };
+
+  const handleCancelTextbookChanges = () => {
+    setPendingTextbookAdds(new Map());
+    setPendingTextbookRemoves(new Map());
   };
 
   return (
@@ -578,7 +696,7 @@ export function ClassesManager({
                           classRow={c}
                           students={studentsByClassId[c.id] ?? []}
                           globalMode={rightMode}
-                          textbooks={cardTextbooks[c.id] ?? []}
+                          textbooks={effectiveCardTextbooks[c.id] ?? []}
                           textbooksLoaded={cardTextbooksLoaded[c.id] ?? false}
                           onEdit={() => setEditClass(c)}
                           onDelete={async () => {
@@ -731,10 +849,9 @@ export function ClassesManager({
                     ) : (
                       /* 전체 or 유치부: 나이별 섹션 */
                       (() => {
-                        const yuchibuAges = [5, 6, 7] as const;
-                        const yuchibuStudents = filteredRightStudents.filter((s) => s.age !== null && s.age >= 5 && s.age <= 7);
-                        const ohubanStudents = filteredRightStudents.filter((s) => s.age !== null && s.age > 7);
-                        const etcStudents = filteredRightStudents.filter((s) => s.age === null);
+                        const yuchibuStudents = filteredRightStudents.filter((s) => s.group_type === "유치부");
+                        const ohubanStudents = filteredRightStudents.filter((s) => s.group_type === "오후반");
+                        const etcStudents = filteredRightStudents.filter((s) => s.group_type !== "유치부" && s.group_type !== "오후반");
                         return (
                           <div className="space-y-2">
                             {/* 유치부 섹션 */}
@@ -746,24 +863,11 @@ export function ClassesManager({
                                     <span className="text-xs text-amber-600">({yuchibuStudents.length}명)</span>
                                   </div>
                                 )}
-                                {yuchibuAges.map((age) => {
-                                  const group = filteredRightStudents.filter((s) => s.age === age);
-                                  if (group.length === 0) return null;
-                                  const colors = getAgeColor(age);
-                                  return (
-                                    <div key={age} className="mb-1">
-                                      <div className={`flex items-center gap-1 px-2 py-0.5 rounded-md mb-0.5 ${colors.bg}`}>
-                                        <span className={`text-xs font-bold ${colors.text}`}>{age}세</span>
-                                        <span className={`text-xs ${colors.text} opacity-70`}>({group.length}명)</span>
-                                      </div>
-                                      <div className="space-y-0.5">
-                                        {group.map((s) => (
-                                          <UnassignedStudentItem key={s.id} s={s} showAgeBadge={true} />
-                                        ))}
-                                      </div>
-                                    </div>
-                                  );
-                                })}
+                                <div className="space-y-0.5">
+                                  {yuchibuStudents.map((s) => (
+                                    <UnassignedStudentItem key={s.id} s={s} showAgeBadge={false} />
+                                  ))}
+                                </div>
                               </div>
                             )}
                             {/* 오후반 섹션 (전체 필터일 때만) */}
@@ -809,6 +913,29 @@ export function ClassesManager({
                       {allTextbooksLoaded ? `${allTextbooks.length}권` : "…"}
                     </span>
                   </div>
+                  {hasPendingTextbookChanges && (
+                    <div className="flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2">
+                      <span className="text-xs text-amber-700 flex-1">
+                        변경 {totalPendingTextbookCount}건 미저장
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleSaveTextbookChanges}
+                        disabled={textbookSaving}
+                        className="rounded px-2.5 py-1 text-xs font-medium bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-50"
+                      >
+                        {textbookSaving ? "저장 중…" : "저장"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleCancelTextbookChanges}
+                        disabled={textbookSaving}
+                        className="rounded px-2.5 py-1 text-xs font-medium bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+                      >
+                        취소
+                      </button>
+                    </div>
+                  )}
                   <input
                     type="search"
                     placeholder="교재명 · 시리즈 · 레벨 검색"
@@ -1080,31 +1207,39 @@ function ClassCard({
           </p>
         ) : (
           <ul className="space-y-1">
-            {textbooks.map((ct) => (
-              <li
-                key={ct.id}
-                className="flex items-center justify-between gap-2 text-sm rounded-lg px-2 py-1 hover:bg-muted/50 transition-colors"
-              >
-                <span className="text-foreground text-xs">
-                  {ct.textbook_title}
-                  {ct.textbook_level && (
-                    <span className="ml-1.5 text-muted-foreground">
-                      Lv.{ct.textbook_level}
-                    </span>
-                  )}
-                  <span className="ml-1.5 text-muted-foreground/70">
-                    {ct.total_units}단원
-                  </span>
-                </span>
-                <button
-                  type="button"
-                  onClick={() => onRemoveTextbook(ct.textbook_id)}
-                  className="rounded bg-destructive/10 px-1.5 py-0.5 text-xs text-destructive hover:bg-destructive/20"
+            {textbooks.map((ct) => {
+              const isPending = ct.id.startsWith("pending-");
+              return (
+                <li
+                  key={ct.id}
+                  className={`flex items-center justify-between gap-2 text-sm rounded-lg px-2 py-1 transition-colors ${
+                    isPending ? "bg-amber-50 border border-amber-200" : "hover:bg-muted/50"
+                  }`}
                 >
-                  제거
-                </button>
-              </li>
-            ))}
+                  <span className="text-foreground text-xs">
+                    {ct.textbook_title}
+                    {ct.textbook_level && (
+                      <span className="ml-1.5 text-muted-foreground">
+                        Lv.{ct.textbook_level}
+                      </span>
+                    )}
+                    <span className="ml-1.5 text-muted-foreground/70">
+                      {ct.total_units}단원
+                    </span>
+                    {isPending && (
+                      <span className="ml-1.5 text-[10px] text-amber-600">미저장</span>
+                    )}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => onRemoveTextbook(ct.textbook_id)}
+                    className="rounded bg-destructive/10 px-1.5 py-0.5 text-xs text-destructive hover:bg-destructive/20"
+                  >
+                    제거
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>

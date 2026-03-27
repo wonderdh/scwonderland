@@ -102,8 +102,6 @@ export async function deleteBusNumber(id: string): Promise<{ error?: string }> {
 // ── 버스 시간대 CRUD ──
 
 export async function listBusTimeSlots(): Promise<BusTimeSlot[]> {
-  const auth = await verifyAuthenticated();
-  if ("error" in auth) return [];
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("bus_time_slots")

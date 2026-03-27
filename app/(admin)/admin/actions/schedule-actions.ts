@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { verifyAdmin, verifyAuthenticated } from "./auth-helpers";
+import { logger } from "@/lib/logger";
 import type {
   ClassScheduleWithDetails,
   StudentTimetableRow,
@@ -218,6 +219,13 @@ export async function addSingleClassSchedule(
     }
   }
 
+  logger.info("[addSingleClassSchedule]", existing ? "수업 배정 수정" : "수업 배정 추가", {
+    classId,
+    studentProfileId,
+    academyPeriodId,
+    dayOfWeek,
+    teacherProfileId,
+  });
   revalidatePath("/admin/timetable");
   return {};
 }
@@ -431,6 +439,7 @@ export async function deleteClassSchedule(
     console.error("[deleteClassSchedule]", error.message);
     return { error: error.message };
   }
+  logger.info("[deleteClassSchedule]", "수업 배정 삭제", { scheduleId });
   revalidatePath("/admin/timetable");
   return {};
 }
