@@ -75,3 +75,11 @@ CREATE TABLE report_cards (
   updated_at         timestamptz NOT NULL DEFAULT now(),
   UNIQUE (student_profile_id, year, month)
 );
+
+-- RLS 정책 (migration: report-cards-rls.sql)
+-- CREATE POLICY report_cards_admin_all ...          (admin 전체 접근)
+-- CREATE POLICY report_cards_teacher_select ...     (native 교사: 담당반 학생 SELECT)
+-- CREATE POLICY report_cards_teacher_insert ...     (native 교사: 담당반 학생 INSERT, author_id = 본인)
+-- CREATE POLICY report_cards_teacher_update ...     (native 교사: 담당반 학생 UPDATE)
+-- CREATE POLICY report_cards_student_select ...     (학생: 본인 SELECT)
+-- CREATE POLICY report_cards_student_update ...     (학생: 본인 UPDATE — reply 작성용)

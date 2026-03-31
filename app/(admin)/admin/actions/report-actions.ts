@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import type { ReportCard, ReportCardListItem } from "@/lib/types";
 
@@ -65,6 +66,37 @@ export async function upsertReportCard(
     return { error: "리포트카드 작성 권한이 없습니다." };
   }
 
+  // Teacher 추가 검증: native 타입만 + 담당반 학생만
+  if (profile.role === "teacher") {
+    const admin = createAdminClient();
+    const { data: teacher } = await admin
+      .from("teachers")
+      .select("teacher_type")
+      .eq("profile_id", user.id)
+      .single();
+    if (teacher?.teacher_type !== "native") {
+      return { error: "리포트카드 작성 권한이 없습니다." };
+    }
+    // 담당반 학생인지 확인
+    const { data: classTeachers } = await admin
+      .from("class_teachers")
+      .select("class_id")
+      .eq("teacher_profile_id", user.id);
+    const classIds = (classTeachers ?? []).map((ct) => ct.class_id);
+    if (classIds.length === 0) {
+      return { error: "담당 반이 없습니다." };
+    }
+    const { data: membership } = await admin
+      .from("class_students")
+      .select("id")
+      .eq("student_profile_id", studentProfileId)
+      .in("class_id", classIds)
+      .maybeSingle();
+    if (!membership) {
+      return { error: "담당 반 학생에게만 리포트카드를 작성할 수 있습니다." };
+    }
+  }
+
   const y = Number(year);
   const m = Number(month);
   if (y < 2000 || y > 2100 || m < 1 || m > 12) {
@@ -86,7 +118,8 @@ export async function upsertReportCard(
     console.error("[upsertReportCard]", error.message, { studentProfileId, year, month });
     return { error: error.message };
   }
-  revalidatePath("/academy");
+  revalidatePath("/academy/student/reports");
+  revalidatePath("/academy/teacher/reports");
   return {};
 }
 
@@ -115,11 +148,12 @@ export async function updateReportCardReply(
   const { error } = await supabase
     .from("report_cards")
     .update({ reply: reply.trim() || null, updated_at: new Date().toISOString() })
-    .eq("id", reportCardId);
+    .eq("id", reportCardId)
+    .eq("student_profile_id", user.id);
   if (error) {
     console.error("[updateReportCardReply]", error.message, { reportCardId });
     return { error: error.message };
   }
-  revalidatePath("/academy");
+  revalidatePath("/academy/student/reports");
   return {};
 }

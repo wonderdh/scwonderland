@@ -166,11 +166,11 @@ export async function getTeacherClasses(): Promise<TeacherClassWithStudents[]> {
     .in("class_id", classIds);
 
   const studentIds = [...new Set((members ?? []).map((m) => m.student_profile_id))];
-  let studentMap = new Map<string, { korean_name: string | null; english_name: string | null; student_number: string | null }>();
+  let studentMap = new Map<string, { korean_name: string | null; english_name: string | null; student_number: string | null; age: number | null }>();
   if (studentIds.length) {
     const { data: students } = await admin
       .from("students")
-      .select("profile_id, korean_name, english_name, student_number")
+      .select("profile_id, korean_name, english_name, student_number, age")
       .in("profile_id", studentIds);
     studentMap = new Map((students ?? []).map((s) => [s.profile_id, s]));
   }
@@ -187,6 +187,7 @@ export async function getTeacherClasses(): Promise<TeacherClassWithStudents[]> {
           korean_name: s?.korean_name ?? null,
           english_name: s?.english_name ?? null,
           student_number: s?.student_number ?? null,
+          age: s?.age ?? null,
         };
       }),
   }));
@@ -205,6 +206,25 @@ export async function getClassReportStatus(
   if (!user) return [];
 
   const admin = createAdminClient();
+
+  // 권한 확인: admin은 전체, teacher는 담당반만, 그 외 차단
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+
+  if (profile?.role === "teacher") {
+    const { data: assignment } = await admin
+      .from("class_teachers")
+      .select("class_id")
+      .eq("teacher_profile_id", user.id)
+      .eq("class_id", classId)
+      .maybeSingle();
+    if (!assignment) return [];
+  } else if (profile?.role !== "admin") {
+    return [];
+  }
 
   // 반 학생 목록
   const { data: members } = await admin

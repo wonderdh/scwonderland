@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { TeacherClassWithStudents, ReportCardStatus } from "@/lib/types";
 import { getClassReportStatus } from "../../actions";
 import {
@@ -10,6 +10,7 @@ import {
 import type { ReportCard } from "@/lib/types";
 import { reportLabels, ENGLISH_MONTHS } from "@/lib/teacher-labels";
 import { useTeacherType } from "./TeacherTypeContext";
+import { getAgeColor } from "@/lib/student-age-colors";
 import { LoadingState } from "@/components/LoadingState";
 
 const MONTHS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
@@ -37,6 +38,8 @@ export function TeacherReportClient({
   const [month, setMonth] = useState(() => getDefaultYearMonth().month);
   const [statusList, setStatusList] = useState<ReportCardStatus[]>([]);
   const [statusLoading, setStatusLoading] = useState(false);
+  const [statusError, setStatusError] = useState<string | null>(null);
+  const [reportError, setReportError] = useState<string | null>(null);
 
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
   const [report, setReport] = useState<ReportCard | null>(null);
@@ -50,13 +53,31 @@ export function TeacherReportClient({
 
   const selectedClass = classes.find((c) => c.id === selectedClassId);
 
+  // 학생 profile_id → age 매핑 (나이별 색상용)
+  const studentAgeMap = useMemo(() => {
+    const map = new Map<string, number | null>();
+    for (const c of classes) {
+      for (const s of c.students) {
+        map.set(s.profile_id, s.age ?? null);
+      }
+    }
+    return map;
+  }, [classes]);
+
   const loadStatus = useCallback(async () => {
     if (!selectedClassId) return;
     setStatusLoading(true);
-    const data = await getClassReportStatus(selectedClassId, year, month);
-    setStatusList(data);
-    setStatusLoading(false);
-  }, [selectedClassId, year, month]);
+    setStatusError(null);
+    try {
+      const data = await getClassReportStatus(selectedClassId, year, month);
+      setStatusList(data);
+    } catch {
+      setStatusError(isNative ? "Failed to load students." : "학생 목록을 불러오지 못했습니다.");
+      setStatusList([]);
+    } finally {
+      setStatusLoading(false);
+    }
+  }, [selectedClassId, year, month, isNative]);
 
   useEffect(() => {
     loadStatus();
@@ -68,12 +89,18 @@ export function TeacherReportClient({
   const loadReport = useCallback(async () => {
     if (!selectedStudentId) return;
     setReportLoading(true);
+    setReportError(null);
     setSaveMessage(null);
-    const data = await getReportCard(selectedStudentId, year, month);
-    setReport(data);
-    setContent(data?.content ?? "");
-    setReportLoading(false);
-  }, [selectedStudentId, year, month]);
+    try {
+      const data = await getReportCard(selectedStudentId, year, month);
+      setReport(data);
+      setContent(data?.content ?? "");
+    } catch {
+      setReportError(isNative ? "Failed to load report." : "리포트카드를 불러오지 못했습니다.");
+    } finally {
+      setReportLoading(false);
+    }
+  }, [selectedStudentId, year, month, isNative]);
 
   useEffect(() => {
     if (selectedStudentId) loadReport();
@@ -182,6 +209,9 @@ export function TeacherReportClient({
               {selectedClass?.name ?? (isNative ? "Class" : "반")} — {formatYearMonth()}
             </h2>
           </div>
+          {statusError && (
+            <p className="px-4 py-3 text-sm text-red-600 bg-red-50">{statusError}</p>
+          )}
           {statusLoading ? (
             <LoadingState label={L.loading} />
           ) : statusList.length === 0 ? (
@@ -202,7 +232,7 @@ export function TeacherReportClient({
                       }`}
                     >
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-slate-800 truncate">
+                        <p className={`text-sm font-medium truncate ${getAgeColor(studentAgeMap.get(s.student_profile_id) ?? null).text}`}>
                           {formatStudentName(s)}
                         </p>
                         {s.student_number && (
@@ -265,7 +295,7 @@ export function TeacherReportClient({
           ) : (
             <div className="space-y-4">
               <div className="flex items-center gap-3">
-                <h3 className="text-base font-semibold text-slate-800">
+                <h3 className={`text-base font-semibold ${getAgeColor(studentAgeMap.get(selectedStudentId ?? "") ?? null).text}`}>
                   {selectedStudent ? (
                     isNative
                       ? (selectedStudent.english_name ?? selectedStudent.korean_name ?? "—")
@@ -281,6 +311,10 @@ export function TeacherReportClient({
                   {formatYearMonth()}
                 </span>
               </div>
+
+              {reportError && (
+                <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{reportError}</p>
+              )}
 
               {saveMessage && (
                 <p className={`text-sm px-3 py-2 rounded-lg ${
