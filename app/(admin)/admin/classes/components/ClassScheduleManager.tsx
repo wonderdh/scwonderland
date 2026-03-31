@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type {
   ClassWithDetails,
   AcademyPeriod,
+  TeacherOption,
 } from "@/lib/types";
 import {
   addSingleClassSchedule,
@@ -13,6 +14,7 @@ import {
 } from "../../actions";
 import { LoadingState } from "@/components/LoadingState";
 import { Spinner } from "@/components/Spinner";
+import { GROUP_ORDER } from "@/lib/class-groups";
 
 const DAY_LABELS = ["월", "화", "수", "목", "금"];
 
@@ -42,8 +44,6 @@ function buildTeacherColorMap(
   return map;
 }
 
-const GROUP_ORDER = ["유치부", "오후반", ""] as const;
-
 const SCHEDULE_GROUP_STYLE: Record<string, {
   icon: string;
   sectionBg: string;
@@ -55,11 +55,6 @@ const SCHEDULE_GROUP_STYLE: Record<string, {
   "": { icon: "📋", sectionBg: "bg-slate-100", sectionText: "text-slate-600", countBg: "bg-slate-200 text-slate-600" },
 };
 
-type TeacherOption = {
-  id: string;
-  name: string;
-  teacher_type: "korean" | "native";
-};
 
 type TextbookOption = {
   id: string;
@@ -231,7 +226,7 @@ export function ClassScheduleManager({
       );
       const deleteError = deleteResults.find((r) => r.error);
       if (deleteError) {
-        setError(deleteError.error!);
+        setError(deleteError.error ?? "삭제 중 오류가 발생했습니다.");
         setSaving(false);
         return;
       }
@@ -255,7 +250,7 @@ export function ClassScheduleManager({
       );
       const firstError = results.find((r) => r.error);
       if (firstError) {
-        setError(firstError.error!);
+        setError(firstError.error ?? "저장 중 오류가 발생했습니다.");
         setSaving(false);
         return;
       }
@@ -577,8 +572,9 @@ export function ClassScheduleManager({
                               const isPendingDelete = pendingDeletes.has(existing.scheduleId);
                               return (
                                 <td key={day} className="py-2 px-2 text-center align-middle border-r last:border-r-0">
-                                  <div
-                                    className={`relative group rounded-lg p-2 cursor-pointer transition-colors ${
+                                  <button
+                                    type="button"
+                                    className={`relative group w-full rounded-lg p-2 cursor-pointer transition-colors text-left ${
                                       isPendingDelete
                                         ? "bg-red-50 ring-2 ring-red-400 ring-inset"
                                         : pending ? `ring-2 ring-amber-400 ring-inset ${pendingBg}` : savedBg
@@ -617,7 +613,7 @@ export function ClassScheduleManager({
                                     >
                                       {isPendingDelete ? "↩" : "×"}
                                     </button>
-                                  </div>
+                                  </button>
                                 </td>
                               );
                             }

@@ -119,6 +119,8 @@ export async function listBusTimeSlots(): Promise<BusTimeSlot[]> {
 export async function listAllActiveStudentNames(): Promise<
   { profile_id: string; korean_name: string | null; english_name: string | null; age: number | null; group_label: string | null }[]
 > {
+  const auth = await verifyAuthenticated();
+  if ("error" in auth) return [];
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("students")
@@ -992,13 +994,17 @@ export async function batchBusCheckRecord(
       byDir.set(i.direction, arr);
     }
     for (const [dir, ids] of byDir) {
-      await supabase
+      const { error: unboardErr } = await supabase
         .from("bus_check_records")
         .update({ boarded_at: null })
         .eq("check_date", checkDate)
         .eq("direction", dir)
         .in("student_profile_id", ids);
-      await supabase
+      if (unboardErr) {
+        console.error("[batchBusCheckRecord:unboard]", unboardErr.message);
+        return { error: unboardErr.message };
+      }
+      const { error: unboardDelErr } = await supabase
         .from("bus_check_records")
         .delete()
         .eq("check_date", checkDate)
@@ -1006,6 +1012,10 @@ export async function batchBusCheckRecord(
         .in("student_profile_id", ids)
         .is("boarded_at", null)
         .is("checked_at", null);
+      if (unboardDelErr) {
+        console.error("[batchBusCheckRecord:unboard:delete]", unboardDelErr.message);
+        return { error: unboardDelErr.message };
+      }
     }
   }
 
@@ -1018,13 +1028,17 @@ export async function batchBusCheckRecord(
       byDir.set(i.direction, arr);
     }
     for (const [dir, ids] of byDir) {
-      await supabase
+      const { error: uncheckErr } = await supabase
         .from("bus_check_records")
         .update({ checked_at: null, checked_by: null })
         .eq("check_date", checkDate)
         .eq("direction", dir)
         .in("student_profile_id", ids);
-      await supabase
+      if (uncheckErr) {
+        console.error("[batchBusCheckRecord:uncheck]", uncheckErr.message);
+        return { error: uncheckErr.message };
+      }
+      const { error: uncheckDelErr } = await supabase
         .from("bus_check_records")
         .delete()
         .eq("check_date", checkDate)
@@ -1032,6 +1046,10 @@ export async function batchBusCheckRecord(
         .in("student_profile_id", ids)
         .is("boarded_at", null)
         .is("checked_at", null);
+      if (uncheckDelErr) {
+        console.error("[batchBusCheckRecord:uncheck:delete]", uncheckDelErr.message);
+        return { error: uncheckDelErr.message };
+      }
     }
   }
 
@@ -1119,11 +1137,6 @@ export async function listAllChangeRequests(): Promise<BusChangeRequest[]> {
   const origDefaults = new Map<string, { slot_id: string; stop_id: string | null }>();
   if (studentIds.length && data?.length) {
     // request_date에서 요일 계산
-    const studentDirKeys = [...new Set((data ?? []).map((d) => {
-      const dow = new Date(d.request_date + "T00:00:00").getDay();
-      const isoDay = dow === 0 ? 7 : dow; // JS 0=Sun → ISO 7=Sun
-      return `${d.student_profile_id}:${isoDay}:${d.direction}`;
-    }))];
     const { data: origData } = await supabase
       .from("student_bus_defaults")
       .select("student_profile_id, day_of_week, direction, bus_time_slot_id, bus_stop_id")
@@ -1610,9 +1623,6 @@ export async function createAdminBusChange(
 
 export async function updateAdminBusChange(
   requestId: string,
-  _studentProfileId: string,
-  _requestDate: string,
-  _direction: "pickup" | "dropoff",
   changeType: "change" | "no_ride" | "absent",
   newBusTimeSlotId?: string,
   newBusNumberId?: string,

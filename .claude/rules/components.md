@@ -28,6 +28,8 @@ paths:
 
 **교사 전용 (admin/teachers/components/):** `AddTeacherForm`, `TeacherInfoCard`, `TeacherTabNav`, `TeacherClassesTab`, `TeacherTimetableTab`
 
+**Admin Hooks (admin/hooks/):** `useAsyncData<T>(fetcher, deps)` — 비동기 로딩 공통 훅 / `usePasswordReset(userId, email?)` — 비밀번호 초기화 UI 훅
+
 **반 관리 (admin/classes/components/):** `ClassesManager`
 
 **교재 관리 (admin/textbooks/components/):** `TextbooksManager` (카드 150px 고정폭, 커버 이미지 150x170px, hover 시 수정/삭제 버튼)

@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { getAgeColor } from "@/lib/student-age-colors";
 import type { BusStop, BusTimeSlot, StudentBusDefault } from "@/lib/types";
+import { detectAfterschoolSlot } from "@/lib/bus/afterschool-sync";
 import {
   listBusStops,
   listBusTimeSlots,
@@ -16,6 +17,9 @@ import {
   createAdminBusChange,
   updateAdminBusChange,
   deleteAdminBusChange,
+  getStudentAfterschoolDetail,
+  updateAfterschoolSecondPeriod,
+  deleteAfterschoolEnrollmentDay,
 } from "../../actions";
 
 type StudentItem = {
@@ -53,6 +57,9 @@ export function AdminBusChangeDnD() {
   const [studentDefault, setStudentDefault] = useState<StudentBusDefault | null>(null);
   const [existingId, setExistingId] = useState<string | null>(null);
 
+  // 방과후 enrollment
+  const [afterschoolDays, setAfterschoolDays] = useState<{ day_of_week: number; second_period: boolean }[]>([]);
+
   // Form fields
   const [stopMode, setStopMode] = useState<StopMode>("stop");
   const [slotId, setSlotId] = useState("");
@@ -60,6 +67,11 @@ export function AdminBusChangeDnD() {
   const [stopSearch, setStopSearch] = useState("");
   const [stopListOpen, setStopListOpen] = useState(false);
   const [reason, setReason] = useState("");
+
+  // 원본 값 (기존 변경 로드 시 저장 → 변경 없으면 저장 불필요)
+  const [originalSlotId, setOriginalSlotId] = useState("");
+  const [originalStopId, setOriginalStopId] = useState("");
+  const [originalReason, setOriginalReason] = useState("");
 
   const [saving, setSaving] = useState(false);
 
@@ -84,17 +96,25 @@ export function AdminBusChangeDnD() {
     Promise.all([
       getStudentBusDefaults(selectedStudentId),
       getExistingBusChange(selectedStudentId, date, direction),
-    ]).then(([defaults, existing]) => {
+      getStudentAfterschoolDetail(selectedStudentId),
+    ]).then(([defaults, existing, afterschool]) => {
+      setAfterschoolDays(afterschool);
       const def = defaults.find((d) => d.day_of_week === dow && d.direction === direction) ?? null;
       setStudentDefault(def);
       if (existing) {
+        const loadedSlotId = existing.new_bus_time_slot_id ?? def?.bus_time_slot_id ?? "";
+        const loadedStopId = existing.new_bus_stop_id ?? def?.bus_stop_id ?? "";
+        const loadedReason = existing.reason ?? "";
         setExistingId(existing.id);
         setStopMode(existing.change_type === "no_ride" ? "pickup" : "stop");
-        setSlotId(existing.new_bus_time_slot_id ?? def?.bus_time_slot_id ?? "");
-        setStopId(existing.new_bus_stop_id ?? def?.bus_stop_id ?? "");
+        setSlotId(loadedSlotId);
+        setStopId(loadedStopId);
         setStopSearch("");
         setStopListOpen(false);
-        setReason(existing.reason ?? "");
+        setReason(loadedReason);
+        setOriginalSlotId(loadedSlotId);
+        setOriginalStopId(loadedStopId);
+        setOriginalReason(loadedReason);
       } else {
         setExistingId(null);
         setStopMode("stop");
@@ -103,6 +123,9 @@ export function AdminBusChangeDnD() {
         setStopSearch("");
         setStopListOpen(false);
         setReason("");
+        setOriginalSlotId("");
+        setOriginalStopId("");
+        setOriginalReason("");
       }
       setLoadingStudent(false);
     });
@@ -111,6 +134,23 @@ export function AdminBusChangeDnD() {
   // ── Derived ──
 
   const selectedStudentInfo = students.find((s) => s.profile_id === selectedStudentId);
+
+  // 방과후 교시 관련
+  const dow = (() => { const d = new Date(date).getDay(); return d === 0 ? 7 : d; })();
+  const afterschoolToday = afterschoolDays.find((e) => e.day_of_week === dow);
+  const isAfterschoolDay = !!afterschoolToday;
+
+  // 방과후 슬롯 ID 상수
+  const slot1Id = busTimeSlots.find((s) => s.label === "방과후1차")?.id ?? "";
+  const slot2Id = busTimeSlots.find((s) => s.label === "오후반 1차/방과후2차")?.id ?? "";
+
+  // 현재 선택된 슬롯이 방과후 슬롯인지
+  const selectedSlotObj = busTimeSlots.find((s) => s.id === slotId);
+  const { isAfterschoolSlot, secondPeriod: newSecondPeriod } = detectAfterschoolSlot(selectedSlotObj);
+
+  function handleAfterschoolPeriodSelect(secondPeriod: boolean) {
+    setSlotId(secondPeriod ? slot2Id : slot1Id);
+  }
 
   const filteredStudents = studentSearch.trim()
     ? students
@@ -158,6 +198,10 @@ export function AdminBusChangeDnD() {
     setStopSearch("");
     setStopListOpen(false);
     setReason("");
+    setOriginalSlotId("");
+    setOriginalStopId("");
+    setOriginalReason("");
+    setAfterschoolDays([]);
   }
 
   function handleStopModeChange(mode: StopMode) {
@@ -184,7 +228,7 @@ export function AdminBusChangeDnD() {
     setSaving(true);
     const result = existingId
       ? await updateAdminBusChange(
-          existingId, selectedStudentId, date, direction,
+          existingId,
           changeType,
           slotId,
           busNumberId,
@@ -204,6 +248,17 @@ export function AdminBusChangeDnD() {
     if (result.error) {
       toast.error(result.error);
     } else {
+      // 방과후 연동: 교시 변경 시 enrollment 업데이트
+      if (direction === "dropoff" && isAfterschoolDay) {
+        if (isAfterschoolSlot) {
+          if (afterschoolToday && afterschoolToday.second_period !== newSecondPeriod) {
+            await updateAfterschoolSecondPeriod(selectedStudentId, dow, newSecondPeriod);
+          }
+        } else {
+          // 방과후 슬롯 아닌 걸 선택 → 해당 요일 enrollment 삭제 (방과후 없음)
+          await deleteAfterschoolEnrollmentDay(selectedStudentId, dow);
+        }
+      }
       toast.success(existingId ? "변경이 수정되었습니다." : "당일 변경이 저장되었습니다.");
       resetAll();
       router.refresh();
@@ -352,6 +407,33 @@ export function AdminBusChangeDnD() {
             </div>
           </div>
 
+          {/* 방과후 교시 선택 (하원 + 방과후 등록된 날만 표시) */}
+          {direction === "dropoff" && isAfterschoolDay && (
+            <div>
+              <label className="text-xs font-medium text-slate-600 block mb-1">
+                방과후 교시
+                <span className="ml-1.5 text-slate-400 font-normal">
+                  (기본: {afterschoolToday?.second_period ? "1,2교시" : "1교시"})
+                </span>
+              </label>
+              <div className="flex gap-2">
+                {([false, true] as const).map((second) => (
+                  <button
+                    key={String(second)}
+                    onClick={() => handleAfterschoolPeriodSelect(second)}
+                    className={`px-4 py-1.5 text-sm rounded-lg border font-medium transition-colors ${
+                      isAfterschoolSlot && (slotId === slot2Id) === second
+                        ? "bg-indigo-600 text-white border-indigo-600"
+                        : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                    }`}
+                  >
+                    {second ? "1,2교시" : "1교시"}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Time slot */}
           <div>
             <label className="text-xs font-medium text-slate-600 block mb-1">시간대</label>
@@ -434,7 +516,16 @@ export function AdminBusChangeDnD() {
             <Button
               size="sm"
               onClick={handleSave}
-              disabled={saving || !stopId || (stopMode === "stop" && !slotId)}
+              disabled={
+                saving ||
+                !stopId ||
+                (stopMode === "stop" && !slotId) ||
+                // 기존 변경과 동일하면 저장 불필요
+                !!(existingId &&
+                  slotId === originalSlotId &&
+                  stopId === originalStopId &&
+                  reason === originalReason)
+              }
             >
               {saving ? "저장 중..." : existingId ? "수정" : "저장"}
             </Button>

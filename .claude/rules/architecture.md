@@ -17,8 +17,9 @@ app/
 │   ├── _components/            # 사이트 전용 컴포넌트
 │   └── about-wonderland/, program/, notice/, community/, experience/
 ├── (admin)/admin/              # 관리자 대시보드 (/admin)
-│   ├── actions.ts              # barrel re-export (~101개 함수)
-│   ├── actions/                # 도메인별 분할 (15개 파일)
+│   ├── actions.ts              # barrel re-export (~110개 함수)
+│   ├── actions/                # 도메인별 분할 (16개 파일)
+│   ├── hooks/                  # Admin Client Hooks (useAsyncData, usePasswordReset)
 │   ├── components/             # 공유 컴포넌트 (AdminLayoutClient, AdminSidebar 등)
 │   ├── students/components/    # 학생 전용 컴포넌트 (co-located)
 │   ├── teachers/components/    # 교사 전용 컴포넌트 (co-located)
@@ -140,7 +141,7 @@ public/
 | `proxy.ts` | Supabase 세션 갱신 (Next.js 16 proxy, 모든 요청에서 토큰 리프레시) |
 | `lib/menu-routes.ts` | (site) 라우트 중앙 설정 |
 | `lib/auth-utils.ts` | 이메일 정규화 + 인증 에러 메시지 (공유) |
-| `lib/types/` | 공유 타입 정의 (database.ts + barrel index.ts) |
+| `lib/types/` | 공유 타입 정의 (database.ts: DB row / api.ts: 조인·UI 타입 / index.ts: barrel re-export) |
 | `lib/supabase/storage.ts` | Storage 버킷 정의, 파일 검증/경로 생성 헬퍼 |
 | `app/(admin)/admin/actions.ts` | Admin Server Actions barrel re-export (~101개 함수) |
 | `app/(admin)/admin/actions/` | 도메인별 분할 (15개 파일) |

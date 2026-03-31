@@ -187,4 +187,6 @@ export {
   bulkUpdateEnrollmentDays,
   listAfterschoolStudentIdsByDay,
   getStudentAfterschoolDetail,
+  updateAfterschoolSecondPeriod,
+  deleteAfterschoolEnrollmentDay,
 } from "./actions/afterschool-actions";

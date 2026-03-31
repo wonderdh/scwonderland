@@ -1,7 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { ClassWithDetails, ClassTeacherInfo } from "@/lib/types";
+import type { ClassWithDetails, TeacherOption } from "@/lib/types";
+import { TeacherBadges } from "@/components/TeacherBadges";
+import { GROUP_ORDER, type GroupKey } from "@/lib/class-groups";
 
 type FlatClassStudent = {
   class_id: string;
@@ -11,9 +13,6 @@ type FlatClassStudent = {
   english_name: string | null;
   student_number: string | null;
 };
-
-const GROUP_ORDER = ["유치부", "오후반", ""] as const;
-type GroupKey = (typeof GROUP_ORDER)[number];
 
 const GROUP_STYLE: Record<GroupKey, {
   icon: string;
@@ -49,29 +48,6 @@ const GROUP_STYLE: Record<GroupKey, {
   },
 };
 
-function TeacherBadges({ teachers }: { teachers: ClassTeacherInfo[] }) {
-  if (teachers.length === 0)
-    return <span className="text-muted-foreground">미지정</span>;
-  return (
-    <span className="inline-flex items-center gap-1 flex-wrap">
-      {teachers.map((t) => (
-        <span
-          key={t.profile_id}
-          className={`inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium ${
-            t.teacher_type === "native"
-              ? "bg-blue-100 text-blue-700"
-              : "bg-emerald-100 text-emerald-700"
-          }`}
-        >
-          {t.name ?? "—"}
-        </span>
-      ))}
-    </span>
-  );
-}
-
-type TeacherOption = { id: string; name: string; teacher_type: "korean" | "native" };
-
 export function ClassesOverview({
   classes,
   allClassStudents,
@@ -83,6 +59,9 @@ export function ClassesOverview({
 }) {
   const [groupFilter, setGroupFilter] = useState("all");
   const [teacherFilter, setTeacherFilter] = useState("");
+
+  const nativeTeachers = teachers.filter((t) => t.teacher_type === "native");
+  const koreanTeachers = teachers.filter((t) => t.teacher_type === "korean");
 
   // 방과후 반 제외 (방과후 관리 페이지에서 별도 관리)
   const filteredOutClasses = useMemo(
@@ -157,16 +136,16 @@ export function ClassesOverview({
           className="rounded-lg border border-input px-3 py-1.5 text-sm text-foreground bg-background"
         >
           <option value="">선생님 전체</option>
-          {teachers.filter((t) => t.teacher_type === "native").length > 0 && (
+          {nativeTeachers.length > 0 && (
             <optgroup label="원어민">
-              {teachers.filter((t) => t.teacher_type === "native").map((t) => (
+              {nativeTeachers.map((t) => (
                 <option key={t.id} value={t.id}>{t.name}</option>
               ))}
             </optgroup>
           )}
-          {teachers.filter((t) => t.teacher_type === "korean").length > 0 && (
+          {koreanTeachers.length > 0 && (
             <optgroup label="한국인">
-              {teachers.filter((t) => t.teacher_type === "korean").map((t) => (
+              {koreanTeachers.map((t) => (
                 <option key={t.id} value={t.id}>{t.name}</option>
               ))}
             </optgroup>

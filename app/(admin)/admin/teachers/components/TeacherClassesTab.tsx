@@ -3,9 +3,17 @@
 import { getClassWithStudents } from "../../actions";
 import { listClassTextbooks } from "../../actions/textbook-actions";
 import { TEXTBOOK_CATEGORIES } from "../../actions/textbook-constants";
-import type { ClassWithDetails, ClassStudentRow, ClassTeacherInfo, ClassTextbook } from "@/lib/types";
+import type { ClassWithDetails, ClassStudentRow, ClassTextbook } from "@/lib/types";
 import { useCallback, useEffect, useState } from "react";
 import { LoadingState } from "@/components/LoadingState";
+import { TeacherBadges } from "@/components/TeacherBadges";
+import { GROUP_ORDER, type GroupKey } from "@/lib/class-groups";
+
+const GROUP_STYLE: Record<GroupKey, { icon: string; label: string; headerBg: string; headerText: string }> = {
+  유치부: { icon: "🌅", label: "유치부", headerBg: "bg-amber-100", headerText: "text-amber-800" },
+  오후반: { icon: "☁️", label: "오후반",  headerBg: "bg-sky-100",   headerText: "text-sky-800" },
+  "":    { icon: "📋", label: "미지정", headerBg: "bg-slate-100", headerText: "text-slate-600" },
+};
 
 export function TeacherClassesTab({
   teacherProfileId,
@@ -20,24 +28,56 @@ export function TeacherClassesTab({
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
+  // group_label 기준으로 그룹핑 (방과후 제외)
+  const nonAfterschool = myClasses.filter((c) => c.group_label !== "방과후");
+  const grouped = GROUP_ORDER.reduce<Record<GroupKey, ClassWithDetails[]>>(
+    (acc, g) => {
+      acc[g] = nonAfterschool.filter((c) => (c.group_label ?? "") === g);
+      return acc;
+    },
+    { 유치부: [], 오후반: [], "": [] }
+  );
+  const activeGroups = GROUP_ORDER.filter((g) => grouped[g].length > 0);
+
   return (
     <div className="max-w-2xl">
-      <h2 className="text-lg font-semibold text-foreground mb-4">담당 반</h2>
+      <h2 className="text-lg font-semibold text-foreground mb-4">
+        담당 반
+        {myClasses.length > 0 && (
+          <span className="ml-2 text-sm font-normal text-muted-foreground">({myClasses.length}개)</span>
+        )}
+      </h2>
       {myClasses.length === 0 ? (
         <div className="rounded-xl border bg-muted/30 p-6 text-center text-muted-foreground text-sm">
           담당 반이 없습니다.
         </div>
       ) : (
-        <div className="space-y-3">
-          {myClasses.map((c) => (
-            <ClassRow
-              key={c.id}
-              cls={c}
-              currentTeacherId={teacherProfileId}
-              isExpanded={expandedId === c.id}
-              onToggle={() => setExpandedId(expandedId === c.id ? null : c.id)}
-            />
-          ))}
+        <div className="space-y-5">
+          {activeGroups.map((group) => {
+            const style = GROUP_STYLE[group];
+            return (
+              <div key={group}>
+                <div className={`flex items-center gap-2 rounded-lg px-3 py-2 mb-2 ${style.headerBg}`}>
+                  <span className="text-sm">{style.icon}</span>
+                  <span className={`text-sm font-semibold ${style.headerText}`}>{style.label}</span>
+                  <span className={`ml-auto text-xs font-medium ${style.headerText} opacity-70`}>
+                    {grouped[group].length}개 반
+                  </span>
+                </div>
+                <div className="space-y-2">
+                  {grouped[group].map((c) => (
+                    <ClassRow
+                      key={c.id}
+                      cls={c}
+                      currentTeacherId={teacherProfileId}
+                      isExpanded={expandedId === c.id}
+                      onToggle={() => setExpandedId(expandedId === c.id ? null : c.id)}
+                    />
+                  ))}
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
@@ -102,7 +142,7 @@ function ClassRow({
               {cls.student_count}명
             </span>
           </div>
-          <TeacherBadges teachers={cls.teachers} currentTeacherId={currentTeacherId} />
+          <TeacherBadges teachers={cls.teachers} excludeTeacherId={currentTeacherId} prefixLabel="공동:" />
         </div>
       </button>
 
@@ -199,30 +239,3 @@ function ClassRow({
   );
 }
 
-function TeacherBadges({
-  teachers,
-  currentTeacherId,
-}: {
-  teachers: ClassTeacherInfo[];
-  currentTeacherId: string;
-}) {
-  const others = teachers.filter((t) => t.profile_id !== currentTeacherId);
-  if (others.length === 0) return null;
-  return (
-    <div className="flex items-center gap-1">
-      <span className="text-xs text-muted-foreground">공동:</span>
-      {others.map((t) => (
-        <span
-          key={t.profile_id}
-          className={`rounded px-1.5 py-0.5 text-xs font-medium ${
-            t.teacher_type === "native"
-              ? "bg-blue-100 text-blue-700"
-              : "bg-emerald-100 text-emerald-700"
-          }`}
-        >
-          {t.name ?? "—"}
-        </span>
-      ))}
-    </div>
-  );
-}

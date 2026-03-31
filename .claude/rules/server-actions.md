@@ -91,8 +91,15 @@ paths:
 - `listLearningRecords(studentProfileId)` / `createLearningRecord(...)` / `updateLearningRecord(...)` / `deleteLearningRecord(recordId)`
 - 모든 함수에 인증 검증 (`verifyAuthenticatedUser` 헬퍼)
 
-**attendance-actions.ts — 출결 (5개):**
-- `listAttendanceRecords(studentProfileId)` / `recordAttendance(...)` / `deleteAttendance(recordId)` / `getAttendanceStats(studentProfileId)` / `getClassAttendanceByDate(classId, date)`
+**attendance-actions.ts — 출결 (8개):**
+- `listAttendanceRecords(studentProfileId, year?, month?)` — 출결 기록 목록 (최신순)
+- `recordAttendance(studentProfileId, attendanceDate, status, note?)` — 출결 upsert
+- `deleteAttendance(recordId)` — 출결 삭제
+- `getStudentAttendanceByDate(studentProfileId, date)` — 특정 날짜 출결 조회 → `{ status, note }`
+- `getClassAttendanceByDate(classId, date)` — 반 학생들 특정 날짜 출결 조회 (교사용)
+- `getClassStudentsWithAttendance(classId, date)` — 반 학생 목록 + 출결 통합 → `StudentWithAttendance[]` (관리자용, 나이순 정렬)
+- `bulkRecordAttendance(records[])` — 반 출결 일괄 저장 (관리자용 upsert)
+- `getAttendanceStats(studentProfileId, year, month)` — 월별 출결 통계
 
 **bus-actions.ts — 승하차 관리 (~47개):**
 - `listBusNumbers()` / `createBusNumber(...)` / `updateBusNumber(...)` / `deleteBusNumber(...)` — 호차 CRUD
@@ -107,13 +114,15 @@ paths:
 - `createAdminBusChange(...)` / `updateAdminBusChange(...)` / `deleteAdminBusChange(...)` / `getExistingBusChange(...)` — 관리자 당일 변경
 - `listBusStaff()` / `upsertBusStaff(...)` / `deleteBusStaff(...)` — 버스 담당자 관리
 
-**afterschool-actions.ts — 방과후 관리 (6개):**
-- `getOrCreateAfterschoolClass(dayOfWeek)` — 방과후 반 조회/생성
-- `getAfterschoolEnrollments(groupLabel?)` — 방과후 등록 현황
-- `enrollStudent(studentProfileId, classId, dayOfWeek)` — 학생 등록
-- `removeAfterschoolStudent(enrollmentId)` — 학생 제거
-- `listAvailableStudents(classId, dayOfWeek)` — 미등록 학생 목록
-- `bulkUpdateEnrollmentDays(studentProfileId, classId, days[])` — 요일 일괄 수정
+**afterschool-actions.ts — 방과후 관리 (8개):**
+- `getOrCreateAfterschoolClass()` — 방과후 반 조회/생성 (group_label="방과후" 단일 반)
+- `getAfterschoolEnrollments(classId)` — 방과후 등록 학생 + 요일 정보 → `AfterschoolStudentEnrollment[]`
+- `enrollStudent(classId, studentProfileId, days[])` — 학생 등록 (요일 배열 + class_students upsert)
+- `removeAfterschoolStudent(classId, studentProfileId)` — 학생 제거 (enrollments + class_students)
+- `listAvailableStudents(classId)` — 미등록 학생 목록
+- `listAfterschoolStudentIdsByDay(day)` — 특정 요일 등록 학생 ID 목록
+- `getStudentAfterschoolDays(studentProfileId)` — 학생의 방과후 등록 요일 목록
+- `bulkUpdateEnrollmentDays(classId, updates[{studentProfileId, days[]}])` — 요일 일괄 수정 (기존 삭제→재삽입)
 
 ## academy/actions.ts (7개)
 

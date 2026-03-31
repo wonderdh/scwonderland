@@ -209,7 +209,7 @@ export function TeacherReportClient({
                           <p className="text-xs text-slate-400 font-mono">{s.student_number}</p>
                         )}
                       </div>
-                      <div className="flex items-center gap-1.5 shrink-0">
+                      <div className="flex flex-col items-end gap-1 shrink-0">
                         {s.has_report ? (
                           <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700">
                             <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
@@ -222,10 +222,19 @@ export function TeacherReportClient({
                             {L.notWritten}
                           </span>
                         )}
-                        {s.has_reply && (
-                          <span className="inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-medium text-blue-700">
-                            {L.reply}
-                          </span>
+                        {s.has_report && (
+                          s.has_reply ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-medium text-blue-700">
+                              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                              </svg>
+                              {L.reply}
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-400">
+                              {isNative ? "No Reply" : "미답글"}
+                            </span>
+                          )
                         )}
                       </div>
                     </button>

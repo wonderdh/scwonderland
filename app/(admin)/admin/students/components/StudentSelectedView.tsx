@@ -2,7 +2,8 @@
 
 import type { UserWithProfile } from "@/lib/types";
 import type { updateStudentProfile } from "../../actions";
-import { resetUserPassword, getStudentLinkedCounts } from "../../actions";
+import { getStudentLinkedCounts } from "../../actions";
+import { usePasswordReset } from "../../hooks/usePasswordReset";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -28,10 +29,17 @@ export function StudentInfoCard({
   const [englishName, setEnglishName] = useState(user.english_name ?? user.last_name ?? "");
   const [age, setAge] = useState(user.age?.toString() ?? "");
   const [groupType, setGroupType] = useState<"유치부" | "오후반" | "">(user.group_type ?? "");
-  const [showPwReset, setShowPwReset] = useState(false);
-  const [newPassword, setNewPassword] = useState("");
-  const [pwPending, setPwPending] = useState(false);
-  const [pwMessage, setPwMessage] = useState<{ type: "error" | "success"; text: string } | null>(null);
+  const {
+    show: showPwReset,
+    newPassword,
+    setNewPassword,
+    pending: pwPending,
+    message: pwMessage,
+    open: openPwReset,
+    generatePassword,
+    handleReset: handleResetPassword,
+    reset: resetPw,
+  } = usePasswordReset(user.id, user.email ?? undefined);
   const [delPending, setDelPending] = useState(false);
   const [saveMessage, setSaveMessage] = useState<{ type: "error" | "success"; text: string } | null>(null);
   const [deleteModal, setDeleteModal] = useState<{
@@ -82,31 +90,6 @@ export function StudentInfoCard({
     setSaveMessage({ type: "success", text: "저장되었습니다." });
     setTimeout(() => setSaveMessage(null), 3000);
     router.refresh();
-  };
-
-  const handleResetPassword = async () => {
-    if (!newPassword.trim()) {
-      setPwMessage({ type: "error", text: "새 비밀번호를 입력해 주세요." });
-      return;
-    }
-    if (newPassword.length < 6) {
-      setPwMessage({ type: "error", text: "비밀번호는 최소 6자 이상이어야 합니다." });
-      return;
-    }
-    setPwPending(true);
-    setPwMessage(null);
-    const result = await resetUserPassword(user.id, newPassword);
-    setPwPending(false);
-    if (result?.error) {
-      setPwMessage({ type: "error", text: result.error });
-      return;
-    }
-    setPwMessage({ type: "success", text: "비밀번호가 변경되었습니다." });
-    setNewPassword("");
-    setTimeout(() => {
-      setShowPwReset(false);
-      setPwMessage(null);
-    }, 2000);
   };
 
   const handleDelete = async () => {
@@ -259,7 +242,7 @@ export function StudentInfoCard({
               variant="outline"
               size="sm"
               className="text-amber-700 border-amber-200 hover:bg-amber-50"
-              onClick={() => { setShowPwReset(true); setPwMessage(null); setNewPassword(""); }}
+              onClick={openPwReset}
             >
               비밀번호 재설정
             </Button>
@@ -289,11 +272,7 @@ export function StudentInfoCard({
                 size="sm"
                 className="shrink-0"
                 type="button"
-                onClick={() => {
-                  const prefix = user.email?.split("@")[0] ?? "";
-                  const rand = Math.floor(1000 + Math.random() * 9000);
-                  setNewPassword(`${prefix}${rand}`);
-                }}
+                onClick={generatePassword}
               >
                 자동 생성
               </Button>
@@ -309,7 +288,7 @@ export function StudentInfoCard({
                 variant="ghost"
                 size="sm"
                 className="shrink-0"
-                onClick={() => { setShowPwReset(false); setPwMessage(null); }}
+                onClick={resetPw}
               >
                 취소
               </Button>

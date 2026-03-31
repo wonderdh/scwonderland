@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useMemo, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { getStudentTimetable } from "../../actions";
 import { getStudentAfterschoolDays } from "../../actions/afterschool-actions";
 import type { StudentTimetableRow } from "@/lib/types";
 import { LoadingState } from "@/components/LoadingState";
+import { useAsyncData } from "../../hooks/useAsyncData";
 
 const DAY_NAMES = ["월", "화", "수", "목", "금"];
 
@@ -55,10 +56,21 @@ export function StudentTimetableTab({
   studentProfileId: string;
   studentName: string;
 }) {
-  const [rows, setRows] = useState<StudentTimetableRow[]>([]);
-  const [afterschoolDays, setAfterschoolDays] = useState<number[]>([]);
-  const [loading, setLoading] = useState(true);
   const printRef = useRef<HTMLDivElement>(null);
+
+  const { data, loading } = useAsyncData(
+    async () => {
+      const [rows, afterschoolDays] = await Promise.all([
+        getStudentTimetable(studentProfileId),
+        getStudentAfterschoolDays(studentProfileId),
+      ]);
+      return { rows, afterschoolDays };
+    },
+    [studentProfileId],
+  );
+
+  const rows: StudentTimetableRow[] = data?.rows ?? [];
+  const afterschoolDays: number[] = data?.afterschoolDays ?? [];
 
   function handlePrint() {
     if (!printRef.current) return;
@@ -85,21 +97,6 @@ ${printContent}
     win.document.close();
     win.onload = () => { win.print(); };
   }
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    const [timetable, asDays] = await Promise.all([
-      getStudentTimetable(studentProfileId),
-      getStudentAfterschoolDays(studentProfileId),
-    ]);
-    setRows(timetable);
-    setAfterschoolDays(asDays);
-    setLoading(false);
-  }, [studentProfileId]);
-
-  useEffect(() => {
-    load();
-  }, [load]);
 
   // Teacher color map built from all rows
   const teacherColorMap = useMemo(() => buildTeacherColorMap(rows), [rows]);

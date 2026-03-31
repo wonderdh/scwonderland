@@ -20,7 +20,7 @@ export default async function TeacherLayout({
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("role")
+    .select("role, first_name, email")
     .eq("id", user.id)
     .single();
 
@@ -36,10 +36,17 @@ export default async function TeacherLayout({
     .single();
 
   const teacherType = (teacher?.teacher_type ?? "korean") as "korean" | "native";
+  const teacherName =
+    profile?.first_name ??
+    (profile?.email ? profile.email.split("@")[0] : null) ??
+    undefined;
 
   return (
     <div className="mx-auto max-w-4xl">
-      <TeacherNav teacherType={teacherType} />
+      <TeacherNav
+        teacherType={teacherType}
+        teacherName={teacherName}
+      />
       <TeacherTypeProvider teacherType={teacherType}>
         {children}
       </TeacherTypeProvider>

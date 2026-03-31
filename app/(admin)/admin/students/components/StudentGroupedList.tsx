@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import type { UserWithProfile } from "@/lib/types";
 import type { updateStudentProfile, deleteUserById } from "../../actions";
 import { getAgeColor } from "@/lib/student-age-colors";
+import { sortStudentsByAgeAndName } from "@/lib/utils/student-sort";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -17,18 +18,6 @@ type EditState = {
   group_type: "" | "유치부" | "오후반";
 };
 
-function sortStudents(students: UserWithProfile[], group: string | null) {
-  return [...students].sort((a, b) => {
-    if (group === "유치부") {
-      const ageDiff = (a.age ?? 99) - (b.age ?? 99);
-      if (ageDiff !== 0) return ageDiff;
-    }
-    return (a.korean_name ?? a.first_name ?? "").localeCompare(
-      b.korean_name ?? b.first_name ?? "",
-      "ko"
-    );
-  });
-}
 
 function StudentRow({
   user,
@@ -246,18 +235,9 @@ export function StudentGroupedList({
   onUpdate: typeof updateStudentProfile;
   onDelete: typeof deleteUserById;
 }) {
-  const kindergarten = sortStudents(
-    users.filter((u) => u.group_type === "유치부"),
-    "유치부"
-  );
-  const afternoon = sortStudents(
-    users.filter((u) => u.group_type === "오후반"),
-    "오후반"
-  );
-  const unassigned = sortStudents(
-    users.filter((u) => !u.group_type),
-    null
-  );
+  const kindergarten = sortStudentsByAgeAndName(users.filter((u) => u.group_type === "유치부"));
+  const afternoon = sortStudentsByAgeAndName(users.filter((u) => u.group_type === "오후반"));
+  const unassigned = sortStudentsByAgeAndName(users.filter((u) => !u.group_type));
 
   if (users.length === 0) {
     return (

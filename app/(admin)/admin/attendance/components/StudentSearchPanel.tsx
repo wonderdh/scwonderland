@@ -72,7 +72,7 @@ export function StudentSearchPanel({
   const [currentNote, setCurrentNote] = useState<string | null>(null);
   const [pendingStatus, setPendingStatus] = useState<string | null>(null);
   const [pendingNote, setPendingNote] = useState<string | null>(null);
-  const [loadingStatus, setLoadingStatus] = useState(false);
+  const [loadingStatus, setLoadingStatus] = useState(true);
   const [saving, setSaving] = useState(false);
 
   // 클라이언트 타임존 덮어쓰기
@@ -318,18 +318,37 @@ export function StudentSearchPanel({
               <div className="flex items-start gap-3">
                 <label className="text-sm text-muted-foreground w-12 shrink-0 pt-1.5">출결</label>
                 {loadingStatus ? (
-                  <span className="text-sm text-muted-foreground">조회 중...</span>
-                ) : (
                   <div className="flex gap-2 flex-wrap">
-                    {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
-                      <button
-                        key={key}
-                        onClick={() => handleToggleStatus(key)}
-                        className={`text-sm px-3 py-1.5 rounded-md font-medium transition-all ${activeStatus === key ? cfg.active : cfg.inactive}`}
-                      >
-                        {cfg.label}
-                      </button>
+                    {Object.keys(STATUS_CONFIG).map((key) => (
+                      <div key={key} className="h-8 w-16 rounded-md bg-muted animate-pulse" />
                     ))}
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {/* 현재 저장된 상태 배지 */}
+                    {currentStatus ? (
+                      <div className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full ${STATUS_CONFIG[currentStatus]?.active ?? ""}`}>
+                        <span className="w-1.5 h-1.5 rounded-full bg-current opacity-70" />
+                        저장됨: {STATUS_CONFIG[currentStatus]?.label}
+                        {isDirty && <span className="opacity-60">→ 변경 중</span>}
+                      </div>
+                    ) : (
+                      <div className="inline-flex items-center gap-1.5 text-xs text-muted-foreground px-2.5 py-1 rounded-full bg-muted/60">
+                        <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/40" />
+                        기록 없음
+                      </div>
+                    )}
+                    <div className="flex gap-2 flex-wrap">
+                      {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
+                        <button
+                          key={key}
+                          onClick={() => handleToggleStatus(key)}
+                          className={`text-sm px-3 py-1.5 rounded-md font-medium transition-all ${activeStatus === key ? cfg.active : cfg.inactive}`}
+                        >
+                          {cfg.label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
@@ -351,14 +370,11 @@ export function StudentSearchPanel({
                 <div className="w-12 shrink-0" />
                 <button
                   onClick={handleSave}
-                  disabled={saving || !activeStatus}
+                  disabled={saving || !activeStatus || (!isDirty && !!currentStatus && activeStatus === currentStatus)}
                   className="text-sm px-5 py-2 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40 transition-colors font-medium"
                 >
                   {saving ? "저장 중..." : isDirty ? "저장" : "재저장"}
                 </button>
-                {!isDirty && currentStatus && (
-                  <span className="text-xs text-muted-foreground">저장된 상태: {STATUS_CONFIG[currentStatus]?.label}</span>
-                )}
               </div>
             </div>
           </>

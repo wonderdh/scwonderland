@@ -11,7 +11,8 @@ import type { StudentTextbookProgress, Textbook } from "@/lib/types";
 import { TEXTBOOK_CATEGORIES } from "../../actions/textbook-constants";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useAsyncData } from "../../hooks/useAsyncData";
 import { LoadingState } from "@/components/LoadingState";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 
@@ -154,29 +155,21 @@ function TextbookCard({
 
 export function StudentTextbookTab({ studentProfileId }: { studentProfileId: string }) {
   const router = useRouter();
-  const [progress, setProgress] = useState<StudentTextbookProgress[]>([]);
-  const [loading, setLoading] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<StudentTextbookProgress | null>(null);
   const [removeTarget, setRemoveTarget] = useState<StudentTextbookProgress | null>(null);
   const [removePending, setRemovePending] = useState(false);
   const [showCompleted, setShowCompleted] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    const data = await listStudentProgress(studentProfileId);
-    setProgress(data);
-    setLoading(false);
-  }, [studentProfileId]);
+  const { data: progress, loading, reload } = useAsyncData(
+    () => listStudentProgress(studentProfileId),
+    [studentProfileId],
+  );
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  const activeBooks = (progress ?? []).filter((p) => p.status !== "completed");
+  const completedBooks = (progress ?? []).filter((p) => p.status === "completed");
 
-  const activeBooks = progress.filter((p) => p.status !== "completed");
-  const completedBooks = progress.filter((p) => p.status === "completed");
-
-  if (loading && progress.length === 0) {
+  if (loading && !progress) {
     return <LoadingState />;
   }
 
@@ -201,10 +194,10 @@ export function StudentTextbookTab({ studentProfileId }: { studentProfileId: str
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
             </svg>
             <p className="text-sm font-medium text-slate-500 mb-1">
-              {progress.length === 0 ? "배정된 교재가 없습니다" : "진행 중인 교재가 없습니다"}
+              {(progress ?? []).length === 0 ? "배정된 교재가 없습니다" : "진행 중인 교재가 없습니다"}
             </p>
             <p className="text-xs text-slate-400">
-              {progress.length === 0
+              {(progress ?? []).length === 0
                 ? "위의 '교재 배정' 버튼으로 교재를 배정해 주세요."
                 : "모든 교재를 완료했습니다!"}
             </p>
@@ -267,7 +260,7 @@ export function StudentTextbookTab({ studentProfileId }: { studentProfileId: str
           onClose={() => setAddOpen(false)}
           onSuccess={() => {
             setAddOpen(false);
-            load();
+            reload();
             router.refresh();
           }}
         />
@@ -278,7 +271,7 @@ export function StudentTextbookTab({ studentProfileId }: { studentProfileId: str
           onClose={() => setEditTarget(null)}
           onSuccess={() => {
             setEditTarget(null);
-            load();
+            reload();
           }}
         />
       )}
@@ -294,7 +287,7 @@ export function StudentTextbookTab({ studentProfileId }: { studentProfileId: str
           await removeTextbookFromStudent(removeTarget.id);
           setRemovePending(false);
           setRemoveTarget(null);
-          load();
+          reload();
           router.refresh();
         }}
         onCancel={() => setRemoveTarget(null)}

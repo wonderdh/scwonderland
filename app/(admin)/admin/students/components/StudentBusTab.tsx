@@ -6,7 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
-import type { StudentBusDefault, BusTimeSlot, BusStop } from "@/lib/types";
+import type { StudentBusDefault, BusTimeSlot, BusStop, AfterschoolStatus } from "@/lib/types";
+import { detectAfterschoolSlot } from "@/lib/bus/afterschool-sync";
+import { toast } from "sonner";
 import {
   getStudentBusDefaults,
   upsertStudentBusDefault,
@@ -14,6 +16,8 @@ import {
   listBusTimeSlots,
   listBusStops,
   getStudentAfterschoolDetail,
+  updateAfterschoolSecondPeriod,
+  deleteAfterschoolEnrollmentDay,
 } from "../../actions";
 import { LoadingState } from "@/components/LoadingState";
 import { formatTime } from "@/lib/bus/utils";
@@ -22,7 +26,6 @@ const DAY_NAMES = ["", "월", "화", "수", "목", "금"];
 const DIR_LABEL = { pickup: "등원", dropoff: "하원" } as const;
 
 // 방과후 등록 상태별 카드 색상
-type AfterschoolStatus = "none" | "first_only" | "both";
 const AFTERSCHOOL_STYLES: Record<AfterschoolStatus, { border: string; bg: string; badge: string; label: string }> = {
   none: { border: "", bg: "", badge: "", label: "" },
   first_only: { border: "border-violet-300", bg: "bg-violet-50/60", badge: "bg-violet-100 text-violet-700", label: "방과후 1교시" },
@@ -130,6 +133,11 @@ export function StudentBusTab({ studentProfileId }: { studentProfileId: string }
     setSaving(true);
     setError("");
     const dir = currentDirection;
+
+    // 방과후 슬롯 판별
+    const selectedSlot = busTimeSlots.find((s) => s.id === editSlotId);
+    const { isAfterschoolSlot, secondPeriod: newSecondPeriod } = detectAfterschoolSlot(selectedSlot);
+
     for (const day of checkedDays) {
       const result = await upsertStudentBusDefault(
         studentProfileId,
@@ -144,6 +152,27 @@ export function StudentBusTab({ studentProfileId }: { studentProfileId: string }
         setError(result.error);
         setSaving(false);
         return;
+      }
+
+      // 방과후 연동: 하원 변경 시 second_period 자동 동기화
+      if (dir === "dropoff") {
+        const asStatus = afterschoolMap.get(day);
+        if (asStatus && asStatus !== "none") {
+          if (isAfterschoolSlot) {
+            const currentSecondPeriod = asStatus === "both";
+            if (currentSecondPeriod !== newSecondPeriod) {
+              const syncResult = await updateAfterschoolSecondPeriod(studentProfileId, day, newSecondPeriod);
+              if (!syncResult.error) {
+                toast.success(
+                  `${DAY_NAMES[day]}요일 방과후 교시가 ${newSecondPeriod ? "1·2교시" : "1교시"}로 업데이트됐습니다.`
+                );
+              }
+            }
+          } else {
+            // 방과후 슬롯 아닌 걸 선택 → 해당 요일 enrollment 삭제 (방과후 없음)
+            await deleteAfterschoolEnrollmentDay(studentProfileId, day);
+          }
+        }
       }
     }
     closeEdit();
@@ -231,6 +260,7 @@ export function StudentBusTab({ studentProfileId }: { studentProfileId: string }
               onCancel={closeEdit}
               onDelete={checkedWithData > 0 ? () => setDeleteConfirmOpen(true) : undefined}
               saving={saving}
+              afterschoolMap={afterschoolMap}
             />
           )}
         </TabsContent>
@@ -261,6 +291,7 @@ export function StudentBusTab({ studentProfileId }: { studentProfileId: string }
               onCancel={closeEdit}
               onDelete={checkedWithData > 0 ? () => setDeleteConfirmOpen(true) : undefined}
               saving={saving}
+              afterschoolMap={afterschoolMap}
             />
           )}
         </TabsContent>
@@ -477,6 +508,7 @@ function EditPanel({
   onCancel,
   onDelete,
   saving,
+  afterschoolMap,
 }: {
   direction: "pickup" | "dropoff";
   checkedDays: Set<number>;
@@ -493,12 +525,32 @@ function EditPanel({
   onCancel: () => void;
   onDelete?: () => void;
   saving: boolean;
+  afterschoolMap?: Map<number, AfterschoolStatus>;
 }) {
+  // 하원 편집 시 방과후 등록된 요일 표시
+  const afterschoolCheckedDays =
+    direction === "dropoff" && afterschoolMap
+      ? Array.from(checkedDays).filter((d) => {
+          const s = afterschoolMap.get(d);
+          return s && s !== "none";
+        })
+      : [];
+
   return (
     <div className="mt-3 border rounded-lg p-4 bg-slate-50 space-y-3">
       <div className="flex items-center gap-2 text-sm font-medium text-slate-700">
         편집 — {DIR_LABEL[direction]}
       </div>
+
+      {afterschoolCheckedDays.length > 0 && (
+        <div className="flex items-start gap-2 text-xs bg-violet-50 border border-violet-200 rounded-lg px-3 py-2 text-violet-700">
+          <span className="shrink-0 mt-0.5">ⓘ</span>
+          <span>
+            <span className="font-medium">{afterschoolCheckedDays.map((d) => DAY_NAMES[d]).join("·")}요일</span>은 방과후 등록된 날입니다.
+            {" "}시간대 선택에 따라 방과후 교시가 자동으로 연동됩니다.
+          </span>
+        </div>
+      )}
 
       {/* 요일 체크박스 */}
       <div>

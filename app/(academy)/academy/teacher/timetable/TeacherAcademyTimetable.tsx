@@ -4,7 +4,7 @@ import { useState, useMemo } from "react";
 import type { GroupTimetableData } from "@/lib/types";
 import { CLASS_COLOR_PALETTE } from "@/lib/class-colors";
 
-type GroupKey = "유치부" | "오후반" | "방과후";
+type GroupKey = "유치부" | "오후반";
 
 const GROUP_TABS: {
   key: GroupKey;
@@ -13,7 +13,6 @@ const GROUP_TABS: {
 }[] = [
   { key: "유치부", korean: "유치부", native: "Kindergarten" },
   { key: "오후반", korean: "오후반", native: "Afternoon" },
-  { key: "방과후", korean: "방과후", native: "After School" },
 ];
 
 const DAY_LABELS = {

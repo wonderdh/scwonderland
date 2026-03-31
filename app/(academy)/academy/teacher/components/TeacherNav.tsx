@@ -97,16 +97,6 @@ const koreanLinks: LinkItem[] = [
     activeColor: "bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-md",
     icon: ICONS.homework,
   },
-  {
-    href: "/academy/teacher/bus",
-    label: "승하차",
-    activeColor: "bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-md",
-    icon: (
-      <svg className="size-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M8 17a2 2 0 100-4 2 2 0 000 4zm8 0a2 2 0 100-4 2 2 0 000 4zM6 3h12a2 2 0 012 2v10a2 2 0 01-2 2H6a2 2 0 01-2-2V5a2 2 0 012-2zm0 4h12M7 21h2m6 0h2" />
-      </svg>
-    ),
-  },
 ];
 
 const nativeLinks: LinkItem[] = [
@@ -148,32 +138,55 @@ const nativeLinks: LinkItem[] = [
   },
 ];
 
-export function TeacherNav({ teacherType }: { teacherType: "korean" | "native" }) {
+export function TeacherNav({
+  teacherType,
+  teacherName,
+}: {
+  teacherType: "korean" | "native";
+  teacherName?: string;
+}) {
   const pathname = usePathname();
-  const links = teacherType === "native" ? nativeLinks : koreanLinks;
+  const isNative = teacherType === "native";
+
+  const links = isNative ? nativeLinks : koreanLinks;
 
   return (
-    <nav className="mb-6 flex items-center gap-1 rounded-xl border bg-card p-1.5 shadow-sm">
-      {links.map(({ href, label, icon, activeColor }) => {
-        const isActive =
-          href === "/academy/teacher"
-            ? pathname === "/academy/teacher"
-            : pathname.startsWith(href);
-        return (
-          <Link
-            key={href}
-            href={href}
-            className={`inline-flex items-center gap-1 sm:gap-1.5 rounded-lg px-2 sm:px-3 py-2 text-xs sm:text-sm font-medium transition-all ${
-              isActive
-                ? activeColor
-                : "text-muted-foreground hover:bg-muted hover:text-foreground"
-            }`}
-          >
-            {icon}
-            <span>{label}</span>
-          </Link>
-        );
-      })}
-    </nav>
+    <div className="mb-6 space-y-2">
+      {/* 교사 이름 배지 */}
+      {teacherName && (
+        <div className="flex items-center gap-2 px-1">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
+            <svg className="size-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
+            </svg>
+            {teacherName}
+          </span>
+        </div>
+      )}
+
+      {/* 탭 네비게이션 */}
+      <nav className="flex items-center gap-1 rounded-xl border bg-card p-1.5 shadow-sm">
+        {links.map(({ href, label, icon, activeColor }) => {
+          const isActive =
+            href === "/academy/teacher"
+              ? pathname === "/academy/teacher"
+              : pathname.startsWith(href);
+          return (
+            <Link
+              key={href}
+              href={href}
+              className={`inline-flex items-center gap-1 sm:gap-1.5 rounded-lg px-2 sm:px-3 py-2 text-xs sm:text-sm font-medium transition-all ${
+                isActive
+                  ? activeColor
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              }`}
+            >
+              {icon}
+              <span>{label}</span>
+            </Link>
+          );
+        })}
+      </nav>
+    </div>
   );
 }

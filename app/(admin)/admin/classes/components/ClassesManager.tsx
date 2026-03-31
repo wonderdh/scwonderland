@@ -9,7 +9,7 @@ import {
   listStudentsNotInClass,
   updateClass,
 } from "../../actions";
-import type { ClassWithDetails, ClassStudentRow, ClassTeacherInfo, ClassTextbook, Textbook } from "@/lib/types";
+import type { ClassWithDetails, ClassStudentRow, ClassTeacherInfo, ClassTextbook, Textbook, TeacherOption } from "@/lib/types";
 import {
   listClassTextbooks,
   listTextbooks,
@@ -21,8 +21,9 @@ import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { CLASS_COLOR_PALETTE } from "@/lib/class-colors";
 import { getAgeColor } from "@/lib/student-age-colors";
-
-const GROUP_ORDER = ["유치부", "오후반", ""] as const;
+import { TeacherBadges } from "@/components/TeacherBadges";
+import { GROUP_ORDER } from "@/lib/class-groups";
+import { sortStudentsByAgeAndName } from "@/lib/utils/student-sort";
 
 const MANAGE_GROUP_STYLE: Record<string, {
   icon: string;
@@ -40,27 +41,6 @@ function formatTeachers(teachers: ClassTeacherInfo[]): string {
   return teachers.map((t) => `${t.name ?? "—"}(${t.teacher_type === "native" ? "원어민" : "한국인"})`).join(", ");
 }
 
-function TeacherBadges({ teachers }: { teachers: ClassTeacherInfo[] }) {
-  if (teachers.length === 0) return <span className="text-muted-foreground">미지정</span>;
-  return (
-    <span className="inline-flex items-center gap-1 flex-wrap">
-      {teachers.map((t) => (
-        <span
-          key={t.profile_id}
-          className={`inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium ${
-            t.teacher_type === "native"
-              ? "bg-blue-100 text-blue-700"
-              : "bg-emerald-100 text-emerald-700"
-          }`}
-        >
-          {t.name ?? "—"}
-        </span>
-      ))}
-    </span>
-  );
-}
-
-type TeacherOption = { id: string; name: string; teacher_type: "korean" | "native" };
 
 type StudentInfo = {
   id: string;
@@ -315,11 +295,7 @@ export function ClassesManager({
       );
     }
     // 나이순 → 이름순
-    return [...unassigned].sort((a, b) => {
-      const ageDiff = (a.age ?? 99) - (b.age ?? 99);
-      if (ageDiff !== 0) return ageDiff;
-      return (a.korean_name ?? "").localeCompare(b.korean_name ?? "");
-    });
+    return sortStudentsByAgeAndName(unassigned);
   }, [allStudents, studentClassMap, rightSearch, rightGroupFilter]);
 
   // 오른쪽 패널: 교재 검색 필터
@@ -547,9 +523,7 @@ export function ClassesManager({
         ...pendingTextbookAdds.keys(),
         ...pendingTextbookRemoves.keys(),
       ]);
-      for (const classId of affectedClassIds) {
-        await loadCardTextbooks(classId);
-      }
+      await Promise.all([...affectedClassIds].map((classId) => loadCardTextbooks(classId)));
       setPendingTextbookAdds(new Map());
       setPendingTextbookRemoves(new Map());
       toast.success("저장되었습니다.");

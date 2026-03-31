@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
+import { useAsyncData } from "../../hooks/useAsyncData";
 import { useRouter } from "next/navigation";
 import {
   listAttendanceRecords,
@@ -33,10 +34,22 @@ export function StudentAttendanceTab({ studentProfileId }: { studentProfileId: s
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
-  const [records, setRecords] = useState<AttendanceRecord[]>([]);
-  const [stats, setStats] = useState<AttendanceStats>({ total: 0, present: 0, absent: 0, late: 0, excused: 0 });
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data, loading, reload } = useAsyncData(
+    async () => {
+      const [records, stats] = await Promise.all([
+        listAttendanceRecords(studentProfileId, year, month),
+        getAttendanceStats(studentProfileId, year, month),
+      ]);
+      return { records, stats };
+    },
+    [studentProfileId, year, month],
+  );
+
+  const records: AttendanceRecord[] = data?.records ?? [];
+  const stats: AttendanceStats = data?.stats ?? { total: 0, present: 0, absent: 0, late: 0, excused: 0 };
+
+  // Action-level error (save/delete, distinct from load error)
+  const [actionError, setActionError] = useState<string | null>(null);
 
   // Record form state
   const [showForm, setShowForm] = useState(false);
@@ -44,21 +57,6 @@ export function StudentAttendanceTab({ studentProfileId }: { studentProfileId: s
   const [formStatus, setFormStatus] = useState("present");
   const [formNote, setFormNote] = useState("");
   const [saving, setSaving] = useState(false);
-
-  const loadData = useCallback(async () => {
-    setLoading(true);
-    const [recs, st] = await Promise.all([
-      listAttendanceRecords(studentProfileId, year, month),
-      getAttendanceStats(studentProfileId, year, month),
-    ]);
-    setRecords(recs);
-    setStats(st);
-    setLoading(false);
-  }, [studentProfileId, year, month]);
-
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
 
   const openForm = (day?: number) => {
     const d = day
@@ -68,12 +66,12 @@ export function StudentAttendanceTab({ studentProfileId }: { studentProfileId: s
     setFormStatus("present");
     setFormNote("");
     setShowForm(true);
-    setError(null);
+    setActionError(null);
   };
 
   const handleSave = async () => {
     setSaving(true);
-    setError(null);
+    setActionError(null);
     const result = await recordAttendance(
       studentProfileId,
       formDate,
@@ -82,22 +80,22 @@ export function StudentAttendanceTab({ studentProfileId }: { studentProfileId: s
     );
     setSaving(false);
     if (result.error) {
-      setError(result.error);
+      setActionError(result.error);
       return;
     }
     setShowForm(false);
     router.refresh();
-    await loadData();
+    await reload();
   };
 
   const handleDelete = async (id: string) => {
     const result = await deleteAttendance(id);
     if (result.error) {
-      setError(result.error);
+      setActionError(result.error);
       return;
     }
     router.refresh();
-    await loadData();
+    await reload();
   };
 
   // Calendar data
@@ -195,8 +193,8 @@ export function StudentAttendanceTab({ studentProfileId }: { studentProfileId: s
         </div>
       </div>
 
-      {error && (
-        <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>
+      {actionError && (
+        <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{actionError}</p>
       )}
 
       {/* Record Form */}

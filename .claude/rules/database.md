@@ -42,11 +42,19 @@ Supabase Auth Users
     │       └── homework_submission_files (submission_id, storage_path, original_filename, mime_type)
     │
     ├── learning_records (student_profile_id, category, title, content, score, max_score, record_date)
-    ├── attendance (student_profile_id, class_id, date, status, note)
+    ├── attendance (student_profile_id, attendance_date, status, note, recorded_by, updated_at)
+    │   └── UNIQUE (student_profile_id, attendance_date)  -- DB 트리거: after_attendance_bus_sync
     │
     ├── bus_numbers (label, is_active)
-    ├── student_bus_defaults (student_profile_id, day, direction, period_id, bus_number_id)
-    └── bus_change_requests (student_profile_id, date, direction, change_type, status)
+    ├── bus_time_slots (direction, label, time, is_active)
+    ├── bus_stop_day_assignments (bus_stop_id FK, day_of_week, bus_number_id FK, direction)
+    ├── bus_stop_schedules (bus_stop_id FK, day_of_week, direction, slot_id FK, estimated_time)
+    ├── bus_staff (profile_id FK, bus_number_id FK)
+    ├── bus_check_records (student_profile_id, check_date, direction, slot_id, bus_number_id, boarded_at, checked_at)
+    ├── student_bus_defaults (student_profile_id FK, day_of_week, direction, bus_time_slot_id FK, bus_number_id FK, bus_stop_id FK)
+    ├── bus_change_requests (student_profile_id, request_date, direction, change_type, new_bus_time_slot_id, new_bus_number_id, new_bus_stop_id, reason, status, reviewed_by, reviewed_at)
+    └── afterschool_enrollments (class_id FK, student_profile_id FK, day_of_week, second_period BOOLEAN)
+        └── UNIQUE (class_id, student_profile_id, day_of_week)
 ```
 
 - 역할은 `user_metadata.role`에 저장 (생성 시 설정)

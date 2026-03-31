@@ -1,5 +1,11 @@
 // ── Admin 타입 ──
 
+export type TeacherOption = {
+  id: string;
+  name: string;
+  teacher_type: "korean" | "native";
+};
+
 export type UserWithProfile = {
   id: string;
   email: string;
@@ -462,6 +468,8 @@ export type StudentTextbookProgress = {
 
 // ── 방과후 타입 ──
 
+export type AfterschoolStatus = "none" | "first_only" | "both";
+
 export type DayEnrollment = {
   day: number;
   second_period: boolean;
@@ -473,6 +481,7 @@ export type AfterschoolStudentEnrollment = {
   english_name: string | null;
   age: number | null;
   days: DayEnrollment[];
+  class_name: string | null;
 };
 
 // ── 버스 수출 타입 ──

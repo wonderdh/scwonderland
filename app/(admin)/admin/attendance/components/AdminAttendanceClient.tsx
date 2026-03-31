@@ -197,6 +197,12 @@ export function AdminAttendanceClient({
                                   <span className="text-sm font-medium text-foreground truncate">
                                     {student.korean_name ?? student.english_name ?? "이름 없음"}
                                   </span>
+                                  {/* 저장된 출결 상태 배지 (편집 중이 아닐 때) */}
+                                  {!isPending && mergedStatus && (
+                                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium shrink-0 ${STATUS_CONFIG[mergedStatus]?.active ?? ""}`}>
+                                      {STATUS_CONFIG[mergedStatus]?.label}
+                                    </span>
+                                  )}
                                 </div>
                                 <div className="flex gap-1 shrink-0">
                                   {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (

@@ -1,41 +1,12 @@
-"use client";
-
-import { useEffect, useState } from "react";
-import { getStudentClasses } from "../../actions";
 import type { AdminStudentClassItem } from "@/lib/types";
-import { LoadingState } from "@/components/LoadingState";
 
 export function StudentClassesView({
-  studentProfileId,
+  classes,
+  error,
 }: {
-  studentProfileId: string;
+  classes: AdminStudentClassItem[];
+  error?: string;
 }) {
-  const [classes, setClasses] = useState<AdminStudentClassItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
-    getStudentClasses(studentProfileId).then((result) => {
-      if (cancelled) return;
-      if (result.error) {
-        setError(result.error);
-      } else {
-        setClasses(result.classes);
-      }
-      setLoading(false);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [studentProfileId]);
-
-  if (loading) {
-    return <LoadingState className="py-6" />;
-  }
-
   if (error) {
     return (
       <div className="py-6 text-center text-sm text-destructive bg-destructive/10 rounded-lg px-3 py-2">

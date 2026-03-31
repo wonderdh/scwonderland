@@ -15,6 +15,7 @@ export type {
 } from "./database";
 
 export type {
+  TeacherOption,
   UserWithProfile,
   DashboardStats,
   ClassTeacherInfo,
@@ -51,6 +52,7 @@ export type {
   BusDefaultAssignment,
   ClassTextbook,
   StudentTextbookProgress,
+  AfterschoolStatus,
   DayEnrollment,
   AfterschoolStudentEnrollment,
   DropoffExportRow,

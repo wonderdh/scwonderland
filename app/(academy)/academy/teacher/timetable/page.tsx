@@ -15,10 +15,9 @@ export default async function TeacherTimetablePage() {
   const profile = await getCurrentTeacherProfile();
   if (!profile) redirect("/academy/dashboard");
 
-  const [유치부, 오후반, 방과후] = await Promise.all([
+  const [유치부, 오후반] = await Promise.all([
     getGroupTimetableGrid("유치부"),
     getGroupTimetableGrid("오후반"),
-    getGroupTimetableGrid("방과후"),
   ]);
 
   return (
@@ -28,7 +27,6 @@ export default async function TeacherTimetablePage() {
       allGroupData={{
         "유치부": 유치부,
         "오후반": 오후반,
-        "방과후": 방과후,
       }}
     />
   );

@@ -5,6 +5,7 @@ import {
   restoreUser,
   permanentlyDeleteUser,
   updateStudentProfile,
+  getStudentClasses,
 } from "../actions";
 import { AdminListSidebar } from "../components/AdminListSidebar";
 import { ScrollToSection } from "../components/ScrollToSection";
@@ -35,10 +36,15 @@ export default async function AdminStudentsPage({
   searchParams: Promise<{ section?: string; selected?: string; tab?: string }>;
 }) {
   const { section, selected, tab } = await searchParams;
-  const users = await listUsersByRole("student");
-  const selectedUser = selected ? users.find((u) => u.id === selected) : null;
   const currentTab = parseTab(tab);
-  const deletedUsers = section === "trash" ? await listDeletedUsers("student") : [];
+
+  const [users, studentClassesResult, deletedUsers] = await Promise.all([
+    listUsersByRole("student"),
+    selected && currentTab === "info" ? getStudentClasses(selected) : Promise.resolve({ classes: [] as Awaited<ReturnType<typeof getStudentClasses>>["classes"], error: undefined }),
+    section === "trash" ? listDeletedUsers("student") : Promise.resolve([]),
+  ]);
+
+  const selectedUser = selected ? users.find((u) => u.id === selected) : null;
 
   return (
     <div className="flex flex-1 min-w-0 -m-6 md:-m-8">
@@ -76,7 +82,7 @@ export default async function AdminStudentsPage({
               {currentTab === "info" && (
                 <div className="space-y-8">
                   <StudentInfoCard user={selectedUser} onUpdate={updateStudentProfile} onDelete={deleteUserById} />
-                  <StudentClassesView studentProfileId={selectedUser.id} />
+                  <StudentClassesView classes={studentClassesResult.classes} error={studentClassesResult.error} />
                 </div>
               )}
               {currentTab === "learning" && <StudentLearningTab studentProfileId={selectedUser.id} />}

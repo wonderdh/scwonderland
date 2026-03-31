@@ -147,11 +147,14 @@
 
 | 함수 | 권한 | 테이블 | 설명 |
 |------|------|--------|------|
-| `listAttendanceRecords(studentProfileId, year?, month?)` | authenticated | `attendance`, `classes` | 출결 기록 목록 (반 이름 조인) |
-| `recordAttendance(studentProfileId, classId, date, status, note?)` | authenticated | `attendance` | 출결 기록 생성/수정 (upsert) |
+| `listAttendanceRecords(studentProfileId, year?, month?)` | authenticated | `attendance` | 출결 기록 목록 (최신순, 월 필터 선택) |
+| `recordAttendance(studentProfileId, attendanceDate, status, note?)` | authenticated | `attendance` | 출결 생성/수정 (upsert, conflict: student_profile_id+attendance_date) |
 | `deleteAttendance(recordId)` | authenticated | `attendance` | 출결 기록 삭제 |
-| `getClassAttendanceByDate(classId, date)` | authenticated | `class_students`, `attendance` | 반 학생들의 특정 날짜 출결 조회 |
-| `getAttendanceStats(studentProfileId, year, month)` | authenticated | `attendance` | 월별 출결 통계 |
+| `getStudentAttendanceByDate(studentProfileId, date)` | authenticated | `attendance` | 특정 학생·날짜 출결 조회 → `{ status, note }` |
+| `getClassAttendanceByDate(classId, date)` | authenticated | `class_students`, `attendance` | 반 학생들의 특정 날짜 출결 목록 (교사용) |
+| `getClassStudentsWithAttendance(classId, date)` | admin | `class_students`, `students`, `attendance` | 반 학생 목록 + 출결 통합 → `StudentWithAttendance[]` (나이순 정렬, 관리자 반별 출결용) |
+| `bulkRecordAttendance(records[{student_profile_id, date, status, note?}])` | admin | `attendance` | 반 출결 일괄 upsert (관리자 반별 출결 저장, revalidate: /admin/attendance + /m/attendance) |
+| `getAttendanceStats(studentProfileId, year, month)` | authenticated | `attendance` | 월별 출결 통계 (total, present, absent, late, excused) |
 
 ---
 
