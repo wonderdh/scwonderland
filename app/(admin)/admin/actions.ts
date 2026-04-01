@@ -27,7 +27,9 @@ export {
   upsertReportCard,
   deleteReportCard,
   updateReportCardReply,
+  listAllClassesReportStatus,
 } from "./actions/report-actions";
+export type { ClassReportSummary } from "./actions/report-actions";
 
 export {
   listClassesWithDetails,

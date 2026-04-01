@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import type { ReportCard, ReportCardListItem } from "@/lib/types";
+import { verifyAdmin } from "./auth-helpers";
 
 /** 선택한 학생·년·월의 리포트카드 1건 조회 (없으면 null). admin/선생/해당 학생만 조회 가능(RLS). */
 export async function getReportCard(
@@ -211,4 +212,59 @@ export async function updateReportCardReply(
   }
   revalidatePath("/academy/student/reports");
   return {};
+}
+
+export type ClassReportSummary = {
+  classId: string;
+  className: string;
+  written: number;
+  total: number;
+};
+
+/** 전체 반의 지정 년/월 리포트카드 작성 현황 요약 (관리자 전용) */
+export async function listAllClassesReportStatus(
+  year: number,
+  month: number
+): Promise<ClassReportSummary[]> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return [];
+
+  const admin = createAdminClient();
+
+  const { data: classes, error: classesError } = await admin
+    .from("classes")
+    .select("id, name")
+    .order("name");
+  if (classesError || !classes?.length) return [];
+
+  const results = await Promise.all(
+    classes.map(async (cls) => {
+      // 반 학생 목록
+      const { data: members } = await admin
+        .from("class_students")
+        .select("student_profile_id")
+        .eq("class_id", cls.id);
+      const total = members?.length ?? 0;
+      if (total === 0) {
+        return { classId: cls.id, className: cls.name, written: 0, total: 0 };
+      }
+      const studentIds = members!.map((m) => m.student_profile_id);
+
+      // 리포트카드 작성 여부 조회
+      const { data: reports } = await admin
+        .from("report_cards")
+        .select("student_profile_id, content")
+        .in("student_profile_id", studentIds)
+        .eq("year", year)
+        .eq("month", month);
+
+      const written = (reports ?? []).filter(
+        (r) => r.content != null && r.content.trim() !== ""
+      ).length;
+
+      return { classId: cls.id, className: cls.name, written, total };
+    })
+  );
+
+  return results;
 }
