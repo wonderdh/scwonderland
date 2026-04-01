@@ -572,7 +572,7 @@ export async function batchUpdateClassStudents(
 
 /** 비밀번호 일괄 내보내기용 — 반별 학생 ID 목록 (관리자 전용, 방과후 제외) */
 export async function listClassesWithStudentIds(): Promise<
-  { id: string; name: string; studentProfileIds: string[] }[]
+  { id: string; name: string; colorIndex: number | null; studentProfileIds: string[] }[]
 > {
   const auth = await verifyAdmin();
   if ("error" in auth) return [];
@@ -580,7 +580,7 @@ export async function listClassesWithStudentIds(): Promise<
 
   const { data: classes } = await supabase
     .from("classes")
-    .select("id, name, group_label")
+    .select("id, name, group_label, color_index")
     .neq("group_label", "방과후")
     .order("name");
   if (!classes?.length) return [];
@@ -599,6 +599,7 @@ export async function listClassesWithStudentIds(): Promise<
   return classes.map((c) => ({
     id: c.id,
     name: c.name,
+    colorIndex: c.color_index ?? null,
     studentProfileIds: classStudentMap.get(c.id) ?? [],
   }));
 }

@@ -4,7 +4,6 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import type { UserWithProfile } from "@/lib/types";
 import { bulkResetStudentPasswords, listClassesWithStudentIds } from "../../actions";
-import * as XLSX from "xlsx";
 
 type GeneratedEntry = {
   id: string;
@@ -12,6 +11,23 @@ type GeneratedEntry = {
   idPrefix: string;
   password: string;
 };
+
+// CLASS_COLOR_PALETTE의 -100/-800 계열을 ARGB 헥스로 매핑
+const PALETTE_ARGB: { bg: string; text: string }[] = [
+  { bg: "FFDBEAFE", text: "FF1E40AF" }, // blue
+  { bg: "FFD1FAE5", text: "FF065F46" }, // emerald
+  { bg: "FFEDE9FE", text: "FF5B21B6" }, // violet
+  { bg: "FFFEF3C7", text: "FF92400E" }, // amber
+  { bg: "FFFFE4E6", text: "FF9F1239" }, // rose
+  { bg: "FFCFFAFE", text: "FF155E75" }, // cyan
+  { bg: "FFFFEDD5", text: "FF9A3412" }, // orange
+  { bg: "FFCCFBF1", text: "FF115E59" }, // teal
+];
+
+function getPaletteArgb(colorIndex: number | null, fallback: number) {
+  const idx = (colorIndex ?? fallback) % PALETTE_ARGB.length;
+  return PALETTE_ARGB[idx];
+}
 
 function generatePassword(email: string): string {
   const idPrefix = email.split("@")[0];
@@ -38,7 +54,7 @@ export function BulkPasswordResetDialog({
   const [result, setResult] = useState<{ success: number; failed: number } | null>(null);
 
   const label = variant === "teacher" ? "교사" : "학생";
-  const csvFilename = variant === "teacher" ? "교사_비밀번호.xlsx" : "학생_비밀번호.xlsx";
+  const filename = variant === "teacher" ? "교사_비밀번호.xlsx" : "학생_비밀번호.xlsx";
 
   const handleGenerate = () => {
     const entries = users
@@ -56,53 +72,115 @@ export function BulkPasswordResetDialog({
   const handleDownload = async () => {
     setDownloadPending(true);
     try {
-      const wb = XLSX.utils.book_new();
+      const ExcelJS = (await import("exceljs")).default;
+      const wb = new ExcelJS.Workbook();
 
-      // Sheet1: 전체 목록 (기존 형식)
-      const sheet1Data = [
-        ["이름", "아이디", "비밀번호"],
-        ...generated.map((e) => [e.name, e.idPrefix, e.password]),
+      // ── Sheet1: 전체 목록 ──────────────────────────────
+      const ws1 = wb.addWorksheet("Sheet1");
+      ws1.columns = [
+        { header: "이름",     key: "name",     width: 14 },
+        { header: "아이디",   key: "id",       width: 16 },
+        { header: "비밀번호", key: "password", width: 20 },
       ];
-      const ws1 = XLSX.utils.aoa_to_sheet(sheet1Data);
-      ws1["!cols"] = [{ wch: 14 }, { wch: 16 }, { wch: 18 }];
-      XLSX.utils.book_append_sheet(wb, ws1, "Sheet1");
+      // 헤더 스타일
+      ws1.getRow(1).eachCell((cell) => {
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF334155" } };
+        cell.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 10 };
+        cell.alignment = { vertical: "middle", horizontal: "center" };
+      });
+      ws1.getRow(1).height = 20;
+      // 데이터 행
+      generated.forEach((e, i) => {
+        const row = ws1.addRow({ name: e.name, id: e.idPrefix, password: e.password });
+        const bgArgb = i % 2 === 0 ? "FFFFFFFF" : "FFF8FAFC";
+        row.eachCell((cell) => {
+          cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: bgArgb } };
+          cell.alignment = { vertical: "middle" };
+        });
+        row.height = 18;
+      });
 
-      // Sheet2: 반별 정리 (학생 전용)
+      // ── Sheet2: 반별 목록 (학생 전용) ──────────────────
       if (variant === "student") {
+        const ws2 = wb.addWorksheet("Sheet2");
+        ws2.columns = [
+          { header: "반",       key: "class",    width: 16 },
+          { header: "이름",     key: "name",     width: 14 },
+          { header: "아이디",   key: "id",       width: 16 },
+          { header: "비밀번호", key: "password", width: 20 },
+        ];
+        // 헤더 스타일
+        ws2.getRow(1).eachCell((cell) => {
+          cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF334155" } };
+          cell.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 10 };
+          cell.alignment = { vertical: "middle", horizontal: "center" };
+        });
+        ws2.getRow(1).height = 20;
+
         const classes = await listClassesWithStudentIds();
         const entryMap = new Map(generated.map((e) => [e.id, e]));
-
-        const sheet2Data: (string | number)[][] = [["반", "이름", "아이디", "비밀번호"]];
-
-        // 반별 학생 추가
         const assignedIds = new Set<string>();
-        for (const cls of classes) {
+
+        classes.forEach((cls, clsIdx) => {
           const classStudents = cls.studentProfileIds
             .map((pid) => entryMap.get(pid))
             .filter((e): e is GeneratedEntry => !!e);
-          if (classStudents.length === 0) continue;
-          sheet2Data.push([cls.name, "", "", ""]);
+          if (classStudents.length === 0) return;
+
+          const { bg, text } = getPaletteArgb(cls.colorIndex, clsIdx);
+
+          // 반 헤더 행
+          const headerRow = ws2.addRow({ class: cls.name, name: "", id: "", password: "" });
+          headerRow.eachCell((cell) => {
+            cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: bg } };
+            cell.font = { bold: true, color: { argb: text }, size: 10 };
+            cell.alignment = { vertical: "middle" };
+          });
+          headerRow.height = 20;
+
+          // 학생 행 (반 색상 연한 배경)
           for (const e of classStudents) {
-            sheet2Data.push(["", e.name, e.idPrefix, e.password]);
+            const row = ws2.addRow({ class: "", name: e.name, id: e.idPrefix, password: e.password });
+            row.eachCell((cell) => {
+              cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: bg + "40" } }; // ~25% opacity 근사
+              cell.alignment = { vertical: "middle" };
+            });
+            row.height = 18;
             assignedIds.add(e.id);
           }
-        }
+        });
 
         // 미배정 학생
         const unassigned = generated.filter((e) => !assignedIds.has(e.id));
         if (unassigned.length > 0) {
-          sheet2Data.push(["미배정", "", "", ""]);
+          const headerRow = ws2.addRow({ class: "미배정", name: "", id: "", password: "" });
+          headerRow.eachCell((cell) => {
+            cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE2E8F0" } };
+            cell.font = { bold: true, color: { argb: "FF475569" }, size: 10 };
+            cell.alignment = { vertical: "middle" };
+          });
+          headerRow.height = 20;
           for (const e of unassigned) {
-            sheet2Data.push(["", e.name, e.idPrefix, e.password]);
+            const row = ws2.addRow({ class: "", name: e.name, id: e.idPrefix, password: e.password });
+            row.eachCell((cell) => {
+              cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF1F5F9" } };
+              cell.alignment = { vertical: "middle" };
+            });
+            row.height = 18;
           }
         }
-
-        const ws2 = XLSX.utils.aoa_to_sheet(sheet2Data);
-        ws2["!cols"] = [{ wch: 16 }, { wch: 14 }, { wch: 16 }, { wch: 18 }];
-        XLSX.utils.book_append_sheet(wb, ws2, "Sheet2");
       }
 
-      XLSX.writeFile(wb, csvFilename);
+      const buffer = await wb.xlsx.writeBuffer();
+      const blob = new Blob([buffer], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
     } finally {
       setDownloadPending(false);
     }
@@ -141,7 +219,6 @@ export function BulkPasswordResetDialog({
         className="w-full max-w-2xl rounded-xl bg-white shadow-xl flex flex-col max-h-[80vh]"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
         <div className="px-6 py-4 border-b border-slate-200">
           <h3 className="text-base font-semibold text-slate-900">비밀번호 일괄생성</h3>
           <p className="mt-0.5 text-sm text-slate-500">
@@ -149,14 +226,13 @@ export function BulkPasswordResetDialog({
           </p>
         </div>
 
-        {/* Body */}
         <div className="flex-1 overflow-auto px-6 py-4">
           {generated.length === 0 ? (
             <div className="py-10 text-center text-muted-foreground text-sm">
               <p className="text-slate-600">전체 {label} <span className="font-semibold">{users.length}명</span>의 비밀번호를 자동 생성합니다.</p>
               <p className="mt-1 text-slate-400">생성 후 엑셀 다운로드하여 확인하고, 전체 적용할 수 있습니다.</p>
               {variant === "student" && (
-                <p className="mt-1 text-slate-400">Sheet1: 전체 목록 · Sheet2: 반별 정리</p>
+                <p className="mt-1 text-slate-400">Sheet1: 전체 목록 · Sheet2: 반별 색상 구분</p>
               )}
             </div>
           ) : (
@@ -192,7 +268,6 @@ export function BulkPasswordResetDialog({
           )}
         </div>
 
-        {/* Footer */}
         <div className="px-6 py-4 border-t border-slate-200 flex justify-end gap-2 flex-wrap">
           {generated.length === 0 ? (
             <>
