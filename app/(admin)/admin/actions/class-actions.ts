@@ -570,7 +570,7 @@ export async function batchUpdateClassStudents(
   return {};
 }
 
-/** 비밀번호 일괄 내보내기용 — 반별 학생 ID 목록 (관리자 전용) */
+/** 비밀번호 일괄 내보내기용 — 반별 학생 ID 목록 (관리자 전용, 방과후 제외) */
 export async function listClassesWithStudentIds(): Promise<
   { id: string; name: string; studentProfileIds: string[] }[]
 > {
@@ -580,7 +580,8 @@ export async function listClassesWithStudentIds(): Promise<
 
   const { data: classes } = await supabase
     .from("classes")
-    .select("id, name")
+    .select("id, name, group_label")
+    .neq("group_label", "방과후")
     .order("name");
   if (!classes?.length) return [];
 
