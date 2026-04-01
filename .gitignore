@@ -42,3 +42,19 @@ next-env.d.ts
 
 # worktrees
 .worktrees/
+
+# playwright MCP 로그/스냅샷
+.playwright-mcp/
+
+# claude-code-harness
+claude-code-harness.config.json
+PLUGINS.md
+
+# claude 세션/상태 (CLAUDE.md, rules/, routes/ 는 커밋 유지)
+.claude/sessions/
+.claude/state/
+.claude/worktrees/
+.claude/agents/
+
+# playwright 스크린샷 (루트 레벨)
+*.png
