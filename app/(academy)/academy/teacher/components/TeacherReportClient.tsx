@@ -130,7 +130,9 @@ export function TeacherReportClient({
 
   const handleDelete = async () => {
     if (!report?.id) return;
-    if (!window.confirm(L.deleteConfirm)) return;
+    const hasReply = !!(report.reply && report.reply.trim());
+    const confirmMsg = hasReply ? L.deleteConfirm : L.deleteConfirmNoReply;
+    if (!window.confirm(confirmMsg)) return;
     setDeleting(true);
     setSaveMessage(null);
     const result = await deleteReportCard(report.id);

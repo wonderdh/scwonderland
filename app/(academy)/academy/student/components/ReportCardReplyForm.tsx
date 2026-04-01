@@ -16,6 +16,7 @@ export function ReportCardReplyForm({
   const router = useRouter();
   const [reply, setReply] = useState(initialReply);
   const [pending, setPending] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const hasExistingReply = initialReply.trim() !== "";
@@ -32,6 +33,20 @@ export function ReportCardReplyForm({
       return;
     }
     toast.success("답변이 저장되었습니다.");
+    router.refresh();
+  };
+
+  const handleDelete = async () => {
+    if (!window.confirm("답글을 삭제하시겠습니까?")) return;
+    setDeleting(true);
+    setError(null);
+    const result = await updateReportCardReply(reportCardId, "");
+    setDeleting(false);
+    if (result?.error) {
+      setError(result.error);
+      return;
+    }
+    toast.success("답글이 삭제되었습니다.");
     router.refresh();
   };
 
@@ -55,10 +70,23 @@ export function ReportCardReplyForm({
           placeholder="선생님 코멘트에 대한 답글을 남겨 주세요."
           className="w-full rounded-lg border border-slate-200 px-3 py-3 text-base text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400 sm:text-sm"
         />
-        <div className="flex justify-end">
+        <div className="flex items-center justify-between gap-2">
+          {hasExistingReply ? (
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={deleting || pending}
+              className="inline-flex items-center gap-1.5 min-h-[44px] rounded-lg border border-red-200 px-4 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50 touch-manipulation"
+            >
+              {deleting && <Spinner size="sm" />}
+              {deleting ? "삭제 중…" : "삭제"}
+            </button>
+          ) : (
+            <div />
+          )}
           <button
             type="submit"
-            disabled={pending}
+            disabled={pending || deleting}
             className="min-h-[44px] rounded-lg bg-slate-800 px-4 py-2.5 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50 touch-manipulation"
           >
             {pending ? <><Spinner size="sm" /> {buttonLabel} 중…</> : buttonLabel}
