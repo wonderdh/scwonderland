@@ -15,14 +15,15 @@ export default async function AcademyLayout({
   } = await supabase.auth.getUser();
 
   let isNative = false;
+  let displayName: string | null = null;
   if (user) {
     const admin = createAdminClient();
-    const { data: teacher } = await admin
-      .from("teachers")
-      .select("teacher_type")
-      .eq("profile_id", user.id)
-      .maybeSingle();
+    const [{ data: teacher }, { data: profile }] = await Promise.all([
+      admin.from("teachers").select("teacher_type").eq("profile_id", user.id).maybeSingle(),
+      admin.from("profiles").select("first_name").eq("id", user.id).maybeSingle(),
+    ]);
     isNative = teacher?.teacher_type === "native";
+    displayName = profile?.first_name ?? user.email?.split("@")[0] ?? null;
   }
 
   return (
@@ -40,20 +41,26 @@ export default async function AcademyLayout({
             className="h-8 w-auto"
           />
         </Link>
-        <nav className="flex items-center gap-4 text-sm">
+        <nav className="flex items-center gap-2 sm:gap-4 text-sm">
           <Link
             href="/academy/dashboard"
             className="text-slate-600 hover:text-slate-900"
           >
             {isNative ? "Dashboard" : "대시보드"}
           </Link>
-          <span className="text-slate-400">|</span>
+          <span className="hidden sm:inline text-slate-400">|</span>
           <Link
             href="/"
-            className="text-slate-500 hover:text-slate-700"
+            className="hidden sm:inline text-slate-500 hover:text-slate-700"
           >
             {isNative ? "School Website" : "학원 소개 사이트"}
           </Link>
+          {user && displayName && (
+            <>
+              <span className="text-slate-400">|</span>
+              <span className="text-slate-700 font-medium max-w-[80px] sm:max-w-none truncate">{displayName}</span>
+            </>
+          )}
           {user && (
             <>
               <span className="text-slate-400">|</span>

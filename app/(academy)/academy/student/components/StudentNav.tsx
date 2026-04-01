@@ -79,27 +79,31 @@ export function StudentNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="mb-6 flex items-center gap-1 rounded-xl border bg-card p-1.5 shadow-sm">
-      {links.map(({ href, label, icon, activeColor }) => {
-        const isActive =
-          href === "/academy/student"
-            ? pathname === "/academy/student"
-            : pathname.startsWith(href);
-        return (
-          <Link
-            key={href}
-            href={href}
-            className={`inline-flex items-center gap-1 sm:gap-1.5 rounded-lg px-2 sm:px-3 py-2 text-xs sm:text-sm font-medium transition-all ${
-              isActive
-                ? activeColor
-                : "text-muted-foreground hover:bg-muted hover:text-foreground"
-            }`}
-          >
-            {icon}
-            <span>{label}</span>
-          </Link>
-        );
-      })}
+    <nav className="mb-6 rounded-xl border bg-card shadow-sm">
+      <div className="overflow-x-auto scrollbar-hide">
+        <div className="flex items-center gap-1 p-1.5 min-w-max">
+          {links.map(({ href, label, icon, activeColor }) => {
+            const isActive =
+              href === "/academy/student"
+                ? pathname === "/academy/student"
+                : pathname.startsWith(href);
+            return (
+              <Link
+                key={href}
+                href={href}
+                className={`inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-all ${
+                  isActive
+                    ? activeColor
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                }`}
+              >
+                {icon}
+                <span>{label}</span>
+              </Link>
+            );
+          })}
+        </div>
+      </div>
     </nav>
   );
 }

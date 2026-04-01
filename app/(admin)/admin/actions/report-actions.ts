@@ -123,6 +123,61 @@ export async function upsertReportCard(
   return {};
 }
 
+/** 리포트카드 삭제. 작성한 선생(native) 또는 admin만 가능. */
+export async function deleteReportCard(
+  reportCardId: string
+): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "로그인이 필요합니다." };
+
+  const admin = createAdminClient();
+
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+  if (!profile || !["admin", "teacher"].includes(profile.role ?? "")) {
+    return { error: "삭제 권한이 없습니다." };
+  }
+
+  if (profile.role === "teacher") {
+    const { data: teacher } = await admin
+      .from("teachers")
+      .select("teacher_type")
+      .eq("profile_id", user.id)
+      .single();
+    if (teacher?.teacher_type !== "native") {
+      return { error: "삭제 권한이 없습니다." };
+    }
+    // 본인이 작성한 리포트만 삭제 가능
+    const { data: report } = await admin
+      .from("report_cards")
+      .select("author_id")
+      .eq("id", reportCardId)
+      .single();
+    if (!report) return { error: "리포트카드를 찾을 수 없습니다." };
+    if (report.author_id !== user.id) {
+      return { error: "본인이 작성한 리포트카드만 삭제할 수 있습니다." };
+    }
+  }
+
+  const { error } = await admin
+    .from("report_cards")
+    .delete()
+    .eq("id", reportCardId);
+  if (error) {
+    console.error("[deleteReportCard]", error.message, { reportCardId });
+    return { error: error.message };
+  }
+  revalidatePath("/academy/student/reports");
+  revalidatePath("/academy/teacher/reports");
+  return {};
+}
+
 /** 학생이 자신의 리포트카드에 답글만 작성/수정. 본문이 있을 때만 허용. */
 export async function updateReportCardReply(
   reportCardId: string,

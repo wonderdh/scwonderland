@@ -25,6 +25,7 @@ export {
   getReportCard,
   listReportCardsByStudent,
   upsertReportCard,
+  deleteReportCard,
   updateReportCardReply,
 } from "./actions/report-actions";
 

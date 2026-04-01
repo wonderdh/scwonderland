@@ -18,17 +18,20 @@ export default async function TeacherLayout({
     redirect("/academy/login?next=/academy/teacher");
   }
 
-  const { data: profile } = await supabase
+  const admin = createAdminClient();
+  const { data: profile } = await admin
     .from("profiles")
-    .select("role, first_name, email")
+    .select("role, first_name")
     .eq("id", user.id)
     .single();
 
-  if (profile?.role !== "teacher") {
-    redirect("/academy/dashboard");
+  if (!profile) {
+    redirect("/academy/login");
   }
 
-  const admin = createAdminClient();
+  if (profile.role !== "teacher") {
+    redirect("/academy/dashboard");
+  }
   const { data: teacher } = await admin
     .from("teachers")
     .select("teacher_type")
@@ -36,10 +39,7 @@ export default async function TeacherLayout({
     .single();
 
   const teacherType = (teacher?.teacher_type ?? "korean") as "korean" | "native";
-  const teacherName =
-    profile?.first_name ??
-    (profile?.email ? profile.email.split("@")[0] : null) ??
-    undefined;
+  const teacherName = profile?.first_name ?? undefined;
 
   return (
     <div className="mx-auto max-w-4xl">

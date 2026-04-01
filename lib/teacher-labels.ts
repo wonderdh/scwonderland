@@ -48,6 +48,10 @@ export const reportLabels = {
     noStudents: "학생이 없습니다.",
     writtenCount: "작성",
     replyCount: "답변",
+    delete: "삭제",
+    deleteConfirm: "이 리포트카드를 삭제하시겠습니까? 학생 답글도 함께 삭제됩니다.",
+    deleting: "삭제 중…",
+    deleted: "삭제되었습니다.",
   },
   native: {
     title: "Write Report Cards",
@@ -69,6 +73,10 @@ export const reportLabels = {
     noStudents: "No students.",
     writtenCount: "Written",
     replyCount: "Replies",
+    delete: "Delete",
+    deleteConfirm: "Delete this report card? The student reply will also be deleted.",
+    deleting: "Deleting…",
+    deleted: "Deleted successfully.",
   },
 } as const;
 

@@ -21,14 +21,14 @@ export default async function StudentInfoPage() {
         <div className="h-24 bg-gradient-to-r from-red-500 via-yellow-400 via-green-500 to-blue-500" />
         <CardContent className="-mt-10 pb-6">
           <div className="flex items-end gap-4">
-            <div className="flex size-16 items-center justify-center rounded-full bg-white text-orange-600 text-2xl font-bold shadow-lg ring-4 ring-white">
+            <div className="flex size-16 shrink-0 items-center justify-center rounded-full bg-white text-orange-600 text-2xl font-bold shadow-lg ring-4 ring-white">
               {(profile.korean_name ?? "?")[0]}
             </div>
-            <div className="pb-1">
-              <h1 className="text-xl font-bold">
+            <div className="pb-1 min-w-0">
+              <h1 className="text-xl font-bold leading-snug">
                 {profile.korean_name ?? "—"}
                 {profile.english_name && (
-                  <span className="text-muted-foreground font-normal text-base ml-2">
+                  <span className="text-muted-foreground font-normal text-base ml-2 whitespace-nowrap">
                     ({profile.english_name})
                   </span>
                 )}
@@ -56,12 +56,12 @@ export default async function StudentInfoPage() {
               {classes.map((item, i) => (
                 <div
                   key={`${item.class_name}-${i}`}
-                  className="flex items-center justify-between rounded-lg border border-green-100 bg-gradient-to-r from-green-50/80 to-transparent px-4 py-3"
+                  className="flex flex-wrap items-center gap-2 rounded-lg border border-green-100 bg-gradient-to-r from-green-50/80 to-transparent px-4 py-3"
                 >
-                  <span className="font-medium">{item.class_name}</span>
-                  <div className="flex items-center gap-1.5">
+                  <span className="font-medium flex-1 min-w-0 truncate">{item.class_name}</span>
+                  <div className="flex flex-wrap items-center gap-1.5">
                     {item.teachers.length === 0 ? (
-                      <Badge variant="outline" className="bg-gray-50 text-gray-500 border-gray-200">
+                      <Badge variant="outline" className="bg-gray-50 text-gray-500 border-gray-200 whitespace-nowrap">
                         담당: 미지정
                       </Badge>
                     ) : (
@@ -69,11 +69,11 @@ export default async function StudentInfoPage() {
                         <Badge
                           key={ti}
                           variant="outline"
-                          className={
+                          className={`whitespace-nowrap ${
                             t.teacher_type === "native"
                               ? "bg-blue-50 text-blue-700 border-blue-200"
                               : "bg-emerald-50 text-emerald-700 border-emerald-200"
-                          }
+                          }`}
                         >
                           {t.name ?? "—"} ({t.teacher_type === "native" ? "원어민" : "한국인"})
                         </Badge>

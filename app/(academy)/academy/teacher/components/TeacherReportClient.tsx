@@ -6,6 +6,7 @@ import { getClassReportStatus } from "../../actions";
 import {
   getReportCard,
   upsertReportCard,
+  deleteReportCard,
 } from "@/app/(admin)/admin/actions";
 import type { ReportCard } from "@/lib/types";
 import { reportLabels, ENGLISH_MONTHS } from "@/lib/teacher-labels";
@@ -46,6 +47,7 @@ export function TeacherReportClient({
   const [content, setContent] = useState("");
   const [reportLoading, setReportLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [saveMessage, setSaveMessage] = useState<{ type: "error" | "success"; text: string } | null>(null);
 
   const currentYear = new Date().getFullYear();
@@ -118,6 +120,24 @@ export function TeacherReportClient({
     }
     setSaveMessage({ type: "success", text: L.saved });
     await loadReport();
+    await loadStatus();
+    setTimeout(() => setSaveMessage(null), 2000);
+  };
+
+  const handleDelete = async () => {
+    if (!report?.id) return;
+    if (!window.confirm(L.deleteConfirm)) return;
+    setDeleting(true);
+    setSaveMessage(null);
+    const result = await deleteReportCard(report.id);
+    setDeleting(false);
+    if (result?.error) {
+      setSaveMessage({ type: "error", text: result.error });
+      return;
+    }
+    setSaveMessage({ type: "success", text: L.deleted });
+    setReport(null);
+    setContent("");
     await loadStatus();
     setTimeout(() => setSaveMessage(null), 2000);
   };
@@ -345,11 +365,23 @@ export function TeacherReportClient({
                         placeholder={L.placeholder}
                         className="w-full rounded-lg border border-slate-200 px-3 py-3 text-base text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400 sm:text-sm"
                       />
-                      <div className="mt-3 flex justify-end">
+                      <div className="mt-3 flex items-center justify-between gap-2">
+                        {report?.id ? (
+                          <button
+                            type="button"
+                            onClick={handleDelete}
+                            disabled={deleting || saving}
+                            className="min-h-[44px] rounded-lg border border-red-200 px-4 py-2.5 text-base font-medium text-red-600 hover:bg-red-50 disabled:opacity-50 sm:min-h-[40px] sm:text-sm"
+                          >
+                            {deleting ? L.deleting : L.delete}
+                          </button>
+                        ) : (
+                          <div />
+                        )}
                         <button
                           type="button"
                           onClick={handleSave}
-                          disabled={saving}
+                          disabled={saving || deleting}
                           className="min-h-[44px] rounded-lg bg-slate-800 px-5 py-2.5 text-base font-medium text-white hover:bg-slate-700 disabled:opacity-50 sm:min-h-[40px] sm:text-sm"
                         >
                           {saving ? L.saving : L.save}

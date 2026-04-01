@@ -22,7 +22,11 @@ export default async function StudentLayout({
     .eq("id", user.id)
     .single();
 
-  if (profile?.role !== "student") {
+  if (!profile) {
+    redirect("/academy/login");
+  }
+
+  if (profile.role !== "student") {
     redirect("/academy/dashboard");
   }
 
