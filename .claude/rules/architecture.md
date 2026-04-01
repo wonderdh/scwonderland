@@ -111,7 +111,7 @@ CategoryLayout (menuId로 라우팅)
 | `/academy/student/bus` | 승하차 | 기본 배정 조회, 변경 요청 생성/취소 |
 | `/academy/teacher` | 교사 대시보드 | 담당 반 목록 (teacher_type별 라벨/링크 분기) |
 | `/academy/teacher/timetable` | 시간표 | 읽기 전용, 반별 색상 (한국인: 시간표 / 원어민: Timetable) |
-| `/academy/teacher/reports` | 리포트카드 작성 | 원어민 전용 (한국인→redirect), 영어 UI |
+| `/academy/teacher/reports` | 리포트카드 조회/작성 | 원어민: 작성/수정/삭제 가능 (영어 UI) / 한국인: 읽기 전용 조회 (한국어 UI) |
 | `/academy/teacher/textbooks` | 교재 현황 | 반별 배정 교재 목록, 진도 일괄 업데이트 |
 | `/academy/teacher/notices` | 공지사항 | 한국인 전용 (원어민→redirect), 반별 공지 CRUD |
 | `/academy/teacher/classes` | 반 관리 | 한국인 전용 (원어민→redirect), 읽기 전용 조회 |

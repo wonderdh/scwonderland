@@ -25,13 +25,16 @@ function getDefaultYearMonth() {
 export function TeacherReportClient({
   classes,
   initialClassId,
+  isReadOnly = false,
 }: {
   classes: TeacherClassWithStudents[];
   initialClassId: string | null;
+  isReadOnly?: boolean;
 }) {
   const teacherType = useTeacherType();
   const L = reportLabels[teacherType];
   const isNative = teacherType === "native";
+  const isKorean = teacherType === "korean";
 
   const [selectedClassId, setSelectedClassId] = useState(
     initialClassId ?? classes[0]?.id ?? ""
@@ -188,6 +191,12 @@ export function TeacherReportClient({
   return (
     <div className="space-y-6">
       <h1 className="text-lg font-semibold text-slate-800">{L.title}</h1>
+
+      {isKorean && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          리포트카드는 원어민 교사만 작성할 수 있습니다.
+        </div>
+      )}
 
       {/* 반 / 년월 선택 */}
       <div className="flex flex-wrap items-center gap-3">
@@ -361,35 +370,38 @@ export function TeacherReportClient({
                     <>
                       <textarea
                         value={content}
-                        onChange={(e) => setContent(e.target.value)}
+                        onChange={isReadOnly ? undefined : (e) => setContent(e.target.value)}
+                        readOnly={isReadOnly}
                         rows={8}
-                        placeholder={L.placeholder}
-                        className="w-full rounded-lg border border-slate-200 px-3 py-3 text-base text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400 sm:text-sm"
+                        placeholder={isReadOnly ? undefined : L.placeholder}
+                        className={`w-full rounded-lg border border-slate-200 px-3 py-3 text-base text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400 sm:text-sm${isReadOnly ? " bg-slate-50 cursor-default" : ""}`}
                       />
-                      <div className="mt-3 flex items-center justify-between gap-2">
-                        {report?.id ? (
+                      {!isReadOnly && (
+                        <div className="mt-3 flex items-center justify-between gap-2">
+                          {report?.id ? (
+                            <button
+                              type="button"
+                              onClick={handleDelete}
+                              disabled={deleting || saving}
+                              className="inline-flex items-center gap-1.5 min-h-[44px] rounded-lg border border-red-200 px-4 py-2.5 text-base font-medium text-red-600 hover:bg-red-50 disabled:opacity-50 sm:min-h-[40px] sm:text-sm"
+                            >
+                              {deleting && <Spinner size="sm" />}
+                              {deleting ? L.deleting : L.delete}
+                            </button>
+                          ) : (
+                            <div />
+                          )}
                           <button
                             type="button"
-                            onClick={handleDelete}
-                            disabled={deleting || saving}
-                            className="inline-flex items-center gap-1.5 min-h-[44px] rounded-lg border border-red-200 px-4 py-2.5 text-base font-medium text-red-600 hover:bg-red-50 disabled:opacity-50 sm:min-h-[40px] sm:text-sm"
+                            onClick={handleSave}
+                            disabled={saving || deleting}
+                            className="inline-flex items-center gap-1.5 min-h-[44px] rounded-lg bg-slate-800 px-5 py-2.5 text-base font-medium text-white hover:bg-slate-700 disabled:opacity-50 sm:min-h-[40px] sm:text-sm"
                           >
-                            {deleting && <Spinner size="sm" />}
-                            {deleting ? L.deleting : L.delete}
+                            {saving && <Spinner size="sm" />}
+                            {saving ? L.saving : L.save}
                           </button>
-                        ) : (
-                          <div />
-                        )}
-                        <button
-                          type="button"
-                          onClick={handleSave}
-                          disabled={saving || deleting}
-                          className="inline-flex items-center gap-1.5 min-h-[44px] rounded-lg bg-slate-800 px-5 py-2.5 text-base font-medium text-white hover:bg-slate-700 disabled:opacity-50 sm:min-h-[40px] sm:text-sm"
-                        >
-                          {saving && <Spinner size="sm" />}
-                          {saving ? L.saving : L.save}
-                        </button>
-                      </div>
+                        </div>
+                      )}
                     </>
                   )}
                 </div>

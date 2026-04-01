@@ -1,5 +1,4 @@
 import { getCurrentTeacherProfile, getTeacherClasses } from "../../actions";
-import { redirect } from "next/navigation";
 import { TeacherReportClient } from "../components/TeacherReportClient";
 
 export default async function TeacherReportsPage({
@@ -13,14 +12,13 @@ export default async function TeacherReportsPage({
     searchParams,
   ]);
 
-  if (profile?.teacher_type === "korean") {
-    redirect("/academy/teacher");
-  }
+  const isReadOnly = profile?.teacher_type === "korean";
 
   return (
     <TeacherReportClient
       classes={classes}
       initialClassId={params.class ?? null}
+      isReadOnly={isReadOnly}
     />
   );
 }

@@ -1,4 +1,4 @@
-import { getCurrentTeacherProfile, getTeacherClasses } from "../actions";
+import { getCurrentTeacherProfile, getTeacherClasses, getClassReportStatus } from "../actions";
 import Link from "next/link";
 import {
   Card,
@@ -25,6 +25,24 @@ export default async function TeacherMainPage() {
   const isNative = profile.teacher_type === "native";
   const L = dashboardLabels[profile.teacher_type];
   const totalStudents = classes.reduce((sum, c) => sum + c.students.length, 0);
+
+  // 원어민 교사만 이번 달 리포트카드 작성 현황 조회
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth() + 1;
+
+  const reportStatusMap = new Map<string, { written: number; total: number }>();
+  if (isNative && classes.length > 0) {
+    const statuses = await Promise.all(
+      classes.map((cls) => getClassReportStatus(cls.id, currentYear, currentMonth))
+    );
+    classes.forEach((cls, i) => {
+      const statusList = statuses[i];
+      const total = statusList.length;
+      const written = statusList.filter((s) => s.has_report).length;
+      reportStatusMap.set(cls.id, { written, total });
+    });
+  }
 
   return (
     <div className="space-y-6">
@@ -68,11 +86,27 @@ export default async function TeacherMainPage() {
           {classes.map((cls) => (
             <Card key={cls.id} className="hover:shadow-md transition-shadow hover:border-orange-200">
               <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
                   <CardTitle className="text-base">{cls.name}</CardTitle>
-                  <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
-                    {cls.students.length}{isNative ? ` ${L.students}` : L.students}
-                  </Badge>
+                  <div className="flex items-center gap-1.5">
+                    <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
+                      {cls.students.length}{isNative ? ` ${L.students}` : L.students}
+                    </Badge>
+                    {isNative && (() => {
+                      const status = reportStatusMap.get(cls.id);
+                      if (!status || status.total === 0) return null;
+                      const allWritten = status.written === status.total;
+                      return allWritten ? (
+                        <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
+                          {status.written}/{status.total} Written
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
+                          {status.written}/{status.total} Written
+                        </Badge>
+                      );
+                    })()}
+                  </div>
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">
