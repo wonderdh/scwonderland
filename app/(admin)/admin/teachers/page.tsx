@@ -9,7 +9,6 @@ import {
   getGroupTimetableGrid,
 } from "../actions";
 import { AdminListSidebar } from "../components/AdminListSidebar";
-import { ScrollToSection } from "../components/ScrollToSection";
 import { UserList } from "../components/UserList";
 import { AddTeacherForm } from "./components/AddTeacherForm";
 import { TeacherInfoCard } from "./components/TeacherInfoCard";
@@ -17,6 +16,7 @@ import { TeacherTabNav, type TeacherTabId } from "./components/TeacherTabNav";
 import { TeacherClassesTab } from "./components/TeacherClassesTab";
 import { TeacherTimetableTab } from "./components/TeacherTimetableTab";
 import { TrashView } from "../components/TrashView";
+import { BulkPasswordResetDialog } from "../students/components/BulkPasswordResetDialog";
 
 const VALID_TABS: TeacherTabId[] = ["info", "classes", "timetable"];
 
@@ -62,23 +62,6 @@ export default async function AdminTeachersPage({
             onRestore={restoreUser}
             onPermanentDelete={permanentlyDeleteUser}
           />
-        ) : section === "add" ? (
-          <>
-            <ScrollToSection section="add" />
-            <section id="add" className="mb-8">
-              <AddTeacherForm />
-            </section>
-            <section>
-              <h2 className="text-lg font-medium text-slate-700 mb-3">선생 목록</h2>
-              <UserList
-                users={users}
-                roleLabel="선생"
-                variant="teacher"
-                onUpdate={updateTeacherProfile}
-                onDelete={deleteUserById}
-              />
-            </section>
-          </>
         ) : selectedUser ? (
           <>
             <TeacherTabNav selectedId={selectedUser.id} currentTab={currentTab} />
@@ -98,9 +81,28 @@ export default async function AdminTeachersPage({
             </div>
           </>
         ) : (
-          <div className="py-12 rounded-xl border border-slate-200 border-dashed bg-slate-50/50 flex items-center justify-center flex-1">
-            <p className="text-slate-400 text-sm">왼쪽 목록에서 선생을 선택하세요.</p>
-          </div>
+          <>
+            <section className="mb-8">
+              <h2 className="text-base font-semibold text-slate-800 mb-3">교사 추가</h2>
+              <AddTeacherForm />
+            </section>
+            <section>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-base font-semibold text-slate-800">
+                  교사 목록
+                  <span className="ml-2 text-sm font-normal text-slate-400">{users.length}명</span>
+                </h2>
+                <BulkPasswordResetDialog users={users} variant="teacher" />
+              </div>
+              <UserList
+                users={users}
+                roleLabel="선생"
+                variant="teacher"
+                onUpdate={updateTeacherProfile}
+                onDelete={deleteUserById}
+              />
+            </section>
+          </>
         )}
       </div>
     </div>

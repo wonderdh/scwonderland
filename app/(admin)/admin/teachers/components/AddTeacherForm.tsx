@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useRef } from "react";
+import { useActionState, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { createTeacher } from "../../actions";
@@ -11,14 +11,24 @@ import { Button } from "@/components/ui/button";
 
 type FormState = { error?: string; success?: string } | null;
 
+function generatePassword(email: string): string {
+  const prefix = email.trim() || "teacher";
+  const rand = Math.floor(1000 + Math.random() * 9000);
+  return `${prefix}${rand}`;
+}
+
 export function AddTeacherForm() {
   const formRef = useRef<HTMLFormElement>(null);
   const router = useRouter();
+  const [password, setPassword] = useState("");
+  const [emailValue, setEmailValue] = useState("");
   const [state, formAction, isPending] = useActionState(
     async (_: FormState, formData: FormData) => {
       const result = await createTeacher(formData);
       if (result.error) return { error: result.error };
       formRef.current?.reset();
+      setPassword("");
+      setEmailValue("");
       router.refresh();
       toast.success("교사가 추가되었습니다.");
       return { success: "교사가 추가되었습니다." };
@@ -44,23 +54,39 @@ export function AddTeacherForm() {
           placeholder="test1"
           autoComplete="off"
           disabled={isPending}
+          value={emailValue}
+          onChange={(e) => setEmailValue(e.target.value)}
           className="mt-1"
         />
-        <p className="text-xs text-muted-foreground mt-0.5">@ 없이 쓰면 도메인 자동 추가</p>
       </div>
-      <div className="min-w-[120px]">
+      <div className="min-w-[160px]">
         <Label htmlFor="teacher-password">
           비밀번호 <span className="text-destructive">*</span>
         </Label>
-        <Input
-          id="teacher-password"
-          type="password"
-          name="password"
-          required
-          autoComplete="new-password"
-          disabled={isPending}
-          className="mt-1"
-        />
+        <div className="mt-1 flex gap-1">
+          <Input
+            id="teacher-password"
+            type="text"
+            name="password"
+            required
+            autoComplete="new-password"
+            disabled={isPending}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="비밀번호"
+            className="flex-1 min-w-0"
+          />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="shrink-0 text-xs"
+            disabled={isPending}
+            onClick={() => setPassword(generatePassword(emailValue))}
+          >
+            자동생성
+          </Button>
+        </div>
       </div>
       <div className="min-w-[120px]">
         <Label htmlFor="teacher-name">

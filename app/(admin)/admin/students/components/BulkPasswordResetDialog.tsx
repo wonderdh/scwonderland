@@ -18,18 +18,32 @@ function generatePassword(email: string): string {
   return `${idPrefix}${rand}`;
 }
 
-export function BulkPasswordResetDialog({ users }: { users: UserWithProfile[] }) {
+function getDisplayName(user: UserWithProfile, variant: "student" | "teacher"): string {
+  if (variant === "teacher") return user.name ?? user.first_name ?? user.email.split("@")[0];
+  return user.korean_name ?? user.first_name ?? user.email.split("@")[0];
+}
+
+export function BulkPasswordResetDialog({
+  users,
+  variant = "student",
+}: {
+  users: UserWithProfile[];
+  variant?: "student" | "teacher";
+}) {
   const [open, setOpen] = useState(false);
   const [generated, setGenerated] = useState<GeneratedEntry[]>([]);
   const [applyPending, setApplyPending] = useState(false);
   const [result, setResult] = useState<{ success: number; failed: number } | null>(null);
+
+  const label = variant === "teacher" ? "교사" : "학생";
+  const csvFilename = variant === "teacher" ? "교사_비밀번호.csv" : "학생_비밀번호.csv";
 
   const handleGenerate = () => {
     const entries = users
       .filter((u) => u.email)
       .map((u) => ({
         id: u.id,
-        name: u.korean_name ?? u.first_name ?? u.email.split("@")[0],
+        name: getDisplayName(u, variant),
         idPrefix: u.email.split("@")[0],
         password: generatePassword(u.email),
       }));
@@ -44,7 +58,7 @@ export function BulkPasswordResetDialog({ users }: { users: UserWithProfile[] })
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "학생_비밀번호.csv";
+    a.download = csvFilename;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -94,7 +108,7 @@ export function BulkPasswordResetDialog({ users }: { users: UserWithProfile[] })
         <div className="flex-1 overflow-auto px-6 py-4">
           {generated.length === 0 ? (
             <div className="py-10 text-center text-muted-foreground text-sm">
-              <p className="text-slate-600">전체 학생 <span className="font-semibold">{users.length}명</span>의 비밀번호를 자동 생성합니다.</p>
+              <p className="text-slate-600">전체 {label} <span className="font-semibold">{users.length}명</span>의 비밀번호를 자동 생성합니다.</p>
               <p className="mt-1 text-slate-400">생성 후 CSV 다운로드하여 확인하고, 전체 적용할 수 있습니다.</p>
             </div>
           ) : (

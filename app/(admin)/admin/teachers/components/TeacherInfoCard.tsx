@@ -34,6 +34,7 @@ export function TeacherInfoCard({
     pending: pwPending,
     message: pwMessage,
     open: openPwReset,
+    generatePassword,
     handleReset: handleResetPassword,
     reset: resetPw,
   } = usePasswordReset(user.id, user.email ?? undefined);
@@ -226,6 +227,15 @@ export function TeacherInfoCard({
                 placeholder="새 비밀번호 (6자 이상)"
                 className="flex-1"
               />
+              <Button
+                variant="outline"
+                size="sm"
+                className="shrink-0"
+                type="button"
+                onClick={generatePassword}
+              >
+                자동 생성
+              </Button>
               <Button
                 size="sm"
                 className="bg-amber-600 hover:bg-amber-500 text-white shrink-0"
