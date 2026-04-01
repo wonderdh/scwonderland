@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import type { ClassWithDetails, TeacherOption } from "@/lib/types";
 import { TeacherBadges } from "@/components/TeacherBadges";
 import { GROUP_ORDER, type GroupKey } from "@/lib/class-groups";
+import { ClassesExcelDownload } from "./ClassesExcelDownload";
 
 type FlatClassStudent = {
   class_id: string;
@@ -113,7 +114,7 @@ export function ClassesOverview({
 
   return (
     <div className="space-y-6">
-      {/* 필터 */}
+      {/* 필터 + 다운로드 */}
       <div className="flex items-center gap-3 flex-wrap">
         <select
           value={groupFilter}
@@ -151,6 +152,9 @@ export function ClassesOverview({
             </optgroup>
           )}
         </select>
+        <div className="ml-auto">
+          <ClassesExcelDownload classes={classes} allClassStudents={allClassStudents} />
+        </div>
       </div>
 
       {/* 그룹별 섹션 */}
