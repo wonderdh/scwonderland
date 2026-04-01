@@ -51,6 +51,8 @@ export function TeacherHomeworkClient({
   const [formDueDate, setFormDueDate] = useState("");
   const [saving, setSaving] = useState(false);
 
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
   // Submissions
   const [submissions, setSubmissions] = useState<HomeworkSubmission[]>([]);
   const [selectedAssignment, setSelectedAssignment] = useState<HomeworkAssignment | null>(null);
@@ -108,7 +110,9 @@ export function TeacherHomeworkClient({
 
   const handleDelete = async (id: string) => {
     if (!confirm(L.deleteConfirm)) return;
+    setDeletingId(id);
     const result = await deleteHomeworkAssignment(id);
+    setDeletingId(null);
     if (result.error) {
       setError(result.error);
       return;
@@ -215,8 +219,9 @@ export function TeacherHomeworkClient({
                       size="sm"
                       className="text-destructive hover:bg-destructive/10"
                       onClick={() => handleDelete(a.id)}
+                      disabled={deletingId === a.id}
                     >
-                      {L.delete}
+                      {deletingId === a.id ? <><Spinner size="sm" /> {L.deleting}</> : L.delete}
                     </Button>
                   </div>
                 </div>

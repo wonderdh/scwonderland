@@ -363,10 +363,11 @@ export function StudentBusClient({ studentProfileId }: { studentProfileId: strin
                   <Button
                     size="sm"
                     variant="ghost"
-                    className="h-6 text-xs text-red-500 ml-auto"
+                    className="h-6 text-xs text-red-500 ml-auto gap-1"
                     onClick={() => handleCancel(req.id)}
                     disabled={submitting}
                   >
+                    {submitting && <Spinner size="sm" />}
                     취소
                   </Button>
                 )}

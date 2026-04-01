@@ -13,6 +13,7 @@ import { reportLabels, ENGLISH_MONTHS } from "@/lib/teacher-labels";
 import { useTeacherType } from "./TeacherTypeContext";
 import { getAgeColor } from "@/lib/student-age-colors";
 import { LoadingState } from "@/components/LoadingState";
+import { Spinner } from "@/components/Spinner";
 
 const MONTHS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
@@ -371,8 +372,9 @@ export function TeacherReportClient({
                             type="button"
                             onClick={handleDelete}
                             disabled={deleting || saving}
-                            className="min-h-[44px] rounded-lg border border-red-200 px-4 py-2.5 text-base font-medium text-red-600 hover:bg-red-50 disabled:opacity-50 sm:min-h-[40px] sm:text-sm"
+                            className="inline-flex items-center gap-1.5 min-h-[44px] rounded-lg border border-red-200 px-4 py-2.5 text-base font-medium text-red-600 hover:bg-red-50 disabled:opacity-50 sm:min-h-[40px] sm:text-sm"
                           >
+                            {deleting && <Spinner size="sm" />}
                             {deleting ? L.deleting : L.delete}
                           </button>
                         ) : (
@@ -382,8 +384,9 @@ export function TeacherReportClient({
                           type="button"
                           onClick={handleSave}
                           disabled={saving || deleting}
-                          className="min-h-[44px] rounded-lg bg-slate-800 px-5 py-2.5 text-base font-medium text-white hover:bg-slate-700 disabled:opacity-50 sm:min-h-[40px] sm:text-sm"
+                          className="inline-flex items-center gap-1.5 min-h-[44px] rounded-lg bg-slate-800 px-5 py-2.5 text-base font-medium text-white hover:bg-slate-700 disabled:opacity-50 sm:min-h-[40px] sm:text-sm"
                         >
+                          {saving && <Spinner size="sm" />}
                           {saving ? L.saving : L.save}
                         </button>
                       </div>
