@@ -5,13 +5,6 @@ export const metadata = {
   title: "리포트카드 현황 | Admin",
 };
 
-function getRateColor(written: number, total: number): string {
-  if (total === 0) return "text-slate-400";
-  const rate = written / total;
-  if (rate >= 1) return "text-emerald-600 font-semibold";
-  if (rate >= 0.5) return "text-amber-600 font-semibold";
-  return "text-red-600 font-semibold";
-}
 
 function getRateBadgeClass(written: number, total: number): string {
   if (total === 0) return "bg-slate-100 text-slate-500";
