@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import type { UserWithProfile } from "@/lib/types";
-import { bulkResetStudentPasswords } from "../../actions";
+import { bulkResetStudentPasswords, listClassesWithStudentIds } from "../../actions";
+import * as XLSX from "xlsx";
 
 type GeneratedEntry = {
   id: string;
@@ -33,10 +34,11 @@ export function BulkPasswordResetDialog({
   const [open, setOpen] = useState(false);
   const [generated, setGenerated] = useState<GeneratedEntry[]>([]);
   const [applyPending, setApplyPending] = useState(false);
+  const [downloadPending, setDownloadPending] = useState(false);
   const [result, setResult] = useState<{ success: number; failed: number } | null>(null);
 
   const label = variant === "teacher" ? "교사" : "학생";
-  const csvFilename = variant === "teacher" ? "교사_비밀번호.csv" : "학생_비밀번호.csv";
+  const csvFilename = variant === "teacher" ? "교사_비밀번호.xlsx" : "학생_비밀번호.xlsx";
 
   const handleGenerate = () => {
     const entries = users
@@ -51,16 +53,59 @@ export function BulkPasswordResetDialog({
     setResult(null);
   };
 
-  const handleDownloadCsv = () => {
-    const header = "이름,아이디,비밀번호\n";
-    const rows = generated.map((e) => `${e.name},${e.idPrefix},${e.password}`).join("\n");
-    const blob = new Blob(["\uFEFF" + header + rows], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = csvFilename;
-    a.click();
-    URL.revokeObjectURL(url);
+  const handleDownload = async () => {
+    setDownloadPending(true);
+    try {
+      const wb = XLSX.utils.book_new();
+
+      // Sheet1: 전체 목록 (기존 형식)
+      const sheet1Data = [
+        ["이름", "아이디", "비밀번호"],
+        ...generated.map((e) => [e.name, e.idPrefix, e.password]),
+      ];
+      const ws1 = XLSX.utils.aoa_to_sheet(sheet1Data);
+      ws1["!cols"] = [{ wch: 14 }, { wch: 16 }, { wch: 18 }];
+      XLSX.utils.book_append_sheet(wb, ws1, "Sheet1");
+
+      // Sheet2: 반별 정리 (학생 전용)
+      if (variant === "student") {
+        const classes = await listClassesWithStudentIds();
+        const entryMap = new Map(generated.map((e) => [e.id, e]));
+
+        const sheet2Data: (string | number)[][] = [["반", "이름", "아이디", "비밀번호"]];
+
+        // 반별 학생 추가
+        const assignedIds = new Set<string>();
+        for (const cls of classes) {
+          const classStudents = cls.studentProfileIds
+            .map((pid) => entryMap.get(pid))
+            .filter((e): e is GeneratedEntry => !!e);
+          if (classStudents.length === 0) continue;
+          sheet2Data.push([cls.name, "", "", ""]);
+          for (const e of classStudents) {
+            sheet2Data.push(["", e.name, e.idPrefix, e.password]);
+            assignedIds.add(e.id);
+          }
+        }
+
+        // 미배정 학생
+        const unassigned = generated.filter((e) => !assignedIds.has(e.id));
+        if (unassigned.length > 0) {
+          sheet2Data.push(["미배정", "", "", ""]);
+          for (const e of unassigned) {
+            sheet2Data.push(["", e.name, e.idPrefix, e.password]);
+          }
+        }
+
+        const ws2 = XLSX.utils.aoa_to_sheet(sheet2Data);
+        ws2["!cols"] = [{ wch: 16 }, { wch: 14 }, { wch: 16 }, { wch: 18 }];
+        XLSX.utils.book_append_sheet(wb, ws2, "Sheet2");
+      }
+
+      XLSX.writeFile(wb, csvFilename);
+    } finally {
+      setDownloadPending(false);
+    }
   };
 
   const handleApplyAll = async () => {
@@ -109,7 +154,10 @@ export function BulkPasswordResetDialog({
           {generated.length === 0 ? (
             <div className="py-10 text-center text-muted-foreground text-sm">
               <p className="text-slate-600">전체 {label} <span className="font-semibold">{users.length}명</span>의 비밀번호를 자동 생성합니다.</p>
-              <p className="mt-1 text-slate-400">생성 후 CSV 다운로드하여 확인하고, 전체 적용할 수 있습니다.</p>
+              <p className="mt-1 text-slate-400">생성 후 엑셀 다운로드하여 확인하고, 전체 적용할 수 있습니다.</p>
+              {variant === "student" && (
+                <p className="mt-1 text-slate-400">Sheet1: 전체 목록 · Sheet2: 반별 정리</p>
+              )}
             </div>
           ) : (
             <>
@@ -155,8 +203,13 @@ export function BulkPasswordResetDialog({
             <>
               <Button variant="ghost" size="sm" onClick={handleClose}>닫기</Button>
               <Button variant="outline" size="sm" onClick={handleGenerate}>재생성</Button>
-              <Button variant="outline" size="sm" onClick={handleDownloadCsv}>
-                CSV 다운로드
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleDownload}
+                disabled={downloadPending}
+              >
+                {downloadPending ? "준비 중…" : "엑셀 다운로드"}
               </Button>
               <Button
                 size="sm"

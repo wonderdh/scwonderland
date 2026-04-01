@@ -569,3 +569,35 @@ export async function batchUpdateClassStudents(
   revalidatePath("/admin/classes");
   return {};
 }
+
+/** 비밀번호 일괄 내보내기용 — 반별 학생 ID 목록 (관리자 전용) */
+export async function listClassesWithStudentIds(): Promise<
+  { id: string; name: string; studentProfileIds: string[] }[]
+> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return [];
+  const supabase = createAdminClient();
+
+  const { data: classes } = await supabase
+    .from("classes")
+    .select("id, name")
+    .order("name");
+  if (!classes?.length) return [];
+
+  const { data: rows } = await supabase
+    .from("class_students")
+    .select("class_id, student_profile_id");
+
+  const classStudentMap = new Map<string, string[]>();
+  for (const row of rows ?? []) {
+    const list = classStudentMap.get(row.class_id) ?? [];
+    list.push(row.student_profile_id);
+    classStudentMap.set(row.class_id, list);
+  }
+
+  return classes.map((c) => ({
+    id: c.id,
+    name: c.name,
+    studentProfileIds: classStudentMap.get(c.id) ?? [],
+  }));
+}

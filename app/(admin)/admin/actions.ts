@@ -45,6 +45,7 @@ export {
   batchUpdateClassStudents,
   listTeachersForSelect,
   listStudentsNotInClass,
+  listClassesWithStudentIds,
 } from "./actions/class-actions";
 
 export {
