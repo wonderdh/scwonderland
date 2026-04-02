@@ -221,7 +221,16 @@ export type ClassReportSummary = {
   total: number;
 };
 
-/** 전체 반의 지정 년/월 리포트카드 작성 현황 요약 (관리자 전용) */
+type ClassReportStatusRow = {
+  class_id: string;
+  class_name: string;
+  total_students: number;
+  written_count: number;
+};
+
+/** 전체 반의 지정 년/월 리포트카드 작성 현황 요약 (관리자 전용).
+ *  SQL RPC `get_class_report_status` 단일 쿼리 — N+1 제거.
+ *  마이그레이션: docs/migrations/add_get_class_report_status_rpc.sql */
 export async function listAllClassesReportStatus(
   year: number,
   month: number
@@ -231,40 +240,17 @@ export async function listAllClassesReportStatus(
 
   const admin = createAdminClient();
 
-  const { data: classes, error: classesError } = await admin
-    .from("classes")
-    .select("id, name")
-    .order("name");
-  if (classesError || !classes?.length) return [];
+  const { data, error } = await admin.rpc("get_class_report_status", {
+    p_year: year,
+    p_month: month,
+  });
+  if (error || !data) return [];
 
-  const results = await Promise.all(
-    classes.map(async (cls) => {
-      // 반 학생 목록
-      const { data: members } = await admin
-        .from("class_students")
-        .select("student_profile_id")
-        .eq("class_id", cls.id);
-      const total = members?.length ?? 0;
-      if (total === 0) {
-        return { classId: cls.id, className: cls.name, written: 0, total: 0 };
-      }
-      const studentIds = members!.map((m) => m.student_profile_id);
-
-      // 리포트카드 작성 여부 조회
-      const { data: reports } = await admin
-        .from("report_cards")
-        .select("student_profile_id, content")
-        .in("student_profile_id", studentIds)
-        .eq("year", year)
-        .eq("month", month);
-
-      const written = (reports ?? []).filter(
-        (r) => r.content != null && r.content.trim() !== ""
-      ).length;
-
-      return { classId: cls.id, className: cls.name, written, total };
-    })
-  );
-
-  return results;
+  const rows = data as unknown as ClassReportStatusRow[];
+  return rows.map((row) => ({
+    classId: row.class_id,
+    className: row.class_name,
+    total: Number(row.total_students),
+    written: Number(row.written_count),
+  }));
 }

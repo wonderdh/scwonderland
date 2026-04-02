@@ -49,35 +49,19 @@ export async function getGroupTimetableGrid(
     .in("academy_period_id", periodIds)
     .is("student_profile_id", null);
 
-  // 4. 관련 교사 목록
-  const teacherIds = [...new Set((schedules ?? []).map((s) => s.teacher_profile_id).filter(Boolean))];
-  let teacherRows: { profile_id: string; name: string; teacher_type: string }[] = [];
-  if (teacherIds.length > 0) {
-    const { data } = await supabase
-      .from("teachers")
-      .select("profile_id, name, teacher_type")
-      .in("profile_id", teacherIds);
-    teacherRows = data ?? [];
-  }
-  const teacherMap = new Map(teacherRows.map((t) => [t.profile_id, t]));
+  // 4+5. 활성 교사 전체 조회 (deleted_at IS NULL 필터 + 정렬) — 단일 쿼리
+  const { data: allTeachersData } = await supabase
+    .from("teachers")
+    .select("profile_id, name, teacher_type, profiles!inner(deleted_at)")
+    .is("profiles.deleted_at", null)
+    .order("name");
 
-  // 5. 전체 교사 목록 (삭제되지 않은 교사만, 배정용)
-  const { data: activeProfiles } = await supabase
-    .from("profiles")
-    .select("id")
-    .eq("role", "teacher")
-    .is("deleted_at", null);
-  const activeTeacherIds = (activeProfiles ?? []).map((p) => p.id);
-
-  let allTeachersRaw: { profile_id: string; name: string; teacher_type: string }[] = [];
-  if (activeTeacherIds.length > 0) {
-    const { data } = await supabase
-      .from("teachers")
-      .select("profile_id, name, teacher_type")
-      .in("profile_id", activeTeacherIds)
-      .order("name");
-    allTeachersRaw = data ?? [];
-  }
+  const teacherMap = new Map(
+    (allTeachersData ?? []).map((t) => [
+      t.profile_id,
+      { name: t.name, teacher_type: t.teacher_type },
+    ]),
+  );
 
   // 6. 전체 교재 목록 (배정용)
   const { data: allTextbooks } = await supabase
@@ -110,7 +94,7 @@ export async function getGroupTimetableGrid(
     periods,
     classes,
     cells,
-    teachers: allTeachersRaw.map((t) => ({
+    teachers: (allTeachersData ?? []).map((t) => ({
       id: t.profile_id,
       name: t.name,
       teacher_type: t.teacher_type as "korean" | "native",

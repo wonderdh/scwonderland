@@ -169,10 +169,12 @@ export async function listUsersByRole(
   }
 
   const ids = profiles.map((p) => p.id);
-  const { data: users } = await supabase.auth.admin.listUsers({ perPage: 1000 });
-  const idSet = new Set(ids);
-  const userMap = new Map(
-    (users?.users ?? []).filter((u) => idSet.has(u.id)).map((u) => [u.id, u])
+
+  const { data: authUsers } = await supabase.rpc("get_user_emails_by_ids", {
+    user_ids: ids,
+  });
+  const emailMap = new Map(
+    ((authUsers ?? []) as { id: string; email: string }[]).map((u) => [u.id, u.email])
   );
 
   if (role === "student") {
@@ -184,11 +186,10 @@ export async function listUsersByRole(
       (students ?? []).map((s) => [s.profile_id, s])
     );
     return profiles.map((p) => {
-      const u = userMap.get(p.id);
       const s = studentMap.get(p.id);
       return {
         id: p.id,
-        email: u?.email ?? "",
+        email: emailMap.get(p.id) ?? "",
         first_name: p.first_name,
         last_name: p.last_name,
         korean_name: s?.korean_name ?? p.first_name,
@@ -208,11 +209,10 @@ export async function listUsersByRole(
     (teachers ?? []).map((t) => [t.profile_id, t])
   );
   return profiles.map((p) => {
-    const u = userMap.get(p.id);
     const t = teacherMap.get(p.id);
     return {
       id: p.id,
-      email: u?.email ?? "",
+      email: emailMap.get(p.id) ?? "",
       first_name: p.first_name,
       last_name: p.last_name,
       name: t?.name ?? p.first_name,
@@ -418,10 +418,12 @@ export async function listDeletedUsers(
   if (profilesError || !profiles?.length) return [];
 
   const ids = profiles.map((p) => p.id);
-  const { data: users } = await supabase.auth.admin.listUsers({ perPage: 1000 });
-  const idSet = new Set(ids);
-  const userMap = new Map(
-    (users?.users ?? []).filter((u) => idSet.has(u.id)).map((u) => [u.id, u])
+
+  const { data: authUsers } = await supabase.rpc("get_user_emails_by_ids", {
+    user_ids: ids,
+  });
+  const emailMap = new Map(
+    ((authUsers ?? []) as { id: string; email: string }[]).map((u) => [u.id, u.email])
   );
 
   if (role === "student") {
@@ -433,11 +435,10 @@ export async function listDeletedUsers(
       (students ?? []).map((s) => [s.profile_id, s])
     );
     return profiles.map((p) => {
-      const u = userMap.get(p.id);
       const s = studentMap.get(p.id);
       return {
         id: p.id,
-        email: u?.email ?? "",
+        email: emailMap.get(p.id) ?? "",
         first_name: p.first_name,
         last_name: p.last_name,
         korean_name: s?.korean_name ?? p.first_name,
@@ -456,11 +457,10 @@ export async function listDeletedUsers(
     (teachers ?? []).map((t) => [t.profile_id, t])
   );
   return profiles.map((p) => {
-    const u = userMap.get(p.id);
     const t = teacherMap.get(p.id);
     return {
       id: p.id,
-      email: u?.email ?? "",
+      email: emailMap.get(p.id) ?? "",
       first_name: p.first_name,
       last_name: p.last_name,
       name: t?.name ?? p.first_name,
