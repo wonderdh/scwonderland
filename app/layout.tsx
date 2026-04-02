@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "sonner";
+import { NavigationProgress } from "@/components/NavigationProgress";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -55,6 +56,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        <NavigationProgress />
         {children}
         <Toaster position="top-center" richColors duration={2000} />
       </body>

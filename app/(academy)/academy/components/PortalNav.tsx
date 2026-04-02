@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 
 export type PortalNavLink = {
@@ -20,6 +21,14 @@ export function PortalNav({
   badge?: string;
 }) {
   const pathname = usePathname();
+  const [pendingHref, setPendingHref] = useState<string | null>(null);
+
+  // 네비게이션 완료 시 pending 초기화
+  useEffect(() => {
+    setPendingHref(null);
+  }, [pathname]);
+
+  const activeHref = pendingHref ?? pathname;
 
   return (
     <div className="mb-6 space-y-2">
@@ -39,12 +48,13 @@ export function PortalNav({
             {links.map(({ href, label, icon, activeColor }) => {
               const isActive =
                 href === rootHref
-                  ? pathname === rootHref
-                  : pathname.startsWith(href);
+                  ? activeHref === rootHref
+                  : activeHref.startsWith(href);
               return (
                 <Link
                   key={href}
                   href={href}
+                  onClick={() => setPendingHref(href)}
                   className={`inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-all ${
                     isActive
                       ? activeColor

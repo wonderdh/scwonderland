@@ -92,6 +92,15 @@ body {
   font-family: var(--font-geist-sans), system-ui, sans-serif;
 }
 
+/* 네비게이션 프로그레스 바 */
+@keyframes nav-slide {
+  0% { left: -60%; }
+  100% { left: 110%; }
+}
+.nav-progress-bar {
+  animation: nav-slide 1.2s ease-in-out infinite;
+}
+
 /* 스크롤바 숨김 유틸리티 */
 .scrollbar-hide {
   -ms-overflow-style: none;
