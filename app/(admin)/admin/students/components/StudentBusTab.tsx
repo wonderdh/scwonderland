@@ -18,6 +18,8 @@ import {
   getStudentAfterschoolDetail,
   updateAfterschoolSecondPeriod,
   deleteAfterschoolEnrollmentDay,
+  getOrCreateAfterschoolClass,
+  enrollStudent,
 } from "../../actions";
 import { LoadingState } from "@/components/LoadingState";
 import { formatTime } from "@/lib/bus/utils";
@@ -154,11 +156,29 @@ export function StudentBusTab({ studentProfileId }: { studentProfileId: string }
         return;
       }
 
-      // 방과후 연동: 하원 변경 시 second_period 자동 동기화
+      // 방과후 연동: 하원 변경 시 자동 동기화
       if (dir === "dropoff") {
         const asStatus = afterschoolMap.get(day);
-        if (asStatus && asStatus !== "none") {
-          if (isAfterschoolSlot) {
+        const isEnrolled = asStatus && asStatus !== "none";
+
+        if (isAfterschoolSlot) {
+          if (!isEnrolled) {
+            // 방과후 미등록 → 자동 등록
+            const classResult = await getOrCreateAfterschoolClass();
+            if (!classResult.id) {
+              toast.error("방과후 자동 등록 실패: 방과후 반을 찾을 수 없습니다.");
+            } else {
+              const enrollResult = await enrollStudent(classResult.id, studentProfileId, [day], newSecondPeriod);
+              if (enrollResult.error) {
+                toast.error(`방과후 자동 등록 실패: ${enrollResult.error}`);
+              } else {
+                toast.success(
+                  `${DAY_NAMES[day]}요일 방과후가 자동으로 등록됐습니다. (${newSecondPeriod ? "1·2교시" : "1교시"})`
+                );
+              }
+            }
+          } else {
+            // 이미 등록 → 교시만 동기화
             const currentSecondPeriod = asStatus === "both";
             if (currentSecondPeriod !== newSecondPeriod) {
               const syncResult = await updateAfterschoolSecondPeriod(studentProfileId, day, newSecondPeriod);
@@ -168,10 +188,10 @@ export function StudentBusTab({ studentProfileId }: { studentProfileId: string }
                 );
               }
             }
-          } else {
-            // 방과후 슬롯 아닌 걸 선택 → 해당 요일 enrollment 삭제 (방과후 없음)
-            await deleteAfterschoolEnrollmentDay(studentProfileId, day);
           }
+        } else if (isEnrolled) {
+          // 방과후 슬롯 아닌 걸 선택 → 해당 요일 enrollment 삭제
+          await deleteAfterschoolEnrollmentDay(studentProfileId, day);
         }
       }
     }

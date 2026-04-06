@@ -8,6 +8,7 @@ import { bulkResetStudentPasswords, listClassesWithStudentIds } from "../../acti
 type GeneratedEntry = {
   id: string;
   name: string;
+  englishName: string;
   idPrefix: string;
   password: string;
 };
@@ -62,6 +63,7 @@ export function BulkPasswordResetDialog({
       .map((u) => ({
         id: u.id,
         name: getDisplayName(u, variant),
+        englishName: variant === "student" ? (u.english_name ?? u.last_name ?? "") : "",
         idPrefix: u.email.split("@")[0],
         password: generatePassword(u.email),
       }));
@@ -78,9 +80,10 @@ export function BulkPasswordResetDialog({
       // ── Sheet1: 전체 목록 ──────────────────────────────
       const ws1 = wb.addWorksheet("Sheet1");
       ws1.columns = [
-        { header: "이름",     key: "name",     width: 14 },
-        { header: "아이디",   key: "id",       width: 16 },
-        { header: "비밀번호", key: "password", width: 20 },
+        { header: "이름",       key: "name",        width: 14 },
+        { header: "영어이름",   key: "englishName", width: 14 },
+        { header: "아이디",     key: "id",          width: 16 },
+        { header: "비밀번호",   key: "password",    width: 20 },
       ];
       // 헤더 스타일
       ws1.getRow(1).eachCell((cell) => {
@@ -91,7 +94,7 @@ export function BulkPasswordResetDialog({
       ws1.getRow(1).height = 20;
       // 데이터 행
       generated.forEach((e, i) => {
-        const row = ws1.addRow({ name: e.name, id: e.idPrefix, password: e.password });
+        const row = ws1.addRow({ name: e.name, englishName: e.englishName, id: e.idPrefix, password: e.password });
         const bgArgb = i % 2 === 0 ? "FFFFFFFF" : "FFF8FAFC";
         row.eachCell((cell) => {
           cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: bgArgb } };
@@ -104,10 +107,11 @@ export function BulkPasswordResetDialog({
       if (variant === "student") {
         const ws2 = wb.addWorksheet("Sheet2");
         ws2.columns = [
-          { header: "반",       key: "class",    width: 16 },
-          { header: "이름",     key: "name",     width: 14 },
-          { header: "아이디",   key: "id",       width: 16 },
-          { header: "비밀번호", key: "password", width: 20 },
+          { header: "반",       key: "class",       width: 16 },
+          { header: "이름",     key: "name",        width: 14 },
+          { header: "영어이름", key: "englishName", width: 14 },
+          { header: "아이디",   key: "id",          width: 16 },
+          { header: "비밀번호", key: "password",    width: 20 },
         ];
         // 헤더 스타일
         ws2.getRow(1).eachCell((cell) => {
@@ -140,7 +144,7 @@ export function BulkPasswordResetDialog({
 
           // 학생 행 (반 색상 연한 배경)
           for (const e of classStudents) {
-            const row = ws2.addRow({ class: "", name: e.name, id: e.idPrefix, password: e.password });
+            const row = ws2.addRow({ class: "", name: e.name, englishName: e.englishName, id: e.idPrefix, password: e.password });
             row.eachCell((cell) => {
               cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: bg + "40" } }; // ~25% opacity 근사
               cell.alignment = { vertical: "middle" };
@@ -161,7 +165,7 @@ export function BulkPasswordResetDialog({
           });
           headerRow.height = 20;
           for (const e of unassigned) {
-            const row = ws2.addRow({ class: "", name: e.name, id: e.idPrefix, password: e.password });
+            const row = ws2.addRow({ class: "", name: e.name, englishName: e.englishName, id: e.idPrefix, password: e.password });
             row.eachCell((cell) => {
               cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF1F5F9" } };
               cell.alignment = { vertical: "middle" };
@@ -241,6 +245,7 @@ export function BulkPasswordResetDialog({
                 <thead>
                   <tr className="border-b border-slate-200 text-slate-500">
                     <th className="text-left py-2 pr-4 font-medium">이름</th>
+                    <th className="text-left py-2 pr-4 font-medium">영어이름</th>
                     <th className="text-left py-2 pr-4 font-medium">아이디</th>
                     <th className="text-left py-2 font-medium">비밀번호</th>
                   </tr>
@@ -249,6 +254,7 @@ export function BulkPasswordResetDialog({
                   {generated.map((e) => (
                     <tr key={e.id} className="border-b border-slate-100 last:border-0">
                       <td className="py-2 pr-4 text-slate-700">{e.name}</td>
+                      <td className="py-2 pr-4 text-slate-500">{e.englishName || "—"}</td>
                       <td className="py-2 pr-4 font-mono text-slate-500">{e.idPrefix}</td>
                       <td className="py-2 font-mono text-slate-900">{e.password}</td>
                     </tr>

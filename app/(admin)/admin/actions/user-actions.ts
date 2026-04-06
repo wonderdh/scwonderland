@@ -170,11 +170,13 @@ export async function listUsersByRole(
 
   const ids = profiles.map((p) => p.id);
 
-  const { data: authUsers } = await supabase.rpc("get_user_emails_by_ids", {
-    user_ids: ids,
-  });
+  // auth.admin.listUsers로 이메일 직접 조회 (RPC 의존 제거)
+  const { data: authUsersData } = await supabase.auth.admin.listUsers({ perPage: 1000 });
+  const idSet = new Set(ids);
   const emailMap = new Map(
-    ((authUsers ?? []) as { id: string; email: string }[]).map((u) => [u.id, u.email])
+    (authUsersData?.users ?? [])
+      .filter((u) => idSet.has(u.id))
+      .map((u) => [u.id, u.email ?? ""])
   );
 
   if (role === "student") {
