@@ -9,12 +9,15 @@ import { Spinner } from "@/components/Spinner";
 export function ReportCardReplyForm({
   reportCardId,
   initialReply,
+  initialReplyEn,
 }: {
   reportCardId: string;
   initialReply: string;
+  initialReplyEn?: string | null;
 }) {
   const router = useRouter();
   const [reply, setReply] = useState(initialReply);
+  const [translateToEnglish, setTranslateToEnglish] = useState(!!initialReplyEn);
   const [pending, setPending] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -26,13 +29,13 @@ export function ReportCardReplyForm({
     e.preventDefault();
     setPending(true);
     setError(null);
-    const result = await updateReportCardReply(reportCardId, reply.trim());
+    const result = await updateReportCardReply(reportCardId, reply.trim(), translateToEnglish);
     setPending(false);
     if (result?.error) {
       setError(result.error);
       return;
     }
-    toast.success("답변이 저장되었습니다.");
+    toast.success(translateToEnglish ? "답변이 저장되었습니다. (영어 번역 포함)" : "답변이 저장되었습니다.");
     router.refresh();
   };
 
@@ -70,6 +73,26 @@ export function ReportCardReplyForm({
           placeholder="선생님 코멘트에 대한 답글을 남겨 주세요."
           className="w-full rounded-lg border border-slate-200 px-3 py-3 text-base text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400 sm:text-sm"
         />
+
+        {/* 영어 번역 옵션 */}
+        <label className="flex items-center gap-2 cursor-pointer select-none w-fit">
+          <input
+            type="checkbox"
+            checked={translateToEnglish}
+            onChange={(e) => {
+              if (!e.target.checked && initialReplyEn) {
+                if (!window.confirm("체크 해제 시 기존 영어 번역이 삭제됩니다. 계속하시겠습니까?")) return;
+              }
+              setTranslateToEnglish(e.target.checked);
+            }}
+            className="h-4 w-4 rounded border-slate-300 text-slate-800 accent-slate-800"
+          />
+          <span className="text-sm text-slate-600">선생님께 영어로도 전달하기</span>
+          {initialReplyEn && (
+            <span className="text-xs text-emerald-600 font-medium">(번역됨)</span>
+          )}
+        </label>
+
         <div className="flex items-center justify-between gap-2">
           {hasExistingReply ? (
             <button

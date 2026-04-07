@@ -28,8 +28,10 @@ export {
   deleteReportCard,
   updateReportCardReply,
   listAllClassesReportStatus,
+  listUntranslatedReports,
+  translateReportCard,
 } from "./actions/report-actions";
-export type { ClassReportSummary } from "./actions/report-actions";
+export type { ClassReportSummary, UntranslatedReport } from "./actions/report-actions";
 
 export {
   listClassesWithDetails,

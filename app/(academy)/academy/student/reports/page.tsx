@@ -6,7 +6,6 @@ import type { ReportCard, ReportCardListItem } from "@/lib/types";
 import { getCurrentStudentProfile } from "../../actions";
 import Link from "next/link";
 import { ReportCardReplyForm } from "../components/ReportCardReplyForm";
-import { ReportCardReadView } from "@/app/(admin)/admin/students/components/ReportCardReadView";
 
 export default async function StudentReportsPage({
   searchParams,
@@ -63,20 +62,14 @@ export default async function StudentReportsPage({
 
           {selectedReport ? (
             <div className="space-y-5">
-              <ReportCardReadView
-                year={selectedReport.year}
-                month={selectedReport.month}
-                content={selectedReport.content}
-                reply={selectedReport.reply}
-                replyLabel="내 답글 (학부모)"
-                authorName={selectedReport.author_name}
-              />
+              <StudentReportView report={selectedReport} />
               {selectedReport.content != null &&
                 selectedReport.content.trim() !== "" && (
                   <ReportCardReplyForm
                     key={selectedReport.id}
                     reportCardId={selectedReport.id}
                     initialReply={selectedReport.reply ?? ""}
+                    initialReplyEn={selectedReport.reply_en}
                   />
                 )}
             </div>
@@ -96,6 +89,83 @@ export default async function StudentReportsPage({
           ← 대시보드로
         </Link>
       </p>
+    </div>
+  );
+}
+
+/** 학부모용 리포트 뷰: 한국어 번역이 있으면 우선 표시, 영어 원문은 접힌 상태로 */
+function StudentReportView({ report }: { report: ReportCard }) {
+  const hasContent = report.content != null && report.content.trim() !== "";
+  const hasKo = report.content_ko != null && report.content_ko.trim() !== "";
+  const hasReply = report.reply != null && report.reply.trim() !== "";
+
+  return (
+    <div className="mx-auto w-full max-w-2xl space-y-6">
+      <header className="text-sm font-medium text-slate-500">
+        {report.year}년 {report.month}월 리포트
+        {report.author_name && (
+          <span className="ml-2 text-slate-400">· 작성: {report.author_name}</span>
+        )}
+      </header>
+
+      {/* 선생님 코멘트 */}
+      {hasContent ? (
+        <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+          <div className="border-b border-slate-200 bg-slate-100 px-4 py-2.5">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-600">
+              선생님 코멘트
+            </span>
+          </div>
+          <div className="p-4 sm:p-5 space-y-4">
+            {hasKo ? (
+              <>
+                <p className="whitespace-pre-wrap text-base leading-relaxed text-slate-800 sm:text-sm">
+                  {report.content_ko}
+                </p>
+                <details className="border-t border-slate-100 pt-3">
+                  <summary className="cursor-pointer text-xs text-slate-400 hover:text-slate-600 select-none w-fit">
+                    영어 원문 보기
+                  </summary>
+                  <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-slate-500">
+                    {report.content}
+                  </p>
+                </details>
+              </>
+            ) : (
+              <p className="whitespace-pre-wrap text-base leading-relaxed text-slate-800 sm:text-sm">
+                {report.content}
+              </p>
+            )}
+          </div>
+        </section>
+      ) : (
+        <section className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50/50">
+          <div className="border-b border-slate-200 bg-slate-100 px-4 py-2.5">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-600">
+              선생님 코멘트
+            </span>
+          </div>
+          <p className="p-4 sm:p-5 text-sm text-slate-400">
+            아직 작성된 본문이 없습니다.
+          </p>
+        </section>
+      )}
+
+      {/* 내 답글 */}
+      {hasReply && (
+        <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+          <div className="border-b border-slate-200 bg-emerald-50 px-4 py-2.5">
+            <span className="text-xs font-semibold uppercase tracking-wider text-emerald-700">
+              내 답글 (학부모)
+            </span>
+          </div>
+          <div className="p-4 sm:p-5">
+            <p className="whitespace-pre-wrap text-base leading-relaxed text-slate-800 sm:text-sm">
+              {report.reply}
+            </p>
+          </div>
+        </section>
+      )}
     </div>
   );
 }

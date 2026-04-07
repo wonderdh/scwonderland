@@ -25,7 +25,7 @@ Supabase Auth Users
     │
     ├── academy_periods (name, start_time, end_time, group_label, has_pickup, has_dropoff, is_active)
     │
-    ├── report_cards (student_profile_id FK, author_id FK, year, month, content, reply)
+    ├── report_cards (student_profile_id FK, author_id FK, year, month, content, content_ko, reply, reply_en)
     │   └── UNIQUE (student_profile_id, year, month)
     │
     ├── textbooks (id, title, series, level, category, total_units, cover_image, is_active)

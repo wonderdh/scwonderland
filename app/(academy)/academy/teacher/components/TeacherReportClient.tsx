@@ -113,6 +113,10 @@ export function TeacherReportClient({
 
   const handleSave = async () => {
     if (!selectedStudentId) return;
+    if (!content.trim()) {
+      setSaveMessage({ type: "error", text: isNative ? "Please enter the report content." : "내용을 입력해 주세요." });
+      return;
+    }
     setSaving(true);
     setSaveMessage(null);
     const result = await upsertReportCard(selectedStudentId, year, month, content);
@@ -366,42 +370,64 @@ export function TeacherReportClient({
                 <div className="p-4">
                   {reportLoading ? (
                     <LoadingState label={L.loading} />
+                  ) : isReadOnly ? (
+                    /* 한국인 교사: 번역본 있으면 한국어 우선, 영어 원문 접힘 */
+                    report?.content_ko ? (
+                      <div className="space-y-3">
+                        <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-800">
+                          {report.content_ko}
+                        </p>
+                        <details className="border-t border-slate-100 pt-3">
+                          <summary className="cursor-pointer text-xs text-slate-400 hover:text-slate-600 select-none w-fit">
+                            영어 원문 보기
+                          </summary>
+                          <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-slate-500">
+                            {report.content}
+                          </p>
+                        </details>
+                      </div>
+                    ) : (
+                      <textarea
+                        value={content}
+                        readOnly
+                        rows={8}
+                        className="w-full rounded-lg border border-slate-200 px-3 py-3 text-base text-slate-800 focus:outline-none sm:text-sm bg-slate-50 cursor-default"
+                      />
+                    )
                   ) : (
+                    /* 원어민 교사: 편집 가능 */
                     <>
                       <textarea
                         value={content}
-                        onChange={isReadOnly ? undefined : (e) => setContent(e.target.value)}
-                        readOnly={isReadOnly}
+                        onChange={(e) => setContent(e.target.value)}
                         rows={8}
-                        placeholder={isReadOnly ? undefined : L.placeholder}
-                        className={`w-full rounded-lg border border-slate-200 px-3 py-3 text-base text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400 sm:text-sm${isReadOnly ? " bg-slate-50 cursor-default" : ""}`}
+                        placeholder={L.placeholder}
+                        className="w-full rounded-lg border border-slate-200 px-3 py-3 text-base text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400 sm:text-sm"
                       />
-                      {!isReadOnly && (
-                        <div className="mt-3 flex items-center justify-between gap-2">
-                          {report?.id ? (
-                            <button
-                              type="button"
-                              onClick={handleDelete}
-                              disabled={deleting || saving}
-                              className="inline-flex items-center gap-1.5 min-h-[44px] rounded-lg border border-red-200 px-4 py-2.5 text-base font-medium text-red-600 hover:bg-red-50 disabled:opacity-50 sm:min-h-[40px] sm:text-sm"
-                            >
-                              {deleting && <Spinner size="sm" />}
-                              {deleting ? L.deleting : L.delete}
-                            </button>
-                          ) : (
-                            <div />
-                          )}
+                      <div className="mt-3 flex items-center justify-between gap-2">
+                        {report?.id ? (
                           <button
                             type="button"
-                            onClick={handleSave}
-                            disabled={saving || deleting}
-                            className="inline-flex items-center gap-1.5 min-h-[44px] rounded-lg bg-slate-800 px-5 py-2.5 text-base font-medium text-white hover:bg-slate-700 disabled:opacity-50 sm:min-h-[40px] sm:text-sm"
+                            onClick={handleDelete}
+                            disabled={deleting || saving}
+                            className="inline-flex items-center gap-1.5 min-h-[44px] rounded-lg border border-red-200 px-4 py-2.5 text-base font-medium text-red-600 hover:bg-red-50 disabled:opacity-50 sm:min-h-[40px] sm:text-sm"
                           >
-                            {saving && <Spinner size="sm" />}
-                            {saving ? L.saving : L.save}
+                            {deleting && <Spinner size="sm" />}
+                            {deleting ? L.deleting : L.delete}
                           </button>
-                        </div>
-                      )}
+                        ) : (
+                          <div />
+                        )}
+                        <button
+                          type="button"
+                          onClick={handleSave}
+                          disabled={saving || deleting}
+                          className="inline-flex items-center gap-1.5 min-h-[44px] rounded-lg bg-slate-800 px-5 py-2.5 text-base font-medium text-white hover:bg-slate-700 disabled:opacity-50 sm:min-h-[40px] sm:text-sm"
+                        >
+                          {saving && <Spinner size="sm" />}
+                          {saving ? L.saving : L.save}
+                        </button>
+                      </div>
                     </>
                   )}
                 </div>
@@ -414,13 +440,34 @@ export function TeacherReportClient({
                     {L.studentReply}
                   </span>
                 </div>
-                <div className="p-4">
+                <div className="p-4 space-y-3">
                   {reportLoading ? (
                     <LoadingState label={L.loading} />
                   ) : report?.reply != null && report.reply.trim() !== "" ? (
-                    <p className="whitespace-pre-wrap text-sm text-slate-800">
-                      {report.reply}
-                    </p>
+                    <>
+                      {/* 영어 번역본 (원어민 교사 우선 표시) */}
+                      {isNative && report.reply_en && (
+                        <div className="space-y-1">
+                          <p className="whitespace-pre-wrap text-sm text-slate-800">
+                            {report.reply_en}
+                          </p>
+                          <details className="border-t border-slate-100 pt-2">
+                            <summary className="cursor-pointer text-xs text-slate-400 hover:text-slate-600 select-none w-fit">
+                              View original (Korean)
+                            </summary>
+                            <p className="mt-1.5 whitespace-pre-wrap text-sm text-slate-500">
+                              {report.reply}
+                            </p>
+                          </details>
+                        </div>
+                      )}
+                      {/* 한국인 교사 or 번역 없음: 원문만 표시 */}
+                      {(!isNative || !report.reply_en) && (
+                        <p className="whitespace-pre-wrap text-sm text-slate-800">
+                          {report.reply}
+                        </p>
+                      )}
+                    </>
                   ) : (
                     <p className="text-sm text-slate-400">{L.noReply}</p>
                   )}

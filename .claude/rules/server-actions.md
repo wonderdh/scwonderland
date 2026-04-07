@@ -23,11 +23,14 @@ paths:
 - `listAllStudents()` — 전체 학생 목록 (소프트 삭제 제외)
 - `getTeacherAssignmentCounts(userId)` — 교사의 담당 반 수 + 수업 배정 수 조회 (삭제 전 경고용)
 
-**report-actions.ts — 리포트카드 (4개):**
-- `getReportCard(studentProfileId, year, month)` — 리포트카드 조회 (RLS)
+**report-actions.ts — 리포트카드 (7개):**
+- `getReportCard(studentProfileId, year, month)` — 리포트카드 조회 (RLS), `content_ko`·`reply_en`·`author_name` 포함
 - `listReportCardsByStudent(studentProfileId)` — 학생별 리포트카드 목록
-- `upsertReportCard(studentProfileId, year, month, content)` — 리포트카드 작성/수정 (교사/관리자만)
-- `updateReportCardReply(reportCardId, reply)` — 학생 답변 작성 (본인만)
+- `upsertReportCard(studentProfileId, year, month, content)` — 작성/수정 (원어민 교사: DeepL로 content_ko 자동 번역, 학생·교사 이름 보존)
+- `updateReportCardReply(reportCardId, reply, translateToEnglish?)` — 학생 답글 작성. `translateToEnglish=true` 시 reply_en 저장
+- `listAllClassesReportStatus(year, month)` — 전체 반 작성 현황 요약 (관리자 전용, 방과후 제외)
+- `listUntranslatedReports(year, month)` — 번역 대기·완료 목록 (관리자 전용). 반환: `UntranslatedReport[]`
+- `translateReportCard(reportCardId, target)` — 단건 수동 번역 (관리자 전용). target: `"content"` | `"reply"`
 
 **class-actions.ts — 반 관리 (11개):**
 - `listClassesWithDetails()` — 전체 반 목록 (교사명, 학생 수 포함)
