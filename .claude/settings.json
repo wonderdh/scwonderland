@@ -7,13 +7,24 @@
     "CLAUDE_CODE_SPAWN_BACKEND": "tmux"
   },
   "hooks": {
+    "SubagentStart": [
+      {
+        "matcher": "academy-portal|admin-crud|bus-developer|db-architect|notice-manager|site-builder|timetable-developer",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node C:\\scwonderland\\.claude\\scripts\\log-subagent.js start"
+          }
+        ]
+      }
+    ],
     "SubagentStop": [
       {
         "matcher": "*",
         "hooks": [
           {
             "type": "command",
-            "command": "node C:\\scwonderland\\.claude\\scripts\\log-subagent.js"
+            "command": "node C:\\scwonderland\\.claude\\scripts\\log-subagent.js stop"
           }
         ]
       }
@@ -27,6 +38,15 @@
             "command": "type C:\\scwonderland\\.claude\\rules\\database.md"
           }
         ]
+      },
+      {
+        "matcher": "Read|Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node C:\\scwonderland\\.claude\\scripts\\inject-route-context.js"
+          }
+        ]
       }
     ],
     "PostToolUse": [
@@ -35,7 +55,16 @@
         "hooks": [
           {
             "type": "command",
-            "command": "echo [HOOK] 마이그레이션 완료. .claude/rules/database.md를 최신 스키마로 업데이트하세요."
+            "command": "node C:\\scwonderland\\.claude\\scripts\\post-migration-reminder.js"
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node C:\\scwonderland\\.claude\\scripts\\remind-doc-sync.js"
           }
         ]
       }

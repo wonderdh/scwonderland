@@ -1,6 +1,12 @@
 #!/usr/bin/env node
-// SubagentStop hook: logs all subagent completions to .claude/logs/subagent-history.jsonl
+// SubagentStart/Stop hook: logs all subagent events to .claude/logs/subagent-history.jsonl
+// Usage: node log-subagent.js [start|stop]
 // Claude Code passes event info via stdin as JSON
+
+const fs = require('fs');
+const path = require('path');
+
+const action = process.argv[2] || 'stop';
 
 const chunks = [];
 process.stdin.on('data', (d) => chunks.push(d));
@@ -19,16 +25,13 @@ process.stdin.on('end', () => {
     'unknown';
 
   const entry = {
-    event: 'subagent_stop',
+    event: action === 'start' ? 'subagent_start' : 'subagent_stop',
     timestamp: new Date().toISOString(),
     agent_id: agentId,
     transcript_path: parsed.transcript_path || process.env.AGENT_TRANSCRIPT_PATH || '',
-    // raw_keys helps debug what Claude Code actually sends
     raw_keys: Object.keys(parsed),
   };
 
-  const fs = require('fs');
-  const path = require('path');
   const projectDir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
   const logFile = path.join(projectDir, '.claude/logs/subagent-history.jsonl');
 
@@ -37,6 +40,5 @@ process.stdin.on('end', () => {
     fs.appendFileSync(logFile, JSON.stringify(entry) + '\n');
   } catch {}
 
-  // Hook must exit 0 (no blocking)
   process.exit(0);
 });
