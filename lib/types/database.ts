@@ -8,6 +8,7 @@ export type ReportCard = {
   year: number;
   month: number;
   author_id: string | null;
+  author_name?: string | null;
   content: string | null;
   reply: string | null;
   created_at: string;

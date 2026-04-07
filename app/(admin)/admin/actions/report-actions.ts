@@ -24,7 +24,20 @@ export async function getReportCard(
     console.error("[getReportCard]", error.message, { studentProfileId, year, month });
     return null;
   }
-  return data as ReportCard | null;
+  if (!data) return null;
+
+  let author_name: string | null = null;
+  if (data.author_id) {
+    const admin = createAdminClient();
+    const { data: teacher } = await admin
+      .from("teachers")
+      .select("name")
+      .eq("profile_id", data.author_id)
+      .maybeSingle();
+    author_name = teacher?.name ?? null;
+  }
+
+  return { ...data, author_name } as ReportCard;
 }
 
 /** 해당 학생의 리포트카드 목록 (년·월 내림차순). admin/선생/해당 학생만 조회 가능(RLS). */
@@ -240,17 +253,20 @@ export async function listAllClassesReportStatus(
 
   const admin = createAdminClient();
 
-  const { data, error } = await admin.rpc("get_class_report_status", {
-    p_year: year,
-    p_month: month,
-  });
+  const [{ data, error }, { data: afterschoolClasses }] = await Promise.all([
+    admin.rpc("get_class_report_status", { p_year: year, p_month: month }),
+    admin.from("classes").select("id").eq("group_label", "방과후"),
+  ]);
   if (error || !data) return [];
 
+  const afterschoolIds = new Set((afterschoolClasses ?? []).map((c) => c.id));
   const rows = data as unknown as ClassReportStatusRow[];
-  return rows.map((row) => ({
-    classId: row.class_id,
-    className: row.class_name,
-    total: Number(row.total_students),
-    written: Number(row.written_count),
-  }));
+  return rows
+    .filter((row) => !afterschoolIds.has(row.class_id))
+    .map((row) => ({
+      classId: row.class_id,
+      className: row.class_name,
+      total: Number(row.total_students),
+      written: Number(row.written_count),
+    }));
 }

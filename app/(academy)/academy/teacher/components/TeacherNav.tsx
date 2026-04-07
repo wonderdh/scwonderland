@@ -60,6 +60,12 @@ const koreanLinks: PortalNavLink[] = [
     icon: ICONS.timetable,
   },
   {
+    href: "/academy/teacher/reports",
+    label: "리포트카드",
+    activeColor: "bg-gradient-to-r from-yellow-500 to-amber-500 text-white shadow-md",
+    icon: ICONS.reports,
+  },
+  {
     href: "/academy/teacher/notices",
     label: "공지사항",
     activeColor: "bg-gradient-to-r from-yellow-500 to-amber-500 text-white shadow-md",

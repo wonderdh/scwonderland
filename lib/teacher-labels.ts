@@ -29,7 +29,7 @@ export const dashboardLabels = {
 
 export const reportLabels = {
   korean: {
-    title: "리포트카드 작성",
+    title: "리포트카드 조회",
     year: "년",
     month: "월",
     noClasses: "담당 반이 없습니다.",

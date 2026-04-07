@@ -4,12 +4,14 @@ export function ReportCardReadView({
   content,
   reply,
   replyLabel = "학생 답글",
+  authorName,
 }: {
   year: number;
   month: number;
   content: string | null;
   reply: string | null;
   replyLabel?: string;
+  authorName?: string | null;
 }) {
   const hasContent = content != null && content.trim() !== "";
   const hasReply = reply != null && reply.trim() !== "";
@@ -22,10 +24,13 @@ export function ReportCardReadView({
 
       {hasContent ? (
         <section className="overflow-hidden rounded-xl border bg-card shadow-sm">
-          <div className="border-b bg-muted/50 px-4 py-2.5">
+          <div className="border-b bg-muted/50 px-4 py-2.5 flex items-center justify-between">
             <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               선생님 코멘트
             </span>
+            {authorName && (
+              <span className="text-xs text-muted-foreground">작성: {authorName}</span>
+            )}
           </div>
           <div className="p-4 sm:p-5">
             <p className="whitespace-pre-wrap text-base leading-relaxed text-foreground sm:text-sm">

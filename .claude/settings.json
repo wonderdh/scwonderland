@@ -5,5 +5,40 @@
   "env": {
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
     "CLAUDE_CODE_SPAWN_BACKEND": "tmux"
+  },
+  "hooks": {
+    "SubagentStop": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node C:\\scwonderland\\.claude\\scripts\\log-subagent.js"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "mcp__plugin_supabase_supabase__execute_sql",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "type C:\\scwonderland\\.claude\\rules\\database.md"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "mcp__plugin_supabase_supabase__apply_migration",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo [HOOK] 마이그레이션 완료. .claude/rules/database.md를 최신 스키마로 업데이트하세요."
+          }
+        ]
+      }
+    ]
   }
 }

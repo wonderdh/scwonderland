@@ -69,6 +69,7 @@ export default async function StudentReportsPage({
                 content={selectedReport.content}
                 reply={selectedReport.reply}
                 replyLabel="내 답글"
+                authorName={selectedReport.author_name}
               />
               {selectedReport.content != null &&
                 selectedReport.content.trim() !== "" && (
