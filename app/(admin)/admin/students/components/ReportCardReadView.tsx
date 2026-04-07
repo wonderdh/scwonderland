@@ -3,7 +3,7 @@ export function ReportCardReadView({
   month,
   content,
   reply,
-  replyLabel = "학생 답글",
+  replyLabel = "학부모 답글",
   authorName,
 }: {
   year: number;

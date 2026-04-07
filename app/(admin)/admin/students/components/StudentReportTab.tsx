@@ -191,7 +191,7 @@ export function StudentReportTab({ studentProfileId }: { studentProfileId: strin
       <section className="overflow-hidden rounded-xl border bg-card shadow-sm">
         <div className="border-b bg-emerald-50 px-4 py-2.5">
           <span className="text-xs font-semibold uppercase tracking-wider text-emerald-700">
-            학생 답글
+            학부모 답글
           </span>
         </div>
         <div className="p-4 sm:p-5">

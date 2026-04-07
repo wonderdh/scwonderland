@@ -68,7 +68,7 @@ export default async function StudentReportsPage({
                 month={selectedReport.month}
                 content={selectedReport.content}
                 reply={selectedReport.reply}
-                replyLabel="내 답글"
+                replyLabel="내 답글 (학부모)"
                 authorName={selectedReport.author_name}
               />
               {selectedReport.content != null &&

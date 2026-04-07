@@ -34,7 +34,6 @@ export function TeacherReportClient({
   const teacherType = useTeacherType();
   const L = reportLabels[teacherType];
   const isNative = teacherType === "native";
-  const isKorean = teacherType === "korean";
 
   const [selectedClassId, setSelectedClassId] = useState(
     initialClassId ?? classes[0]?.id ?? ""
@@ -193,12 +192,6 @@ export function TeacherReportClient({
   return (
     <div className="space-y-6">
       <h1 className="text-lg font-semibold text-slate-800">{L.title}</h1>
-
-      {isKorean && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          리포트카드는 원어민 교사만 작성할 수 있습니다.
-        </div>
-      )}
 
       {/* 반 / 년월 선택 */}
       <div className="flex flex-wrap items-center gap-3">
@@ -414,7 +407,7 @@ export function TeacherReportClient({
                 </div>
               </section>
 
-              {/* 학생 답글 */}
+              {/* 학부모 답글 */}
               <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
                 <div className="border-b border-slate-200 bg-emerald-50 px-4 py-2.5">
                   <span className="text-xs font-semibold uppercase tracking-wider text-emerald-700">
