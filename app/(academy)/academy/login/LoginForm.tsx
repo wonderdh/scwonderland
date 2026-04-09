@@ -16,10 +16,26 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/Spinner";
 import { normalizeEmail, getAuthErrorMessage } from "@/lib/auth-utils";
 
+const DEFAULT_REDIRECT = "/academy/dashboard";
+
+/**
+ * next 파라미터 검증: 같은 오리진 내부 경로만 허용.
+ * - 빈 문자열, null, 절대 URL("//evil.com", "https://..."), 프로토콜 상대 URL 모두 차단
+ */
+function safeRedirect(next: string | null): string {
+  const trimmed = next?.trim();
+  if (!trimmed) return DEFAULT_REDIRECT;
+  if (!trimmed.startsWith("/")) return DEFAULT_REDIRECT;
+  if (trimmed.startsWith("//")) return DEFAULT_REDIRECT;
+  // 백슬래시는 일부 브라우저가 '/'로 해석 → 차단
+  if (trimmed.includes("\\")) return DEFAULT_REDIRECT;
+  return trimmed;
+}
+
 export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const next = searchParams.get("next") ?? "/academy/dashboard";
+  const next = safeRedirect(searchParams.get("next"));
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(() =>

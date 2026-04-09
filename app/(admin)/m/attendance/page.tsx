@@ -1,11 +1,12 @@
 import { listClassesWithDetails, listAllStudents } from "@/app/(admin)/admin/actions";
 import { MobileAttendanceClient } from "./components/MobileAttendanceClient";
+import { todayKst } from "@/lib/utils/date-kst";
 
 export default async function MobileAttendancePage() {
   const [classes, allStudents] = await Promise.all([
     listClassesWithDetails(),
     listAllStudents(),
   ]);
-  const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
+  const today = todayKst();
   return <MobileAttendanceClient initialClasses={classes} allStudents={allStudents} today={today} />;
 }

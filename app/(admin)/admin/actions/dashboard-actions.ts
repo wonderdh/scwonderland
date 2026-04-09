@@ -2,6 +2,7 @@
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { verifyAdmin } from "./auth-helpers";
+import { todayKst } from "@/lib/utils/date-kst";
 import type { DashboardStats } from "@/lib/types";
 
 export async function getTodayStats(): Promise<{
@@ -12,7 +13,7 @@ export async function getTodayStats(): Promise<{
   if ("error" in auth) return { pendingBusChangeCount: 0, todayAttendanceCount: 0 };
 
   const supabase = createAdminClient();
-  const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
+  const today = todayKst();
 
   const [{ count: pendingBusChangeCount }, { count: todayAttendanceCount }] = await Promise.all([
     supabase

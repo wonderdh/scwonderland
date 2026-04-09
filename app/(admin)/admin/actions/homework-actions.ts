@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import { verifyAuthenticated } from "./auth-helpers";
+import { verifyAuthenticated, verifyTeacherOrAdmin } from "./auth-helpers";
+import { logger } from "@/lib/logger";
 import {
   STORAGE_BUCKETS,
   generateStoragePath,
@@ -34,7 +35,7 @@ export async function listHomeworkAssignments(
     .order("created_at", { ascending: false });
 
   if (error) {
-    console.error("[listHomeworkAssignments]", error.message);
+    logger.error("[listHomeworkAssignments]", error.message);
     return [];
   }
 
@@ -68,8 +69,7 @@ export async function listHomeworkAssignments(
   })) as HomeworkAssignment[];
 }
 
-// TODO: 교사/관리자 역할 검증 필요
-/** 숙제 생성 */
+/** 숙제 생성 (교사/관리자 전용) */
 export async function createHomeworkAssignment(
   classId: string,
   teacherId: string,
@@ -77,7 +77,7 @@ export async function createHomeworkAssignment(
   description?: string,
   dueDate?: string
 ): Promise<{ error?: string; id?: string }> {
-  const auth = await verifyAuthenticated();
+  const auth = await verifyTeacherOrAdmin();
   if ("error" in auth) return { error: auth.error };
   if (!title.trim()) return { error: "제목을 입력해 주세요." };
 
@@ -95,7 +95,7 @@ export async function createHomeworkAssignment(
     .single();
 
   if (error) {
-    console.error("[createHomeworkAssignment]", error.message);
+    logger.error("[createHomeworkAssignment]", error.message);
     return { error: error.message };
   }
 
@@ -123,15 +123,14 @@ export async function createHomeworkAssignment(
   return { id: data.id };
 }
 
-// TODO: 교사/관리자 역할 검증 필요
-/** 숙제 수정 */
+/** 숙제 수정 (교사/관리자 전용) */
 export async function updateHomeworkAssignment(
   assignmentId: string,
   title: string,
   description?: string,
   dueDate?: string
 ): Promise<{ error?: string }> {
-  const auth = await verifyAuthenticated();
+  const auth = await verifyTeacherOrAdmin();
   if ("error" in auth) return { error: auth.error };
   if (!title.trim()) return { error: "제목을 입력해 주세요." };
 
@@ -152,12 +151,11 @@ export async function updateHomeworkAssignment(
   return {};
 }
 
-// TODO: 교사/관리자 역할 검증 필요
-/** 숙제 삭제 */
+/** 숙제 삭제 (교사/관리자 전용) */
 export async function deleteHomeworkAssignment(
   assignmentId: string
 ): Promise<{ error?: string }> {
-  const auth = await verifyAuthenticated();
+  const auth = await verifyTeacherOrAdmin();
   if ("error" in auth) return { error: auth.error };
   const supabase = createAdminClient();
 
@@ -209,7 +207,7 @@ export async function listSubmissions(
     .order("submitted_at", { ascending: false });
 
   if (error) {
-    console.error("[listSubmissions]", error.message);
+    logger.error("[listSubmissions]", error.message);
     return [];
   }
 

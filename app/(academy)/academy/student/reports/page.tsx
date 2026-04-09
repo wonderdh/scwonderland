@@ -93,7 +93,7 @@ export default async function StudentReportsPage({
   );
 }
 
-/** 학부모용 리포트 뷰: 한국어 번역이 있으면 우선 표시, 영어 원문은 접힌 상태로 */
+/** 학부모용 리포트 뷰: 영어 원문 기본 표시, 한국어 번역은 클릭 시 펼침 */
 function StudentReportView({ report }: { report: ReportCard }) {
   const hasContent = report.content != null && report.content.trim() !== "";
   const hasKo = report.content_ko != null && report.content_ko.trim() !== "";
@@ -117,24 +117,18 @@ function StudentReportView({ report }: { report: ReportCard }) {
             </span>
           </div>
           <div className="p-4 sm:p-5 space-y-4">
-            {hasKo ? (
-              <>
-                <p className="whitespace-pre-wrap text-base leading-relaxed text-slate-800 sm:text-sm">
+            <p className="whitespace-pre-wrap text-base leading-relaxed text-slate-800 sm:text-sm">
+              {report.content}
+            </p>
+            {hasKo && (
+              <details className="border-t border-slate-100 pt-3">
+                <summary className="cursor-pointer text-xs font-medium text-blue-500 hover:text-blue-700 select-none w-fit">
+                  번역 보기
+                </summary>
+                <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-slate-600">
                   {report.content_ko}
                 </p>
-                <details className="border-t border-slate-100 pt-3">
-                  <summary className="cursor-pointer text-xs text-slate-400 hover:text-slate-600 select-none w-fit">
-                    영어 원문 보기
-                  </summary>
-                  <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-slate-500">
-                    {report.content}
-                  </p>
-                </details>
-              </>
-            ) : (
-              <p className="whitespace-pre-wrap text-base leading-relaxed text-slate-800 sm:text-sm">
-                {report.content}
-              </p>
+              </details>
             )}
           </div>
         </section>

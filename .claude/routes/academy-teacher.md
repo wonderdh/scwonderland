@@ -26,7 +26,7 @@
 |-----|---------|------|----------|
 | `/academy/teacher` | `teacher/page.tsx` | 대시보드: 프로필 + 담당 반 + 학생 목록 | 모두 |
 | `/academy/teacher/timetable` | `teacher/timetable/page.tsx` | 전체 시간표 (그룹 탭) | 모두 |
-| `/academy/teacher/reports` | `teacher/reports/page.tsx` | 리포트카드 작성 | 원어민만 (한국인 → 리다이렉트) |
+| `/academy/teacher/reports` | `teacher/reports/page.tsx` | 리포트카드 작성(원어민)/조회(한국인) | 모두 (역할별 UI 분기) |
 | `/academy/teacher/textbooks` | `teacher/textbooks/page.tsx` | 교재 진도 관리 | 모두 |
 | `/academy/teacher/attendance` | `teacher/attendance/page.tsx` | 출결 기록 | 모두 |
 | `/academy/teacher/homework` | `teacher/homework/page.tsx` | 숙제 관리 | 모두 |
@@ -102,11 +102,12 @@
 2. `TeacherAcademyTimetable`: 그룹 탭 전환, 본인 교시만 색상 하이라이트
 3. `CLASS_COLOR_PALETTE` 사용 (`-100` 계열)
 
-### /academy/teacher/reports (원어민 전용)
-1. 한국인 교사 → `/academy/teacher` 리다이렉트
-2. `TeacherReportClient`: 반/년/월 선택 → 학생 목록 + 작성 현황
-3. `upsertReportCard()` 호출하여 코멘트 저장
-4. 학생 답글 표시 (읽기 전용)
+### /academy/teacher/reports
+1. `TeacherReportClient`: 반/년/월 선택 → 학생 목록 + 작성 현황
+2. **원어민 교사 (native):** 편집 가능, `upsertReportCard()` 저장 (DeepL 번역 자동 생성)
+   - 신규 작성(`!report?.id`) 시 **"이전 달 내용 불러오기"** 버튼 노출 → `handleCopyPrev()`가 `getReportCard(student, prevYear, prevMonth)` 호출 후 textarea에 로드 (저장 전 상태)
+3. **한국인 교사 (korean):** 읽기 전용 뷰. 한국어 번역본 우선 표시, 영어 원문은 `<details>`로 접힘
+4. 학생 답글 표시 (영어 번역본 우선, 원문 접힘)
 
 ### /academy/teacher/textbooks
 1. `getTeacherClasses()` + `getClassTextbooks()` 호출
@@ -143,7 +144,7 @@
 
 ## 주의사항
 - **원어민 교사 영어 UI**: `lib/teacher-labels.ts`에 정의된 라벨 세트 사용. 각 Client 컴포넌트가 `teacherType` prop으로 라벨 결정
-- **접근 제한**: reports(원어민만), notices/classes/bus(한국인만) — 각 page.tsx에서 `redirect()` 처리
+- **접근 제한**: notices/classes/bus(한국인만) — 각 page.tsx에서 `redirect()` 처리. reports는 역할 무관 접근하지만 UI는 `isReadOnly` prop으로 분기 (한국인은 읽기 전용)
 - `TeacherAcademyTimetable`은 `GroupTimetableData` 타입을 `schedule-actions.ts`에서 직접 import (크로스 라우트 그룹 경로 사용)
 - loading.tsx 제공: 루트, reports, textbooks, timetable (timetable은 `SkeletonTable` 사용)
 - 공지사항의 `createClassNotice`/`updateClassNotice`는 FormData로 전달 (파일 업로드)

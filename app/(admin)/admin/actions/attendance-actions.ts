@@ -2,8 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { verifyAuthenticated, verifyAdmin } from "./auth-helpers";
+import { verifyAuthenticated, verifyAdmin, verifyTeacherOrAdmin } from "./auth-helpers";
 import { logger } from "@/lib/logger";
+import { sortStudentsByAgeAndName } from "@/lib/utils/student-sort";
 import type { AttendanceRecord, AttendanceStats, StudentWithAttendance } from "@/lib/types";
 
 /** 학생의 출결 기록 목록 (최신순) */
@@ -33,21 +34,21 @@ export async function listAttendanceRecords(
 
   const { data, error } = await query;
   if (error) {
-    console.error("[listAttendanceRecords]", error.message);
+    logger.error("[listAttendanceRecords]", error.message);
     return [];
   }
 
   return (data ?? []) as AttendanceRecord[];
 }
 
-/** 출결 기록 생성/수정 (upsert) */
+/** 출결 기록 생성/수정 (upsert) — 교사/관리자 전용 */
 export async function recordAttendance(
   studentProfileId: string,
   attendanceDate: string,
   status: string,
   note?: string
 ): Promise<{ error?: string }> {
-  const auth = await verifyAuthenticated();
+  const auth = await verifyTeacherOrAdmin();
   if ("error" in auth) return { error: auth.error };
   const supabase = createAdminClient();
 
@@ -67,7 +68,7 @@ export async function recordAttendance(
   );
 
   if (error) {
-    console.error("[recordAttendance]", error.message);
+    logger.error("[recordAttendance]", error.message);
     return { error: error.message };
   }
 
@@ -94,12 +95,11 @@ export async function getStudentAttendanceByDate(
   return { status: data?.status ?? null, note: data?.note ?? null };
 }
 
-// TODO: 소유권 검증 필요 (현재 모든 인증 사용자가 삭제 가능)
-/** 출결 기록 삭제 */
+/** 출결 기록 삭제 — 교사/관리자 전용 */
 export async function deleteAttendance(
   recordId: string
 ): Promise<{ error?: string }> {
-  const auth = await verifyAuthenticated();
+  const auth = await verifyTeacherOrAdmin();
   if ("error" in auth) return { error: auth.error };
   const supabase = createAdminClient();
   const { error } = await supabase
@@ -107,7 +107,7 @@ export async function deleteAttendance(
     .delete()
     .eq("id", recordId);
   if (error) {
-    console.error("[deleteAttendance]", error.message);
+    logger.error("[deleteAttendance]", error.message);
     return { error: error.message };
   }
   revalidatePath("/admin/students");
@@ -168,7 +168,7 @@ export async function getClassStudentsWithAttendance(
     .eq("class_id", classId);
 
   if (membersError) {
-    console.error("[getClassStudentsWithAttendance] members:", membersError.message);
+    logger.error("[getClassStudentsWithAttendance] members:", membersError.message);
     return [];
   }
 
@@ -187,7 +187,7 @@ export async function getClassStudentsWithAttendance(
     .in("profile_id", profileIds);
 
   if (studentsError) {
-    console.error("[getClassStudentsWithAttendance] students:", studentsError.message);
+    logger.error("[getClassStudentsWithAttendance] students:", studentsError.message);
     return [];
   }
 
@@ -212,14 +212,8 @@ export async function getClassStudentsWithAttendance(
     };
   });
 
-  // 나이순 → 이름순 정렬
-  result.sort((a, b) => {
-    const ageDiff = (a.age ?? 999) - (b.age ?? 999);
-    if (ageDiff !== 0) return ageDiff;
-    return (a.korean_name ?? "").localeCompare(b.korean_name ?? "", "ko");
-  });
-
-  return result;
+  // 나이순 → 이름순 정렬 (공통 유틸 사용)
+  return sortStudentsByAgeAndName(result);
 }
 
 /** 반 출결 일괄 저장 (관리자용 upsert) */
@@ -257,7 +251,7 @@ export async function bulkRecordAttendance(
     .upsert(rows, { onConflict: "student_profile_id,attendance_date" });
 
   if (error) {
-    console.error("[bulkRecordAttendance]", error.message);
+    logger.error("[bulkRecordAttendance]", error.message);
     return { error: error.message };
   }
 

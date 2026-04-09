@@ -6,6 +6,7 @@ import { getStudentTimetable } from "@/app/(admin)/admin/actions/schedule-action
 import { getStudentAfterschoolDays } from "@/app/(admin)/admin/actions/afterschool-actions";
 import type { StudentTimetableRow } from "@/lib/types";
 import { LoadingState } from "@/components/LoadingState";
+import { escapeHtml } from "@/lib/utils/escape-html";
 
 const DAY_NAMES = ["월", "화", "수", "목", "금"];
 
@@ -58,15 +59,40 @@ export function StudentTimetableClient({
   const [rows, setRows] = useState<StudentTimetableRow[]>([]);
   const [afterschoolDays, setAfterschoolDays] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
-  const printRef = useRef<HTMLDivElement>(null);
+
+  // 프린트 시점에 최신 classRows를 읽을 수 있도록 ref 유지 (아래 useEffect에서 동기화).
+  const classRowsRef = useRef<StudentTimetableRow[]>([]);
 
   function handlePrint() {
-    if (!printRef.current) return;
-    const printContent = printRef.current.innerHTML;
+    const classRows = classRowsRef.current;
+    if (classRows.length === 0) return;
     const win = window.open("", "_blank");
     if (!win) return;
+
+    // 사용자 입력은 전부 escapeHtml로 이스케이프하여 XSS 방지.
+    const rowsHtml = classRows
+      .map((row) => {
+        const cellsHtml = [1, 2, 3, 4, 5]
+          .map((day) => {
+            const cell = row.cells[day];
+            if (!cell) return "<td>-</td>";
+            const teacher = cell.teacher_name
+              ? `<div class="teacher">${escapeHtml(cell.teacher_name)}</div>`
+              : "";
+            const label = cell.label
+              ? `<div class="label">${escapeHtml(cell.label)}</div>`
+              : "";
+            return `<td class="cell-filled">${teacher}${label}</td>`;
+          })
+          .join("");
+        return `<tr><td class="period-cell">${escapeHtml(row.period_name)}<br/><span class="label">${escapeHtml(formatTime(row.start_time))}~${escapeHtml(formatTime(row.end_time))}</span></td>${cellsHtml}</tr>`;
+      })
+      .join("");
+
+    const headHtml = `<tr><th>교시</th>${DAY_NAMES.map((n) => `<th>${escapeHtml(n)}</th>`).join("")}</tr>`;
+
     win.document.write(`<!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>${studentName} 시간표</title>
+<html><head><meta charset="utf-8"><title>${escapeHtml(studentName)} 시간표</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: -apple-system, sans-serif; padding: 24px; }
@@ -79,11 +105,13 @@ export function StudentTimetableClient({
   .label { font-size: 10px; color: #64748b; }
   .cell-filled { background: #f0f9ff; }
 </style></head><body>
-<h2>${studentName} — 시간표</h2>
-${printContent}
+<h2>${escapeHtml(studentName)} — 시간표</h2>
+<table><thead>${headHtml}</thead><tbody>${rowsHtml}</tbody></table>
 </body></html>`);
     win.document.close();
-    win.onload = () => { win.print(); };
+    win.onload = () => {
+      win.print();
+    };
   }
 
   const load = useCallback(async () => {
@@ -119,6 +147,11 @@ ${printContent}
     })).filter((row) => Object.values(row.cells).some((c) => c !== null));
   }, [rows]);
 
+  // 프린트 핸들러가 최신 classRows를 참조할 수 있도록 동기화.
+  useEffect(() => {
+    classRowsRef.current = classRows;
+  }, [classRows]);
+
   if (loading) {
     return <LoadingState />;
   }
@@ -139,43 +172,7 @@ ${printContent}
         </div>
       ) : (
         <div className="overflow-x-auto rounded-xl border shadow-sm">
-          {/* 출력용 숨겨진 테이블 */}
-          <div ref={printRef} className="hidden">
-            <table>
-              <thead>
-                <tr>
-                  <th>교시</th>
-                  {DAY_NAMES.map((name) => (
-                    <th key={name}>{name}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {classRows.map((row) => (
-                  <tr key={row.academy_period_id}>
-                    <td className="period-cell">
-                      {row.period_name}<br />
-                      <span className="label">{formatTime(row.start_time)}~{formatTime(row.end_time)}</span>
-                    </td>
-                    {[1, 2, 3, 4, 5].map((day) => {
-                      const cell = row.cells[day];
-                      return (
-                        <td key={day} className={cell ? "cell-filled" : ""}>
-                          {cell ? (
-                            <>
-                              {cell.teacher_name && <div className="teacher">{cell.teacher_name}</div>}
-                              {cell.label && <div className="label">{cell.label}</div>}
-                            </>
-                          ) : "-"}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          {/* 화면 표시용 테이블 */}
+          {/* 화면 표시용 테이블 (프린트는 handlePrint에서 데이터 기반으로 별도 생성) */}
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-muted/50 border-b">

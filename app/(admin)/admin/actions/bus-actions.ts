@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { normalizeEmail } from "@/lib/auth-utils";
 import { verifyAdmin, verifyAuthenticated } from "./auth-helpers";
 import { logger } from "@/lib/logger";
+import { todayKst } from "@/lib/utils/date-kst";
 import type {
   BusNumber,
   BusTimeSlot,
@@ -34,7 +35,7 @@ export async function listBusNumbers(): Promise<BusNumber[]> {
     .eq("is_active", true)
     .order("label");
   if (error) {
-    console.error("[listBusNumbers]", error.message);
+    logger.error("[listBusNumbers]", error.message);
     return [];
   }
   return data as BusNumber[];
@@ -56,7 +57,7 @@ export async function createBusNumber(
     .single();
   if (error) {
     if (error.code === "23505") return { error: "이미 존재하는 호차 이름입니다." };
-    console.error("[createBusNumber]", error.message);
+    logger.error("[createBusNumber]", error.message);
     return { error: error.message };
   }
   return { id: data.id };
@@ -78,7 +79,7 @@ export async function updateBusNumber(
     .eq("id", id);
   if (error) {
     if (error.code === "23505") return { error: "이미 존재하는 호차 이름입니다." };
-    console.error("[updateBusNumber]", error.message);
+    logger.error("[updateBusNumber]", error.message);
     return { error: error.message };
   }
   return {};
@@ -93,7 +94,7 @@ export async function deleteBusNumber(id: string): Promise<{ error?: string }> {
     .update({ is_active: false, updated_at: new Date().toISOString() })
     .eq("id", id);
   if (error) {
-    console.error("[deleteBusNumber]", error.message);
+    logger.error("[deleteBusNumber]", error.message);
     return { error: error.message };
   }
   return {};
@@ -110,7 +111,7 @@ export async function listBusTimeSlots(): Promise<BusTimeSlot[]> {
     .order("direction")
     .order("time");
   if (error) {
-    console.error("[listBusTimeSlots]", error.message);
+    logger.error("[listBusTimeSlots]", error.message);
     return [];
   }
   return data as BusTimeSlot[];
@@ -128,7 +129,7 @@ export async function listAllActiveStudentNames(): Promise<
     .is("profiles.deleted_at", null);
 
   if (error) {
-    console.error("[listAllActiveStudentNames]", error.message);
+    logger.error("[listAllActiveStudentNames]", error.message);
     return [];
   }
 
@@ -230,7 +231,7 @@ export async function createBusTimeSlot(
     .select("id")
     .single();
   if (error) {
-    console.error("[createBusTimeSlot]", error.message);
+    logger.error("[createBusTimeSlot]", error.message);
     return { error: error.message };
   }
   return { id: data.id };
@@ -252,7 +253,7 @@ export async function updateBusTimeSlot(
     .update({ label: trimmed, time, updated_at: new Date().toISOString() })
     .eq("id", id);
   if (error) {
-    console.error("[updateBusTimeSlot]", error.message);
+    logger.error("[updateBusTimeSlot]", error.message);
     return { error: error.message };
   }
   return {};
@@ -267,7 +268,7 @@ export async function deleteBusTimeSlot(id: string): Promise<{ error?: string }>
     .update({ is_active: false, updated_at: new Date().toISOString() })
     .eq("id", id);
   if (error) {
-    console.error("[deleteBusTimeSlot]", error.message);
+    logger.error("[deleteBusTimeSlot]", error.message);
     return { error: error.message };
   }
   return {};
@@ -286,7 +287,7 @@ export async function getStudentBusDefaults(
     .order("day_of_week")
     .order("direction");
   if (error) {
-    console.error("[getStudentBusDefaults]", error.message);
+    logger.error("[getStudentBusDefaults]", error.message);
     return [];
   }
 
@@ -375,7 +376,7 @@ export async function upsertStudentBusDefault(
     { onConflict: "student_profile_id,day_of_week,direction" }
   );
   if (error) {
-    console.error("[upsertStudentBusDefault]", error.message);
+    logger.error("[upsertStudentBusDefault]", error.message);
     return { error: error.message };
   }
   return {};
@@ -390,7 +391,7 @@ export async function deleteStudentBusDefault(id: string): Promise<{ error?: str
     .delete()
     .eq("id", id);
   if (error) {
-    console.error("[deleteStudentBusDefault]", error.message);
+    logger.error("[deleteStudentBusDefault]", error.message);
     return { error: error.message };
   }
   return {};
@@ -406,7 +407,7 @@ export async function deleteStudentBusDefaults(ids: string[]): Promise<{ error?:
     .delete()
     .in("id", ids);
   if (error) {
-    console.error("[deleteStudentBusDefaults]", error.message);
+    logger.error("[deleteStudentBusDefaults]", error.message);
     return { error: error.message };
   }
   return {};
@@ -794,7 +795,7 @@ export async function boardBusStudent(
     { onConflict: "student_profile_id,check_date,direction" }
   );
   if (error) {
-    console.error("[boardBusStudent]", error.message);
+    logger.error("[boardBusStudent]", error.message);
     return { error: error.message };
   }
   logger.info("[boardBusStudent]", "탑승 처리", { studentProfileId, checkDate, direction });
@@ -828,7 +829,7 @@ export async function unboardBusStudent(
       .delete()
       .eq("id", record.id);
     if (error) {
-      console.error("[unboardBusStudent]", error.message);
+      logger.error("[unboardBusStudent]", error.message);
       return { error: error.message };
     }
   } else {
@@ -838,7 +839,7 @@ export async function unboardBusStudent(
       .update({ boarded_at: null })
       .eq("id", record.id);
     if (error) {
-      console.error("[unboardBusStudent]", error.message);
+      logger.error("[unboardBusStudent]", error.message);
       return { error: error.message };
     }
   }
@@ -872,7 +873,7 @@ export async function checkBusStudent(
     { onConflict: "student_profile_id,check_date,direction" }
   );
   if (error) {
-    console.error("[checkBusStudent]", error.message);
+    logger.error("[checkBusStudent]", error.message);
     return { error: error.message };
   }
   logger.info("[checkBusStudent]", "하차 체크", { studentProfileId, checkDate, direction });
@@ -906,7 +907,7 @@ export async function uncheckBusStudent(
       .update({ checked_at: null, checked_by: null })
       .eq("id", record.id);
     if (error) {
-      console.error("[uncheckBusStudent]", error.message);
+      logger.error("[uncheckBusStudent]", error.message);
       return { error: error.message };
     }
   } else {
@@ -915,7 +916,7 @@ export async function uncheckBusStudent(
       .delete()
       .eq("id", record.id);
     if (error) {
-      console.error("[uncheckBusStudent]", error.message);
+      logger.error("[uncheckBusStudent]", error.message);
       return { error: error.message };
     }
   }
@@ -960,7 +961,7 @@ export async function batchBusCheckRecord(
       { onConflict: "student_profile_id,check_date,direction" }
     );
     if (error) {
-      console.error("[batchBusCheckRecord:board]", error.message);
+      logger.error("[batchBusCheckRecord:board]", error.message);
       return { error: error.message };
     }
   }
@@ -980,7 +981,7 @@ export async function batchBusCheckRecord(
       { onConflict: "student_profile_id,check_date,direction" }
     );
     if (error) {
-      console.error("[batchBusCheckRecord:check]", error.message);
+      logger.error("[batchBusCheckRecord:check]", error.message);
       return { error: error.message };
     }
   }
@@ -1001,7 +1002,7 @@ export async function batchBusCheckRecord(
         .eq("direction", dir)
         .in("student_profile_id", ids);
       if (unboardErr) {
-        console.error("[batchBusCheckRecord:unboard]", unboardErr.message);
+        logger.error("[batchBusCheckRecord:unboard]", unboardErr.message);
         return { error: unboardErr.message };
       }
       const { error: unboardDelErr } = await supabase
@@ -1013,7 +1014,7 @@ export async function batchBusCheckRecord(
         .is("boarded_at", null)
         .is("checked_at", null);
       if (unboardDelErr) {
-        console.error("[batchBusCheckRecord:unboard:delete]", unboardDelErr.message);
+        logger.error("[batchBusCheckRecord:unboard:delete]", unboardDelErr.message);
         return { error: unboardDelErr.message };
       }
     }
@@ -1035,7 +1036,7 @@ export async function batchBusCheckRecord(
         .eq("direction", dir)
         .in("student_profile_id", ids);
       if (uncheckErr) {
-        console.error("[batchBusCheckRecord:uncheck]", uncheckErr.message);
+        logger.error("[batchBusCheckRecord:uncheck]", uncheckErr.message);
         return { error: uncheckErr.message };
       }
       const { error: uncheckDelErr } = await supabase
@@ -1047,7 +1048,7 @@ export async function batchBusCheckRecord(
         .is("boarded_at", null)
         .is("checked_at", null);
       if (uncheckDelErr) {
-        console.error("[batchBusCheckRecord:uncheck:delete]", uncheckDelErr.message);
+        logger.error("[batchBusCheckRecord:uncheck:delete]", uncheckDelErr.message);
         return { error: uncheckDelErr.message };
       }
     }
@@ -1074,7 +1075,7 @@ export async function listAllChangeRequests(): Promise<BusChangeRequest[]> {
     .select("*")
     .order("requested_at", { ascending: false });
   if (error) {
-    console.error("[listPendingChangeRequests]", error.message);
+    logger.error("[listPendingChangeRequests]", error.message);
     return [];
   }
 
@@ -1237,7 +1238,7 @@ export async function listChangeRequestsByDate(date: string): Promise<BusChangeR
     .eq("request_date", date)
     .order("requested_at", { ascending: false });
   if (error) {
-    console.error("[listChangeRequestsByDate]", error.message);
+    logger.error("[listChangeRequestsByDate]", error.message);
     return [];
   }
 
@@ -1431,7 +1432,7 @@ export async function approveChangeRequest(
     .update(updateData)
     .eq("id", requestId);
   if (error) {
-    console.error("[approveChangeRequest]", error.message);
+    logger.error("[approveChangeRequest]", error.message);
     return { error: error.message };
   }
   logger.info("[approveChangeRequest]", "변경 요청 승인", { requestId, reviewerId });
@@ -1457,7 +1458,7 @@ export async function rejectChangeRequest(
     })
     .eq("id", requestId);
   if (error) {
-    console.error("[rejectChangeRequest]", error.message);
+    logger.error("[rejectChangeRequest]", error.message);
     return { error: error.message };
   }
   logger.info("[rejectChangeRequest]", "변경 요청 거절", { requestId, reviewerId });
@@ -1468,7 +1469,7 @@ export async function getStudentChangeRequests(
   studentProfileId: string
 ): Promise<BusChangeRequest[]> {
   const supabase = createAdminClient();
-  const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
+  const today = todayKst();
   const { data, error } = await supabase
     .from("bus_change_requests")
     .select("*")
@@ -1476,7 +1477,7 @@ export async function getStudentChangeRequests(
     .gte("request_date", today)
     .order("request_date");
   if (error) {
-    console.error("[getStudentChangeRequests]", error.message);
+    logger.error("[getStudentChangeRequests]", error.message);
     return [];
   }
 
@@ -1530,7 +1531,7 @@ export async function submitBusChangeRequest(
 
   if (error) {
     if (error.code === "23505") return { error: "해당 날짜에 이미 변경 요청이 있습니다." };
-    console.error("[submitBusChangeRequest]", error.message);
+    logger.error("[submitBusChangeRequest]", error.message);
     return { error: error.message };
   }
   return {};
@@ -1550,7 +1551,7 @@ export async function cancelBusChangeRequest(
     .eq("student_profile_id", studentProfileId)
     .eq("status", "pending");
   if (error) {
-    console.error("[cancelBusChangeRequest]", error.message);
+    logger.error("[cancelBusChangeRequest]", error.message);
     return { error: error.message };
   }
   return {};
@@ -1593,7 +1594,7 @@ export async function createAdminBusChange(
 
   if (error) {
     if (error.code === "23505") return { error: "해당 날짜에 이미 변경 요청이 있습니다." };
-    console.error("[createAdminBusChange]", error.message);
+    logger.error("[createAdminBusChange]", error.message);
     return { error: error.message };
   }
 
@@ -1659,7 +1660,7 @@ export async function updateAdminBusChange(
     .eq("id", requestId);
 
   if (error) {
-    console.error("[updateAdminBusChange]", error.message);
+    logger.error("[updateAdminBusChange]", error.message);
     return { error: error.message };
   }
 
@@ -1725,7 +1726,7 @@ export async function deleteAdminBusChange(
     .delete()
     .eq("id", requestId);
   if (error) {
-    console.error("[deleteAdminBusChange]", error.message);
+    logger.error("[deleteAdminBusChange]", error.message);
     return { error: error.message };
   }
   return {};
@@ -1744,7 +1745,7 @@ export async function listBusStops(): Promise<BusStop[]> {
     .order("sort_order")
     .order("name");
   if (error) {
-    console.error("[listBusStops]", error.message);
+    logger.error("[listBusStops]", error.message);
     return [];
   }
   return data as BusStop[];
@@ -1774,7 +1775,7 @@ export async function createBusStop(
     .select("id")
     .single();
   if (error) {
-    console.error("[createBusStop]", error.message);
+    logger.error("[createBusStop]", error.message);
     return { error: error.message };
   }
   return { id: data.id };
@@ -1800,7 +1801,7 @@ export async function listBusStopDayAssignments(
   }
   const { data, error } = await query.order("sort_order");
   if (error) {
-    console.error("[listBusStopDayAssignments]", error.message);
+    logger.error("[listBusStopDayAssignments]", error.message);
     return [];
   }
   return data as BusStopDayAssignment[];
@@ -1829,7 +1830,7 @@ export async function saveBusStopDayAssignments(
   }
   const { error: delErr } = await delQuery;
   if (delErr) {
-    console.error("[saveBusStopDayAssignments] delete", delErr.message);
+    logger.error("[saveBusStopDayAssignments] delete", delErr.message);
     return { error: delErr.message };
   }
 
@@ -1849,7 +1850,7 @@ export async function saveBusStopDayAssignments(
       .from("bus_stop_day_assignments")
       .insert(rows);
     if (insErr) {
-      console.error("[saveBusStopDayAssignments] insert", insErr.message);
+      logger.error("[saveBusStopDayAssignments] insert", insErr.message);
       return { error: insErr.message };
     }
   }
@@ -1875,7 +1876,7 @@ export async function listBusStopSchedulesBulk(
   }
   const { data, error } = await query;
   if (error) {
-    console.error("[listBusStopSchedulesBulk]", error.message);
+    logger.error("[listBusStopSchedulesBulk]", error.message);
     return [];
   }
   // If a slot is selected, prefer slot-specific over NULL fallback (per stop)
@@ -1909,7 +1910,7 @@ export async function updateBusStop(
 
   const { error } = await supabase.from("bus_stops").update(updateData).eq("id", id);
   if (error) {
-    console.error("[updateBusStop]", error.message);
+    logger.error("[updateBusStop]", error.message);
     return { error: error.message };
   }
   return {};
@@ -1926,7 +1927,7 @@ export async function deleteBusStop(id: string): Promise<{ error?: string }> {
     .delete()
     .eq("bus_stop_id", id);
   if (dayAssignErr) {
-    console.error("[deleteBusStop] day_assignments", dayAssignErr.message);
+    logger.error("[deleteBusStop] day_assignments", dayAssignErr.message);
     return { error: dayAssignErr.message };
   }
 
@@ -1936,7 +1937,7 @@ export async function deleteBusStop(id: string): Promise<{ error?: string }> {
     .delete()
     .eq("bus_stop_id", id);
   if (schedulesErr) {
-    console.error("[deleteBusStop] schedules", schedulesErr.message);
+    logger.error("[deleteBusStop] schedules", schedulesErr.message);
     return { error: schedulesErr.message };
   }
 
@@ -1946,7 +1947,7 @@ export async function deleteBusStop(id: string): Promise<{ error?: string }> {
     .update({ bus_stop_id: null, updated_at: new Date().toISOString() })
     .eq("bus_stop_id", id);
   if (defaultsErr) {
-    console.error("[deleteBusStop] defaults", defaultsErr.message);
+    logger.error("[deleteBusStop] defaults", defaultsErr.message);
     return { error: defaultsErr.message };
   }
 
@@ -1956,7 +1957,7 @@ export async function deleteBusStop(id: string): Promise<{ error?: string }> {
     .update({ is_active: false, updated_at: new Date().toISOString() })
     .eq("id", id);
   if (error) {
-    console.error("[deleteBusStop]", error.message);
+    logger.error("[deleteBusStop]", error.message);
     return { error: error.message };
   }
   return {};
@@ -1991,7 +1992,7 @@ export async function saveBulkBusDefaults(
   // In that case, don't filter by slot — but only delete unassigned students
   const { data: existing, error: fetchErr } = await fetchQuery;
   if (fetchErr) {
-    console.error("[saveBulkBusDefaults] fetch", fetchErr.message);
+    logger.error("[saveBulkBusDefaults] fetch", fetchErr.message);
     return { error: fetchErr.message };
   }
 
@@ -2005,7 +2006,7 @@ export async function saveBulkBusDefaults(
       .delete()
       .in("id", toDelete);
     if (delErr) {
-      console.error("[saveBulkBusDefaults] delete", delErr.message);
+      logger.error("[saveBulkBusDefaults] delete", delErr.message);
       return { error: delErr.message };
     }
   }
@@ -2026,7 +2027,7 @@ export async function saveBulkBusDefaults(
       .from("student_bus_defaults")
       .upsert(rows, { onConflict: "student_profile_id,day_of_week,direction" });
     if (upsertErr) {
-      console.error("[saveBulkBusDefaults] upsert", upsertErr.message);
+      logger.error("[saveBulkBusDefaults] upsert", upsertErr.message);
       return { error: upsertErr.message };
     }
   }
@@ -2056,7 +2057,7 @@ export async function getBulkBusDefaults(
 
   const { data: defaults, error } = await query;
   if (error) {
-    console.error("[getBulkBusDefaults]", error.message);
+    logger.error("[getBulkBusDefaults]", error.message);
     return [];
   }
   if (!defaults?.length) return [];
@@ -2131,7 +2132,7 @@ export async function createBusStaff(
   });
 
   if (error) {
-    console.error("[createBusStaff]", error.message, { email });
+    logger.error("[createBusStaff]", error.message, { email });
     return { error: error.message };
   }
   if (!data.user) {
@@ -2159,7 +2160,7 @@ export async function listBusStaff(): Promise<BusStaffProfile[]> {
     .is("deleted_at", null);
 
   if (profilesError) {
-    console.error("[listBusStaff]", profilesError.message);
+    logger.error("[listBusStaff]", profilesError.message);
     return [];
   }
   if (!profiles?.length) return [];
@@ -2229,7 +2230,7 @@ export async function updateBusStaff(
     .eq("profile_id", profileId);
 
   if (staffError) {
-    console.error("[updateBusStaff]", staffError.message);
+    logger.error("[updateBusStaff]", staffError.message);
     return { error: staffError.message };
   }
 
@@ -2260,7 +2261,7 @@ export async function listBusStopSchedules(
   }
   const { data, error } = await query;
   if (error) {
-    console.error("[listBusStopSchedules]", error.message);
+    logger.error("[listBusStopSchedules]", error.message);
     return [];
   }
   return data as BusStopSchedule[];
@@ -2292,7 +2293,7 @@ export async function upsertBusStopSchedule(
     { onConflict: "bus_stop_id,day_of_week,direction,bus_time_slot_id" }
   );
   if (error) {
-    console.error("[upsertBusStopSchedule]", error.message);
+    logger.error("[upsertBusStopSchedule]", error.message);
     return { error: error.message };
   }
   return {};
@@ -2321,7 +2322,7 @@ export async function deleteBusStopSchedule(
   }
   const { error } = await query;
   if (error) {
-    console.error("[deleteBusStopSchedule]", error.message);
+    logger.error("[deleteBusStopSchedule]", error.message);
     return { error: error.message };
   }
   return {};
@@ -2346,7 +2347,7 @@ export async function getWeeklyDropoffExportData(
     .eq("is_active", true)
     .order("time");
   if (slotError) {
-    console.error("[getWeeklyDropoffExportData] slots", slotError.message);
+    logger.error("[getWeeklyDropoffExportData] slots", slotError.message);
     return { error: slotError.message };
   }
   const slots = (slotData ?? []) as BusTimeSlot[];
@@ -2357,7 +2358,7 @@ export async function getWeeklyDropoffExportData(
     .select("profile_id, korean_name, english_name, age, profiles!inner(deleted_at)")
     .is("profiles.deleted_at", null);
   if (studentError) {
-    console.error("[getWeeklyDropoffExportData] students", studentError.message);
+    logger.error("[getWeeklyDropoffExportData] students", studentError.message);
     return { error: studentError.message };
   }
   const allStudents = (studentData ?? []).map((s) => ({
@@ -2413,7 +2414,7 @@ export async function getWeeklyDropoffExportData(
   ]);
 
   if (allDefaultsError) {
-    console.error("[getWeeklyDropoffExportData] defaults", allDefaultsError.message);
+    logger.error("[getWeeklyDropoffExportData] defaults", allDefaultsError.message);
     return { error: allDefaultsError.message };
   }
 

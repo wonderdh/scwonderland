@@ -7,7 +7,15 @@ paths:
 
 # Server Actions
 
-## admin/actions/ (16개 파일, barrel re-export via actions.ts)
+## Auth Helpers (auth-helpers.ts)
+
+- `verifyAdmin()` — 인증 + `profiles.role === "admin"` 검증. Admin 전용 Server Action에 사용.
+- `verifyAuthenticated()` — 로그인 여부만 확인 (역할 무관). 공유 read 액션에 사용.
+- `verifyTeacherOrAdmin()` — 인증 + `profiles.role ∈ {teacher, admin}` 검증. 숙제/출결/학습기록 mutating 액션 등 교사·관리자 공용 write 액션에 사용.
+
+모든 mutating Server Action은 반드시 셋 중 하나로 진입점에서 권한을 검증하고, 그 뒤에 `createAdminClient()`로 RLS 우회 작업을 수행한다.
+
+## admin/actions/ (17개 파일, barrel re-export via actions.ts)
 
 **user-actions.ts — 사용자 관리 (12개):**
 - `createStudent(formData)` — 학생 계정 생성 (AdminClient, email_confirm: true)
@@ -83,7 +91,7 @@ paths:
 - `listAcademyNotices()` / `getAcademyNoticeWithAttachments(id)` / `createAcademyNotice(formData)` / `updateAcademyNotice(formData)` / `deleteAcademyNotice(id)`
 
 **homework-actions.ts — 숙제 시스템 (9개):**
-- `listHomeworkAssignments(classId)` / `createHomeworkAssignment(...)` / `updateHomeworkAssignment(...)` / `deleteHomeworkAssignment(assignmentId)` — 숙제 출제 CRUD
+- `listHomeworkAssignments(classId)` / `createHomeworkAssignment(...)` / `updateHomeworkAssignment(...)` / `deleteHomeworkAssignment(assignmentId)` — 숙제 출제 CRUD (C/U/D는 `verifyTeacherOrAdmin`)
 - `listSubmissions(assignmentId)` — 제출 현황 (교사용, signed URL 포함)
 - `getStudentHomework(studentProfileId)` — 학생 본인 숙제 목록
 - `submitHomework(submissionId, textContent?, audioFile?)` — 학생 제출 (소유권 검증 포함)
@@ -91,13 +99,13 @@ paths:
 - `getSubmissionFiles(submissionId)` — 제출물 signed URL 조회
 
 **learning-actions.ts — 학습 기록 (4개):**
-- `listLearningRecords(studentProfileId)` / `createLearningRecord(...)` / `updateLearningRecord(...)` / `deleteLearningRecord(recordId)`
-- 모든 함수에 인증 검증 (`verifyAuthenticatedUser` 헬퍼)
+- `listLearningRecords(studentProfileId)` — 조회 (`verifyAuthenticated`)
+- `createLearningRecord(...)` / `updateLearningRecord(...)` / `deleteLearningRecord(recordId)` — mutating, `verifyTeacherOrAdmin` 적용
 
 **attendance-actions.ts — 출결 (8개):**
 - `listAttendanceRecords(studentProfileId, year?, month?)` — 출결 기록 목록 (최신순)
-- `recordAttendance(studentProfileId, attendanceDate, status, note?)` — 출결 upsert
-- `deleteAttendance(recordId)` — 출결 삭제
+- `recordAttendance(studentProfileId, attendanceDate, status, note?)` — 출결 upsert (`verifyTeacherOrAdmin`)
+- `deleteAttendance(recordId)` — 출결 삭제 (`verifyTeacherOrAdmin`)
 - `getStudentAttendanceByDate(studentProfileId, date)` — 특정 날짜 출결 조회 → `{ status, note }`
 - `getClassAttendanceByDate(classId, date)` — 반 학생들 특정 날짜 출결 조회 (교사용)
 - `getClassStudentsWithAttendance(classId, date)` — 반 학생 목록 + 출결 통합 → `StudentWithAttendance[]` (관리자용, 나이순 정렬)

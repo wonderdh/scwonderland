@@ -30,8 +30,8 @@ npm run lint     # ESLint 실행
 - `rules/architecture.md` — 라우트맵, 레이아웃 (`app/**/*` 작업 시)
 - `rules/components.md` — 컴포넌트 목록 (`*.tsx` 작업 시)
 - `rules/database.md` — DB 스키마, Storage (`lib/types/`, `lib/supabase/`, `actions/` 작업 시)
-- `rules/patterns.md` — 인증, 폼, 타입 패턴 (`app/`, `lib/` 작업 시)
-- `rules/server-actions.md` — 101개 함수 목록 (`actions/` 작업 시)
+- `rules/patterns.md` — 인증·폼·타입·safe redirect·HTML escape·KST 날짜 패턴 (`app/`, `lib/` 작업 시)
+- `rules/server-actions.md` — Server Action 함수 목록 + 인증 헬퍼 3종 (`actions/` 작업 시)
 - `rules/styling.md` — CSS, 색상 팔레트 (`*.css`, `(site)/` 작업 시)
 
 ### 라우트별 문서 (`routes/`)
@@ -44,3 +44,10 @@ npm run lint     # ESLint 실행
 - 원어민 교사 영어 UI: `teacher-labels.ts` 9개 라벨 세트, `academy/layout.tsx`에서 감지
 - DB 초기 데이터: 유치부 6반, 오후반 19개, Native 교사 10명 (`{이름}@scwonderland.com`, Wonder0225!)
 - 공유 UI 컴포넌트: `components/ui/` (shadcn/ui), `components/` (AudioRecorder, ConfirmDialog, FileUpload, QueryTabNav 등)
+
+### 공통 유틸 (반드시 사용)
+- **정렬:** 학생 명단 정렬은 `lib/utils/student-sort.ts#sortStudentsByAgeAndName()` 단일 소스
+- **날짜/시간:** `lib/utils/date-kst.ts`의 `todayKst()`, `formatDateKst()`, `formatDateTimeKst()`, `nowKstParts()`. `new Date().toLocaleDateString(...)` 분산 사용 금지
+- **HTML escape:** `lib/utils/escape-html.ts#escapeHtml()` — 프린트용 새 창 등 React 밖 HTML 생성 시 XSS 방지 필수
+- **로거:** `lib/logger.ts#logger` — 서버 `console.log/error` 직접 사용 금지, PII 로깅 금지
+- **인증:** `app/(admin)/admin/actions/auth-helpers.ts` — `verifyAdmin()` / `verifyAuthenticated()` / `verifyTeacherOrAdmin()` 중 상황에 맞게 선택

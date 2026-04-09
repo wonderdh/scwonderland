@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { STORAGE_BUCKETS } from "@/lib/supabase/storage";
+import { logger } from "@/lib/logger";
 import {
   uploadFilesFromFormData,
   rollbackUploadedFiles,
@@ -39,7 +40,7 @@ export async function listClassNotices(classId: string): Promise<ClassNotice[]> 
     .order("created_at", { ascending: false });
 
   if (error) {
-    console.error("[listClassNotices]", error.message);
+    logger.error("[listClassNotices]", error.message);
     return [];
   }
 
@@ -149,7 +150,7 @@ export async function createClassNotice(
 
     if (error) {
       await rollbackUploadedFiles(CONFIG.bucket, uploadedFiles);
-      console.error("[createClassNotice]", error.message);
+      logger.error("[createClassNotice]", error.message);
       return { error: error.message };
     }
 
@@ -159,7 +160,7 @@ export async function createClassNotice(
     revalidatePath(REVALIDATE_PATH);
     return { id: data.id };
   } catch (err) {
-    console.error("[createClassNotice] 예외", err);
+    logger.error("[createClassNotice]", "예외 발생", { error: err instanceof Error ? err.message : String(err) });
     return { error: "공지 생성 중 오류가 발생했습니다." };
   }
 }
@@ -220,7 +221,7 @@ export async function updateClassNotice(
     revalidatePath(REVALIDATE_PATH);
     return {};
   } catch (err) {
-    console.error("[updateClassNotice] 예외", err);
+    logger.error("[updateClassNotice]", "예외 발생", { error: err instanceof Error ? err.message : String(err) });
     return { error: "공지 수정 중 오류가 발생했습니다." };
   }
 }
@@ -274,7 +275,7 @@ export async function getMyClassNotices(
     .limit(50);
 
   if (error) {
-    console.error("[getMyClassNotices]", error.message);
+    logger.error("[getMyClassNotices]", error.message);
     return [];
   }
 

@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { logger } from "@/lib/logger";
 
 const MOBILE_UA = /Android|iPhone|iPad|iPod|Mobile/i;
 
@@ -40,7 +41,10 @@ export async function proxy(request: NextRequest) {
     await supabase.auth.getUser();
   } catch (e) {
     // Supabase 422 등 에러 시에도 페이지는 정상 응답
-    console.error("[proxy] 세션 갱신 실패", { pathname, error: e instanceof Error ? e.message : String(e) });
+    logger.error("[proxy]", "세션 갱신 실패", {
+      pathname,
+      error: e instanceof Error ? e.message : String(e),
+    });
   }
 
   return response;
@@ -48,6 +52,8 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    // 정적 리소스(이미지·폰트·CSS·JS·아이콘)와 Next.js 내부 경로는 proxy 대상에서 제외.
+    // Supabase 세션 갱신 오버헤드를 줄이고 Core Web Vitals를 보호.
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|avif|ico|woff|woff2|ttf|otf|eot|css|js|map|txt|xml|json)$).*)",
   ],
 };

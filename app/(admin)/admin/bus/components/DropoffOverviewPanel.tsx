@@ -5,7 +5,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { LoadingState } from "@/components/LoadingState";
-import { toPng } from "html-to-image";
+// html-to-image는 대용량(~100KB) 라이브러리라 이미지 내보내기 시점에만 동적 로드.
 import { getWeeklyDropoffExportData } from "../../actions";
 import { getAgeColor } from "@/lib/student-age-colors";
 import { formatTime } from "@/lib/bus/utils";
@@ -112,6 +112,7 @@ export function FullOverviewPanel() {
       const selectedSlot = dirSlots.find((s) => s.id === activeSlot);
       const slotTime = selectedSlot ? formatTime(selectedSlot.time) : "";
       const slotLabel = selectedSlot?.label ?? "";
+      const { toPng } = await import("html-to-image");
       const dataUrl = await toPng(tableRef.current, {
         backgroundColor: "#ffffff",
         pixelRatio: 2,

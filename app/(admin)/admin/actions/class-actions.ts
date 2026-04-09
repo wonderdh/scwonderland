@@ -53,7 +53,7 @@ export async function listClassesWithDetails(): Promise<ClassWithDetails[]> {
     .select("id, name, group_label, color_index, created_at, updated_at")
     .order("name");
   if (classesError) {
-    console.error("[listClassesWithDetails]", classesError.message);
+    logger.error("[listClassesWithDetails]", classesError.message);
     return [];
   }
   if (!classes?.length) {
@@ -176,7 +176,7 @@ export async function getStudentClasses(
     .select("class_id")
     .eq("student_profile_id", studentProfileId);
   if (membersError) {
-    console.error("[getStudentClasses]", membersError.message);
+    logger.error("[getStudentClasses]", membersError.message);
     return { classes: [], error: membersError.message };
   }
   if (!members?.length) return { classes: [] };
@@ -252,7 +252,7 @@ export async function createClass(
     .select("id")
     .single();
   if (error) {
-    console.error("[createClass]", error.message, { name });
+    logger.error("[createClass]", error.message, { name });
     return { error: error.message };
   }
   // 교사 배정
@@ -261,7 +261,7 @@ export async function createClass(
       .from("class_teachers")
       .insert(teacherProfileIds.map((tid) => ({ class_id: data.id, teacher_profile_id: tid })));
     if (ctError) {
-      console.error("[createClass:teachers]", ctError.message);
+      logger.error("[createClass:teachers]", ctError.message);
       return { error: "교사 배정에 실패했습니다." };
     }
   }
@@ -290,7 +290,7 @@ export async function createClass(
       );
       const { error: autoErr } = await supabase.from("class_schedules").insert(rows);
       if (autoErr && autoErr.code !== "23505") {
-        console.error("[createClass:autoAssign]", autoErr.message);
+        logger.error("[createClass:autoAssign]", autoErr.message);
       }
     }
   }
@@ -320,13 +320,13 @@ export async function updateClass(
     })
     .eq("id", classId);
   if (error) {
-    console.error("[updateClass]", error.message, { classId, name });
+    logger.error("[updateClass]", error.message, { classId, name });
     return { error: error.message };
   }
   // 교사 재배정: 기존 삭제 → 새로 삽입
   const { error: deleteError } = await supabase.from("class_teachers").delete().eq("class_id", classId);
   if (deleteError) {
-    console.error("[updateClass:teachers:delete]", deleteError.message);
+    logger.error("[updateClass:teachers:delete]", deleteError.message);
     return { error: "교사 배정 수정에 실패했습니다." };
   }
   if (teacherProfileIds.length > 0) {
@@ -334,7 +334,7 @@ export async function updateClass(
       .from("class_teachers")
       .insert(teacherProfileIds.map((tid) => ({ class_id: classId, teacher_profile_id: tid })));
     if (ctError) {
-      console.error("[updateClass:teachers]", ctError.message);
+      logger.error("[updateClass:teachers]", ctError.message);
       return { error: "교사 배정 수정에 실패했습니다." };
     }
   }
@@ -377,7 +377,7 @@ export async function updateClass(
       if (rows.length > 0) {
         const { error: autoErr } = await supabase.from("class_schedules").insert(rows);
         if (autoErr && autoErr.code !== "23505") {
-          console.error("[updateClass:autoAssign]", autoErr.message);
+          logger.error("[updateClass:autoAssign]", autoErr.message);
         }
       }
     }
@@ -392,7 +392,7 @@ export async function deleteClass(classId: string): Promise<{ error?: string }> 
   const supabase = createAdminClient();
   const { error } = await supabase.from("classes").delete().eq("id", classId);
   if (error) {
-    console.error("[deleteClass]", error.message, { classId });
+    logger.error("[deleteClass]", error.message, { classId });
     return { error: error.message };
   }
   logger.info("[deleteClass]", "반 삭제 완료", { classId });
@@ -432,7 +432,7 @@ export async function addStudentToClass(
     student_profile_id: studentProfileId,
   });
   if (error) {
-    console.error("[addStudentToClass]", error.message, { classId, studentProfileId });
+    logger.error("[addStudentToClass]", error.message, { classId, studentProfileId });
     return { error: error.message };
   }
   logger.info("[addStudentToClass]", "학생 반 배정", { classId, studentProfileId });
@@ -468,7 +468,7 @@ export async function removeStudentFromClass(
     .delete()
     .eq("id", classStudentId);
   if (error) {
-    console.error("[removeStudentFromClass]", error.message, { classStudentId });
+    logger.error("[removeStudentFromClass]", error.message, { classStudentId });
     return { error: error.message };
   }
   logger.info("[removeStudentFromClass]", "학생 반 제외", { classStudentId });

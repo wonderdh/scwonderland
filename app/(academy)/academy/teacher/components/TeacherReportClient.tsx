@@ -51,6 +51,7 @@ export function TeacherReportClient({
   const [reportLoading, setReportLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [copying, setCopying] = useState(false);
   const [saveMessage, setSaveMessage] = useState<{ type: "error" | "success"; text: string } | null>(null);
 
   const currentYear = new Date().getFullYear();
@@ -129,6 +130,32 @@ export function TeacherReportClient({
     await loadReport();
     await loadStatus();
     setTimeout(() => setSaveMessage(null), 2000);
+  };
+
+  const handleCopyPrev = async () => {
+    if (!selectedStudentId) return;
+    setCopying(true);
+    setSaveMessage(null);
+    // 이전 달 계산 (1월이면 작년 12월)
+    const prevMonth = month === 1 ? 12 : month - 1;
+    const prevYear = month === 1 ? year - 1 : year;
+    try {
+      const prev = await getReportCard(selectedStudentId, prevYear, prevMonth);
+      if (!prev?.content || !prev.content.trim()) {
+        setSaveMessage({ type: "error", text: L.copyEmpty });
+        return;
+      }
+      setContent(prev.content);
+      setSaveMessage({ type: "success", text: L.copyDone });
+      setTimeout(() => setSaveMessage(null), 3000);
+    } catch {
+      setSaveMessage({
+        type: "error",
+        text: isNative ? "Failed to load previous month." : "이전 달 내용을 불러오지 못했습니다.",
+      });
+    } finally {
+      setCopying(false);
+    }
   };
 
   const handleDelete = async () => {
@@ -404,24 +431,41 @@ export function TeacherReportClient({
                         placeholder={L.placeholder}
                         className="w-full rounded-lg border border-slate-200 px-3 py-3 text-base text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400 sm:text-sm"
                       />
-                      <div className="mt-3 flex items-center justify-between gap-2">
-                        {report?.id ? (
-                          <button
-                            type="button"
-                            onClick={handleDelete}
-                            disabled={deleting || saving}
-                            className="inline-flex items-center gap-1.5 min-h-[44px] rounded-lg border border-red-200 px-4 py-2.5 text-base font-medium text-red-600 hover:bg-red-50 disabled:opacity-50 sm:min-h-[40px] sm:text-sm"
-                          >
-                            {deleting && <Spinner size="sm" />}
-                            {deleting ? L.deleting : L.delete}
-                          </button>
-                        ) : (
-                          <div />
-                        )}
+                      <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          {report?.id && (
+                            <button
+                              type="button"
+                              onClick={handleDelete}
+                              disabled={deleting || saving || copying}
+                              className="inline-flex items-center gap-1.5 min-h-[44px] rounded-lg border border-red-200 px-4 py-2.5 text-base font-medium text-red-600 hover:bg-red-50 disabled:opacity-50 sm:min-h-[40px] sm:text-sm"
+                            >
+                              {deleting && <Spinner size="sm" />}
+                              {deleting ? L.deleting : L.delete}
+                            </button>
+                          )}
+                          {/* 신규 작성 시 이전 달 내용 복사 */}
+                          {!report?.id && (
+                            <button
+                              type="button"
+                              onClick={handleCopyPrev}
+                              disabled={copying || saving}
+                              className="inline-flex items-center gap-1.5 min-h-[44px] rounded-lg border border-slate-300 bg-slate-50 px-4 py-2.5 text-base font-medium text-slate-700 hover:bg-slate-100 disabled:opacity-50 sm:min-h-[40px] sm:text-sm"
+                              title={L.copyPrev}
+                            >
+                              {copying ? <Spinner size="sm" /> : (
+                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                </svg>
+                              )}
+                              {copying ? L.copying : L.copyPrev}
+                            </button>
+                          )}
+                        </div>
                         <button
                           type="button"
                           onClick={handleSave}
-                          disabled={saving || deleting}
+                          disabled={saving || deleting || copying}
                           className="inline-flex items-center gap-1.5 min-h-[44px] rounded-lg bg-slate-800 px-5 py-2.5 text-base font-medium text-white hover:bg-slate-700 disabled:opacity-50 sm:min-h-[40px] sm:text-sm"
                         >
                           {saving && <Spinner size="sm" />}

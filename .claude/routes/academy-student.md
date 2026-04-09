@@ -40,6 +40,8 @@
 | `listReportCardsByStudent` | (studentProfileId) | report_cards |
 | `updateReportCardReply` | (reportCardId, reply) | report_cards |
 | `getStudentHomework` | (studentProfileId) | homework_assignments, homework_submissions, class_students |
+| `getAttendanceStats` | (studentProfileId, year, month) | attendance — 월별 present/absent/late/excused 카운트 |
+| `listLearningRecords` | (studentProfileId) | learning_records |
 | `submitHomework` | (submissionId, textContent?, audioFile?) | homework_submissions, homework_submission_files + Storage |
 | `getSubmissionFiles` | (submissionId) | homework_submission_files + Storage signed URL |
 | `getMyClassNotices` | (studentProfileId) | class_students, class_notices, class_notice_attachments |
@@ -72,9 +74,15 @@
 2. `profiles.role !== "student"` → `/academy/dashboard` 리다이렉트
 3. `<StudentNav />` + `{children}` 렌더링 (max-w-3xl)
 
-### /academy/student (내 정보)
-1. `getCurrentStudentProfile()` + `getCurrentStudentClasses()` 병렬 호출
-2. 프로필 카드 (이름, 영문명) + 소속 반 목록 (담당 교사 포함)
+### /academy/student (내 정보 + 대시보드)
+1. `getCurrentStudentProfile()` 먼저 호출 후 병렬로:
+   - `getCurrentStudentClasses()`
+   - `getStudentHomework(profile.id)` — 미제출 카운트용
+   - `getAttendanceStats(profile.id, year, month)` — 이번 달 출석률 (KST 기준)
+   - `listLearningRecords(profile.id)` — 최근 3건
+2. 위젯 3종 (미제출 숙제 / 이번 달 출석률 / 최근 학습 기록) + 프로필 카드 + 소속 반 카드
+3. 미제출 숙제 카드는 `/academy/student/homework`로 링크, 건수 0이면 emerald, 1건 이상이면 amber
+4. KST 계산은 `lib/utils/date-kst.ts`의 `nowKstParts()`, `formatDateKst()` 사용
 
 ### /academy/student/reports (리포트카드)
 1. `listReportCardsByStudent()` → 연/월 목록 표시
@@ -98,7 +106,7 @@
 1. `getStudentTimetable()` + `getStudentAfterschoolDays()` 병렬 호출
 2. 교사별 색상 매핑 (`TEACHER_COLOR_PALETTE`)
 3. class 소스 셀만 필터링하여 표시
-4. 출력 기능 (새 창에서 print)
+4. 출력 기능: `classRows`를 ref로 유지 → `handlePrint()`에서 `escapeHtml()`로 HTML 문자열 빌드 → 새 창 `document.write` (XSS 방지 패턴, `innerHTML` 복붙 금지)
 5. 방과후 등록 현황 (요일별)
 
 ### /academy/student/bus (승하차)

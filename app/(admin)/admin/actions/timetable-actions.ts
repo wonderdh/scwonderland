@@ -3,6 +3,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { verifyAdmin, verifyAuthenticated } from "./auth-helpers";
+import { logger } from "@/lib/logger";
 import type { AcademyPeriod } from "@/lib/types";
 
 // ── 수업 시간대 CRUD ──
@@ -18,7 +19,7 @@ export async function listAcademyPeriods(): Promise<AcademyPeriod[]> {
     .eq("is_active", true)
     .order("start_time");
   if (error) {
-    console.error("[listAcademyPeriods]", error.message);
+    logger.error("[listAcademyPeriods]", error.message);
     return [];
   }
   return data as AcademyPeriod[];
@@ -52,7 +53,7 @@ export async function createAcademyPeriod(
     .select("id")
     .single();
   if (error) {
-    console.error("[createAcademyPeriod]", error.message);
+    logger.error("[createAcademyPeriod]", error.message);
     return { error: error.message };
   }
   revalidatePath("/admin/timetable");
@@ -88,7 +89,7 @@ export async function updateAcademyPeriod(
     })
     .eq("id", id);
   if (error) {
-    console.error("[updateAcademyPeriod]", error.message);
+    logger.error("[updateAcademyPeriod]", error.message);
     return { error: error.message };
   }
   revalidatePath("/admin/timetable");
@@ -105,7 +106,7 @@ export async function deleteAcademyPeriod(id: string): Promise<{ error?: string 
     .update({ is_active: false, updated_at: new Date().toISOString() })
     .eq("id", id);
   if (error) {
-    console.error("[deleteAcademyPeriod]", error.message);
+    logger.error("[deleteAcademyPeriod]", error.message);
     return { error: error.message };
   }
   revalidatePath("/admin/timetable");

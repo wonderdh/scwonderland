@@ -7,7 +7,10 @@
 | 함수 | 권한 | 설명 |
 |------|------|------|
 | `verifyAdmin()` | - | 인증 + role=admin 검증. profiles 테이블 조회 |
-| `verifyAuthenticated()` | - | 로그인 여부만 검증 (역할 무관) |
+| `verifyAuthenticated()` | - | 로그인 여부만 검증 (역할 무관). read-only 공유 액션에만 사용 |
+| `verifyTeacherOrAdmin()` | - | 인증 + role ∈ { "teacher", "admin" } 검증. 숙제/출결/학습기록 mutating 액션에 사용 |
+
+모든 mutating Server Action은 진입점에서 위 세 헬퍼 중 하나를 호출해야 하며, `verifyAuthenticated()`만 사용하는 mutating 액션은 권한 우회 취약점이므로 금지.
 
 ---
 
@@ -137,9 +140,9 @@
 | 함수 | 권한 | 테이블 | 설명 |
 |------|------|--------|------|
 | `listLearningRecords(studentProfileId)` | authenticated | `learning_records` | 학습 기록 목록 (최신순) |
-| `createLearningRecord(studentProfileId, record)` | authenticated | `learning_records` | 학습 기록 생성 (category: test/assessment/note/level_change) |
-| `updateLearningRecord(recordId, updates)` | authenticated | `learning_records` | 학습 기록 수정 |
-| `deleteLearningRecord(recordId)` | authenticated | `learning_records` | 학습 기록 삭제 |
+| `createLearningRecord(studentProfileId, record)` | teacher/admin | `learning_records` | 학습 기록 생성 (category: test/assessment/note/level_change). 날짜 기본값은 `todayKst()` |
+| `updateLearningRecord(recordId, updates)` | teacher/admin | `learning_records` | 학습 기록 수정 |
+| `deleteLearningRecord(recordId)` | teacher/admin | `learning_records` | 학습 기록 삭제 |
 
 ---
 
@@ -148,8 +151,8 @@
 | 함수 | 권한 | 테이블 | 설명 |
 |------|------|--------|------|
 | `listAttendanceRecords(studentProfileId, year?, month?)` | authenticated | `attendance` | 출결 기록 목록 (최신순, 월 필터 선택) |
-| `recordAttendance(studentProfileId, attendanceDate, status, note?)` | authenticated | `attendance` | 출결 생성/수정 (upsert, conflict: student_profile_id+attendance_date) |
-| `deleteAttendance(recordId)` | authenticated | `attendance` | 출결 기록 삭제 |
+| `recordAttendance(studentProfileId, attendanceDate, status, note?)` | teacher/admin | `attendance` | 출결 생성/수정 (upsert, conflict: student_profile_id+attendance_date) |
+| `deleteAttendance(recordId)` | teacher/admin | `attendance` | 출결 기록 삭제 |
 | `getStudentAttendanceByDate(studentProfileId, date)` | authenticated | `attendance` | 특정 학생·날짜 출결 조회 → `{ status, note }` |
 | `getClassAttendanceByDate(classId, date)` | authenticated | `class_students`, `attendance` | 반 학생들의 특정 날짜 출결 목록 (교사용) |
 | `getClassStudentsWithAttendance(classId, date)` | admin | `class_students`, `students`, `attendance` | 반 학생 목록 + 출결 통합 → `StudentWithAttendance[]` (나이순 정렬, 관리자 반별 출결용) |
@@ -193,9 +196,9 @@
 | 함수 | 권한 | 테이블 | 설명 |
 |------|------|--------|------|
 | `listHomeworkAssignments(classId)` | authenticated | `homework_assignments`, `homework_submissions`, `class_students` | 반별 숙제 목록 (제출 현황 포함) |
-| `createHomeworkAssignment(classId, teacherId, title, description?, dueDate?)` | authenticated | `homework_assignments`, `class_students`, `homework_submissions` | 숙제 생성 + 학생별 pending 제출 자동 생성 |
-| `updateHomeworkAssignment(assignmentId, title, description?, dueDate?)` | authenticated | `homework_assignments` | 숙제 수정 |
-| `deleteHomeworkAssignment(assignmentId)` | authenticated | `homework_assignments`, `homework_submissions`, `homework_submission_files`, Storage(`homework-submissions`) | 숙제 삭제 + 제출 파일 정리 |
+| `createHomeworkAssignment(classId, teacherId, title, description?, dueDate?)` | teacher/admin | `homework_assignments`, `class_students`, `homework_submissions` | 숙제 생성 + 학생별 pending 제출 자동 생성 |
+| `updateHomeworkAssignment(assignmentId, title, description?, dueDate?)` | teacher/admin | `homework_assignments` | 숙제 수정 |
+| `deleteHomeworkAssignment(assignmentId)` | teacher/admin | `homework_assignments`, `homework_submissions`, `homework_submission_files`, Storage(`homework-submissions`) | 숙제 삭제 + 제출 파일 정리 |
 | `listSubmissions(assignmentId)` | authenticated | `homework_submissions`, `students`, `homework_submission_files`, Storage (signed URL) | 제출 현황 (학생 이름, 파일 signed URL 포함) |
 | `getStudentHomework(studentProfileId)` | authenticated | `class_students`, `classes`, `homework_assignments`, `homework_submissions` | 학생 본인 숙제 목록 |
 | `submitHomework(submissionId, textContent?, audioFile?)` | 본인 확인 | `homework_submissions`, `homework_submission_files`, Storage(`homework-submissions`) | 숙제 제출 (텍스트 + 오디오) |

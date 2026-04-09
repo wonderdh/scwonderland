@@ -40,19 +40,66 @@ normalizeEmail("user@gmail.com")  // → "user@gmail.com"
 
 ## Server Action Auth Pattern
 
-인증이 필요한 Server Action에서의 검증 패턴:
+모든 mutating Server Action은 진입점에서 `auth-helpers.ts`의 헬퍼 중 하나로 권한을 검증해야 한다:
+
 ```typescript
-// 1. createClient()로 인증된 사용자 확인
-const supabaseAuth = await createClient();
-const { data: { user } } = await supabaseAuth.auth.getUser();
-if (!user) return { error: "인증이 필요합니다." };
+// 역할별 헬퍼 (app/(admin)/admin/actions/auth-helpers.ts)
+verifyAdmin()           // admin 전용
+verifyAuthenticated()   // 로그인 여부만 확인 (read-only 공유 액션)
+verifyTeacherOrAdmin()  // 교사·관리자 공용 (숙제/출결/학습기록 write 액션)
 
-// 2. 소유권/권한 확인 (필요시)
-if (authorId !== user.id) return { error: "권한이 없습니다." };
-
-// 3. createAdminClient()로 RLS 우회 데이터 조작
-const admin = createAdminClient();
+// 예시: 숙제 수정
+const auth = await verifyTeacherOrAdmin();
+if ("error" in auth) return { error: auth.error };
+const admin = createAdminClient(); // 이후 RLS 우회 작업
 ```
+
+소유권 기반 검증(본인 제출물만 수정 등)은 `verifyAuthenticated()` 후 별도 ownership 쿼리로 검증 (예: `homework-actions.ts#submitHomework`, `#reviewSubmission`).
+
+**금지:** mutating 액션에 `verifyAuthenticated()`만 사용하면 학생 계정으로도 통과되어 권한 우회 가능.
+
+## Safe Redirect (Open Redirect 방지)
+
+`router.push(searchParams.get("next"))` 형태는 외부 도메인 리다이렉트 취약점. `?next=` 류 파라미터는 반드시 내부 경로로만 허용:
+
+```typescript
+// academy/login/LoginForm.tsx 참고
+function safeRedirect(next: string | null): string {
+  const trimmed = next?.trim();
+  if (!trimmed) return "/academy/dashboard";
+  if (!trimmed.startsWith("/")) return "/academy/dashboard";
+  if (trimmed.startsWith("//") || trimmed.includes("\\")) return "/academy/dashboard";
+  return trimmed;
+}
+```
+
+## HTML Escaping (XSS 방지)
+
+React 밖으로 나가는 HTML 문자열(`document.write`, `innerHTML = ...` 등)에 사용자 입력을 삽입할 때는 **반드시** `lib/utils/escape-html.ts`의 `escapeHtml()`을 거친다. 프린트용 새 창 생성이 대표 사례.
+
+```typescript
+import { escapeHtml } from "@/lib/utils/escape-html";
+win.document.write(`<h2>${escapeHtml(studentName)}</h2>`);
+```
+
+`printRef.current.innerHTML`을 통째로 `document.write`에 꽂는 구(舊) 패턴은 금지. 데이터에서 HTML을 escape-build한다 (StudentTimetableClient.tsx 참고).
+
+## Date / Timezone (KST 고정)
+
+한국 학원 서비스이므로 모든 날짜는 KST 기준. **직접 `new Date()` 연산 금지** (서버 타임존에 따라 자정 경계 버그 발생).
+
+`lib/utils/date-kst.ts` 헬퍼 사용:
+
+```typescript
+import { todayKst, formatDateKst, formatDateTimeKst, nowKstParts } from "@/lib/utils/date-kst";
+
+todayKst()                 // "2026-04-09"   — DB DATE 컬럼(attendance_date 등)에 저장
+formatDateKst(iso)         // "2026년 4월 9일"
+formatDateTimeKst(ts)      // "2026. 04. 09. 15:30"
+nowKstParts()              // { year: 2026, month: 4, day: 9 }
+```
+
+`new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" })` 분산 패턴 금지 → `todayKst()`로 통일.
 
 ## Form Handling Patterns
 

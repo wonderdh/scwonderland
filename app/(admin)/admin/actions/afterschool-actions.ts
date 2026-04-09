@@ -3,6 +3,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { verifyAdmin, verifyAuthenticated } from "./auth-helpers";
+import { logger } from "@/lib/logger";
 import type { DayEnrollment, AfterschoolStudentEnrollment } from "@/lib/types";
 
 // ── 방과후 반 조회 or 자동 생성 ──
@@ -119,7 +120,7 @@ export async function enrollStudent(
 
   const { error } = await supabase.from("afterschool_enrollments").insert(rows);
   if (error) {
-    console.error("[enrollStudent]", error.message);
+    logger.error("[enrollStudent]", error.message);
     return { error: error.message };
   }
 
@@ -131,7 +132,7 @@ export async function enrollStudent(
       { onConflict: "class_id,student_profile_id", ignoreDuplicates: true },
     );
   if (csError && csError.code !== "23505") {
-    console.error("[enrollStudent:class_students]", csError.message);
+    logger.error("[enrollStudent:class_students]", csError.message);
   }
 
   revalidatePath("/admin/afterschool");
@@ -155,7 +156,7 @@ export async function removeAfterschoolStudent(
     .eq("student_profile_id", studentProfileId);
 
   if (aeError) {
-    console.error("[removeAfterschoolStudent:enrollments]", aeError.message);
+    logger.error("[removeAfterschoolStudent:enrollments]", aeError.message);
     return { error: aeError.message };
   }
 
@@ -166,7 +167,7 @@ export async function removeAfterschoolStudent(
     .eq("student_profile_id", studentProfileId);
 
   if (csError) {
-    console.error("[removeAfterschoolStudent:class_students]", csError.message);
+    logger.error("[removeAfterschoolStudent:class_students]", csError.message);
   }
 
   revalidatePath("/admin/afterschool");
@@ -279,7 +280,7 @@ export async function deleteAfterschoolEnrollmentDay(
     .eq("day_of_week", dayOfWeek);
 
   if (error) {
-    console.error("[deleteAfterschoolEnrollmentDay]", error.message);
+    logger.error("[deleteAfterschoolEnrollmentDay]", error.message);
     return { error: error.message };
   }
   return {};
@@ -303,7 +304,7 @@ export async function updateAfterschoolSecondPeriod(
     .eq("day_of_week", dayOfWeek);
 
   if (error) {
-    console.error("[updateAfterschoolSecondPeriod]", error.message);
+    logger.error("[updateAfterschoolSecondPeriod]", error.message);
     return { error: error.message };
   }
   return {};
@@ -328,7 +329,7 @@ export async function bulkUpdateEnrollmentDays(
     .in("student_profile_id", studentIds);
 
   if (delError) {
-    console.error("[bulkUpdateEnrollmentDays:delete]", delError.message);
+    logger.error("[bulkUpdateEnrollmentDays:delete]", delError.message);
     return { error: delError.message };
   }
 
@@ -344,7 +345,7 @@ export async function bulkUpdateEnrollmentDays(
   if (rows.length > 0) {
     const { error } = await supabase.from("afterschool_enrollments").insert(rows);
     if (error) {
-      console.error("[bulkUpdateEnrollmentDays:insert]", error.message);
+      logger.error("[bulkUpdateEnrollmentDays:insert]", error.message);
       return { error: error.message };
     }
   }

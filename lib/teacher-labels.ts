@@ -53,6 +53,10 @@ export const reportLabels = {
     deleteConfirmNoReply: "이 리포트카드를 삭제하시겠습니까?",
     deleting: "삭제 중…",
     deleted: "삭제되었습니다.",
+    copyPrev: "이전 달 내용 불러오기",
+    copying: "불러오는 중…",
+    copyEmpty: "이전 달에 저장된 리포트가 없습니다.",
+    copyDone: "이전 달 내용을 불러왔습니다. 수정 후 저장하세요.",
   },
   native: {
     title: "Write Report Cards",
@@ -79,6 +83,10 @@ export const reportLabels = {
     deleteConfirmNoReply: "Delete this report card?",
     deleting: "Deleting…",
     deleted: "Deleted successfully.",
+    copyPrev: "Copy previous month",
+    copying: "Loading…",
+    copyEmpty: "No report exists for the previous month.",
+    copyDone: "Loaded previous month's content. Review and save.",
   },
 } as const;
 

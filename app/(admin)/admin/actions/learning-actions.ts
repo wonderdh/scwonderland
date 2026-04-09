@@ -2,7 +2,9 @@
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
-import { verifyAuthenticated as verifyAuthenticatedUser } from "./auth-helpers";
+import { verifyAuthenticated as verifyAuthenticatedUser, verifyTeacherOrAdmin } from "./auth-helpers";
+import { logger } from "@/lib/logger";
+import { todayKst } from "@/lib/utils/date-kst";
 import type { LearningRecord } from "@/lib/types";
 
 /** 학생의 학습 기록 목록 (최신순) */
@@ -19,14 +21,13 @@ export async function listLearningRecords(
     .eq("student_profile_id", studentProfileId)
     .order("record_date", { ascending: false });
   if (error) {
-    console.error("[listLearningRecords]", error.message);
+    logger.error("[listLearningRecords]", error.message);
     return [];
   }
   return (data ?? []) as LearningRecord[];
 }
 
-// TODO: 교사/관리자 역할 검증 필요
-/** 학습 기록 생성 */
+/** 학습 기록 생성 — 교사/관리자 전용 */
 export async function createLearningRecord(
   studentProfileId: string,
   record: {
@@ -38,7 +39,7 @@ export async function createLearningRecord(
     max_score?: number;
   }
 ): Promise<{ error?: string; id?: string }> {
-  const auth = await verifyAuthenticatedUser();
+  const auth = await verifyTeacherOrAdmin();
   if ("error" in auth) return { error: auth.error };
 
   const supabase = createAdminClient();
@@ -50,7 +51,7 @@ export async function createLearningRecord(
     .from("learning_records")
     .insert({
       student_profile_id: studentProfileId,
-      record_date: record.record_date || new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" }),
+      record_date: record.record_date || todayKst(),
       category: record.category,
       title: record.title.trim(),
       content: record.content?.trim() || null,
@@ -61,15 +62,14 @@ export async function createLearningRecord(
     .single();
 
   if (error) {
-    console.error("[createLearningRecord]", error.message);
+    logger.error("[createLearningRecord]", error.message);
     return { error: error.message };
   }
   revalidatePath("/academy");
   return { id: data.id };
 }
 
-// TODO: 교사/관리자 역할 검증 필요
-/** 학습 기록 수정 */
+/** 학습 기록 수정 — 교사/관리자 전용 */
 export async function updateLearningRecord(
   recordId: string,
   updates: {
@@ -81,7 +81,7 @@ export async function updateLearningRecord(
     max_score?: number | null;
   }
 ): Promise<{ error?: string }> {
-  const auth = await verifyAuthenticatedUser();
+  const auth = await verifyTeacherOrAdmin();
   if ("error" in auth) return { error: auth.error };
 
   const supabase = createAdminClient();
@@ -106,19 +106,18 @@ export async function updateLearningRecord(
     .eq("id", recordId);
 
   if (error) {
-    console.error("[updateLearningRecord]", error.message);
+    logger.error("[updateLearningRecord]", error.message);
     return { error: error.message };
   }
   revalidatePath("/academy");
   return {};
 }
 
-// TODO: 교사/관리자 역할 검증 필요
-/** 학습 기록 삭제 */
+/** 학습 기록 삭제 — 교사/관리자 전용 */
 export async function deleteLearningRecord(
   recordId: string
 ): Promise<{ error?: string }> {
-  const auth = await verifyAuthenticatedUser();
+  const auth = await verifyTeacherOrAdmin();
   if ("error" in auth) return { error: auth.error };
 
   const supabase = createAdminClient();
@@ -127,7 +126,7 @@ export async function deleteLearningRecord(
     .delete()
     .eq("id", recordId);
   if (error) {
-    console.error("[deleteLearningRecord]", error.message);
+    logger.error("[deleteLearningRecord]", error.message);
     return { error: error.message };
   }
   revalidatePath("/academy");

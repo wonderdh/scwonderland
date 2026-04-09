@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import ExcelJS from "exceljs";
 import { getWeeklyDropoffExportData } from "../../actions/bus-actions";
 import type { DropoffExportRow, DropoffExportData } from "@/lib/types";
+import { todayKst } from "@/lib/utils/date-kst";
 
 const DAY_NAMES = ["월", "화", "수", "목", "금"];
 
@@ -319,7 +320,7 @@ export async function GET() {
 
   const buffer = await wb.xlsx.writeBuffer();
 
-  const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
+  const today = todayKst();
   return new NextResponse(buffer, {
     status: 200,
     headers: {

@@ -35,7 +35,7 @@ async function uploadCoverImage(
     .upload(storagePath, file, { contentType: file.type, upsert: false });
 
   if (error) {
-    console.error("[uploadCoverImage]", error.message);
+    logger.error("[uploadCoverImage]", error.message);
     return { error: `이미지 업로드 실패: ${error.message}` };
   }
 
@@ -71,7 +71,7 @@ export async function listTextbooks(): Promise<Textbook[]> {
     .order("sort_order")
     .order("title");
   if (error) {
-    console.error("[listTextbooks]", error.message);
+    logger.error("[listTextbooks]", error.message);
     return [];
   }
   return (data ?? []) as Textbook[];
@@ -87,7 +87,7 @@ export async function getTextbook(textbookId: string): Promise<Textbook | null> 
     .eq("id", textbookId)
     .single();
   if (error) {
-    console.error("[getTextbook]", error.message);
+    logger.error("[getTextbook]", error.message);
     return null;
   }
   return data as Textbook;
@@ -126,7 +126,7 @@ export async function createTextbook(formData: FormData): Promise<{ error?: stri
   if (error) {
     // 업로드한 이미지 롤백
     if (cover_image) await deleteCoverImage(cover_image);
-    console.error("[createTextbook]", error.message);
+    logger.error("[createTextbook]", error.message);
     return { error: error.message };
   }
   revalidatePath("/admin/textbooks");
@@ -186,7 +186,7 @@ export async function updateTextbook(formData: FormData): Promise<{ error?: stri
   if (error) {
     // 새로 업로드한 이미지 롤백
     if (cover_image) await deleteCoverImage(cover_image);
-    console.error("[updateTextbook]", error.message);
+    logger.error("[updateTextbook]", error.message);
     return { error: error.message };
   }
 
@@ -219,7 +219,7 @@ export async function deleteTextbook(textbookId: string): Promise<{ error?: stri
     .eq("id", textbookId);
 
   if (error) {
-    console.error("[deleteTextbook]", error.message);
+    logger.error("[deleteTextbook]", error.message);
     return { error: error.message };
   }
 
@@ -264,7 +264,7 @@ export async function listClassTextbooks(classId: string): Promise<ClassTextbook
     .eq("class_id", classId);
 
   if (error) {
-    console.error("[listClassTextbooks]", error.message);
+    logger.error("[listClassTextbooks]", error.message);
     return [];
   }
   if (!data?.length) return [];
@@ -312,7 +312,7 @@ export async function assignTextbookToClass(
     if (assignError.message.includes("duplicate") || assignError.message.includes("unique")) {
       return { error: "이미 배정된 교재입니다." };
     }
-    console.error("[assignTextbookToClass]", assignError.message);
+    logger.error("[assignTextbookToClass]", assignError.message);
     return { error: assignError.message };
   }
 
@@ -338,7 +338,7 @@ export async function assignTextbookToClass(
       .upsert(progressRows, { onConflict: "student_profile_id,textbook_id,source_class_id", ignoreDuplicates: true });
 
     if (progressError) {
-      console.error("[assignTextbookToClass] progress 생성 오류", progressError.message);
+      logger.error("[assignTextbookToClass] progress 생성 오류", progressError.message);
       return { error: "학생 진도 생성에 실패했습니다." };
     }
   }
@@ -364,7 +364,7 @@ export async function removeTextbookFromClass(
     .eq("textbook_id", textbookId);
 
   if (error) {
-    console.error("[removeTextbookFromClass]", error.message);
+    logger.error("[removeTextbookFromClass]", error.message);
     return { error: error.message };
   }
 
@@ -407,7 +407,7 @@ export async function assignTextbookToStudent(
     if (error.message.includes("duplicate") || error.message.includes("unique")) {
       return { error: "이미 배정된 교재입니다." };
     }
-    console.error("[assignTextbookToStudent]", error.message);
+    logger.error("[assignTextbookToStudent]", error.message);
     return { error: error.message };
   }
   revalidatePath("/admin/textbooks");
@@ -425,7 +425,7 @@ export async function removeTextbookFromStudent(progressId: string): Promise<{ e
     .eq("id", progressId);
 
   if (error) {
-    console.error("[removeTextbookFromStudent]", error.message);
+    logger.error("[removeTextbookFromStudent]", error.message);
     return { error: error.message };
   }
   revalidatePath("/admin/textbooks");
@@ -505,7 +505,7 @@ export async function updateProgress(
     .eq("id", progressId);
 
   if (error) {
-    console.error("[updateProgress]", error.message);
+    logger.error("[updateProgress]", error.message);
     return { error: error.message };
   }
   revalidatePath("/admin/textbooks");
@@ -525,7 +525,7 @@ export async function listStudentProgress(
     .eq("student_profile_id", studentProfileId);
 
   if (error) {
-    console.error("[listStudentProgress]", error.message);
+    logger.error("[listStudentProgress]", error.message);
     return [];
   }
   if (!data?.length) return [];
@@ -714,7 +714,7 @@ export async function batchUpdateProgress(
     .in("id", targetIds);
 
   if (error) {
-    console.error("[batchUpdateProgress]", error.message);
+    logger.error("[batchUpdateProgress]", error.message);
     return { error: error.message };
   }
 

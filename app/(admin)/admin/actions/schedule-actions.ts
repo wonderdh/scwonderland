@@ -192,13 +192,13 @@ export async function addSingleClassSchedule(
       })
       .eq("id", existing.id);
     if (error) {
-      console.error("[addSingleClassSchedule:update]", error.message);
+      logger.error("[addSingleClassSchedule:update]", error.message);
       return { error: error.message };
     }
   } else {
     const { error } = await supabase.from("class_schedules").insert(payload);
     if (error) {
-      console.error("[addSingleClassSchedule:insert]", error.message);
+      logger.error("[addSingleClassSchedule:insert]", error.message);
       return { error: error.message };
     }
   }
@@ -269,7 +269,7 @@ export async function setClassScheduleSlot(
     .is("student_profile_id", null);
 
   if (delError) {
-    console.error("[setClassScheduleSlot:delete]", delError.message);
+    logger.error("[setClassScheduleSlot:delete]", delError.message);
     return { error: delError.message };
   }
 
@@ -286,7 +286,7 @@ export async function setClassScheduleSlot(
     }));
     const { error: insError } = await supabase.from("class_schedules").insert(rows);
     if (insError) {
-      console.error("[setClassScheduleSlot:insert]", insError.message);
+      logger.error("[setClassScheduleSlot:insert]", insError.message);
       return { error: insError.message };
     }
   }
@@ -398,7 +398,7 @@ export async function addClassScheduleBatch(
     if (error.code === "23505") {
       return { error: "선택한 요일 중 이미 배정된 교시가 있습니다." };
     }
-    console.error("[addClassScheduleBatch]", error.message);
+    logger.error("[addClassScheduleBatch]", error.message);
     return { error: error.message };
   }
   revalidatePath("/admin/timetable");
@@ -420,7 +420,7 @@ export async function deleteClassSchedule(
     .eq("id", scheduleId);
 
   if (error) {
-    console.error("[deleteClassSchedule]", error.message);
+    logger.error("[deleteClassSchedule]", error.message);
     return { error: error.message };
   }
   logger.info("[deleteClassSchedule]", "수업 배정 삭제", { scheduleId });
@@ -731,7 +731,7 @@ export async function deleteStudentSchedule(
     .not("student_profile_id", "is", null);
 
   if (error) {
-    console.error("[deleteStudentSchedule]", error.message);
+    logger.error("[deleteStudentSchedule]", error.message);
     return { error: error.message };
   }
   revalidatePath("/admin/timetable");

@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import type { ReportCard, ReportCardListItem } from "@/lib/types";
 import { verifyAdmin } from "./auth-helpers";
 import { translateText } from "@/lib/translate";
+import { logger } from "@/lib/logger";
 
 export type UntranslatedReport = {
   id: string;
@@ -32,7 +33,7 @@ export async function getReportCard(
     .eq("month", month)
     .maybeSingle();
   if (error) {
-    console.error("[getReportCard]", error.message, { studentProfileId, year, month });
+    logger.error("[getReportCard]", error.message, { studentProfileId, year, month });
     return null;
   }
   if (!data) return null;
@@ -63,7 +64,7 @@ export async function listReportCardsByStudent(
     .order("year", { ascending: false })
     .order("month", { ascending: false });
   if (error) {
-    console.error("[listReportCardsByStudent]", error.message, { studentProfileId });
+    logger.error("[listReportCardsByStudent]", error.message, { studentProfileId });
     return [];
   }
   return (data ?? []) as ReportCardListItem[];
@@ -163,7 +164,7 @@ export async function upsertReportCard(
     { onConflict: "student_profile_id,year,month" }
   );
   if (error) {
-    console.error("[upsertReportCard]", error.message, { studentProfileId, year, month });
+    logger.error("[upsertReportCard]", error.message, { studentProfileId, year, month });
     return { error: error.message };
   }
   revalidatePath("/academy/student/reports");
@@ -218,7 +219,7 @@ export async function deleteReportCard(
     .delete()
     .eq("id", reportCardId);
   if (error) {
-    console.error("[deleteReportCard]", error.message, { reportCardId });
+    logger.error("[deleteReportCard]", error.message, { reportCardId });
     return { error: error.message };
   }
   revalidatePath("/academy/student/reports");
@@ -272,7 +273,7 @@ export async function updateReportCardReply(
     .eq("id", reportCardId)
     .eq("student_profile_id", user.id);
   if (error) {
-    console.error("[updateReportCardReply]", error.message, { reportCardId });
+    logger.error("[updateReportCardReply]", error.message, { reportCardId });
     return { error: error.message };
   }
   revalidatePath("/academy/student/reports");
@@ -342,7 +343,7 @@ export async function listUntranslatedReports(
     .not("content", "is", null);
 
   if (error || !cards || cards.length === 0) {
-    if (error) console.error("[listUntranslatedReports]", error.message);
+    if (error) logger.error("[listUntranslatedReports]", error.message);
     return [];
   }
 

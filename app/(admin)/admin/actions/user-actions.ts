@@ -42,7 +42,7 @@ export async function createStudent(
   });
 
   if (error) {
-    console.error("[createStudent]", error.message, { email });
+    logger.error("[createStudent]", error.message);
     return { error: error.message };
   }
   if (!data.user) {
@@ -56,7 +56,7 @@ export async function createStudent(
     await supabase.from("students").update(studentUpdate).eq("profile_id", data.user.id);
   }
 
-  logger.info("[createStudent]", "학생 생성 완료", { email, korean_name, group_type });
+  logger.info("[createStudent]", "학생 생성 완료", { userId: data.user.id, group_type });
   revalidatePath("/admin", "layout");
   return {};
 }
@@ -94,7 +94,7 @@ export async function createTeacher(
   });
 
   if (error) {
-    console.error("[createTeacher]", error.message, { email });
+    logger.error("[createTeacher]", error.message);
     return { error: error.message };
   }
   if (!data.user) {
@@ -109,7 +109,7 @@ export async function createTeacher(
       .eq("profile_id", data.user.id);
   }
 
-  logger.info("[createTeacher]", "교사 생성 완료", { email, name, teacher_type });
+  logger.info("[createTeacher]", "교사 생성 완료", { userId: data.user.id, teacher_type });
   revalidatePath("/admin", "layout");
   return {};
 }
@@ -161,7 +161,7 @@ export async function listUsersByRole(
     .is("deleted_at", null);
 
   if (profilesError) {
-    console.error("[listUsersByRole]", profilesError.message, { role });
+    logger.error("[listUsersByRole]", profilesError.message, { role });
     return [];
   }
   if (!profiles?.length) {
@@ -290,7 +290,7 @@ export async function deleteUserById(
     .delete()
     .eq("teacher_profile_id", id);
   if (classTeacherError) {
-    console.error("[deleteUserById:class_teachers]", classTeacherError.message, { id });
+    logger.error("[deleteUserById:class_teachers]", classTeacherError.message, { id });
   }
 
   // 2. 수업 배정 삭제 (교사인 경우)
@@ -299,7 +299,7 @@ export async function deleteUserById(
     .delete()
     .eq("teacher_profile_id", id);
   if (scheduleError) {
-    console.error("[deleteUserById:class_schedules]", scheduleError.message, { id });
+    logger.error("[deleteUserById:class_schedules]", scheduleError.message, { id });
   }
 
   // 3. 반 학생 배정 삭제 (학생인 경우)
@@ -308,7 +308,7 @@ export async function deleteUserById(
     .delete()
     .eq("student_profile_id", id);
   if (classStudentError) {
-    console.error("[deleteUserById:class_students]", classStudentError.message, { id });
+    logger.error("[deleteUserById:class_students]", classStudentError.message, { id });
   }
 
   // 4. 방과후 등록 삭제 (학생인 경우)
@@ -317,7 +317,7 @@ export async function deleteUserById(
     .delete()
     .eq("student_profile_id", id);
   if (afterschoolError) {
-    console.error("[deleteUserById:afterschool_enrollments]", afterschoolError.message, { id });
+    logger.error("[deleteUserById:afterschool_enrollments]", afterschoolError.message, { id });
   }
 
   // 5. 버스 기본값 삭제 (학생인 경우)
@@ -326,7 +326,7 @@ export async function deleteUserById(
     .delete()
     .eq("student_profile_id", id);
   if (busDefaultError) {
-    console.error("[deleteUserById:student_bus_defaults]", busDefaultError.message, { id });
+    logger.error("[deleteUserById:student_bus_defaults]", busDefaultError.message, { id });
   }
 
   const { error: profileError } = await supabase
@@ -334,7 +334,7 @@ export async function deleteUserById(
     .update({ deleted_at: new Date().toISOString() })
     .eq("id", id);
   if (profileError) {
-    console.error("[deleteUserById:profile]", profileError.message, { id });
+    logger.error("[deleteUserById:profile]", profileError.message, { id });
     return { error: profileError.message };
   }
 
@@ -342,7 +342,7 @@ export async function deleteUserById(
     ban_duration: "876000h",
   });
   if (banError) {
-    console.error("[deleteUserById:ban]", banError.message, { id });
+    logger.error("[deleteUserById:ban]", banError.message, { id });
   }
 
   logger.info("[deleteUserById]", "사용자 삭제 완료", { id });
@@ -366,7 +366,7 @@ export async function restoreUser(
     .update({ deleted_at: null })
     .eq("id", userId);
   if (profileError) {
-    console.error("[restoreUser:profile]", profileError.message, { userId });
+    logger.error("[restoreUser:profile]", profileError.message, { userId });
     return { error: profileError.message };
   }
 
@@ -374,7 +374,7 @@ export async function restoreUser(
     ban_duration: "none",
   });
   if (unbanError) {
-    console.error("[restoreUser:unban]", unbanError.message, { userId });
+    logger.error("[restoreUser:unban]", unbanError.message, { userId });
   }
 
   logger.info("[restoreUser]", "사용자 복구 완료", { userId });
@@ -394,7 +394,7 @@ export async function permanentlyDeleteUser(
   const supabase = createAdminClient();
   const { error } = await supabase.auth.admin.deleteUser(userId);
   if (error) {
-    console.error("[permanentlyDeleteUser]", error.message, { userId });
+    logger.error("[permanentlyDeleteUser]", error.message, { userId });
     return { error: error.message };
   }
   logger.info("[permanentlyDeleteUser]", "사용자 영구 삭제 완료", { userId });
@@ -496,7 +496,7 @@ export async function updateStudentProfile(
     .update({ first_name: korean_name, last_name: english_name })
     .eq("id", id);
   if (profileError) {
-    console.error("[updateStudentProfile:profile]", profileError.message, { id });
+    logger.error("[updateStudentProfile:profile]", profileError.message, { id });
     return { error: profileError.message };
   }
 
@@ -506,7 +506,7 @@ export async function updateStudentProfile(
     .eq("profile_id", id);
 
   if (studentError) {
-    console.error("[updateStudentProfile]", studentError.message, { id });
+    logger.error("[updateStudentProfile]", studentError.message, { id });
     return { error: studentError.message };
   }
   revalidatePath("/admin", "layout");
@@ -533,7 +533,7 @@ export async function updateTeacherProfile(
     .update({ first_name: name, last_name: "" })
     .eq("id", id);
   if (profileError) {
-    console.error("[updateTeacherProfile:profile]", profileError.message, { id });
+    logger.error("[updateTeacherProfile:profile]", profileError.message, { id });
     return { error: profileError.message };
   }
 
@@ -548,7 +548,7 @@ export async function updateTeacherProfile(
     .eq("profile_id", id);
 
   if (teacherError) {
-    console.error("[updateTeacherProfile]", teacherError.message, { id });
+    logger.error("[updateTeacherProfile]", teacherError.message, { id });
     return { error: teacherError.message };
   }
   revalidatePath("/admin", "layout");
@@ -574,7 +574,7 @@ export async function resetUserPassword(
     password: newPassword,
   });
   if (error) {
-    console.error("[resetUserPassword]", error.message, { userId });
+    logger.error("[resetUserPassword]", error.message, { userId });
     return { error: error.message };
   }
   revalidatePath("/admin", "layout");
@@ -596,7 +596,7 @@ export async function bulkResetStudentPasswords(
   for (const { id, password } of students) {
     const { error } = await supabase.auth.admin.updateUserById(id, { password });
     if (error) {
-      console.error("[bulkResetStudentPasswords]", error.message, { id });
+      logger.error("[bulkResetStudentPasswords]", error.message, { id });
       failed++;
     } else {
       success++;
