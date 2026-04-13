@@ -15,7 +15,7 @@ paths:
 
 모든 mutating Server Action은 반드시 셋 중 하나로 진입점에서 권한을 검증하고, 그 뒤에 `createAdminClient()`로 RLS 우회 작업을 수행한다.
 
-## admin/actions/ (17개 파일, barrel re-export via actions.ts)
+## admin/actions/ (18개 파일, barrel re-export via actions.ts)
 
 **user-actions.ts — 사용자 관리 (12개):**
 - `createStudent(formData)` — 학생 계정 생성 (AdminClient, email_confirm: true)
@@ -144,3 +144,12 @@ paths:
 - `getClassReportStatus(classId, year, month)` — 반별 리포트카드 작성 현황
 - `getClassTextbooks(classId)` — 반 교재 목록 (인증 검증 포함)
 - `getCurrentStudentTextbooks()` — 학생 교재 진도 조회
+
+**weekly-sentence-actions.ts — 주간 문장 (7개):**
+- `getCurrentWeeklySentences()` — 공개 read (RLS), config 조회 → 모드 판정 → 해당 주차 4개 레벨 문장 반환
+- `listAllWeeklySentences()` — 관리자 전체 208행 조회
+- `upsertWeeklySentence(weekNumber, level, english, korean, example?)` — (week_number, level) 기준 upsert
+- `deleteWeeklySentence(id)` — 단건 삭제
+- `bulkImportWeeklySentences(formData)` — XLSX 업로드 → 시트명↔level 매핑 → 일괄 upsert
+- `getWeeklySentenceConfig()` — 자동/수동 모드 + manual_week 조회
+- `updateWeeklySentenceConfig(mode, manualWeek?)` — 모드 전환

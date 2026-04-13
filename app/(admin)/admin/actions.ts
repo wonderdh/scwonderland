@@ -196,3 +196,13 @@ export {
   updateAfterschoolSecondPeriod,
   deleteAfterschoolEnrollmentDay,
 } from "./actions/afterschool-actions";
+
+export {
+  getCurrentWeeklySentences,
+  listAllWeeklySentences,
+  upsertWeeklySentence,
+  deleteWeeklySentence,
+  bulkImportWeeklySentences,
+  getWeeklySentenceConfig,
+  updateWeeklySentenceConfig,
+} from "./actions/weekly-sentence-actions";

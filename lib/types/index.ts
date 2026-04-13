@@ -12,6 +12,8 @@ export type {
   AfterschoolEnrollment,
   ClassSchedule,
   Textbook,
+  WeeklySentence,
+  WeeklySentenceConfig,
 } from "./database";
 
 export type {

@@ -55,6 +55,11 @@ Supabase Auth Users
     ├── bus_change_requests (student_profile_id, request_date, direction, change_type, new_bus_time_slot_id, new_bus_number_id, new_bus_stop_id, reason, status, reviewed_by, reviewed_at)
     └── afterschool_enrollments (class_id FK, student_profile_id FK, day_of_week, second_period BOOLEAN)
         └── UNIQUE (class_id, student_profile_id, day_of_week)
+    │
+    ├── weekly_sentences (week_number 1~52, level 1~4, english, korean, example)
+    │   └── UNIQUE (week_number, level) — 52주×4레벨=208행. RLS: 공개 SELECT
+    └── weekly_sentence_config (싱글톤 id=1, mode: auto|manual, manual_week)
+        └── RLS: 공개 SELECT. 랜딩 팝업에서 현재 주차 결정용
 ```
 
 - 역할은 `user_metadata.role`에 저장 (생성 시 설정)

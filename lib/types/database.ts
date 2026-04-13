@@ -142,6 +142,26 @@ export type ClassSchedule = {
   updated_at: string;
 };
 
+// ── 주간 문장 (Sentence of the Week) ──
+
+export type WeeklySentence = {
+  id: string;
+  week_number: number;
+  level: number; // 1~4
+  english: string;
+  korean: string;
+  example: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type WeeklySentenceConfig = {
+  id: number;
+  mode: "auto" | "manual";
+  manual_week: number | null;
+  updated_at: string;
+};
+
 // ── 교재 타입 ──
 
 export type Textbook = {
