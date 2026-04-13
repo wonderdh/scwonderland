@@ -26,6 +26,7 @@ app/
 │   ├── notices/components/     # 공지사항 전용 컴포넌트 (co-located)
 │   ├── academy-notices/        # Academy 포털 공지 관리
 │   ├── weekly-sentences/       # 주간 문장 관리 (52주 × 4레벨, 자동/수동 주차 전환)
+│   ├── reservations/           # 예약 현황 대시보드 (출결/버스 다중 날짜 일괄 예약 + 캘린더 히트맵)
 │   ├── timetable/              # 시간표 관리
 │   └── bus/                    # 승하차 관리
 └── (academy)/academy/          # 학생·교사 포털 (/academy)
@@ -94,6 +95,7 @@ CategoryLayout (menuId로 라우팅)
 | `/admin/notices` | 공지사항 관리 | 공지 CRUD, 이미지/파일 다중 첨부(Storage), 고정/게시 관리 |
 | `/admin/academy-notices` | Academy 공지 | 포털 내부 공지 CRUD, 첨부파일(Storage) |
 | `/admin/weekly-sentences` | 주간 문장 | 52주×4레벨 문장 CRUD, 자동/수동 주차 전환, Excel 일괄 업로드 |
+| `/admin/reservations` | 예약 현황 | 출결/버스 다중 날짜 일괄 예약, 캘린더 히트맵, 예약 목록 CRUD |
 | `/admin/timetable` | 시간표 관리 | 그룹별 그리드(유치부/오후반/방과후), 교시 CRUD, 학생 개인 시간표 |
 | `/admin/bus` | 승하차 관리 | 호차 CRUD, 대시보드(일일 매니페스트), 변경요청 승인/거부 |
 

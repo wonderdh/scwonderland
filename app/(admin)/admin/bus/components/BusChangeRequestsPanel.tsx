@@ -44,13 +44,17 @@ export function BusChangeRequestsPanel({ adminId }: { adminId: string }) {
   const [editStopId, setEditStopId] = useState("");
   const [editNote, setEditNote] = useState("");
 
-  // 처리 완료 목록 표시
+  // 처리 완료 목록 (레이지 로드)
   const [showCompleted, setShowCompleted] = useState(false);
+  const [completedRequests, setCompletedRequests] = useState<BusChangeRequest[]>([]);
+  const [completedLoading, setCompletedLoading] = useState(false);
+  const [completedLoaded, setCompletedLoaded] = useState(false);
 
+  // 대기 중만 초기 로드 (빠름)
   const load = useCallback(async () => {
     setLoading(true);
     const [data, bn, ts, stops] = await Promise.all([
-      listAllChangeRequests(),
+      listAllChangeRequests("pending"),
       listBusNumbers(),
       listBusTimeSlots(),
       listBusStops(),
@@ -65,6 +69,23 @@ export function BusChangeRequestsPanel({ adminId }: { adminId: string }) {
   useEffect(() => {
     load();
   }, [load]);
+
+  // 처리 완료 레이지 로드
+  const loadCompleted = useCallback(async () => {
+    setCompletedLoading(true);
+    const data = await listAllChangeRequests("completed");
+    setCompletedRequests(data);
+    setCompletedLoaded(true);
+    setCompletedLoading(false);
+  }, []);
+
+  async function toggleCompleted() {
+    const next = !showCompleted;
+    setShowCompleted(next);
+    if (next && !completedLoaded) {
+      await loadCompleted();
+    }
+  }
 
   function startEdit(req: BusChangeRequest, mode: "approve" | "reject" | "edit") {
     setEditingId(req.id);
@@ -97,6 +118,7 @@ export function BusChangeRequestsPanel({ adminId }: { adminId: string }) {
     }
     setEditingId(null);
     await load();
+    if (completedLoaded) await loadCompleted();
     router.refresh();
     setActionLoading(null);
   }
@@ -111,16 +133,22 @@ export function BusChangeRequestsPanel({ adminId }: { adminId: string }) {
     }
     setEditingId(null);
     await load();
+    if (completedLoaded) await loadCompleted();
     router.refresh();
     setActionLoading(null);
+  }
+
+  /** AdminBusChangeDnD에서 변경 생성 후 콜백 */
+  async function handleChangeCreated() {
+    await load();
+    router.refresh();
   }
 
   if (loading) {
     return <LoadingState className="py-4" />;
   }
 
-  const pendingRequests = requests.filter((r) => r.status === "pending");
-  const completedRequests = requests.filter((r) => r.status !== "pending");
+  const pendingRequests = requests;
 
   function handleStopModeChange(mode: "stop" | "pickup") {
     setEditStopMode(mode);
@@ -130,8 +158,8 @@ export function BusChangeRequestsPanel({ adminId }: { adminId: string }) {
 
   return (
     <div className="space-y-4">
-      {/* 드래그 앤 드롭 당일 변경 */}
-      <AdminBusChangeDnD />
+      {/* 당일 변경 (변경 생성 시 대기 목록 갱신) */}
+      <AdminBusChangeDnD onChangeCreated={handleChangeCreated} />
 
       {/* 대기중 */}
       <div>
@@ -176,16 +204,18 @@ export function BusChangeRequestsPanel({ adminId }: { adminId: string }) {
       {/* 처리 완료 */}
       <div>
         <button
-          onClick={() => setShowCompleted(!showCompleted)}
+          onClick={toggleCompleted}
           className="flex items-center gap-1 text-sm font-semibold text-slate-500 hover:text-slate-700"
         >
           <span className="text-xs">{showCompleted ? "▼" : "▶"}</span>
-          처리 완료 ({completedRequests.length}건)
+          처리 완료 {completedLoaded ? `(${completedRequests.length}건)` : ""}
         </button>
 
         {showCompleted && (
           <div className="space-y-2 mt-2">
-            {completedRequests.length === 0 ? (
+            {completedLoading ? (
+              <LoadingState className="py-4" />
+            ) : completedRequests.length === 0 ? (
               <p className="text-sm text-slate-400 py-4 text-center">처리된 요청이 없습니다.</p>
             ) : (
               completedRequests.map((req) => (

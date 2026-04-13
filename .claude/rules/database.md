@@ -42,7 +42,7 @@ Supabase Auth Users
     │       └── homework_submission_files (submission_id, storage_path, original_filename, mime_type)
     │
     ├── learning_records (student_profile_id, category, title, content, score, max_score, record_date)
-    ├── attendance (student_profile_id, attendance_date, status, note, recorded_by, updated_at)
+    ├── attendance (student_profile_id, attendance_date, status: present|absent|late|early_leave, note, recorded_by)
     │   └── UNIQUE (student_profile_id, attendance_date)  -- DB 트리거: after_attendance_bus_sync
     │
     ├── bus_numbers (label, is_active)

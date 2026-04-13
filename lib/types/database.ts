@@ -147,10 +147,11 @@ export type ClassSchedule = {
 export type WeeklySentence = {
   id: string;
   week_number: number;
-  level: number; // 1~4
+  level: number; // 1~3 (기초/중급/상급)
   english: string;
   korean: string;
   example: string | null;
+  answer: string | null; // 기초(level 1) Q&A 응답
   created_at: string;
   updated_at: string;
 };

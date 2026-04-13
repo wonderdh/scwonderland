@@ -157,6 +157,7 @@
 | `getClassAttendanceByDate(classId, date)` | authenticated | `class_students`, `attendance` | 반 학생들의 특정 날짜 출결 목록 (교사용) |
 | `getClassStudentsWithAttendance(classId, date)` | admin | `class_students`, `students`, `attendance` | 반 학생 목록 + 출결 통합 → `StudentWithAttendance[]` (나이순 정렬, 관리자 반별 출결용) |
 | `bulkRecordAttendance(records[{student_profile_id, date, status, note?}])` | admin | `attendance` | 반 출결 일괄 upsert (관리자 반별 출결 저장, revalidate: /admin/attendance + /m/attendance) |
+| `bulkReserveAttendance(studentProfileId, dates[], status, note?, autoBusNoRide?)` | admin | `attendance`, `bus_change_requests` | 다중 날짜 출결 일괄 예약. 결석+autoBusNoRide 시 양방향 버스 미탑승 자동 생성 |
 | `getAttendanceStats(studentProfileId, year, month)` | authenticated | `attendance` | 월별 출결 통계 (total, present, absent, late, excused) |
 
 ---
@@ -312,3 +313,26 @@
 | `createBusStaff(email, name, busNumberId?)` | admin | Auth API, `profiles`, `bus_staff` | 버스 담당자 생성 (Auth + profile + bus_staff) |
 | `listBusStaff()` | - | `bus_staff`, `profiles`, Auth API, `bus_numbers` | 버스 담당자 목록 |
 | `updateBusStaff(staffId, busNumberId?)` | admin | `bus_staff` | 버스 담당자 호차 배정 수정 |
+| `bulkCreateBusChanges(studentProfileId, dates[], direction, changeType, ...)` | admin | `bus_change_requests` | 다중 날짜 버스 변경 일괄 등록 (UNIQUE 충돌 skip, created/skipped 카운트 반환) |
+
+---
+
+## 예약 현황 (`reservation-actions.ts`)
+
+| 함수 | 권한 | 테이블 | 설명 |
+|------|------|--------|------|
+| `getUpcomingReservations(daysAhead?)` | admin | `attendance`, `bus_change_requests`, `students`, `bus_numbers`, `bus_time_slots` | 내일~N일 후 출결+버스 통합 조회. 학생명/호차명 조인 포함 |
+
+---
+
+## 주간 문장 (`weekly-sentence-actions.ts`)
+
+| 함수 | 권한 | 테이블 | 설명 |
+|------|------|--------|------|
+| `getCurrentWeeklySentences()` | public (RLS) | `weekly_sentence_config`, `weekly_sentences` | 현재 주차 4개 레벨 문장 조회 (자동/수동 모드 판정) |
+| `listAllWeeklySentences()` | admin | `weekly_sentences` | 전체 208행 조회 |
+| `upsertWeeklySentence(weekNumber, level, english, korean, example?)` | admin | `weekly_sentences` | 문장 upsert (week_number+level 기준) |
+| `deleteWeeklySentence(id)` | admin | `weekly_sentences` | 단건 삭제 |
+| `bulkImportWeeklySentences(formData)` | admin | `weekly_sentences` | XLSX 업로드 → 시트명↔level 매핑 → 일괄 upsert |
+| `getWeeklySentenceConfig()` | admin | `weekly_sentence_config` | 자동/수동 모드 + manual_week 조회 |
+| `updateWeeklySentenceConfig(mode, manualWeek?)` | admin | `weekly_sentence_config` | 모드 전환 |

@@ -25,4 +25,12 @@ Next.js 16 (App Router) · React 19 · TypeScript · Tailwind CSS v4 · Supabase
 - **HTML escape:** React 밖 HTML 문자열 생성(프린트용 새 창, `document.write`) 시 `lib/utils/escape-html.ts`의 `escapeHtml()` 필수. `innerHTML` 기반 프린트 금지
 - **Redirect:** `?next=` 파라미터는 내부 경로만 허용 (`/`로 시작, `//`·`\\` 차단). LoginForm의 `safeRedirect()` 참고
 - **대용량 라이브러리 동적 import:** `html-to-image`, `exceljs`, `xlsx` 등은 사용 시점에 `await import(...)`로 로드
+- **재사용 원칙:** 같은 기능을 여러 파일에 복붙하지 말고 `lib/constants/` 또는 `lib/utils/`에 단일 소스를 만들어 import. 주요 공유 자산:
+  - 출결 상태 → `lib/constants/attendance.ts`
+  - 시간표 색상 → `lib/constants/timetable.ts`
+  - 요일 이름 → `lib/constants/date.ts`
+  - 학생 이름 포맷 → `lib/utils/student-name.ts`
+  - 학생 정렬 → `lib/utils/student-sort.ts`
+  - 날짜/시간 KST → `lib/utils/date-kst.ts`
+  - HTML escape → `lib/utils/escape-html.ts`
 - **문서 동기화 필수:** 구조 변경 시 관련 MD 파일 즉시 업데이트. 대상: 라우트 추가/삭제/변경, 컴포넌트 추가/삭제, Server Actions 추가/삭제, DB 스키마 변경, 네비게이션 구조 변경, 공유 유틸/타입 변경 등. 업데이트 대상 파일: `rules/` (architecture, components, database, server-actions 등), `routes/*.md`, `CLAUDE.md`

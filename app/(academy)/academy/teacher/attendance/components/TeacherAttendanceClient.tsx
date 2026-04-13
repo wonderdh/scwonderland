@@ -10,6 +10,11 @@ import { attendanceLabels } from "@/lib/teacher-labels";
 import { LoadingState } from "@/components/LoadingState";
 import { Spinner } from "@/components/Spinner";
 import { Button } from "@/components/ui/button";
+import {
+  ATTENDANCE_STATUS_CONFIG,
+  ATTENDANCE_STATUSES,
+  type AttendanceStatus,
+} from "@/lib/constants/attendance";
 
 type TeacherClass = { id: string; name: string };
 type StudentInfo = {
@@ -19,29 +24,6 @@ type StudentInfo = {
   student_number: string | null;
 };
 type ClassWithStudents = TeacherClass & { students: StudentInfo[] };
-
-type StatusType = "present" | "absent" | "late" | "excused";
-
-const STATUS_COLORS: Record<StatusType, { active: string; idle: string }> = {
-  present: {
-    active: "bg-emerald-500 text-white border-emerald-500",
-    idle: "border-emerald-300 text-emerald-700 hover:bg-emerald-50",
-  },
-  absent: {
-    active: "bg-red-500 text-white border-red-500",
-    idle: "border-red-300 text-red-700 hover:bg-red-50",
-  },
-  late: {
-    active: "bg-amber-500 text-white border-amber-500",
-    idle: "border-amber-300 text-amber-700 hover:bg-amber-50",
-  },
-  excused: {
-    active: "bg-blue-500 text-white border-blue-500",
-    idle: "border-blue-300 text-blue-700 hover:bg-blue-50",
-  },
-};
-
-const STATUSES: StatusType[] = ["present", "absent", "late", "excused"];
 
 export function TeacherAttendanceClient({
   classes,
@@ -55,7 +37,7 @@ export function TeacherAttendanceClient({
   const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 
   const [selectedClassId, setSelectedClassId] = useState(classes[0]?.id ?? "");
-  const [statusMap, setStatusMap] = useState<Record<string, StatusType | null>>({});
+  const [statusMap, setStatusMap] = useState<Record<string, AttendanceStatus | null>>({});
   const [noteMap, setNoteMap] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
@@ -70,10 +52,10 @@ export function TeacherAttendanceClient({
     setLoading(true);
     setError(null);
     const records = await getClassAttendanceByDate(selectedClassId, today);
-    const sMap: Record<string, StatusType | null> = {};
+    const sMap: Record<string, AttendanceStatus | null> = {};
     const nMap: Record<string, string> = {};
     for (const r of records) {
-      sMap[r.studentProfileId] = (r.status as StatusType) ?? null;
+      sMap[r.studentProfileId] = (r.status as AttendanceStatus) ?? null;
       nMap[r.studentProfileId] = r.note ?? "";
     }
     setStatusMap(sMap);
@@ -86,7 +68,7 @@ export function TeacherAttendanceClient({
     loadAttendance();
   }, [loadAttendance]);
 
-  const handleStatusChange = (studentId: string, status: StatusType) => {
+  const handleStatusChange = (studentId: string, status: AttendanceStatus) => {
     setStatusMap((prev) => ({
       ...prev,
       [studentId]: prev[studentId] === status ? null : status,
@@ -223,9 +205,9 @@ export function TeacherAttendanceClient({
 
                 {/* 출결 상태 버튼 */}
                 <div className="flex gap-1.5">
-                  {STATUSES.map((st) => {
+                  {ATTENDANCE_STATUSES.map((st) => {
                     const isActive = currentStatus === st;
-                    const colors = STATUS_COLORS[st];
+                    const cfg = ATTENDANCE_STATUS_CONFIG[st];
                     return (
                       <button
                         key={st}
@@ -233,7 +215,7 @@ export function TeacherAttendanceClient({
                         onClick={() => handleStatusChange(s.profile_id, st)}
                         disabled={saving !== null}
                         className={`flex-1 rounded-lg border px-2 py-2 text-xs font-medium transition-all ${
-                          isActive ? colors.active : colors.idle
+                          isActive ? cfg.activeClass : cfg.inactiveClass
                         }`}
                       >
                         {L[st]}

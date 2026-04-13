@@ -15,7 +15,7 @@ paths:
 
 모든 mutating Server Action은 반드시 셋 중 하나로 진입점에서 권한을 검증하고, 그 뒤에 `createAdminClient()`로 RLS 우회 작업을 수행한다.
 
-## admin/actions/ (18개 파일, barrel re-export via actions.ts)
+## admin/actions/ (19개 파일, barrel re-export via actions.ts)
 
 **user-actions.ts — 사용자 관리 (12개):**
 - `createStudent(formData)` — 학생 계정 생성 (AdminClient, email_confirm: true)
@@ -110,9 +110,14 @@ paths:
 - `getClassAttendanceByDate(classId, date)` — 반 학생들 특정 날짜 출결 조회 (교사용)
 - `getClassStudentsWithAttendance(classId, date)` — 반 학생 목록 + 출결 통합 → `StudentWithAttendance[]` (관리자용, 나이순 정렬)
 - `bulkRecordAttendance(records[])` — 반 출결 일괄 저장 (관리자용 upsert)
-- `getAttendanceStats(studentProfileId, year, month)` — 월별 출결 통계
+- `getAttendanceStats(studentProfileId, year, month)` — 월별 출결 통계 (early_leave 포함)
+- `bulkReserveAttendance(studentProfileId, dates[], status, note?, autoBusNoRide?)` — 다중 날짜 출결 일괄 예약 (관리자, 결석 시 버스 미탑승 자동 연동)
 
-**bus-actions.ts — 승하차 관리 (~47개):**
+**reservation-actions.ts — 예약 현황 (1개):**
+- `getUpcomingReservations(daysAhead?)` — 향후 N일 출결+버스 변경 통합 조회 (관리자)
+
+**bus-actions.ts — 승하차 관리 (~48개):**
+- `bulkCreateBusChanges(studentProfileId, dates[], direction, changeType, ...)` — 다중 날짜 버스 변경 일괄 등록 (관리자, UNIQUE 충돌 skip)
 - `listBusNumbers()` / `createBusNumber(...)` / `updateBusNumber(...)` / `deleteBusNumber(...)` — 호차 CRUD
 - `listBusTimeSlots()` / `createBusTimeSlot(...)` / `updateBusTimeSlot(...)` / `deleteBusTimeSlot(...)` — 시간대 CRUD
 - `listAllActiveStudentNames()` — 전체 활성 학생 목록 (배정용)

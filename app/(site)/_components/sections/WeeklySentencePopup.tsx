@@ -9,7 +9,7 @@ const DISMISS_KEY = "wonderland.weekly-sentence-dismissed";
 type Props = {
   data: {
     weekNumber: number;
-    items: Array<{ level: number; english: string; korean: string }>;
+    items: Array<{ level: number; english: string; korean: string; answer: string | null }>;
   };
 };
 
@@ -109,12 +109,27 @@ export function WeeklySentencePopup({ data }: Props) {
                   {lv.label}
                   <span className="opacity-60">({lv.subLabel})</span>
                 </span>
-                <p className="mt-1.5 break-words text-sm font-semibold leading-snug text-slate-900">
-                  {item.english}
-                </p>
-                <p className="mt-0.5 text-xs leading-snug text-slate-500">
-                  {item.korean}
-                </p>
+                {item.answer ? (
+                  <>
+                    <p className="mt-1.5 break-words text-sm leading-snug text-slate-900">
+                      <span className="font-semibold text-slate-500">Q:</span>{" "}
+                      <span className="font-semibold">{item.english}</span>
+                    </p>
+                    <p className="mt-0.5 break-words text-sm leading-snug text-blue-700">
+                      <span className="font-semibold text-blue-500">A:</span>{" "}
+                      {item.answer}
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="mt-1.5 break-words text-sm font-semibold leading-snug text-slate-900">
+                      {item.english}
+                    </p>
+                    <p className="mt-0.5 text-xs leading-snug text-slate-500">
+                      {item.korean}
+                    </p>
+                  </>
+                )}
               </li>
             );
           })}

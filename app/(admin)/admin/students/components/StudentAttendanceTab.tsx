@@ -8,16 +8,18 @@ import {
   recordAttendance,
   deleteAttendance,
   getAttendanceStats,
+  bulkReserveAttendance,
 } from "../../actions";
 import type { AttendanceRecord, AttendanceStats } from "@/lib/types";
 import { LoadingState } from "@/components/LoadingState";
-
-const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
-  present: { label: "출석", color: "text-emerald-700", bg: "bg-emerald-100" },
-  absent: { label: "결석", color: "text-red-700", bg: "bg-red-100" },
-  late: { label: "지각", color: "text-amber-700", bg: "bg-amber-100" },
-  excused: { label: "사유", color: "text-blue-700", bg: "bg-blue-100" },
-};
+import { MultiDatePicker } from "@/components/MultiDatePicker";
+import { formatDateYmdKst } from "@/lib/utils/date-kst";
+import { WEEKDAY_NAMES_7 } from "@/lib/constants/date";
+import {
+  ATTENDANCE_STATUS_CONFIG,
+  ATTENDANCE_STATUSES,
+  type AttendanceStatus,
+} from "@/lib/constants/attendance";
 
 function getDaysInMonth(year: number, month: number) {
   return new Date(year, month, 0).getDate();
@@ -26,8 +28,6 @@ function getDaysInMonth(year: number, month: number) {
 function getFirstDayOfWeek(year: number, month: number) {
   return new Date(year, month - 1, 1).getDay();
 }
-
-const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
 
 export function StudentAttendanceTab({ studentProfileId }: { studentProfileId: string }) {
   const router = useRouter();
@@ -46,23 +46,23 @@ export function StudentAttendanceTab({ studentProfileId }: { studentProfileId: s
   );
 
   const records: AttendanceRecord[] = data?.records ?? [];
-  const stats: AttendanceStats = data?.stats ?? { total: 0, present: 0, absent: 0, late: 0, excused: 0 };
+  const stats: AttendanceStats = data?.stats ?? { total: 0, present: 0, absent: 0, late: 0, excused: 0, early_leave: 0 };
 
   // Action-level error (save/delete, distinct from load error)
   const [actionError, setActionError] = useState<string | null>(null);
 
   // Record form state
   const [showForm, setShowForm] = useState(false);
-  const [formDate, setFormDate] = useState("");
+  const [formDates, setFormDates] = useState<Date[]>([]);
   const [formStatus, setFormStatus] = useState("present");
   const [formNote, setFormNote] = useState("");
   const [saving, setSaving] = useState(false);
 
   const openForm = (day?: number) => {
     const d = day
-      ? `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`
-      : (() => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}-${String(n.getDate()).padStart(2, "0")}`; })();
-    setFormDate(d);
+      ? new Date(year, month - 1, day)
+      : new Date();
+    setFormDates([d]);
     setFormStatus("present");
     setFormNote("");
     setShowForm(true);
@@ -70,19 +70,31 @@ export function StudentAttendanceTab({ studentProfileId }: { studentProfileId: s
   };
 
   const handleSave = async () => {
+    if (formDates.length === 0) return;
     setSaving(true);
     setActionError(null);
-    const result = await recordAttendance(
-      studentProfileId,
-      formDate,
-      formStatus,
-      formNote || undefined
-    );
+    let result: { error?: string };
+    if (formDates.length === 1) {
+      result = await recordAttendance(
+        studentProfileId,
+        formatDateYmdKst(formDates[0]),
+        formStatus,
+        formNote || undefined
+      );
+    } else {
+      result = await bulkReserveAttendance(
+        studentProfileId,
+        formDates.map((d) => formatDateYmdKst(d)),
+        formStatus,
+        formNote || undefined
+      );
+    }
     setSaving(false);
     if (result.error) {
       setActionError(result.error);
       return;
     }
+    setFormDates([]);
     setShowForm(false);
     router.refresh();
     await reload();
@@ -123,14 +135,17 @@ export function StudentAttendanceTab({ studentProfileId }: { studentProfileId: s
     <div className="mx-auto w-full max-w-2xl space-y-4">
       {/* Stats */}
       <div className="grid grid-cols-5 gap-2">
-        {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
-          <div key={key} className={`rounded-lg ${cfg.bg} p-3 text-center`}>
-            <p className={`text-lg font-bold ${cfg.color}`}>
-              {stats[key as keyof AttendanceStats]}
-            </p>
-            <p className={`text-xs ${cfg.color}`}>{cfg.label}</p>
-          </div>
-        ))}
+        {ATTENDANCE_STATUSES.map((key) => {
+          const cfg = ATTENDANCE_STATUS_CONFIG[key];
+          return (
+            <div key={key} className={`rounded-lg ${cfg.badgeClass} p-3 text-center`}>
+              <p className="text-lg font-bold">
+                {stats[key as keyof AttendanceStats]}
+              </p>
+              <p className="text-xs">{cfg.label}</p>
+            </div>
+          );
+        })}
         <div className="rounded-lg bg-slate-100 p-3 text-center">
           <p className="text-lg font-bold text-slate-700">{stats.total}</p>
           <p className="text-xs text-slate-600">합계</p>
@@ -155,7 +170,7 @@ export function StudentAttendanceTab({ studentProfileId }: { studentProfileId: s
       {/* Calendar */}
       <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
         <div className="grid grid-cols-7 border-b bg-muted/50">
-          {WEEKDAYS.map((d, i) => (
+          {WEEKDAY_NAMES_7.map((d, i) => (
             <div key={d} className={`py-2 text-center text-xs font-medium ${i === 0 ? "text-red-500" : i === 6 ? "text-blue-500" : "text-muted-foreground"}`}>
               {d}
             </div>
@@ -170,7 +185,7 @@ export function StudentAttendanceTab({ studentProfileId }: { studentProfileId: s
             const dateStr = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
             const rec = recordMap.get(dateStr);
             const dayOfWeek = (firstDay + i) % 7;
-            const cfg = rec ? STATUS_CONFIG[rec.status] : null;
+            const cfg = rec ? ATTENDANCE_STATUS_CONFIG[rec.status as AttendanceStatus] : null;
 
             return (
               <button
@@ -183,7 +198,7 @@ export function StudentAttendanceTab({ studentProfileId }: { studentProfileId: s
                   {day}
                 </span>
                 {cfg && (
-                  <div className={`mt-0.5 rounded px-1 py-0.5 text-[10px] font-medium ${cfg.bg} ${cfg.color}`}>
+                  <div className={`mt-0.5 rounded px-1 py-0.5 text-[10px] font-medium ${cfg.badgeClass}`}>
                     {cfg.label}
                   </div>
                 )}
@@ -203,30 +218,28 @@ export function StudentAttendanceTab({ studentProfileId }: { studentProfileId: s
           <h3 className="text-sm font-semibold text-foreground">출결 기록</h3>
           <div>
             <label className="mb-1 block text-xs text-muted-foreground">날짜</label>
-            <input
-              type="date"
-              value={formDate}
-              onChange={(e) => setFormDate(e.target.value)}
-              className="min-h-[44px] w-full rounded-lg border border-input px-3 py-2 text-sm bg-background sm:min-h-0"
-            />
+            <MultiDatePicker selected={formDates} onSelect={setFormDates} />
           </div>
           <div>
             <label className="mb-1 block text-xs text-muted-foreground">상태</label>
             <div className="flex gap-2">
-              {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => setFormStatus(key)}
-                  className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                    formStatus === key
-                      ? `${cfg.bg} ${cfg.color} ring-2 ring-offset-1 ring-current`
-                      : "bg-muted text-muted-foreground hover:bg-muted/80"
-                  }`}
-                >
-                  {cfg.label}
-                </button>
-              ))}
+              {ATTENDANCE_STATUSES.map((key) => {
+                const cfg = ATTENDANCE_STATUS_CONFIG[key];
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setFormStatus(key)}
+                    className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                      formStatus === key
+                        ? `${cfg.badgeClass} ring-2 ring-offset-1 ring-current`
+                        : "bg-muted text-muted-foreground hover:bg-muted/80"
+                    }`}
+                  >
+                    {cfg.label}
+                  </button>
+                );
+              })}
             </div>
           </div>
           <div>
@@ -265,10 +278,10 @@ export function StudentAttendanceTab({ studentProfileId }: { studentProfileId: s
           <h3 className="text-sm font-medium text-muted-foreground">이달의 기록</h3>
           <ul className="space-y-1">
             {records.map((rec) => {
-              const cfg = STATUS_CONFIG[rec.status];
+              const cfg = ATTENDANCE_STATUS_CONFIG[rec.status as AttendanceStatus];
               return (
                 <li key={rec.id} className="flex items-center gap-3 rounded-lg border bg-card px-4 py-2.5">
-                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${cfg?.bg} ${cfg?.color}`}>
+                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${cfg?.badgeClass}`}>
                     {cfg?.label}
                   </span>
                   <span className="text-sm text-foreground">{rec.attendance_date}</span>

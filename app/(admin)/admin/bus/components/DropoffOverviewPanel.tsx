@@ -10,8 +10,7 @@ import { getWeeklyDropoffExportData } from "../../actions";
 import { getAgeColor } from "@/lib/student-age-colors";
 import { formatTime } from "@/lib/bus/utils";
 import type { DropoffExportRow, BusTimeSlot, BusNumber } from "@/lib/types";
-
-const DAY_NAMES = ["", "월", "화", "수", "목", "금"];
+import { WEEKDAY_NAMES_5 } from "@/lib/constants/date";
 
 // 요일별 배경 (무채색~중성톤, 호차 색과 겹치지 않게)
 const DAY_COLORS: Record<number, string> = {
@@ -256,7 +255,7 @@ export function FullOverviewPanel() {
                     {[1, 2, 3, 4, 5].map((day) => (
                       <tr key={day} className="border-b border-slate-200 align-top">
                         <td className={`py-3 px-3 font-bold text-sm sticky left-0 z-10 border-r border-slate-200 ${DAY_COLORS[day]}`}>
-                          {DAY_NAMES[day]}
+                          {WEEKDAY_NAMES_5[day - 1]}
                         </td>
                         {allBusLabels.map((busLabel, busIdx) => {
                           const cell = buildCell(day, busLabel);
@@ -325,7 +324,7 @@ export function FullOverviewPanel() {
                 });
               return (
                 <div key={day}>
-                  <div className={`text-sm font-bold mb-1 px-2 py-0.5 rounded ${DAY_COLORS[day]}`}>{DAY_NAMES[day]}</div>
+                  <div className={`text-sm font-bold mb-1 px-2 py-0.5 rounded ${DAY_COLORS[day]}`}>{WEEKDAY_NAMES_5[day - 1]}</div>
                   {dayStudents.length === 0 ? (
                     <span className="text-sm text-slate-300 px-2">-</span>
                   ) : (

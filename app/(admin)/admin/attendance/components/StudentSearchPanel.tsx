@@ -6,54 +6,21 @@ import { getAgeColor, getAgeLabel } from "@/lib/student-age-colors";
 import {
   getStudentAttendanceByDate,
   recordAttendance,
+  bulkReserveAttendance,
 } from "@/app/(admin)/admin/actions";
+import { MultiDatePicker } from "@/components/MultiDatePicker";
+import { formatDateYmdKst } from "@/lib/utils/date-kst";
+import {
+  ATTENDANCE_STATUS_CONFIG,
+  ATTENDANCE_STATUSES,
+  type AttendanceStatus,
+} from "@/lib/constants/attendance";
 
 type StudentItem = {
   id: string;
   korean_name: string | null;
   english_name: string | null;
   age: number | null;
-};
-
-const STATUS_CONFIG: Record<string, { label: string; active: string; inactive: string }> = {
-  present: {
-    label: "출석",
-    active: "bg-emerald-100 text-emerald-700 ring-2 ring-emerald-400",
-    inactive: "bg-gray-100 text-gray-500 hover:bg-emerald-50",
-  },
-  absent: {
-    label: "결석",
-    active: "bg-red-100 text-red-700 ring-2 ring-red-400",
-    inactive: "bg-gray-100 text-gray-500 hover:bg-red-50",
-  },
-  late: {
-    label: "지각",
-    active: "bg-amber-100 text-amber-700 ring-2 ring-amber-400",
-    inactive: "bg-gray-100 text-gray-500 hover:bg-amber-50",
-  },
-  excused: {
-    label: "사유결석",
-    active: "bg-blue-100 text-blue-700 ring-2 ring-blue-400",
-    inactive: "bg-gray-100 text-gray-500 hover:bg-blue-50",
-  },
-};
-
-const MOBILE_STATUS_CONFIG: Record<string, { label: string; active: string; inactive: string }> = {
-  present: {
-    label: "출석",
-    active: "bg-emerald-100 text-emerald-700 ring-2 ring-emerald-400",
-    inactive: "bg-gray-100 text-gray-500",
-  },
-  absent: {
-    label: "결석",
-    active: "bg-red-100 text-red-700 ring-2 ring-red-400",
-    inactive: "bg-gray-100 text-gray-500",
-  },
-  late: {
-    label: "지각",
-    active: "bg-amber-100 text-amber-700 ring-2 ring-amber-400",
-    inactive: "bg-gray-100 text-gray-500",
-  },
 };
 
 export function StudentSearchPanel({
@@ -67,7 +34,7 @@ export function StudentSearchPanel({
 }) {
   const [query, setQuery] = useState("");
   const [selectedStudent, setSelectedStudent] = useState<StudentItem | null>(null);
-  const [date, setDate] = useState(today);
+  const [selectedDates, setSelectedDates] = useState<Date[]>([]);
   const [currentStatus, setCurrentStatus] = useState<string | null>(null);
   const [currentNote, setCurrentNote] = useState<string | null>(null);
   const [pendingStatus, setPendingStatus] = useState<string | null>(null);
@@ -75,10 +42,17 @@ export function StudentSearchPanel({
   const [loadingStatus, setLoadingStatus] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  // 클라이언트 타임존 덮어쓰기
+  // 클라이언트 타임존 기준 오늘 날짜로 초기화
   useEffect(() => {
-    const localToday = new Date().toLocaleDateString("sv");
-    if (localToday !== date) setDate(localToday);
+    const localToday = new Date().toLocaleDateString("sv"); // YYYY-MM-DD
+    const todayDate = new Date(localToday + "T00:00:00");
+    // today prop과 다를 경우 클라이언트 타임존으로 덮어쓰기
+    const initDate = new Date(today + "T00:00:00");
+    if (localToday !== today) {
+      setSelectedDates([todayDate]);
+    } else {
+      setSelectedDates([initDate]);
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -92,18 +66,20 @@ export function StudentSearchPanel({
       })
     : [];
 
-  // 학생 또는 날짜 변경 → 출결 상태 로드
+  // 학생 또는 날짜(첫 번째) 변경 → 출결 상태 로드
+  const primaryDate = selectedDates.length > 0 ? formatDateYmdKst(selectedDates[0]) : today;
   useEffect(() => {
     if (!selectedStudent) return;
     setLoadingStatus(true);
     setPendingStatus(null);
     setPendingNote(null);
-    getStudentAttendanceByDate(selectedStudent.id, date).then(({ status, note }) => {
+    getStudentAttendanceByDate(selectedStudent.id, primaryDate).then(({ status, note }) => {
       setCurrentStatus(status);
       setCurrentNote(note);
       setLoadingStatus(false);
     });
-  }, [selectedStudent, date]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedStudent, primaryDate]);
 
   function handleToggleStatus(status: string) {
     const active = pendingStatus ?? currentStatus;
@@ -112,35 +88,54 @@ export function StudentSearchPanel({
       setPendingNote(null);
     } else {
       setPendingStatus(status);
-      if (status !== "absent" && status !== "excused" && status !== "late") setPendingNote(null);
+      if (status !== "absent" && status !== "early_leave" && status !== "late") setPendingNote(null);
     }
   }
 
   async function handleSave() {
     if (!selectedStudent) return;
+    if (selectedDates.length === 0) { toast.error("날짜를 선택해 주세요."); return; }
     const status = pendingStatus ?? currentStatus;
     if (!status) { toast.error("출결 상태를 선택해 주세요."); return; }
+    const note = (pendingNote ?? currentNote) ?? undefined;
     setSaving(true);
-    const result = await recordAttendance(
-      selectedStudent.id,
-      date,
-      status,
-      (pendingNote ?? currentNote) ?? undefined
-    );
+    let result: { error?: string };
+    if (selectedDates.length === 1) {
+      result = await recordAttendance(
+        selectedStudent.id,
+        formatDateYmdKst(selectedDates[0]),
+        status,
+        note
+      );
+    } else {
+      result = await bulkReserveAttendance(
+        selectedStudent.id,
+        selectedDates.map((d) => formatDateYmdKst(d)),
+        status,
+        note
+      );
+    }
     setSaving(false);
     if (result.error) {
       toast.error(result.error);
     } else {
-      toast.success("출결이 저장되었습니다.");
-      setCurrentStatus(status);
-      setCurrentNote(pendingNote ?? currentNote);
-      setPendingStatus(null);
-      setPendingNote(null);
+      if (selectedDates.length === 1) {
+        toast.success("출결이 저장되었습니다.");
+        setCurrentStatus(status);
+        setCurrentNote(pendingNote ?? currentNote);
+        setPendingStatus(null);
+        setPendingNote(null);
+      } else {
+        toast.success(`${selectedDates.length}일 출결이 일괄 저장되었습니다.`);
+        setPendingStatus(null);
+        setPendingNote(null);
+      }
     }
   }
 
   function selectStudent(s: StudentItem) {
     setSelectedStudent(s);
+    setSelectedDates([]);
     setQuery(s.korean_name ?? s.english_name ?? "");
   }
 
@@ -201,7 +196,7 @@ export function StudentSearchPanel({
               <button onClick={() => { setSelectedStudent(null); setQuery(""); }} className="text-xs text-muted-foreground hover:text-foreground">변경</button>
             </div>
 
-            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={inputBase} />
+            <MultiDatePicker selected={selectedDates} onSelect={setSelectedDates} />
 
             {loadingStatus ? (
               <div className="flex justify-center py-2">
@@ -210,15 +205,18 @@ export function StudentSearchPanel({
             ) : (
               <>
                 <div className="grid grid-cols-3 gap-2">
-                  {Object.entries(MOBILE_STATUS_CONFIG).map(([key, cfg]) => (
-                    <button
-                      key={key}
-                      onClick={() => handleToggleStatus(key)}
-                      className={`min-h-[52px] text-sm font-medium rounded-xl transition-all ${activeStatus === key ? cfg.active : cfg.inactive}`}
-                    >
-                      {cfg.label}
-                    </button>
-                  ))}
+                  {ATTENDANCE_STATUSES.map((key) => {
+                    const cfg = ATTENDANCE_STATUS_CONFIG[key];
+                    return (
+                      <button
+                        key={key}
+                        onClick={() => handleToggleStatus(key)}
+                        className={`min-h-[52px] text-sm font-medium rounded-xl transition-all ${activeStatus === key ? cfg.activeClass : cfg.inactiveClass}`}
+                      >
+                        {cfg.label}
+                      </button>
+                    );
+                  })}
                 </div>
                 {showNote && (
                   <input
@@ -309,17 +307,16 @@ export function StudentSearchPanel({
             </div>
 
             <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
-              <div className="flex items-center gap-3">
-                <label className="text-sm text-muted-foreground w-12 shrink-0">날짜</label>
-                <input type="date" value={date} onChange={(e) => setDate(e.target.value)}
-                  className="text-sm border border-input rounded-md px-2 py-1.5 bg-background focus:outline-none focus:ring-1 focus:ring-primary" />
+              <div className="flex items-start gap-3">
+                <label className="text-sm text-muted-foreground w-12 shrink-0 pt-2">날짜</label>
+                <MultiDatePicker selected={selectedDates} onSelect={setSelectedDates} />
               </div>
 
               <div className="flex items-start gap-3">
                 <label className="text-sm text-muted-foreground w-12 shrink-0 pt-1.5">출결</label>
                 {loadingStatus ? (
                   <div className="flex gap-2 flex-wrap">
-                    {Object.keys(STATUS_CONFIG).map((key) => (
+                    {ATTENDANCE_STATUSES.map((key) => (
                       <div key={key} className="h-8 w-16 rounded-md bg-muted animate-pulse" />
                     ))}
                   </div>
@@ -327,9 +324,9 @@ export function StudentSearchPanel({
                   <div className="space-y-2">
                     {/* 현재 저장된 상태 배지 */}
                     {currentStatus ? (
-                      <div className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full ${STATUS_CONFIG[currentStatus]?.active ?? ""}`}>
+                      <div className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full ${ATTENDANCE_STATUS_CONFIG[currentStatus as AttendanceStatus]?.activeClass ?? ""}`}>
                         <span className="w-1.5 h-1.5 rounded-full bg-current opacity-70" />
-                        저장됨: {STATUS_CONFIG[currentStatus]?.label}
+                        저장됨: {ATTENDANCE_STATUS_CONFIG[currentStatus as AttendanceStatus]?.label}
                         {isDirty && <span className="opacity-60">→ 변경 중</span>}
                       </div>
                     ) : (
@@ -339,15 +336,18 @@ export function StudentSearchPanel({
                       </div>
                     )}
                     <div className="flex gap-2 flex-wrap">
-                      {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
-                        <button
-                          key={key}
-                          onClick={() => handleToggleStatus(key)}
-                          className={`text-sm px-3 py-1.5 rounded-md font-medium transition-all ${activeStatus === key ? cfg.active : cfg.inactive}`}
-                        >
-                          {cfg.label}
-                        </button>
-                      ))}
+                      {ATTENDANCE_STATUSES.map((key) => {
+                        const cfg = ATTENDANCE_STATUS_CONFIG[key];
+                        return (
+                          <button
+                            key={key}
+                            onClick={() => handleToggleStatus(key)}
+                            className={`text-sm px-3 py-1.5 rounded-md font-medium transition-all ${activeStatus === key ? cfg.activeClass : cfg.inactiveClass}`}
+                          >
+                            {cfg.label}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
@@ -370,7 +370,7 @@ export function StudentSearchPanel({
                 <div className="w-12 shrink-0" />
                 <button
                   onClick={handleSave}
-                  disabled={saving || !activeStatus || (!isDirty && !!currentStatus && activeStatus === currentStatus)}
+                  disabled={saving || !activeStatus || selectedDates.length === 0 || (selectedDates.length === 1 && !isDirty && !!currentStatus && activeStatus === currentStatus)}
                   className="text-sm px-5 py-2 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40 transition-colors font-medium"
                 >
                   {saving ? "저장 중..." : isDirty ? "저장" : "재저장"}

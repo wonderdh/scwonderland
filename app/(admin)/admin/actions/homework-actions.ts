@@ -30,7 +30,7 @@ export async function listHomeworkAssignments(
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("homework_assignments")
-    .select("*")
+    .select("id, class_id, title, description, due_date, created_at")
     .eq("class_id", classId)
     .order("created_at", { ascending: false });
 
@@ -118,8 +118,7 @@ export async function createHomeworkAssignment(
     if (subError) return { error: "숙제 제출 생성에 실패했습니다." };
   }
 
-  revalidatePath("/academy/teacher/homework");
-  revalidatePath("/academy/student/homework");
+  revalidatePath("/academy", "layout");
   return { id: data.id };
 }
 
@@ -146,8 +145,7 @@ export async function updateHomeworkAssignment(
     .eq("id", assignmentId);
 
   if (error) return { error: error.message };
-  revalidatePath("/academy/teacher/homework");
-  revalidatePath("/academy/student/homework");
+  revalidatePath("/academy", "layout");
   return {};
 }
 
@@ -185,8 +183,7 @@ export async function deleteHomeworkAssignment(
     .eq("id", assignmentId);
 
   if (error) return { error: error.message };
-  revalidatePath("/academy/teacher/homework");
-  revalidatePath("/academy/student/homework");
+  revalidatePath("/academy", "layout");
   return {};
 }
 
@@ -201,7 +198,7 @@ export async function listSubmissions(
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("homework_submissions")
-    .select("*")
+    .select("id, assignment_id, student_profile_id, status, text_content, submitted_at, teacher_feedback, reviewed_at, reviewed_by, created_at, updated_at")
     .eq("assignment_id", assignmentId)
     .order("status")
     .order("submitted_at", { ascending: false });
@@ -234,20 +231,25 @@ export async function listSubmissions(
     .select("*")
     .in("submission_id", subIds);
 
-  // signed URL 생성 (비공개 버킷)
+  // signed URL 배치 생성 (비공개 버킷)
   const fileMap = new Map<string, HomeworkSubmissionFile[]>();
-  for (const f of files ?? []) {
-    const { data: signedData } = await supabase.storage
+  const allFiles = files ?? [];
+  if (allFiles.length > 0) {
+    const paths = allFiles.map((f) => f.storage_path);
+    const { data: signedUrls } = await supabase.storage
       .from(BUCKET)
-      .createSignedUrl(f.storage_path, 3600);
+      .createSignedUrls(paths, 3600);
 
-    const file: HomeworkSubmissionFile = {
-      ...f,
-      signed_url: signedData?.signedUrl,
-    };
-    const arr = fileMap.get(f.submission_id) ?? [];
-    arr.push(file);
-    fileMap.set(f.submission_id, arr);
+    for (let i = 0; i < allFiles.length; i++) {
+      const f = allFiles[i];
+      const file: HomeworkSubmissionFile = {
+        ...f,
+        signed_url: signedUrls?.[i]?.signedUrl,
+      };
+      const arr = fileMap.get(f.submission_id) ?? [];
+      arr.push(file);
+      fileMap.set(f.submission_id, arr);
+    }
   }
 
   return submissions.map((s) => ({
@@ -284,7 +286,7 @@ export async function getStudentHomework(
   // 숙제 목록
   const { data: assignments } = await supabase
     .from("homework_assignments")
-    .select("*")
+    .select("id, class_id, title, description, due_date, created_at")
     .in("class_id", classIds)
     .order("created_at", { ascending: false });
 
@@ -294,7 +296,7 @@ export async function getStudentHomework(
   const assignmentIds = assignments.map((a) => a.id);
   const { data: submissions } = await supabase
     .from("homework_submissions")
-    .select("*")
+    .select("id, assignment_id, student_profile_id, status, text_content, submitted_at, teacher_feedback, reviewed_at, reviewed_by, created_at, updated_at")
     .eq("student_profile_id", studentProfileId)
     .in("assignment_id", assignmentIds);
   const subMap = new Map(
@@ -365,8 +367,7 @@ export async function submitHomework(
     .eq("id", submissionId);
 
   if (error) return { error: error.message };
-  revalidatePath("/academy/teacher/homework");
-  revalidatePath("/academy/student/homework");
+  revalidatePath("/academy", "layout");
   return {};
 }
 
@@ -395,8 +396,7 @@ export async function reviewSubmission(
     .eq("id", submissionId);
 
   if (error) return { error: error.message };
-  revalidatePath("/academy/teacher/homework");
-  revalidatePath("/academy/student/homework");
+  revalidatePath("/academy", "layout");
   return {};
 }
 
@@ -412,12 +412,14 @@ export async function getSubmissionFiles(
     .select("*")
     .eq("submission_id", submissionId);
 
-  const result: HomeworkSubmissionFile[] = [];
-  for (const f of files ?? []) {
-    const { data: signedData } = await supabase.storage
-      .from(BUCKET)
-      .createSignedUrl(f.storage_path, 3600);
-    result.push({ ...f, signed_url: signedData?.signedUrl });
-  }
-  return result;
+  const allFiles = files ?? [];
+  if (allFiles.length === 0) return [];
+  const paths = allFiles.map((f) => f.storage_path);
+  const { data: signedUrls } = await supabase.storage
+    .from(BUCKET)
+    .createSignedUrls(paths, 3600);
+  return allFiles.map((f, i) => ({
+    ...f,
+    signed_url: signedUrls?.[i]?.signedUrl,
+  }));
 }

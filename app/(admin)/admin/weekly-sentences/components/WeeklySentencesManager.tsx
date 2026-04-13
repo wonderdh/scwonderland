@@ -39,6 +39,7 @@ export function WeeklySentencesManager({
   const [editEnglish, setEditEnglish] = useState("");
   const [editKorean, setEditKorean] = useState("");
   const [editExample, setEditExample] = useState("");
+  const [editAnswer, setEditAnswer] = useState("");
   const [saving, setSaving] = useState(false);
 
   // 검색/필터
@@ -65,7 +66,7 @@ export function WeeklySentencesManager({
       : autoWeek;
 
   // 표시할 주차 목록
-  const weeks = Array.from({ length: 52 }, (_, i) => i + 1).filter((w) => {
+  const weeks = Array.from({ length: 48 }, (_, i) => i + 1).filter((w) => {
     if (!searchWeek) return true;
     return w === Number(searchWeek);
   });
@@ -76,6 +77,7 @@ export function WeeklySentencesManager({
     setEditEnglish(existing?.english ?? "");
     setEditKorean(existing?.korean ?? "");
     setEditExample(existing?.example ?? "");
+    setEditAnswer(existing?.answer ?? "");
   }
 
   async function handleSave() {
@@ -87,6 +89,7 @@ export function WeeklySentencesManager({
       editEnglish,
       editKorean,
       editExample,
+      editAnswer,
     );
     setSaving(false);
     if (result.error) {
@@ -210,7 +213,7 @@ export function WeeklySentencesManager({
               className="h-8 rounded-lg border border-slate-200 px-2 text-xs text-slate-700"
             >
               <option value="">수동 선택...</option>
-              {Array.from({ length: 52 }, (_, i) => i + 1).map((w) => (
+              {Array.from({ length: 48 }, (_, i) => i + 1).map((w) => (
                 <option key={w} value={w}>
                   Week {w}
                 </option>
@@ -301,7 +304,7 @@ export function WeeklySentencesManager({
                               {item.english}
                             </p>
                             <p className="truncate text-[10px] text-slate-400">
-                              {item.korean}
+                              {item.answer || item.korean}
                             </p>
                           </button>
                         ) : (
@@ -341,24 +344,38 @@ export function WeeklySentencesManager({
             <div className="space-y-3">
               <div>
                 <label className="mb-1 block text-xs font-medium text-slate-500">
-                  영어 문장
+                  {editTarget.level === 1 ? "질문 (Q)" : "영어 문장"}
                 </label>
                 <Input
                   value={editEnglish}
                   onChange={(e) => setEditEnglish(e.target.value)}
-                  placeholder="Hello!"
+                  placeholder={editTarget.level === 1 ? "What season is it?" : "Hello!"}
                 />
               </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-slate-500">
-                  한글 뜻
-                </label>
-                <Input
-                  value={editKorean}
-                  onChange={(e) => setEditKorean(e.target.value)}
-                  placeholder="안녕!"
-                />
-              </div>
+              {editTarget.level === 1 && (
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-slate-500">
+                    대답 (A)
+                  </label>
+                  <Input
+                    value={editAnswer}
+                    onChange={(e) => setEditAnswer(e.target.value)}
+                    placeholder="It's winter in January."
+                  />
+                </div>
+              )}
+              {editTarget.level !== 1 && (
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-slate-500">
+                    한글 뜻
+                  </label>
+                  <Input
+                    value={editKorean}
+                    onChange={(e) => setEditKorean(e.target.value)}
+                    placeholder="안녕!"
+                  />
+                </div>
+              )}
               <div>
                 <label className="mb-1 block text-xs font-medium text-slate-500">
                   활용 예시 (선택)

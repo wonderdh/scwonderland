@@ -206,3 +206,20 @@ export {
   getWeeklySentenceConfig,
   updateWeeklySentenceConfig,
 } from "./actions/weekly-sentence-actions";
+
+export {
+  bulkReserveAttendance,
+} from "./actions/attendance-actions";
+
+export {
+  bulkCreateBusChanges,
+} from "./actions/bus-actions";
+
+export {
+  getUpcomingReservations,
+} from "./actions/reservation-actions";
+
+export type {
+  ReservationAttendance,
+  ReservationBusChange,
+} from "./actions/reservation-actions";

@@ -19,6 +19,7 @@ paths:
 | `Hero` | `_components/sections/` | 랜딩 히어로 (제목 + CTA + 이미지 그리드) |
 | `MainProgram` | `_components/sections/` | 랜딩 프로그램 카드 5개 (hover 슬라이드 애니메이션) |
 | `ImageWithFallback` | `_components/common/` | 이미지 에러 시 SVG fallback |
+| `WeeklySentencePopup` | `_components/sections/` | 주간 문장 팝업 (4레벨 카드, 1.2초 딜레이, 오늘 하루 보지 않기) |
 
 ## Admin Components
 
@@ -40,7 +41,11 @@ paths:
 
 **시간표 (admin/timetable/):** `GroupTimetableGrid`, `PeriodDayGrid`, 교시 관리
 
-**승하차 (admin/bus/):** 호차 관리, 대시보드, 변경요청 관리
+**승하차 (admin/bus/):** 호차 관리, 대시보드, 변경요청 관리 (AdminBusChangeDnD: MultiDatePicker 적용)
+
+**주간 문장 (admin/weekly-sentences/):** `WeeklySentencesManager` (52주 테이블, 셀 클릭 편집, 자동/수동 주차 전환, Excel 업로드)
+
+**예약 현황 (admin/reservations/):** `ReservationDashboard` (통계 카드 3종 + 캘린더 히트맵 + 출결/버스 예약 폼 + 목록 CRUD). 출결 예약 폼·버스 변경 폼에 `MultiDatePicker` 사용
 
 ## Shared Components (components/)
 
@@ -50,7 +55,8 @@ paths:
 | `AudioRecorder` | 오디오 녹음 컴포넌트 (숙제 제출용) |
 | `FileUpload` | 파일 업로드 컴포넌트 |
 | `FileList` | 파일 목록 표시 컴포넌트 |
-| `ui/` | shadcn/ui 컴포넌트 (avatar, badge, button, card, input, label, separator, tabs, textarea, tooltip) |
+| `MultiDatePicker` | 다중 날짜 캘린더. 첫 클릭=앵커, 두 번째=범위 채움, 이후=개별 토글. 토·일 비활성. 출결/버스/예약에서 공유 |
+| `ui/` | shadcn/ui 컴포넌트 (avatar, badge, button, calendar, card, input, label, popover, separator, tabs, textarea, tooltip) |
 
 ## Academy Components (app/(academy)/academy/)
 

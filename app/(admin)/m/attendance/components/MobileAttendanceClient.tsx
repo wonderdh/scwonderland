@@ -5,33 +5,16 @@ import Link from "next/link";
 import { useAttendanceEditor, type GroupFilter } from "@/app/(admin)/admin/attendance/hooks/useAttendanceEditor";
 import { StudentSearchPanel } from "@/app/(admin)/admin/attendance/components/StudentSearchPanel";
 import type { ClassWithDetails } from "@/lib/types";
+import {
+  ATTENDANCE_STATUS_CONFIG,
+  ATTENDANCE_STATUSES,
+} from "@/lib/constants/attendance";
 
 type StudentItem = {
   id: string;
   korean_name: string | null;
   english_name: string | null;
   age: number | null;
-};
-
-const STATUS_CONFIG: Record<
-  string,
-  { label: string; active: string; inactive: string }
-> = {
-  present: {
-    label: "출석",
-    active: "bg-emerald-100 text-emerald-700 ring-2 ring-emerald-400",
-    inactive: "bg-gray-100 text-gray-500",
-  },
-  absent: {
-    label: "결석",
-    active: "bg-red-100 text-red-700 ring-2 ring-red-400",
-    inactive: "bg-gray-100 text-gray-500",
-  },
-  late: {
-    label: "지각",
-    active: "bg-amber-100 text-amber-700 ring-2 ring-amber-400",
-    inactive: "bg-gray-100 text-gray-500",
-  },
 };
 
 const GROUPS: GroupFilter[] = ["유치부", "오후반"];
@@ -161,17 +144,20 @@ export function MobileAttendanceClient({
                       {student.korean_name ?? student.english_name ?? "이름 없음"}
                     </span>
                     <div className="flex gap-1 shrink-0">
-                      {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
-                        <button
-                          key={key}
-                          onClick={() => setStudentStatus(student.student_profile_id, key)}
-                          className={`min-h-[44px] min-w-[44px] text-sm font-medium rounded-lg transition-all ${
-                            mergedStatus === key ? cfg.active : cfg.inactive
-                          }`}
-                        >
-                          {cfg.label}
-                        </button>
-                      ))}
+                      {ATTENDANCE_STATUSES.map((key) => {
+                        const cfg = ATTENDANCE_STATUS_CONFIG[key];
+                        return (
+                          <button
+                            key={key}
+                            onClick={() => setStudentStatus(student.student_profile_id, key)}
+                            className={`min-h-[44px] min-w-[44px] text-sm font-medium rounded-lg transition-all ${
+                              mergedStatus === key ? cfg.activeClass : cfg.inactiveClass
+                            }`}
+                          >
+                            {cfg.label}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                   {showNote && (

@@ -153,7 +153,7 @@ export type StudentWithAttendance = {
   korean_name: string | null;
   english_name: string | null;
   age: number | null;
-  status: "present" | "absent" | "late" | "excused" | null;
+  status: "present" | "absent" | "late" | "excused" | "early_leave" | null;
   note: string | null;
 };
 
@@ -161,7 +161,7 @@ export type AttendanceRecord = {
   id: string;
   student_profile_id: string;
   attendance_date: string;
-  status: "present" | "absent" | "late" | "excused";
+  status: "present" | "absent" | "late" | "excused" | "early_leave";
   note: string | null;
   recorded_by: string | null;
   created_at: string;
@@ -174,6 +174,7 @@ export type AttendanceStats = {
   absent: number;
   late: number;
   excused: number;
+  early_leave: number;
 };
 
 // ── 반별 공지 타입 ──

@@ -11,9 +11,9 @@ import {
 import { formatTime as fmt, formatCheckedTime as fmtISO } from "@/lib/bus/utils";
 import { useBusRealtime } from "@/lib/hooks/use-bus-realtime";
 import { applyCheckRecord, applyChangeRequest } from "@/lib/bus/realtime-utils";
+import { WEEKDAY_NAMES_7 } from "@/lib/constants/date";
 
 const DIR_LABEL = { pickup: "등원", dropoff: "하원" } as const;
-const DAY_NAMES = ["일", "월", "화", "수", "목", "금", "토"];
 
 function getToday() {
   const now = new Date();
@@ -565,7 +565,7 @@ export function BusStaffMonitor({
   });
 
   const d = new Date(date);
-  const dayName = DAY_NAMES[d.getDay()];
+  const dayName = WEEKDAY_NAMES_7[d.getDay()];
 
   const totalStudents = filteredGroups.reduce((sum, g) => sum + g.students.length, 0);
   const totalBoarded = filteredGroups.reduce(

@@ -2,6 +2,7 @@
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { normalizeEmail } from "@/lib/auth-utils";
+import { revalidatePath } from "next/cache";
 import { verifyAdmin, verifyAuthenticated } from "./auth-helpers";
 import { logger } from "@/lib/logger";
 import { todayKst } from "@/lib/utils/date-kst";
@@ -1066,14 +1067,24 @@ export async function batchBusCheckRecord(
 
 // ── 변경 요청 관리 ──
 
-export async function listAllChangeRequests(): Promise<BusChangeRequest[]> {
+export async function listAllChangeRequests(
+  statusFilter?: "pending" | "completed",
+): Promise<BusChangeRequest[]> {
   const auth = await verifyAdmin();
   if ("error" in auth) return [];
   const supabase = createAdminClient();
-  const { data, error } = await supabase
+  let query = supabase
     .from("bus_change_requests")
     .select("*")
     .order("requested_at", { ascending: false });
+
+  if (statusFilter === "pending") {
+    query = query.eq("status", "pending");
+  } else if (statusFilter === "completed") {
+    query = query.neq("status", "pending");
+  }
+
+  const { data, error } = await query;
   if (error) {
     logger.error("[listPendingChangeRequests]", error.message);
     return [];
@@ -2518,4 +2529,64 @@ export async function getWeeklyDropoffExportData(
   }));
 
   return { rows, unassigned, slots, busNumbers, afterschoolEnrollments };
+}
+
+/** 다중 날짜 버스 변경 일괄 등록 (관리자 전용) */
+export async function bulkCreateBusChanges(
+  studentProfileId: string,
+  dates: string[],
+  direction: "pickup" | "dropoff",
+  changeType: "change" | "no_ride" | "absent",
+  newBusTimeSlotId?: string,
+  newBusNumberId?: string,
+  newBusStopId?: string,
+  reason?: string,
+): Promise<{ error?: string; created?: number; skipped?: number }> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return { error: auth.error };
+
+  if (!dates.length) return { error: "날짜를 선택해 주세요." };
+
+  const supabase = createAdminClient();
+  const now = new Date().toISOString();
+
+  const rows = dates.map((d) => ({
+    student_profile_id: studentProfileId,
+    request_date: d,
+    direction,
+    change_type: changeType,
+    new_bus_time_slot_id: newBusTimeSlotId || null,
+    new_bus_number_id: newBusNumberId || null,
+    new_bus_stop_id: newBusStopId || null,
+    reason: reason?.trim() || null,
+    status: "approved",
+    requested_at: now,
+    updated_at: now,
+  }));
+
+  // UNIQUE (student_profile_id, request_date, direction) 충돌 시 skip
+  const { data: inserted, error } = await supabase
+    .from("bus_change_requests")
+    .upsert(rows, {
+      onConflict: "student_profile_id,request_date,direction",
+      ignoreDuplicates: true,
+    })
+    .select("id");
+
+  if (error) {
+    logger.error("[bulkCreateBusChanges]", error.message);
+    return { error: error.message };
+  }
+
+  const created = inserted?.length ?? 0;
+  const skipped = dates.length - created;
+
+  logger.info("[bulkCreateBusChanges]", `${created}건 생성, ${skipped}건 건너뜀`, {
+    studentProfileId,
+    direction,
+    changeType,
+  });
+  revalidatePath("/admin/bus");
+  revalidatePath("/admin/reservations");
+  return { created, skipped };
 }

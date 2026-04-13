@@ -119,6 +119,12 @@
 | `lib/utils/student-sort.ts` | 학생 정렬 공통 유틸. `sortStudentsByAgeAndName<T>(students, ageFirst?)` — 나이순 → 한글 이름순. `age`, `korean_name`, `first_name` 필드를 가진 모든 타입에 적용 가능. 모든 학생 명단 정렬은 이 단일 소스를 통과해야 한다 |
 | `lib/utils/date-kst.ts` | KST 날짜/시간 유틸. `todayKst()` → `"YYYY-MM-DD"` (DB `DATE` 컬럼용), `formatDateYmdKst(input)`, `formatDateKst(input)` → `"2026년 4월 9일"`, `formatDateTimeKst(input)` → `"2026. 04. 09. 15:30"`, `formatTimeKst(input)` → `"15:30"`, `nowKstParts()` → `{ year, month, day }`. `new Date().toLocaleDateString(...)` 분산 사용 금지 |
 | `lib/utils/escape-html.ts` | HTML 특수문자 이스케이프. `escapeHtml(input)` — React 밖 HTML 생성(`document.write`, `innerHTML = ...`) 시 XSS 방지 필수. 프린트용 새 창 생성에서 사용 |
+| `lib/utils/weekly-sentence-week.ts` | 주간 문장 주차 계산. `WEEK1_START_KST = "2026-04-05"`, `computeAutoWeekNumber(today?)` → 1~52 (52주 순환). 랜딩 팝업 + 관리자 페이지에서 사용 |
+| `lib/weekly-sentence-levels.ts` | 주간 문장 레벨 상수 4개 (유아반/1년차/2년차/3년차) + XLSX 시트명↔level 매핑 (`SHEET_LEVEL_MAP`) |
+| `lib/utils/student-name.ts` | 학생 이름 포맷. `formatStudentName(student, { preferEnglish? })` — korean_name/english_name 조합을 컨텍스트에 맞게 표시. 원어민 UI에서는 `{ preferEnglish: true }` |
+| `lib/constants/attendance.ts` | **출결 상태 단일 소스**. `ATTENDANCE_STATUSES` (4종 배열), `AttendanceStatus` 타입, `ATTENDANCE_STATUS_CONFIG` (label/labelEn/activeClass/inactiveClass/badgeClass), `getStatusLabel(status, teacherType)`, `shouldShowNote(status)`. 모든 출결 UI에서 import |
+| `lib/constants/timetable.ts` | **시간표 색상 단일 소스**. `TEACHER_COLOR_PALETTE` (12색), `buildTeacherColorMap(rows)`. StudentTimetableClient/Tab에서 공유 |
+| `lib/constants/date.ts` | **요일 상수**. `WEEKDAY_NAMES_5` (월~금), `WEEKDAY_NAMES_7` (일~토). 시간표·출결·버스 등에서 공유 |
 | `lib/logger.ts` | 서버 구조화 로거. `logger.info(tag, msg, ctx?)` / `logger.warn(...)` / `logger.error(...)`. 서버 코드에서 `console.log/error` 직접 사용 금지. PII(이메일/전화)는 context에서 제외, `user_id`만 기록 |
 
 ## 버스 유틸리티 (`lib/bus/`)

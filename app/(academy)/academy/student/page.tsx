@@ -35,7 +35,7 @@ export default async function StudentInfoPage() {
   const attendanceRate =
     attendanceStats.total > 0
       ? Math.round(
-          ((attendanceStats.present + attendanceStats.late) /
+          ((attendanceStats.present + attendanceStats.late + (attendanceStats.early_leave ?? 0)) /
             attendanceStats.total) *
             100,
         )

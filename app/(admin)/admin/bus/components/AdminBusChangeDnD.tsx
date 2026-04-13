@@ -8,6 +8,8 @@ import { toast } from "sonner";
 import { getAgeColor } from "@/lib/student-age-colors";
 import type { BusStop, BusTimeSlot, StudentBusDefault } from "@/lib/types";
 import { detectAfterschoolSlot } from "@/lib/bus/afterschool-sync";
+import { MultiDatePicker } from "@/components/MultiDatePicker";
+import { formatDateYmdKst } from "@/lib/utils/date-kst";
 import {
   listBusStops,
   listBusTimeSlots,
@@ -20,6 +22,7 @@ import {
   getStudentAfterschoolDetail,
   updateAfterschoolSecondPeriod,
   deleteAfterschoolEnrollmentDay,
+  bulkCreateBusChanges,
 } from "../../actions";
 
 type StudentItem = {
@@ -36,7 +39,11 @@ function formatTime(t: string | undefined | null) {
   return t.slice(0, 5);
 }
 
-export function AdminBusChangeDnD() {
+export function AdminBusChangeDnD({
+  onChangeCreated,
+}: {
+  onChangeCreated?: () => void;
+} = {}) {
   const now = new Date();
   const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   const router = useRouter();
@@ -47,7 +54,7 @@ export function AdminBusChangeDnD() {
   const [busTimeSlots, setBusTimeSlots] = useState<BusTimeSlot[]>([]);
 
   // Date / direction
-  const [date, setDate] = useState(today);
+  const [selectedDates, setSelectedDates] = useState<Date[]>([new Date(today)]);
   const [direction, setDirection] = useState<"pickup" | "dropoff">("dropoff");
 
   // Student selection
@@ -92,10 +99,11 @@ export function AdminBusChangeDnD() {
   useEffect(() => {
     if (!selectedStudentId) return;
     setLoadingStudent(true);
-    const dow = (() => { const d = new Date(date).getDay(); return d === 0 ? 7 : d; })();
+    const firstDate = selectedDates[0] ? formatDateYmdKst(selectedDates[0]) : today;
+    const dow = (() => { const d = new Date(firstDate).getDay(); return d === 0 ? 7 : d; })();
     Promise.all([
       getStudentBusDefaults(selectedStudentId),
-      getExistingBusChange(selectedStudentId, date, direction),
+      getExistingBusChange(selectedStudentId, firstDate, direction),
       getStudentAfterschoolDetail(selectedStudentId),
     ]).then(([defaults, existing, afterschool]) => {
       setAfterschoolDays(afterschool);
@@ -129,14 +137,15 @@ export function AdminBusChangeDnD() {
       }
       setLoadingStudent(false);
     });
-  }, [selectedStudentId, date, direction]);
+  }, [selectedStudentId, selectedDates, direction]);
 
   // ── Derived ──
 
   const selectedStudentInfo = students.find((s) => s.profile_id === selectedStudentId);
 
   // 방과후 교시 관련
-  const dow = (() => { const d = new Date(date).getDay(); return d === 0 ? 7 : d; })();
+  const firstDateStr = selectedDates[0] ? formatDateYmdKst(selectedDates[0]) : today;
+  const dow = (() => { const d = new Date(firstDateStr).getDay(); return d === 0 ? 7 : d; })();
   const afterschoolToday = afterschoolDays.find((e) => e.day_of_week === dow);
   const isAfterschoolDay = !!afterschoolToday;
 
@@ -184,6 +193,7 @@ export function AdminBusChangeDnD() {
 
   function handleStudentSelect(profileId: string) {
     setSelectedStudentId(profileId);
+    setSelectedDates([]);
     setStudentSearch("");
   }
 
@@ -219,6 +229,7 @@ export function AdminBusChangeDnD() {
 
   async function handleSave() {
     if (!selectedStudentId) { toast.error("학생을 선택해 주세요."); return; }
+    if (selectedDates.length === 0) { toast.error("날짜를 선택해 주세요."); return; }
     if (!stopId) { toast.error("정류장을 선택해 주세요."); return; }
     if (!slotId) { toast.error("시간대를 선택해 주세요."); return; }
 
@@ -226,6 +237,34 @@ export function AdminBusChangeDnD() {
     const busNumberId = stopMode === "stop" ? (selectedStopInfo?.bus_number_id ?? undefined) : undefined;
 
     setSaving(true);
+
+    if (selectedDates.length > 1) {
+      // 다중 날짜 일괄 등록
+      const result = await bulkCreateBusChanges(
+        selectedStudentId,
+        selectedDates.map((d) => formatDateYmdKst(d)),
+        direction,
+        changeType,
+        slotId,
+        busNumberId,
+        stopId,
+        reason || undefined,
+      );
+      setSaving(false);
+      if (result.error) {
+        toast.error(result.error);
+      } else {
+        toast.success(`${result.created}건 등록`);
+        setSelectedDates([]);
+        resetAll();
+        onChangeCreated?.();
+        router.refresh();
+      }
+      return;
+    }
+
+    // 단일 날짜
+    const singleDate = formatDateYmdKst(selectedDates[0]);
     const result = existingId
       ? await updateAdminBusChange(
           existingId,
@@ -236,7 +275,7 @@ export function AdminBusChangeDnD() {
           reason || undefined
         )
       : await createAdminBusChange(
-          selectedStudentId, date, direction,
+          selectedStudentId, singleDate, direction,
           changeType,
           slotId,
           busNumberId,
@@ -260,7 +299,9 @@ export function AdminBusChangeDnD() {
         }
       }
       toast.success(existingId ? "변경이 수정되었습니다." : "당일 변경이 저장되었습니다.");
+      setSelectedDates([]);
       resetAll();
+      onChangeCreated?.();
       router.refresh();
     }
   }
@@ -284,12 +325,7 @@ export function AdminBusChangeDnD() {
       {/* Header: date + direction */}
       <div className="flex items-center gap-2 flex-wrap">
         <span className="text-sm font-semibold text-slate-700">당일 변경</span>
-        <input
-          type="date"
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-          className="h-8 px-2 border rounded text-sm bg-white"
-        />
+        <MultiDatePicker selected={selectedDates} onSelect={setSelectedDates} />
         <div className="flex rounded-lg overflow-hidden border border-slate-200">
           {(["pickup", "dropoff"] as const).map((d) => (
             <button

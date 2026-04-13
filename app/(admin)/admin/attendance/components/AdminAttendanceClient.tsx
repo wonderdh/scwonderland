@@ -5,38 +5,18 @@ import { getAgeColor, getAgeLabel } from "@/lib/student-age-colors";
 import { useAttendanceEditor, type GroupFilter } from "../hooks/useAttendanceEditor";
 import { StudentSearchPanel } from "./StudentSearchPanel";
 import type { ClassWithDetails } from "@/lib/types";
+import {
+  ATTENDANCE_STATUS_CONFIG,
+  ATTENDANCE_STATUSES,
+  shouldShowNote,
+  type AttendanceStatus,
+} from "@/lib/constants/attendance";
 
 type StudentItem = {
   id: string;
   korean_name: string | null;
   english_name: string | null;
   age: number | null;
-};
-
-const STATUS_CONFIG: Record<
-  string,
-  { label: string; active: string; inactive: string }
-> = {
-  present: {
-    label: "출석",
-    active: "bg-emerald-100 text-emerald-700 ring-2 ring-emerald-400",
-    inactive: "bg-gray-100 text-gray-500 hover:bg-emerald-50",
-  },
-  absent: {
-    label: "결석",
-    active: "bg-red-100 text-red-700 ring-2 ring-red-400",
-    inactive: "bg-gray-100 text-gray-500 hover:bg-red-50",
-  },
-  late: {
-    label: "지각",
-    active: "bg-amber-100 text-amber-700 ring-2 ring-amber-400",
-    inactive: "bg-gray-100 text-gray-500 hover:bg-amber-50",
-  },
-  excused: {
-    label: "사유결석",
-    active: "bg-blue-100 text-blue-700 ring-2 ring-blue-400",
-    inactive: "bg-gray-100 text-gray-500 hover:bg-blue-50",
-  },
 };
 
 const GROUPS: GroupFilter[] = ["유치부", "오후반"];
@@ -182,7 +162,7 @@ export function AdminAttendanceClient({
                           const ageColor = getAgeColor(student.age);
                           const { status: mergedStatus, note: mergedNote } = getMergedStatus(student.student_profile_id);
                           const isPending = pendingEdits.has(student.student_profile_id);
-                          const showNote = mergedStatus === "absent" || mergedStatus === "excused" || !!mergedNote;
+                          const showNote = shouldShowNote(mergedStatus) || !!mergedNote;
 
                           return (
                             <div
@@ -199,23 +179,26 @@ export function AdminAttendanceClient({
                                   </span>
                                   {/* 저장된 출결 상태 배지 (편집 중이 아닐 때) */}
                                   {!isPending && mergedStatus && (
-                                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium shrink-0 ${STATUS_CONFIG[mergedStatus]?.active ?? ""}`}>
-                                      {STATUS_CONFIG[mergedStatus]?.label}
+                                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium shrink-0 ${ATTENDANCE_STATUS_CONFIG[mergedStatus as AttendanceStatus]?.activeClass ?? ""}`}>
+                                      {ATTENDANCE_STATUS_CONFIG[mergedStatus as AttendanceStatus]?.label}
                                     </span>
                                   )}
                                 </div>
                                 <div className="flex gap-1 shrink-0">
-                                  {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
-                                    <button
-                                      key={key}
-                                      onClick={() => setStudentStatus(student.student_profile_id, key)}
-                                      className={`text-xs px-2 py-1 rounded-md font-medium transition-all ${
-                                        mergedStatus === key ? cfg.active : cfg.inactive
-                                      }`}
-                                    >
-                                      {cfg.label}
-                                    </button>
-                                  ))}
+                                  {ATTENDANCE_STATUSES.map((key) => {
+                                    const cfg = ATTENDANCE_STATUS_CONFIG[key];
+                                    return (
+                                      <button
+                                        key={key}
+                                        onClick={() => setStudentStatus(student.student_profile_id, key)}
+                                        className={`text-xs px-2 py-1 rounded-md font-medium transition-all ${
+                                          mergedStatus === key ? cfg.activeClass : cfg.inactiveClass
+                                        }`}
+                                      >
+                                        {cfg.label}
+                                      </button>
+                                    );
+                                  })}
                                 </div>
                               </div>
                               {showNote && (

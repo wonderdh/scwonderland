@@ -101,6 +101,34 @@ nowKstParts()              // { year: 2026, month: 4, day: 9 }
 
 `new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" })` 분산 패턴 금지 → `todayKst()`로 통일.
 
+## 다중 날짜 선택 (MultiDatePicker)
+
+날짜 선택이 필요한 곳에서는 `<input type="date">` 대신 `components/MultiDatePicker.tsx`를 사용한다:
+
+```tsx
+import { MultiDatePicker } from "@/components/MultiDatePicker";
+
+const [dates, setDates] = useState<Date[]>([]);
+<MultiDatePicker selected={dates} onSelect={setDates} />
+```
+
+동작: 첫 클릭=앵커, 두 번째 클릭=범위 자동 채움, 이후=개별 토글. 토·일 비활성.
+
+저장 분기:
+```tsx
+if (dates.length === 1) {
+  await recordAttendance(studentId, formatDateYmdKst(dates[0]), status, note);
+} else {
+  await bulkReserveAttendance(studentId, dates.map(d => formatDateYmdKst(d)), status, note);
+}
+```
+
+적용 페이지: `StudentSearchPanel`, `StudentAttendanceTab`, `AdminBusChangeDnD`, `ReservationDashboard`.
+
+## 출결 상태
+
+4종: `present`(출석) / `absent`(결석) / `late`(지각) / `early_leave`(조퇴). ~~excused(사유결석)은 UI에서 제거됨~~ (DB에는 기존 데이터 호환 위해 validation만 유지).
+
 ## Form Handling Patterns
 
 1. **useActionState (React 19)** — AddStudentForm, AddTeacherForm: `<form action={formAction}>`

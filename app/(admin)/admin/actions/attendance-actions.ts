@@ -52,7 +52,7 @@ export async function recordAttendance(
   if ("error" in auth) return { error: auth.error };
   const supabase = createAdminClient();
 
-  if (!["present", "absent", "late", "excused"].includes(status)) {
+  if (!["present", "absent", "late", "excused", "early_leave"].includes(status)) {
     return { error: "올바른 출결 상태를 선택해 주세요." };
   }
 
@@ -230,7 +230,7 @@ export async function bulkRecordAttendance(
 
   if (!records.length) return { error: "저장할 출결 데이터가 없습니다." };
 
-  const validStatuses = ["present", "absent", "late", "excused"];
+  const validStatuses = ["present", "absent", "late", "excused", "early_leave"];
   for (const r of records) {
     if (!validStatuses.includes(r.status)) {
       return { error: "올바른 출결 상태를 선택해 주세요." };
@@ -267,7 +267,7 @@ export async function getAttendanceStats(
   month: number
 ): Promise<AttendanceStats> {
   const auth = await verifyAuthenticated();
-  if ("error" in auth) return { total: 0, present: 0, absent: 0, late: 0, excused: 0 };
+  if ("error" in auth) return { total: 0, present: 0, absent: 0, late: 0, excused: 0, early_leave: 0 };
   const supabase = createAdminClient();
 
   const startDate = `${year}-${String(month).padStart(2, "0")}-01`;
@@ -290,5 +290,84 @@ export async function getAttendanceStats(
     absent: records.filter((r) => r.status === "absent").length,
     late: records.filter((r) => r.status === "late").length,
     excused: records.filter((r) => r.status === "excused").length,
+    early_leave: records.filter((r) => r.status === "early_leave").length,
   };
+}
+
+/** 다중 날짜 출결 일괄 예약 (관리자 전용) */
+export async function bulkReserveAttendance(
+  studentProfileId: string,
+  dates: string[],
+  status: string,
+  note?: string,
+  autoBusNoRide?: boolean,
+): Promise<{ error?: string; count?: number; busCount?: number }> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return { error: auth.error };
+
+  const validStatuses = ["present", "absent", "late", "excused", "early_leave"];
+  if (!validStatuses.includes(status)) {
+    return { error: "올바른 출결 상태를 선택해 주세요." };
+  }
+  if (!dates.length) return { error: "날짜를 선택해 주세요." };
+
+  const supabase = createAdminClient();
+  const now = new Date().toISOString();
+  const rows = dates.map((d) => ({
+    student_profile_id: studentProfileId,
+    attendance_date: d,
+    status,
+    note: note?.trim() || null,
+    updated_at: now,
+  }));
+
+  const { error } = await supabase
+    .from("attendance")
+    .upsert(rows, { onConflict: "student_profile_id,attendance_date" });
+
+  if (error) {
+    logger.error("[bulkReserveAttendance]", error.message);
+    return { error: error.message };
+  }
+
+  // 결석 시 버스 미탑승 자동 연동
+  let busCount = 0;
+  if (autoBusNoRide && status === "absent") {
+    const busRows = dates.flatMap((d) =>
+      (["pickup", "dropoff"] as const).map((dir) => ({
+        student_profile_id: studentProfileId,
+        request_date: d,
+        direction: dir,
+        change_type: "absent",
+        status: "approved",
+        reason: "출결 예약 연동 (결석)",
+        requested_at: now,
+        updated_at: now,
+      })),
+    );
+
+    const { data: inserted, error: busError } = await supabase
+      .from("bus_change_requests")
+      .upsert(busRows, {
+        onConflict: "student_profile_id,request_date,direction",
+        ignoreDuplicates: true,
+      })
+      .select("id");
+
+    if (busError) {
+      logger.error("[bulkReserveAttendance:bus]", busError.message);
+    } else {
+      busCount = inserted?.length ?? 0;
+    }
+  }
+
+  logger.info("[bulkReserveAttendance]", `${dates.length}일 출결 예약`, {
+    studentProfileId,
+    status,
+    busCount,
+  });
+  revalidatePath("/admin/attendance");
+  revalidatePath("/admin/reservations");
+  revalidatePath("/admin/bus");
+  return { count: dates.length, busCount };
 }

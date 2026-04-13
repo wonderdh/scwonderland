@@ -16,5 +16,5 @@ export function computeAutoWeekNumber(today: string = todayKst()): number {
     (cur.getTime() - start.getTime()) / 86_400_000,
   );
   if (diffDays < 0) return 1;
-  return (Math.floor(diffDays / 7) % 52) + 1;
+  return (Math.floor(diffDays / 7) % 48) + 1; // 48주 사이클 (12개월 × 4주)
 }

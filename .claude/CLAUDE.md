@@ -11,7 +11,7 @@ SC Wonderland — 원더랜드 영어학원 웹사이트. 5개 Route Group으로
 4. **(bus)** — 승하차 기사용 인터페이스 (`/bus`)
 5. **(monitor)** — 버스 모니터링 화면 (`/bus-monitor`)
 
-**기술 스택:** Next.js 16 (App Router) · React 19 · TypeScript · Tailwind CSS v4 · Supabase (Auth + PostgreSQL + Storage) · shadcn/ui (Radix UI + CVA + tailwind-merge)
+**기술 스택:** Next.js 16 (App Router) · React 19 · TypeScript · Tailwind CSS v4 · Supabase (Auth + PostgreSQL + Storage) · shadcn/ui (Radix UI + CVA + tailwind-merge) · react-day-picker v9 + date-fns v4 (캘린더)
 
 **대상 사용자:** 학부모/일반 방문자(공개 사이트), 관리자(학생·교사·반·시간표·교재·공지·숙제·출결·승하차 관리), 학생(리포트카드·교재·공지·숙제·승하차), 교사(한국인: 반 관리·공지·교재·출결·숙제·승하차·리포트카드(읽기전용) / 원어민: 리포트카드(작성)·교재·출결·숙제, 영어 UI)
 
@@ -51,3 +51,8 @@ npm run lint     # ESLint 실행
 - **HTML escape:** `lib/utils/escape-html.ts#escapeHtml()` — 프린트용 새 창 등 React 밖 HTML 생성 시 XSS 방지 필수
 - **로거:** `lib/logger.ts#logger` — 서버 `console.log/error` 직접 사용 금지, PII 로깅 금지
 - **인증:** `app/(admin)/admin/actions/auth-helpers.ts` — `verifyAdmin()` / `verifyAuthenticated()` / `verifyTeacherOrAdmin()` 중 상황에 맞게 선택
+- **다중 날짜:** `components/MultiDatePicker.tsx` — 출결/버스/예약 등 날짜 선택이 필요한 곳에서 공유. 1개=당일, 여러 개=일괄. 토·일 비활성. 범위 자동 채움
+- **출결 상태:** `lib/constants/attendance.ts` — `ATTENDANCE_STATUSES`, `ATTENDANCE_STATUS_CONFIG`, `getStatusLabel()`, `shouldShowNote()`. 출결 UI에서 로컬 STATUS_CONFIG 정의 금지, 이 상수를 import할 것
+- **시간표 색상:** `lib/constants/timetable.ts` — `TEACHER_COLOR_PALETTE`(12색), `buildTeacherColorMap()`. 시간표 컴포넌트에서 로컬 복붙 금지
+- **요일 이름:** `lib/constants/date.ts` — `WEEKDAY_NAMES_5`(월~금), `WEEKDAY_NAMES_7`(일~토). `["월","화","수","목","금"]` 하드코딩 금지
+- **학생 이름:** `lib/utils/student-name.ts` — `formatStudentName(student, { preferEnglish? })`. `korean_name ?? english_name ?? "이름 없음"` 인라인 패턴 금지

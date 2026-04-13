@@ -15,7 +15,7 @@ import type { WeeklySentence, WeeklySentenceConfig } from "@/lib/types";
 /** 현재 활성 주차의 4개 레벨 문장 조회 (RLS public read) */
 export async function getCurrentWeeklySentences(): Promise<{
   weekNumber: number;
-  items: Array<{ level: number; english: string; korean: string }>;
+  items: Array<{ level: number; english: string; korean: string; answer: string | null }>;
 } | null> {
   const supabase = await createClient();
   const { data: cfg } = await supabase
@@ -31,7 +31,7 @@ export async function getCurrentWeeklySentences(): Promise<{
 
   const { data: items } = await supabase
     .from("weekly_sentences")
-    .select("level, english, korean")
+    .select("level, english, korean, answer")
     .eq("week_number", weekNumber)
     .order("level", { ascending: true });
 
@@ -67,12 +67,12 @@ export async function upsertWeeklySentence(
   english: string,
   korean: string,
   example?: string,
+  answer?: string,
 ): Promise<{ error?: string }> {
   const auth = await verifyAdmin();
   if ("error" in auth) return { error: auth.error };
 
   if (!english.trim()) return { error: "영어 문장을 입력해 주세요." };
-  if (!korean.trim()) return { error: "한글 뜻을 입력해 주세요." };
 
   const supabase = createAdminClient();
   const { error } = await supabase
@@ -82,8 +82,9 @@ export async function upsertWeeklySentence(
         week_number: weekNumber,
         level,
         english: english.trim(),
-        korean: korean.trim(),
+        korean: korean?.trim() || null,
         example: example?.trim() || null,
+        answer: answer?.trim() || null,
         updated_at: new Date().toISOString(),
       },
       { onConflict: "week_number,level" },

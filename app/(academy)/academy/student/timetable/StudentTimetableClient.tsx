@@ -7,47 +7,9 @@ import { getStudentAfterschoolDays } from "@/app/(admin)/admin/actions/afterscho
 import type { StudentTimetableRow } from "@/lib/types";
 import { LoadingState } from "@/components/LoadingState";
 import { escapeHtml } from "@/lib/utils/escape-html";
-
-const DAY_NAMES = ["월", "화", "수", "목", "금"];
-
-// IMPORTANT: All strings must be complete Tailwind class names (no dynamic concat) for purging to work.
-const TEACHER_COLOR_PALETTE: { bg: string; text: string }[] = [
-  { bg: "bg-blue-200",    text: "text-blue-800"    },
-  { bg: "bg-emerald-200", text: "text-emerald-800"  },
-  { bg: "bg-violet-200",  text: "text-violet-800"   },
-  { bg: "bg-rose-200",    text: "text-rose-800"     },
-  { bg: "bg-amber-200",   text: "text-amber-800"    },
-  { bg: "bg-cyan-200",    text: "text-cyan-800"     },
-  { bg: "bg-pink-200",    text: "text-pink-800"     },
-  { bg: "bg-orange-200",  text: "text-orange-800"   },
-  { bg: "bg-teal-200",    text: "text-teal-800"     },
-  { bg: "bg-indigo-200",  text: "text-indigo-800"   },
-  { bg: "bg-lime-200",    text: "text-lime-800"     },
-  { bg: "bg-sky-200",     text: "text-sky-800"      },
-];
-
-function buildTeacherColorMap(
-  rows: StudentTimetableRow[],
-): Map<string, { bg: string; text: string }> {
-  const seen = new Map<string, string>(); // id → name
-  for (const row of rows) {
-    for (const cell of Object.values(row.cells)) {
-      if (cell?.teacher_profile_id && cell.teacher_name && !seen.has(cell.teacher_profile_id)) {
-        seen.set(cell.teacher_profile_id, cell.teacher_name);
-      }
-    }
-  }
-  const sorted = [...seen.entries()].sort((a, b) => a[1].localeCompare(b[1]));
-  const map = new Map<string, { bg: string; text: string }>();
-  sorted.forEach(([id], i) => {
-    map.set(id, TEACHER_COLOR_PALETTE[i % TEACHER_COLOR_PALETTE.length]);
-  });
-  return map;
-}
-
-function formatTime(t: string) {
-  return t.slice(0, 5);
-}
+import { WEEKDAY_NAMES_5 } from "@/lib/constants/date";
+import { TEACHER_COLOR_PALETTE, buildTeacherColorMap } from "@/lib/constants/timetable";
+import { formatTime } from "@/lib/bus/utils";
 
 export function StudentTimetableClient({
   studentProfileId,
@@ -89,7 +51,7 @@ export function StudentTimetableClient({
       })
       .join("");
 
-    const headHtml = `<tr><th>교시</th>${DAY_NAMES.map((n) => `<th>${escapeHtml(n)}</th>`).join("")}</tr>`;
+    const headHtml = `<tr><th>교시</th>${WEEKDAY_NAMES_5.map((n) => `<th>${escapeHtml(n)}</th>`).join("")}</tr>`;
 
     win.document.write(`<!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>${escapeHtml(studentName)} 시간표</title>
@@ -179,7 +141,7 @@ export function StudentTimetableClient({
                 <th className="py-3 px-3 text-left text-xs font-medium text-muted-foreground w-28">
                   교시
                 </th>
-                {DAY_NAMES.map((name, i) => (
+                {WEEKDAY_NAMES_5.map((name, i) => (
                   <th
                     key={i}
                     className="py-3 px-3 text-center text-xs font-medium text-muted-foreground"
@@ -249,7 +211,7 @@ export function StudentTimetableClient({
         <div className="mt-6 space-y-2">
           <h3 className="text-sm font-semibold text-slate-700">방과후</h3>
           <div className="flex gap-2">
-            {DAY_NAMES.map((name, idx) => {
+            {WEEKDAY_NAMES_5.map((name, idx) => {
               const day = idx + 1;
               const enrolled = afterschoolDays.includes(day);
               return (

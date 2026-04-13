@@ -20,6 +20,8 @@
 | [admin-timetable.md](admin-timetable.md) | `/admin/timetable` | 시간표·교시 관리 |
 | [admin-afterschool.md](admin-afterschool.md) | `/admin/afterschool` | 방과후 프로그램 관리 |
 | [admin-bus.md](admin-bus.md) | `/admin/bus` | 승하차 관리 (8탭: 대시보드·배정·호차·시간대·정류장·직원·변경요청·모니터링) |
+| admin-weekly-sentences | `/admin/weekly-sentences` | 주간 문장 관리 (52주×4레벨 CRUD, 자동/수동 주차, Excel 업로드) |
+| admin-reservations | `/admin/reservations` | 예약 현황 (출결/버스 다중 날짜 일괄 예약, 캘린더 히트맵, 목록 CRUD) |
 
 ## Academy 라우트 (`/academy/*`)
 
