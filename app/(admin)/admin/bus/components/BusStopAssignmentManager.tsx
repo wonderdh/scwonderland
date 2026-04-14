@@ -48,10 +48,8 @@ export function BusStopAssignmentManager({
 }) {
   // Filters
   const [day, setDay] = useState(1);
-  const [direction, setDirection] = useState<"pickup" | "dropoff">("dropoff");
   const [timeSlotId, setTimeSlotId] = useState(() => {
-    const slots = busTimeSlots.filter((s) => s.direction === "dropoff");
-    return slots[0]?.id ?? "";
+    return busTimeSlots[0]?.id ?? "";
   });
 
   // Master stop list (read-only — CRUD is handled in BusManagePanel)
@@ -78,16 +76,16 @@ export function BusStopAssignmentManager({
   const [copyPreviewLoading, setCopyPreviewLoading] = useState(false);
   const [copying, setCopying] = useState(false);
 
-  const filteredSlots = busTimeSlots.filter((s) => s.direction === direction);
+  const filteredSlots = busTimeSlots;
 
   // ── Fetch ──
 
   const fetchDayAssignments = useCallback(async () => {
-    let data = await listBusStopDayAssignments(day, direction, timeSlotId || undefined);
+    let data = await listBusStopDayAssignments(day, timeSlotId || undefined);
     // 특정 시간대 선택 시 데이터가 없으면 기본(전체) 배정을 복사해서 표시
     const isSlotFallback = timeSlotId && data.length === 0;
     if (isSlotFallback) {
-      data = await listBusStopDayAssignments(day, direction, undefined);
+      data = await listBusStopDayAssignments(day, undefined);
     }
     const map = new Map<string, StopAssignment>();
     for (const a of data) map.set(a.bus_stop_id, { busNumberId: a.bus_number_id, sortOrder: a.sort_order });
@@ -96,15 +94,15 @@ export function BusStopAssignmentManager({
     serverAssignments.current = isSlotFallback
       ? new Map()
       : new Map(map.entries().map(([k, v]) => [k, { ...v }]));
-  }, [day, direction, timeSlotId]);
+  }, [day, timeSlotId]);
 
   const fetchSchedules = useCallback(async () => {
-    const data = await listBusStopSchedulesBulk(day, direction, timeSlotId || undefined);
+    const data = await listBusStopSchedulesBulk(day, timeSlotId || undefined);
     const map = new Map<string, string>();
     for (const s of data) map.set(s.bus_stop_id, s.estimated_time?.slice(0, 5) ?? "");
     setScheduleMap(map);
     serverSchedules.current = new Map(map);
-  }, [day, direction, timeSlotId]);
+  }, [day, timeSlotId]);
 
   useEffect(() => { fetchDayAssignments(); }, [fetchDayAssignments]);
   useEffect(() => { fetchSchedules(); }, [fetchSchedules]);
@@ -282,7 +280,7 @@ export function BusStopAssignmentManager({
       bus_number_id: a.busNumberId,
       sort_order: a.sortOrder,
     }));
-    const aResult = await saveBusStopDayAssignments(day, assignmentArr, direction, timeSlotId || undefined);
+    const aResult = await saveBusStopDayAssignments(day, assignmentArr, timeSlotId || undefined);
     if (aResult.error) errors.push(`배정 저장: ${aResult.error}`);
 
     // 2. 도착 예정 시간 저장
@@ -293,10 +291,10 @@ export function BusStopAssignmentManager({
       const server = serverSchedules.current.get(stopId) ?? "";
       if (local === server) continue;
       if (local) {
-        const r = await upsertBusStopSchedule(stopId, day, direction, local, slotId);
+        const r = await upsertBusStopSchedule(stopId, day, local, slotId);
         if (r.error) errors.push(`시간 저장: ${r.error}`);
       } else {
-        const r = await deleteBusStopSchedule(stopId, day, direction, slotId);
+        const r = await deleteBusStopSchedule(stopId, day, slotId);
         if (r.error) errors.push(`시간 삭제: ${r.error}`);
       }
     }
@@ -328,7 +326,7 @@ export function BusStopAssignmentManager({
     const errors: string[] = [];
     for (const d of DAYS) {
       if (d.value === day) continue;
-      const r = await upsertBusStopSchedule(stopId, d.value, direction, time, slotId);
+      const r = await upsertBusStopSchedule(stopId, d.value, time, slotId);
       if (r.error) errors.push(`${d.label}: ${r.error}`);
     }
     if (errors.length) toast.error(errors.join(", "));
@@ -355,7 +353,7 @@ export function BusStopAssignmentManager({
     const previews: CopyDayPreview[] = [];
 
     for (const d of otherDays) {
-      const existing = await listBusStopDayAssignments(d.value, direction, timeSlotId || undefined);
+      const existing = await listBusStopDayAssignments(d.value, timeSlotId || undefined);
       const conflicts: CopyConflict[] = [];
       for (const ex of existing) {
         const newAssignment = dayAssignments.get(ex.bus_stop_id);
@@ -398,7 +396,7 @@ export function BusStopAssignmentManager({
       sort_order: a.sortOrder,
     }));
     for (const targetDay of copySelectedDays) {
-      const r = await saveBusStopDayAssignments(targetDay, assignmentArr, direction, timeSlotId || undefined);
+      const r = await saveBusStopDayAssignments(targetDay, assignmentArr, timeSlotId || undefined);
       if (r.error) {
         const label = DAYS.find((d) => d.value === targetDay)?.label ?? targetDay;
         errors.push(`${label}요일: ${r.error}`);
@@ -437,25 +435,6 @@ export function BusStopAssignmentManager({
               {d.label}
             </button>
           ))}
-        </div>
-
-        <div className="flex rounded-lg border border-slate-200 overflow-hidden">
-          <button
-            onClick={() => guardFilterChange(() => { setDirection("pickup"); const s = busTimeSlots.find(s => s.direction === "pickup"); setTimeSlotId(s?.id ?? ""); })}
-            className={`px-3 py-1.5 text-xs font-medium transition-colors ${
-              direction === "pickup" ? "bg-blue-600 text-white" : "bg-white text-slate-500 hover:bg-slate-50"
-            }`}
-          >
-            등원
-          </button>
-          <button
-            onClick={() => guardFilterChange(() => { setDirection("dropoff"); const s = busTimeSlots.find(s => s.direction === "dropoff"); setTimeSlotId(s?.id ?? ""); })}
-            className={`px-3 py-1.5 text-xs font-medium transition-colors ${
-              direction === "dropoff" ? "bg-orange-600 text-white" : "bg-white text-slate-500 hover:bg-slate-50"
-            }`}
-          >
-            하원
-          </button>
         </div>
 
         <select
@@ -610,7 +589,7 @@ export function BusStopAssignmentManager({
                 <div>
                   <h3 className="text-sm font-semibold text-slate-800">다른 요일에 복사</h3>
                   <p className="text-xs text-slate-400 mt-0.5">
-                    {currentDayLabel}요일 · {direction === "pickup" ? "등원" : "하원"} · {currentSlotLabel}
+                    {currentDayLabel}요일 · 하원 · {currentSlotLabel}
                   </p>
                 </div>
                 <button

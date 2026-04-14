@@ -18,7 +18,6 @@ import {
 } from "@/app/(admin)/admin/actions";
 
 const DAY_NAMES = ["", "월", "화", "수", "목", "금"];
-const DIR_LABEL = { pickup: "등원", dropoff: "하원" } as const;
 const STATUS_LABEL = { pending: "대기중", approved: "승인됨", rejected: "거절됨" } as const;
 const STATUS_COLOR = {
   pending: "bg-yellow-100 text-yellow-700",
@@ -45,7 +44,6 @@ export function StudentBusClient({ studentProfileId }: { studentProfileId: strin
   // 변경 요청 폼
   const [showForm, setShowForm] = useState(false);
   const [formDate, setFormDate] = useState("");
-  const [formDir, setFormDir] = useState<"pickup" | "dropoff">("pickup");
   const [formType, setFormType] = useState<"change" | "no_ride">("change");
   const [formSlotId, setFormSlotId] = useState("");
   const [formBusId, setFormBusId] = useState("");
@@ -77,7 +75,6 @@ export function StudentBusClient({ studentProfileId }: { studentProfileId: strin
     const result = await submitBusChangeRequest(
       studentProfileId,
       formDate,
-      formDir,
       formType,
       formSlotId || undefined,
       formBusId || undefined,
@@ -112,9 +109,6 @@ export function StudentBusClient({ studentProfileId }: { studentProfileId: strin
 
   if (loading) return <LoadingState />;
 
-  const pickupSlots = busTimeSlots.filter((s) => s.direction === "pickup");
-  const dropoffSlots = busTimeSlots.filter((s) => s.direction === "dropoff");
-
   // 오늘 날짜 & 요일 계산
   const now = new Date();
   const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
@@ -130,9 +124,9 @@ export function StudentBusClient({ studentProfileId }: { studentProfileId: strin
     <div className="space-y-6">
       {/* 주간 스케줄 */}
       <div>
-        <h2 className="text-lg font-semibold text-slate-800 mb-3">내 승하차 스케줄</h2>
+        <h2 className="text-lg font-semibold text-slate-800 mb-3">내 하원 스케줄</h2>
         {defaults.length === 0 ? (
-          <p className="text-sm text-slate-400 py-4">등록된 승하차 스케줄이 없습니다.</p>
+          <p className="text-sm text-slate-400 py-4">등록된 하원 스케줄이 없습니다.</p>
         ) : (
           <div className="grid gap-3">
             {[1, 2, 3, 4, 5].map((day) => {
@@ -146,26 +140,16 @@ export function StudentBusClient({ studentProfileId }: { studentProfileId: strin
                   </h3>
                   <div className="grid gap-2 sm:grid-cols-2">
                     {dayDefaults.map((d) => {
-                      const change = isToday
-                        ? todayChanges.find((r) => r.direction === d.direction)
-                        : undefined;
+                      const change = isToday ? todayChanges.find((r) => r.student_profile_id === studentProfileId) : undefined;
 
                       return (
                         <div
                           key={d.id}
-                          className={`rounded-xl border-l-4 border bg-white shadow-sm p-3 ${
-                            d.direction === "pickup"
-                              ? "border-l-green-500"
-                              : "border-l-orange-500"
-                          }`}
+                          className="rounded-xl border-l-4 border bg-white shadow-sm p-3 border-l-orange-500"
                         >
                           <div className="flex items-center gap-2 mb-2">
-                            <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-                              d.direction === "pickup"
-                                ? "bg-green-100 text-green-700"
-                                : "bg-orange-100 text-orange-700"
-                            }`}>
-                              {DIR_LABEL[d.direction]}
+                            <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-orange-100 text-orange-700">
+                              하원
                             </span>
                             {d.time_slot_label && (
                               <span className="text-xs font-medium text-slate-600">{d.time_slot_label}</span>
@@ -274,20 +258,6 @@ export function StudentBusClient({ studentProfileId }: { studentProfileId: strin
                 <Input type="date" value={formDate} onChange={(e) => setFormDate(e.target.value)} className="w-40" />
               </div>
               <div>
-                <label className="text-xs text-slate-500 block mb-1">방향</label>
-                <select
-                  value={formDir}
-                  onChange={(e) => {
-                    setFormDir(e.target.value as "pickup" | "dropoff");
-                    setFormSlotId("");
-                  }}
-                  className="h-9 px-2 border rounded text-sm"
-                >
-                  <option value="pickup">등원</option>
-                  <option value="dropoff">하원</option>
-                </select>
-              </div>
-              <div>
                 <label className="text-xs text-slate-500 block mb-1">유형</label>
                 <select value={formType} onChange={(e) => setFormType(e.target.value as "change" | "no_ride")} className="h-9 px-2 border rounded text-sm">
                   <option value="change">버스 변경</option>
@@ -301,7 +271,7 @@ export function StudentBusClient({ studentProfileId }: { studentProfileId: strin
                 <label className="text-xs text-slate-500 block mb-1">시간대 (선택)</label>
                 <select value={formSlotId} onChange={(e) => setFormSlotId(e.target.value)} className="h-9 px-2 border rounded text-sm">
                   <option value="">선택</option>
-                  {(formDir === "pickup" ? pickupSlots : dropoffSlots).map((s) => (
+                  {busTimeSlots.map((s) => (
                     <option key={s.id} value={s.id}>
                       {s.label} ({formatTime(s.time)})
                     </option>
@@ -343,10 +313,8 @@ export function StudentBusClient({ studentProfileId }: { studentProfileId: strin
             {requests.map((req) => (
               <div key={req.id} className="border rounded-lg p-3 flex items-center gap-2 flex-wrap">
                 <span className="text-sm">{req.request_date}</span>
-                <span className={`text-xs px-1.5 py-0.5 rounded ${
-                  req.direction === "pickup" ? "bg-green-100 text-green-700" : "bg-orange-100 text-orange-700"
-                }`}>
-                  {DIR_LABEL[req.direction]}
+                <span className="text-xs px-1.5 py-0.5 rounded bg-orange-100 text-orange-700">
+                  하원
                 </span>
                 <span className={`text-xs px-1.5 py-0.5 rounded ${
                   req.change_type === "no_ride" ? "bg-red-100 text-red-700" : "bg-blue-100 text-blue-700"

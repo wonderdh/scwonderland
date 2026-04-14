@@ -19,7 +19,6 @@ export type ReservationBusChange = {
   student_profile_id: string;
   student_name: string;
   request_date: string;
-  direction: "pickup" | "dropoff";
   change_type: string;
   status: string;
   reason: string | null;
@@ -63,7 +62,7 @@ export async function getUpcomingReservations(
   // 2. 미래 버스 변경 (내일~)
   const { data: busData, error: busError } = await supabase
     .from("bus_change_requests")
-    .select("id, student_profile_id, request_date, direction, change_type, status, reason, new_bus_number_id, new_bus_time_slot_id")
+    .select("id, student_profile_id, request_date, change_type, status, reason, new_bus_number_id, new_bus_time_slot_id")
     .gte("request_date", tomorrowDate)
     .lte("request_date", futureEnd)
     .order("request_date");
@@ -127,7 +126,6 @@ export async function getUpcomingReservations(
     student_profile_id: b.student_profile_id,
     student_name: nameMap.get(b.student_profile_id) ?? "이름 없음",
     request_date: b.request_date,
-    direction: b.direction as "pickup" | "dropoff",
     change_type: b.change_type,
     status: b.status,
     reason: b.reason,

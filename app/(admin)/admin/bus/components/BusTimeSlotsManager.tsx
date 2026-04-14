@@ -12,15 +12,12 @@ import {
   deleteBusTimeSlot,
 } from "../../actions";
 
-const DIR_LABEL = { pickup: "등원", dropoff: "하원" } as const;
-
 function formatTime(t: string) {
   return t.slice(0, 5);
 }
 
 export function BusTimeSlotsManager({ busTimeSlots }: { busTimeSlots: BusTimeSlot[] }) {
   const router = useRouter();
-  const [newDirection, setNewDirection] = useState<"pickup" | "dropoff">("pickup");
   const [newLabel, setNewLabel] = useState("");
   const [newTime, setNewTime] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -33,7 +30,7 @@ export function BusTimeSlotsManager({ busTimeSlots }: { busTimeSlots: BusTimeSlo
   async function handleCreate() {
     setLoading(true);
     setError("");
-    const result = await createBusTimeSlot(newDirection, newLabel, newTime);
+    const result = await createBusTimeSlot(newLabel, newTime);
     if (result.error) {
       setError(result.error);
     } else {
@@ -66,9 +63,6 @@ export function BusTimeSlotsManager({ busTimeSlots }: { busTimeSlots: BusTimeSlo
     else router.refresh();
     setLoading(false);
   }
-
-  const pickupSlots = busTimeSlots.filter((s) => s.direction === "pickup");
-  const dropoffSlots = busTimeSlots.filter((s) => s.direction === "dropoff");
 
   function renderSlotRow(slot: BusTimeSlot) {
     const isEditing = editingId === slot.id;
@@ -131,7 +125,7 @@ export function BusTimeSlotsManager({ busTimeSlots }: { busTimeSlots: BusTimeSlo
 
   return (
     <div className="space-y-4">
-      <h3 className="text-sm font-semibold text-slate-700">승하차 시간대</h3>
+      <h3 className="text-sm font-semibold text-slate-700">하원 시간대</h3>
 
       {error && (
         <p className="text-xs text-red-500 bg-red-50 px-3 py-2 rounded">{error}</p>
@@ -139,14 +133,6 @@ export function BusTimeSlotsManager({ busTimeSlots }: { busTimeSlots: BusTimeSlo
 
       {/* 추가 폼 */}
       <div className="flex items-center gap-2 flex-wrap">
-        <select
-          value={newDirection}
-          onChange={(e) => setNewDirection(e.target.value as "pickup" | "dropoff")}
-          className="h-9 px-2 border rounded text-sm w-24"
-        >
-          <option value="pickup">등원</option>
-          <option value="dropoff">하원</option>
-        </select>
         <Input
           placeholder="이름 (예: 1차)"
           value={newLabel}
@@ -164,27 +150,12 @@ export function BusTimeSlotsManager({ busTimeSlots }: { busTimeSlots: BusTimeSlo
         </Button>
       </div>
 
-      {/* 등원 목록 */}
-      {pickupSlots.length > 0 && (
-        <div className="space-y-1">
-          <h4 className="text-xs font-semibold text-green-700 uppercase tracking-wide px-1 pt-2 border-b pb-1">
-            {DIR_LABEL.pickup}
-          </h4>
-          {pickupSlots.map(renderSlotRow)}
-        </div>
-      )}
-
       {/* 하원 목록 */}
-      {dropoffSlots.length > 0 && (
+      {busTimeSlots.length > 0 ? (
         <div className="space-y-1">
-          <h4 className="text-xs font-semibold text-orange-700 uppercase tracking-wide px-1 pt-2 border-b pb-1">
-            {DIR_LABEL.dropoff}
-          </h4>
-          {dropoffSlots.map(renderSlotRow)}
+          {busTimeSlots.map(renderSlotRow)}
         </div>
-      )}
-
-      {busTimeSlots.length === 0 && (
+      ) : (
         <p className="text-xs text-slate-400 py-4">등록된 시간대가 없습니다.</p>
       )}
 

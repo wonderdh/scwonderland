@@ -50,7 +50,7 @@
 | `getAcademyNoticeWithAttachments` | (noticeId) | academy_notices, academy_notice_images, academy_notice_attachments |
 | `getStudentBusDefaults` | (studentProfileId) | student_bus_defaults, bus_time_slots, bus_numbers, bus_stops |
 | `getStudentChangeRequests` | (studentProfileId) | bus_change_requests, bus_time_slots, bus_numbers |
-| `submitBusChangeRequest` | (studentProfileId, date, direction, changeType, slotId?, busId?, reason?) | bus_change_requests |
+| `submitBusChangeRequest` | (studentProfileId, date, changeType, slotId?, busId?, reason?) | bus_change_requests |
 | `cancelBusChangeRequest` | (requestId, studentProfileId) | bus_change_requests |
 | `listBusNumbers` | () | bus_numbers |
 | `listBusTimeSlots` | () | bus_time_slots |

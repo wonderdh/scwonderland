@@ -109,7 +109,6 @@ export async function listBusTimeSlots(): Promise<BusTimeSlot[]> {
     .from("bus_time_slots")
     .select("*")
     .eq("is_active", true)
-    .order("direction")
     .order("time");
   if (error) {
     logger.error("[listBusTimeSlots]", error.message);
@@ -169,14 +168,12 @@ type StopBusMaps = {
 
 async function buildStopToBusMaps(
   supabase: ReturnType<typeof createAdminClient>,
-  dayOfWeek: number,
-  direction: "pickup" | "dropoff"
+  dayOfWeek: number
 ): Promise<StopBusMaps> {
   const { data, error } = await supabase
     .from("bus_stop_day_assignments")
     .select("bus_stop_id, bus_number_id, bus_time_slot_id, sort_order")
-    .eq("day_of_week", dayOfWeek)
-    .eq("direction", direction);
+    .eq("day_of_week", dayOfWeek);
 
   if (error || !data) return { getBySlot: () => null, getSortOrder: () => null, allBusIds: [] };
 
@@ -215,7 +212,6 @@ async function buildStopToBusMaps(
 }
 
 export async function createBusTimeSlot(
-  direction: "pickup" | "dropoff",
   label: string,
   time: string
 ): Promise<{ error?: string; id?: string }> {
@@ -228,7 +224,7 @@ export async function createBusTimeSlot(
 
   const { data, error } = await supabase
     .from("bus_time_slots")
-    .insert({ direction, label: trimmed, time })
+    .insert({ label: trimmed, time })
     .select("id")
     .single();
   if (error) {
@@ -285,8 +281,7 @@ export async function getStudentBusDefaults(
     .from("student_bus_defaults")
     .select("*")
     .eq("student_profile_id", studentProfileId)
-    .order("day_of_week")
-    .order("direction");
+    .order("day_of_week");
   if (error) {
     logger.error("[getStudentBusDefaults]", error.message);
     return [];
@@ -295,8 +290,8 @@ export async function getStudentBusDefaults(
   const slotIds = [...new Set((data ?? []).map((d) => d.bus_time_slot_id))];
   const stopIds = [...new Set((data ?? []).filter((d) => d.bus_stop_id).map((d) => d.bus_stop_id))];
 
-  // 요일+방향별 stop→bus 매핑 조회 (시간대별 정확한 매핑)
-  const dayDirPairs = [...new Set((data ?? []).map((d) => `${d.day_of_week}-${d.direction}`))];
+  // 요일별 stop→bus 매핑 조회 (시간대별 정확한 매핑)
+  const dayKeys = [...new Set((data ?? []).map((d) => `${d.day_of_week}`))];
 
   const [slotResult, stopResult, ...stopBusMapsList] = await Promise.all([
     slotIds.length
@@ -305,10 +300,7 @@ export async function getStudentBusDefaults(
     stopIds.length
       ? supabase.from("bus_stops").select("id, name").in("id", stopIds)
       : Promise.resolve({ data: [] as { id: string; name: string }[] }),
-    ...dayDirPairs.map((pair) => {
-      const [dayStr, dir] = pair.split("-");
-      return buildStopToBusMaps(supabase, Number(dayStr), dir as "pickup" | "dropoff");
-    }),
+    ...dayKeys.map((dayStr) => buildStopToBusMaps(supabase, Number(dayStr))),
   ]);
 
   const slotMap = new Map((slotResult.data ?? []).map((s) => [s.id, { label: s.label, time: s.time }]));
@@ -327,17 +319,17 @@ export async function getStudentBusDefaults(
     : { data: [] as { id: string; label: string }[] };
   const busMap = new Map((busResult.data ?? []).map((b) => [b.id, b.label]));
 
-  // dayDir → stopBusMaps
-  const dayDirBusMap = new Map<string, StopBusMaps>();
-  dayDirPairs.forEach((pair, i) => {
-    dayDirBusMap.set(pair, stopBusMapsList[i]);
+  // day → stopBusMaps
+  const dayBusMap = new Map<string, StopBusMaps>();
+  dayKeys.forEach((dayStr, i) => {
+    dayBusMap.set(dayStr, stopBusMapsList[i]);
   });
 
   return (data ?? []).map((d) => {
     const slot = slotMap.get(d.bus_time_slot_id);
     // 호차 파생: stop→bus 매핑에서 결정
-    const pairKey = `${d.day_of_week}-${d.direction}`;
-    const sbm = dayDirBusMap.get(pairKey);
+    const dayKey = `${d.day_of_week}`;
+    const sbm = dayBusMap.get(dayKey);
     const derivedBusId = d.bus_stop_id
       ? (sbm?.getBySlot(d.bus_stop_id, d.bus_time_slot_id) ?? null)
       : null;
@@ -354,7 +346,6 @@ export async function getStudentBusDefaults(
 export async function upsertStudentBusDefault(
   studentProfileId: string,
   dayOfWeek: number,
-  direction: "pickup" | "dropoff",
   busTimeSlotId: string,
   estimatedTime?: string,
   note?: string,
@@ -367,14 +358,13 @@ export async function upsertStudentBusDefault(
     {
       student_profile_id: studentProfileId,
       day_of_week: dayOfWeek,
-      direction,
       bus_time_slot_id: busTimeSlotId,
       estimated_time: estimatedTime || null,
       note: note?.trim() || null,
       bus_stop_id: busStopId ?? null,
       updated_at: new Date().toISOString(),
     },
-    { onConflict: "student_profile_id,day_of_week,direction" }
+    { onConflict: "student_profile_id,day_of_week" }
   );
   if (error) {
     logger.error("[upsertStudentBusDefault]", error.message);
@@ -417,8 +407,7 @@ export async function deleteStudentBusDefaults(ids: string[]): Promise<{ error?:
 // ── 일일 매니페스트 (동승자 뷰) ──
 
 export async function getDailyBusManifest(
-  date: string,
-  direction: "pickup" | "dropoff"
+  date: string
 ): Promise<{ groups: BusManifestGroup[]; noRides: NoRideEntry[]; afterschoolStudents: AfterSchoolBusEntry[] }> {
   const supabase = createAdminClient();
 
@@ -427,7 +416,7 @@ export async function getDailyBusManifest(
   const isoDay = jsDay === 0 ? 7 : jsDay;
 
   // ── Phase 1: 4개 독립 쿼리 병렬 실행 ──
-  const isDropoffWeekday = direction === "dropoff" && isoDay >= 1 && isoDay <= 5;
+  const isWeekday = isoDay >= 1 && isoDay <= 5;
 
   const [
     { data: defaults },
@@ -438,25 +427,23 @@ export async function getDailyBusManifest(
     supabase
       .from("student_bus_defaults")
       .select("*")
-      .eq("day_of_week", isoDay)
-      .eq("direction", direction),
+      .eq("day_of_week", isoDay),
     supabase
       .from("bus_change_requests")
       .select("*")
       .eq("request_date", date)
-      .eq("direction", direction)
       .eq("status", "approved"),
-    isDropoffWeekday
+    isWeekday
       ? supabase
           .from("afterschool_enrollments")
           .select("student_profile_id")
           .eq("day_of_week", isoDay)
       : Promise.resolve({ data: null }),
-    buildStopToBusMaps(supabase, isoDay, direction),
+    buildStopToBusMaps(supabase, isoDay),
   ]);
 
   // 방과후 학생 ID 수집 (Phase 2에서 학생 정보 함께 조회)
-  const enrolledIds = isDropoffWeekday && afterschoolEnrollments.data?.length
+  const enrolledIds = isWeekday && afterschoolEnrollments.data?.length
     ? [...new Set(afterschoolEnrollments.data.map((e) => e.student_profile_id))]
     : [];
 
@@ -536,15 +523,14 @@ export async function getDailyBusManifest(
     supabase
       .from("bus_check_records")
       .select("id, student_profile_id, boarded_at, checked_at")
-      .eq("check_date", date)
-      .eq("direction", direction),
+      .eq("check_date", date),
     allStopIds.length
       ? supabase
           .from("bus_stop_schedules")
-          .select("bus_stop_id, direction, estimated_time, bus_time_slot_id")
+          .select("bus_stop_id, estimated_time, bus_time_slot_id")
           .in("bus_stop_id", allStopIds)
           .eq("day_of_week", isoDay)
-      : Promise.resolve({ data: [] as { bus_stop_id: string; direction: string; estimated_time: string; bus_time_slot_id: string | null }[] }),
+      : Promise.resolve({ data: [] as { bus_stop_id: string; estimated_time: string; bus_time_slot_id: string | null }[] }),
     allStopIds.length
       ? supabase.from("bus_stops").select("id, name").in("id", allStopIds)
       : Promise.resolve({ data: [] as { id: string; name: string }[] }),
@@ -567,14 +553,12 @@ export async function getDailyBusManifest(
     (checkRecords ?? []).map((r) => [r.student_profile_id, { boarded_at: r.boarded_at, checked_at: r.checked_at, id: r.id }])
   );
 
-  // stopId -> slotId|"_" -> direction -> time
-  const stopScheduleMap = new Map<string, Map<string, Map<string, string>>>();
+  // stopId -> slotId|"_" -> time
+  const stopScheduleMap = new Map<string, Map<string, string>>();
   for (const ss of stopSchedulesResult.data ?? []) {
     if (!stopScheduleMap.has(ss.bus_stop_id)) stopScheduleMap.set(ss.bus_stop_id, new Map());
     const slotKey = ss.bus_time_slot_id ?? "_";
-    const slotMap2 = stopScheduleMap.get(ss.bus_stop_id)!;
-    if (!slotMap2.has(slotKey)) slotMap2.set(slotKey, new Map());
-    slotMap2.get(slotKey)!.set(ss.direction, ss.estimated_time);
+    stopScheduleMap.get(ss.bus_stop_id)!.set(slotKey, ss.estimated_time);
   }
   const stopNameMap = new Map((stopNamesResult.data ?? []).map((s) => [s.id, s.name]));
 
@@ -604,16 +588,16 @@ export async function getDailyBusManifest(
   }
 
   // 정류장 시간 조회 헬퍼: 시간대 매칭 → fallback null 슬롯
-  function getStopTime(stopId: string, slotId: string | null, dir: string): string | null {
+  function getStopTime(stopId: string, slotId: string | null): string | null {
     const bySlot = stopScheduleMap.get(stopId);
     if (!bySlot) return null;
     // 시간대 매칭
     if (slotId) {
-      const matched = bySlot.get(slotId)?.get(dir);
+      const matched = bySlot.get(slotId);
       if (matched) return matched;
     }
     // fallback: slot=null 레코드
-    return bySlot.get("_")?.get(dir) ?? null;
+    return bySlot.get("_") ?? null;
   }
 
   function getSlotTime(slotId: string): string {
@@ -645,7 +629,7 @@ export async function getDailyBusManifest(
             groupMap.set(key, { slotId: def.bus_time_slot_id, busId: derivedBusId, students: [] });
           }
           const stopName = def.bus_stop_id ? stopNameMap.get(def.bus_stop_id) : undefined;
-          const stopTime = def.bus_stop_id ? getStopTime(def.bus_stop_id, def.bus_time_slot_id, direction) : undefined;
+          const stopTime = def.bus_stop_id ? getStopTime(def.bus_stop_id, def.bus_time_slot_id) : undefined;
           groupMap.get(key)!.students.push({
             student_profile_id: def.student_profile_id,
             korean_name: student.korean_name,
@@ -668,7 +652,6 @@ export async function getDailyBusManifest(
             korean_name: student.korean_name,
             english_name: student.english_name,
             student_number: student.student_number,
-            direction,
             original_slot_time: getSlotTime(def.bus_time_slot_id),
             original_bus_label: undefined,
             change_type: "absent",
@@ -684,7 +667,6 @@ export async function getDailyBusManifest(
           korean_name: student.korean_name,
           english_name: student.english_name,
           student_number: student.student_number,
-          direction,
           original_slot_time: getSlotTime(def.bus_time_slot_id),
           original_bus_label: derivedBusId ? busMap.get(derivedBusId) : undefined,
           change_type: "no_ride",
@@ -707,8 +689,8 @@ export async function getDailyBusManifest(
       const stopName = effectiveStopId ? stopNameMap.get(effectiveStopId) : undefined;
       const effectiveSlotId2 = change.new_bus_time_slot_id ?? def.bus_time_slot_id;
       const stopTime = newStopId
-        ? getStopTime(newStopId, effectiveSlotId2, direction)
-        : (def.bus_stop_id ? getStopTime(def.bus_stop_id, effectiveSlotId2, direction) : null);
+        ? getStopTime(newStopId, effectiveSlotId2)
+        : (def.bus_stop_id ? getStopTime(def.bus_stop_id, effectiveSlotId2) : null);
       const estimatedTime = newStopId ? stopTime : (stopTime ?? def.estimated_time);
       groupMap.get(key)!.students.push({
         student_profile_id: def.student_profile_id,
@@ -734,7 +716,7 @@ export async function getDailyBusManifest(
       if (!groupMap.has(key)) {
         groupMap.set(key, { slotId: def.bus_time_slot_id, busId: derivedBusId, students: [] });
       }
-      const stopTime2 = def.bus_stop_id ? getStopTime(def.bus_stop_id, def.bus_time_slot_id, direction) : undefined;
+      const stopTime2 = def.bus_stop_id ? getStopTime(def.bus_stop_id, def.bus_time_slot_id) : undefined;
       const stopName2 = def.bus_stop_id ? stopNameMap.get(def.bus_stop_id) : undefined;
       groupMap.get(key)!.students.push({
         student_profile_id: def.student_profile_id,
@@ -777,7 +759,6 @@ export async function getDailyBusManifest(
 export async function boardBusStudent(
   studentProfileId: string,
   checkDate: string,
-  direction: "pickup" | "dropoff",
   busTimeSlotId: string,
   busNumberId: string
 ): Promise<{ error?: string }> {
@@ -788,25 +769,23 @@ export async function boardBusStudent(
     {
       student_profile_id: studentProfileId,
       check_date: checkDate,
-      direction,
       bus_time_slot_id: busTimeSlotId,
       bus_number_id: busNumberId,
       boarded_at: new Date().toISOString(),
     },
-    { onConflict: "student_profile_id,check_date,direction" }
+    { onConflict: "student_profile_id,check_date" }
   );
   if (error) {
     logger.error("[boardBusStudent]", error.message);
     return { error: error.message };
   }
-  logger.info("[boardBusStudent]", "탑승 처리", { studentProfileId, checkDate, direction });
+  logger.info("[boardBusStudent]", "탑승 처리", { studentProfileId, checkDate });
   return {};
 }
 
 export async function unboardBusStudent(
   studentProfileId: string,
-  checkDate: string,
-  direction: "pickup" | "dropoff"
+  checkDate: string
 ): Promise<{ error?: string }> {
   const auth = await verifyAuthenticated();
   if ("error" in auth) return { error: auth.error };
@@ -818,7 +797,6 @@ export async function unboardBusStudent(
     .select("id, checked_at")
     .eq("student_profile_id", studentProfileId)
     .eq("check_date", checkDate)
-    .eq("direction", direction)
     .maybeSingle();
 
   if (!record) return {};
@@ -853,7 +831,6 @@ export async function unboardBusStudent(
 export async function checkBusStudent(
   studentProfileId: string,
   checkDate: string,
-  direction: "pickup" | "dropoff",
   busTimeSlotId: string,
   busNumberId: string,
   checkedBy: string
@@ -865,26 +842,24 @@ export async function checkBusStudent(
     {
       student_profile_id: studentProfileId,
       check_date: checkDate,
-      direction,
       bus_time_slot_id: busTimeSlotId,
       bus_number_id: busNumberId,
       checked_at: new Date().toISOString(),
       checked_by: checkedBy,
     },
-    { onConflict: "student_profile_id,check_date,direction" }
+    { onConflict: "student_profile_id,check_date" }
   );
   if (error) {
     logger.error("[checkBusStudent]", error.message);
     return { error: error.message };
   }
-  logger.info("[checkBusStudent]", "하차 체크", { studentProfileId, checkDate, direction });
+  logger.info("[checkBusStudent]", "하차 체크", { studentProfileId, checkDate });
   return {};
 }
 
 export async function uncheckBusStudent(
   studentProfileId: string,
-  checkDate: string,
-  direction: "pickup" | "dropoff"
+  checkDate: string
 ): Promise<{ error?: string }> {
   const auth = await verifyAuthenticated();
   if ("error" in auth) return { error: auth.error };
@@ -897,7 +872,6 @@ export async function uncheckBusStudent(
     .select("id, boarded_at")
     .eq("student_profile_id", studentProfileId)
     .eq("check_date", checkDate)
-    .eq("direction", direction)
     .maybeSingle();
 
   if (!record) return {};
@@ -933,7 +907,6 @@ export async function batchBusCheckRecord(
     studentProfileId: string;
     busTimeSlotId: string;
     busNumberId: string;
-    direction: "pickup" | "dropoff";
   }[],
   checkDate: string,
   checkedBy: string
@@ -954,12 +927,11 @@ export async function batchBusCheckRecord(
       boardItems.map((i) => ({
         student_profile_id: i.studentProfileId,
         check_date: checkDate,
-        direction: i.direction,
         bus_time_slot_id: i.busTimeSlotId,
         bus_number_id: i.busNumberId,
         boarded_at: now,
       })),
-      { onConflict: "student_profile_id,check_date,direction" }
+      { onConflict: "student_profile_id,check_date" }
     );
     if (error) {
       logger.error("[batchBusCheckRecord:board]", error.message);
@@ -973,13 +945,12 @@ export async function batchBusCheckRecord(
       checkItems.map((i) => ({
         student_profile_id: i.studentProfileId,
         check_date: checkDate,
-        direction: i.direction,
         bus_time_slot_id: i.busTimeSlotId,
         bus_number_id: i.busNumberId,
         checked_at: now,
         checked_by: checkedBy,
       })),
-      { onConflict: "student_profile_id,check_date,direction" }
+      { onConflict: "student_profile_id,check_date" }
     );
     if (error) {
       logger.error("[batchBusCheckRecord:check]", error.message);
@@ -987,71 +958,53 @@ export async function batchBusCheckRecord(
     }
   }
 
-  // 탑승 취소: direction별 UPDATE + 빈 레코드 삭제
+  // 탑승 취소: UPDATE + 빈 레코드 삭제
   if (unboardItems.length > 0) {
-    const byDir = new Map<string, string[]>();
-    for (const i of unboardItems) {
-      const arr = byDir.get(i.direction) ?? [];
-      arr.push(i.studentProfileId);
-      byDir.set(i.direction, arr);
+    const ids = unboardItems.map((i) => i.studentProfileId);
+    const { error: unboardErr } = await supabase
+      .from("bus_check_records")
+      .update({ boarded_at: null })
+      .eq("check_date", checkDate)
+      .in("student_profile_id", ids);
+    if (unboardErr) {
+      logger.error("[batchBusCheckRecord:unboard]", unboardErr.message);
+      return { error: unboardErr.message };
     }
-    for (const [dir, ids] of byDir) {
-      const { error: unboardErr } = await supabase
-        .from("bus_check_records")
-        .update({ boarded_at: null })
-        .eq("check_date", checkDate)
-        .eq("direction", dir)
-        .in("student_profile_id", ids);
-      if (unboardErr) {
-        logger.error("[batchBusCheckRecord:unboard]", unboardErr.message);
-        return { error: unboardErr.message };
-      }
-      const { error: unboardDelErr } = await supabase
-        .from("bus_check_records")
-        .delete()
-        .eq("check_date", checkDate)
-        .eq("direction", dir)
-        .in("student_profile_id", ids)
-        .is("boarded_at", null)
-        .is("checked_at", null);
-      if (unboardDelErr) {
-        logger.error("[batchBusCheckRecord:unboard:delete]", unboardDelErr.message);
-        return { error: unboardDelErr.message };
-      }
+    const { error: unboardDelErr } = await supabase
+      .from("bus_check_records")
+      .delete()
+      .eq("check_date", checkDate)
+      .in("student_profile_id", ids)
+      .is("boarded_at", null)
+      .is("checked_at", null);
+    if (unboardDelErr) {
+      logger.error("[batchBusCheckRecord:unboard:delete]", unboardDelErr.message);
+      return { error: unboardDelErr.message };
     }
   }
 
-  // 하차 취소: direction별 UPDATE + 빈 레코드 삭제
+  // 하차 취소: UPDATE + 빈 레코드 삭제
   if (uncheckItems.length > 0) {
-    const byDir = new Map<string, string[]>();
-    for (const i of uncheckItems) {
-      const arr = byDir.get(i.direction) ?? [];
-      arr.push(i.studentProfileId);
-      byDir.set(i.direction, arr);
+    const ids = uncheckItems.map((i) => i.studentProfileId);
+    const { error: uncheckErr } = await supabase
+      .from("bus_check_records")
+      .update({ checked_at: null, checked_by: null })
+      .eq("check_date", checkDate)
+      .in("student_profile_id", ids);
+    if (uncheckErr) {
+      logger.error("[batchBusCheckRecord:uncheck]", uncheckErr.message);
+      return { error: uncheckErr.message };
     }
-    for (const [dir, ids] of byDir) {
-      const { error: uncheckErr } = await supabase
-        .from("bus_check_records")
-        .update({ checked_at: null, checked_by: null })
-        .eq("check_date", checkDate)
-        .eq("direction", dir)
-        .in("student_profile_id", ids);
-      if (uncheckErr) {
-        logger.error("[batchBusCheckRecord:uncheck]", uncheckErr.message);
-        return { error: uncheckErr.message };
-      }
-      const { error: uncheckDelErr } = await supabase
-        .from("bus_check_records")
-        .delete()
-        .eq("check_date", checkDate)
-        .eq("direction", dir)
-        .in("student_profile_id", ids)
-        .is("boarded_at", null)
-        .is("checked_at", null);
-      if (uncheckDelErr) {
-        logger.error("[batchBusCheckRecord:uncheck:delete]", uncheckDelErr.message);
-        return { error: uncheckDelErr.message };
-      }
+    const { error: uncheckDelErr } = await supabase
+      .from("bus_check_records")
+      .delete()
+      .eq("check_date", checkDate)
+      .in("student_profile_id", ids)
+      .is("boarded_at", null)
+      .is("checked_at", null);
+    if (uncheckDelErr) {
+      logger.error("[batchBusCheckRecord:uncheck:delete]", uncheckDelErr.message);
+      return { error: uncheckDelErr.message };
     }
   }
 
@@ -1122,12 +1075,12 @@ export async function listAllChangeRequests(
 
   // new_bus_time_slot_id 없는 경우 학생 기본 배정에서 시간대 fallback
   const needsDefaultSlot = (data ?? []).filter((d) => !d.new_bus_time_slot_id);
-  let defaultSlotMap = new Map<string, Map<string, { label: string; time: string }>>();
+  let defaultSlotMap = new Map<string, { label: string; time: string }>();
   if (needsDefaultSlot.length > 0) {
     const defStudentIds = [...new Set(needsDefaultSlot.map((d) => d.student_profile_id))];
     const { data: defaults } = await supabase
       .from("student_bus_defaults")
-      .select("student_profile_id, direction, bus_time_slot_id")
+      .select("student_profile_id, bus_time_slot_id")
       .in("student_profile_id", defStudentIds);
     if (defaults?.length) {
       const defSlotIds = [...new Set(defaults.map((d) => d.bus_time_slot_id).filter(Boolean))];
@@ -1137,25 +1090,25 @@ export async function listAllChangeRequests(
         for (const d of defaults) {
           if (!d.bus_time_slot_id) continue;
           const key = d.student_profile_id;
-          if (!defaultSlotMap.has(key)) defaultSlotMap.set(key, new Map());
+          if (defaultSlotMap.has(key)) continue;
           const slotInfo = defSlotLookup.get(d.bus_time_slot_id);
-          if (slotInfo) defaultSlotMap.get(key)!.set(d.direction, slotInfo);
+          if (slotInfo) defaultSlotMap.set(key, slotInfo);
         }
       }
     }
   }
 
-  // 기존 일정 조회 (student_bus_defaults에서 해당 요일+방향)
+  // 기존 일정 조회 (student_bus_defaults에서 해당 요일)
   const origDefaults = new Map<string, { slot_id: string; stop_id: string | null }>();
   if (studentIds.length && data?.length) {
     // request_date에서 요일 계산
     const { data: origData } = await supabase
       .from("student_bus_defaults")
-      .select("student_profile_id, day_of_week, direction, bus_time_slot_id, bus_stop_id")
+      .select("student_profile_id, day_of_week, bus_time_slot_id, bus_stop_id")
       .in("student_profile_id", studentIds);
     for (const o of origData ?? []) {
       origDefaults.set(
-        `${o.student_profile_id}:${o.day_of_week}:${o.direction}`,
+        `${o.student_profile_id}:${o.day_of_week}`,
         { slot_id: o.bus_time_slot_id, stop_id: o.bus_stop_id }
       );
     }
@@ -1181,18 +1134,18 @@ export async function listAllChangeRequests(
   }
 
   // 기존 일정의 호차 조회 (bus_stop_day_assignments에서 stop→bus 매핑)
-  const origBusLabelMap = new Map<string, string>(); // "student:day:dir" → busLabel
+  const origBusLabelMap = new Map<string, string>(); // "student:day" → busLabel
   const origStopIdsForBus = [...origDefaults.entries()].filter(([, v]) => v.stop_id).map(([k, v]) => ({ key: k, stop_id: v.stop_id! }));
   if (origStopIdsForBus.length) {
     const stopIdsForBusQuery = [...new Set(origStopIdsForBus.map((o) => o.stop_id))];
     const { data: stopAssigns } = await supabase
       .from("bus_stop_day_assignments")
-      .select("bus_stop_id, bus_number_id, day_of_week, direction")
+      .select("bus_stop_id, bus_number_id, day_of_week")
       .in("bus_stop_id", stopIdsForBusQuery);
-    // stopId:day:dir → busNumberId
+    // stopId:day → busNumberId
     const stopBusMap = new Map<string, string>();
     for (const sa of stopAssigns ?? []) {
-      stopBusMap.set(`${sa.bus_stop_id}:${sa.day_of_week}:${sa.direction}`, sa.bus_number_id);
+      stopBusMap.set(`${sa.bus_stop_id}:${sa.day_of_week}`, sa.bus_number_id);
     }
     // busNumberId → label (기존 busMap + 추가)
     const missingBusIds = [...new Set([...(stopAssigns ?? []).map((sa) => sa.bus_number_id)])].filter((id) => !busMap.has(id));
@@ -1201,8 +1154,8 @@ export async function listAllChangeRequests(
       for (const b of extraBuses ?? []) busMap.set(b.id, b.label);
     }
     for (const { key, stop_id } of origStopIdsForBus) {
-      const [, dayStr, dir] = key.split(":");
-      const busNumId = stopBusMap.get(`${stop_id}:${dayStr}:${dir}`);
+      const [, dayStr] = key.split(":");
+      const busNumId = stopBusMap.get(`${stop_id}:${dayStr}`);
       if (busNumId) origBusLabelMap.set(key, busMap.get(busNumId) ?? "");
     }
   }
@@ -1211,12 +1164,12 @@ export async function listAllChangeRequests(
     const student = studentMap.get(d.student_profile_id);
     const slot = d.new_bus_time_slot_id
       ? slotMap.get(d.new_bus_time_slot_id)
-      : defaultSlotMap.get(d.student_profile_id)?.get(d.direction);
+      : defaultSlotMap.get(d.student_profile_id);
 
     // 기존 일정
     const dow = new Date(d.request_date + "T00:00:00").getDay();
     const isoDay = dow === 0 ? 7 : dow;
-    const origKey = `${d.student_profile_id}:${isoDay}:${d.direction}`;
+    const origKey = `${d.student_profile_id}:${isoDay}`;
     const orig = origDefaults.get(origKey);
     const origSlot = orig?.slot_id ? slotMap.get(orig.slot_id) : undefined;
     const origStop = orig?.stop_id ? stopMap.get(orig.stop_id) : undefined;
@@ -1285,12 +1238,12 @@ export async function listChangeRequestsByDate(date: string): Promise<BusChangeR
 
   // new_bus_time_slot_id 없는 경우 학생 기본 배정에서 시간대 fallback
   const needsDefaultSlot = (data ?? []).filter((d) => !d.new_bus_time_slot_id);
-  let defaultSlotMap = new Map<string, Map<string, { label: string; time: string }>>();
+  let defaultSlotMap = new Map<string, { label: string; time: string }>();
   if (needsDefaultSlot.length > 0) {
     const defStudentIds = [...new Set(needsDefaultSlot.map((d) => d.student_profile_id))];
     const { data: defaults } = await supabase
       .from("student_bus_defaults")
-      .select("student_profile_id, direction, bus_time_slot_id")
+      .select("student_profile_id, bus_time_slot_id")
       .in("student_profile_id", defStudentIds);
     if (defaults?.length) {
       const defSlotIds = [...new Set(defaults.map((d) => d.bus_time_slot_id).filter(Boolean))];
@@ -1300,24 +1253,24 @@ export async function listChangeRequestsByDate(date: string): Promise<BusChangeR
         for (const d of defaults) {
           if (!d.bus_time_slot_id) continue;
           const key = d.student_profile_id;
-          if (!defaultSlotMap.has(key)) defaultSlotMap.set(key, new Map());
+          if (defaultSlotMap.has(key)) continue;
           const slotInfo = defSlotLookup.get(d.bus_time_slot_id);
-          if (slotInfo) defaultSlotMap.get(key)!.set(d.direction, slotInfo);
+          if (slotInfo) defaultSlotMap.set(key, slotInfo);
         }
       }
     }
   }
 
-  // 기존 일정 조회 (student_bus_defaults에서 해당 요일+방향)
+  // 기존 일정 조회 (student_bus_defaults에서 해당 요일)
   const origDefaults = new Map<string, { slot_id: string; stop_id: string | null }>();
   if (studentIds.length && data?.length) {
     const { data: origData } = await supabase
       .from("student_bus_defaults")
-      .select("student_profile_id, day_of_week, direction, bus_time_slot_id, bus_stop_id")
+      .select("student_profile_id, day_of_week, bus_time_slot_id, bus_stop_id")
       .in("student_profile_id", studentIds);
     for (const o of origData ?? []) {
       origDefaults.set(
-        `${o.student_profile_id}:${o.day_of_week}:${o.direction}`,
+        `${o.student_profile_id}:${o.day_of_week}`,
         { slot_id: o.bus_time_slot_id, stop_id: o.bus_stop_id }
       );
     }
@@ -1348,11 +1301,11 @@ export async function listChangeRequestsByDate(date: string): Promise<BusChangeR
     const stopIdsForBusQuery = [...new Set(origStopIdsForBus.map((o) => o.stop_id))];
     const { data: stopAssigns } = await supabase
       .from("bus_stop_day_assignments")
-      .select("bus_stop_id, bus_number_id, day_of_week, direction")
+      .select("bus_stop_id, bus_number_id, day_of_week")
       .in("bus_stop_id", stopIdsForBusQuery);
     const stopBusMap = new Map<string, string>();
     for (const sa of stopAssigns ?? []) {
-      stopBusMap.set(`${sa.bus_stop_id}:${sa.day_of_week}:${sa.direction}`, sa.bus_number_id);
+      stopBusMap.set(`${sa.bus_stop_id}:${sa.day_of_week}`, sa.bus_number_id);
     }
     const missingBusIds = [...new Set([...(stopAssigns ?? []).map((sa) => sa.bus_number_id)])].filter((id) => !busMap.has(id));
     if (missingBusIds.length) {
@@ -1360,8 +1313,8 @@ export async function listChangeRequestsByDate(date: string): Promise<BusChangeR
       for (const b of extraBuses ?? []) busMap.set(b.id, b.label);
     }
     for (const { key, stop_id } of origStopIdsForBus) {
-      const [, dayStr, dir] = key.split(":");
-      const busNumId = stopBusMap.get(`${stop_id}:${dayStr}:${dir}`);
+      const [, dayStr] = key.split(":");
+      const busNumId = stopBusMap.get(`${stop_id}:${dayStr}`);
       if (busNumId) origBusLabelMap.set(key, busMap.get(busNumId) ?? "");
     }
   }
@@ -1370,11 +1323,11 @@ export async function listChangeRequestsByDate(date: string): Promise<BusChangeR
     const student = studentMap.get(d.student_profile_id);
     const slot = d.new_bus_time_slot_id
       ? slotMap.get(d.new_bus_time_slot_id)
-      : defaultSlotMap.get(d.student_profile_id)?.get(d.direction);
+      : defaultSlotMap.get(d.student_profile_id);
 
     const dow = new Date(d.request_date + "T00:00:00").getDay();
     const isoDay = dow === 0 ? 7 : dow;
-    const origKey = `${d.student_profile_id}:${isoDay}:${d.direction}`;
+    const origKey = `${d.student_profile_id}:${isoDay}`;
     const orig = origDefaults.get(origKey);
     const origSlot = orig?.slot_id ? slotMap.get(orig.slot_id) : undefined;
     const origStop = orig?.stop_id ? stopMap.get(orig.stop_id) : undefined;
@@ -1520,7 +1473,6 @@ export async function getStudentChangeRequests(
 export async function submitBusChangeRequest(
   studentProfileId: string,
   requestDate: string,
-  direction: "pickup" | "dropoff",
   changeType: "change" | "no_ride",
   newBusTimeSlotId?: string,
   newBusNumberId?: string,
@@ -1533,7 +1485,6 @@ export async function submitBusChangeRequest(
   const { error } = await supabase.from("bus_change_requests").insert({
     student_profile_id: studentProfileId,
     request_date: requestDate,
-    direction,
     change_type: changeType,
     new_bus_time_slot_id: newBusTimeSlotId || null,
     new_bus_number_id: newBusNumberId || null,
@@ -1573,7 +1524,6 @@ export async function cancelBusChangeRequest(
 export async function createAdminBusChange(
   studentProfileId: string,
   requestDate: string,
-  direction: "pickup" | "dropoff",
   changeType: "change" | "no_ride" | "absent",
   newBusTimeSlotId?: string,
   newBusNumberId?: string,
@@ -1592,7 +1542,6 @@ export async function createAdminBusChange(
   const { error } = await supabase.from("bus_change_requests").insert({
     student_profile_id: studentProfileId,
     request_date: requestDate,
-    direction,
     change_type: changeType,
     new_bus_time_slot_id: finalSlotId,
     new_bus_number_id: finalBusId,
@@ -1701,8 +1650,7 @@ export async function updateAdminBusChange(
 
 export async function getExistingBusChange(
   studentProfileId: string,
-  requestDate: string,
-  direction: "pickup" | "dropoff"
+  requestDate: string
 ): Promise<{
   id: string;
   change_type: "change" | "no_ride" | "absent";
@@ -1719,7 +1667,6 @@ export async function getExistingBusChange(
     .select("id, change_type, new_bus_time_slot_id, new_bus_number_id, new_bus_stop_id, reason")
     .eq("student_profile_id", studentProfileId)
     .eq("request_date", requestDate)
-    .eq("direction", direction)
     .eq("status", "approved")
     .maybeSingle();
   return data as typeof data & { change_type: "change" | "no_ride" | "absent" } | null;
@@ -1796,7 +1743,6 @@ export async function createBusStop(
 
 export async function listBusStopDayAssignments(
   day: number,
-  direction?: "pickup" | "dropoff",
   busTimeSlotId?: string
 ): Promise<BusStopDayAssignment[]> {
   const supabase = createAdminClient();
@@ -1804,7 +1750,6 @@ export async function listBusStopDayAssignments(
     .from("bus_stop_day_assignments")
     .select("*")
     .eq("day_of_week", day);
-  if (direction) query = query.eq("direction", direction);
   if (busTimeSlotId) {
     query = query.eq("bus_time_slot_id", busTimeSlotId);
   } else {
@@ -1821,19 +1766,17 @@ export async function listBusStopDayAssignments(
 export async function saveBusStopDayAssignments(
   day: number,
   assignments: { bus_stop_id: string; bus_number_id: string; sort_order: number }[],
-  direction?: "pickup" | "dropoff",
   busTimeSlotId?: string
 ): Promise<{ error?: string }> {
   const auth = await verifyAdmin();
   if ("error" in auth) return { error: auth.error };
   const supabase = createAdminClient();
 
-  // 1. Delete existing assignments for this day + direction + timeSlot
+  // 1. Delete existing assignments for this day + timeSlot
   let delQuery = supabase
     .from("bus_stop_day_assignments")
     .delete()
     .eq("day_of_week", day);
-  if (direction) delQuery = delQuery.eq("direction", direction);
   if (busTimeSlotId) {
     delQuery = delQuery.eq("bus_time_slot_id", busTimeSlotId);
   } else {
@@ -1852,7 +1795,6 @@ export async function saveBusStopDayAssignments(
       bus_stop_id: a.bus_stop_id,
       bus_number_id: a.bus_number_id,
       day_of_week: day,
-      direction: direction ?? "pickup",
       bus_time_slot_id: busTimeSlotId ?? null,
       sort_order: a.sort_order,
       updated_at: now,
@@ -1870,15 +1812,13 @@ export async function saveBusStopDayAssignments(
 
 export async function listBusStopSchedulesBulk(
   day: number,
-  direction: "pickup" | "dropoff",
   slotId?: string
 ): Promise<BusStopSchedule[]> {
   const supabase = createAdminClient();
   let query = supabase
     .from("bus_stop_schedules")
     .select("*")
-    .eq("day_of_week", day)
-    .eq("direction", direction);
+    .eq("day_of_week", day);
   if (slotId) {
     // Show schedules for selected slot OR fallback to NULL (전체 기본)
     query = query.or(`bus_time_slot_id.eq.${slotId},bus_time_slot_id.is.null`);
@@ -1978,7 +1918,6 @@ export async function deleteBusStop(id: string): Promise<{ error?: string }> {
 
 export async function saveBulkBusDefaults(
   dayOfWeek: number,
-  direction: "pickup" | "dropoff",
   assignments: { student_profile_id: string; bus_time_slot_id: string; bus_stop_id?: string | null; note?: string | null }[]
 ): Promise<{ error?: string; saved?: number }> {
   const auth = await verifyAdmin();
@@ -1992,8 +1931,7 @@ export async function saveBulkBusDefaults(
   let fetchQuery = supabase
     .from("student_bus_defaults")
     .select("id, student_profile_id, bus_time_slot_id")
-    .eq("day_of_week", dayOfWeek)
-    .eq("direction", direction);
+    .eq("day_of_week", dayOfWeek);
   if (slotIds.length === 1) {
     fetchQuery = fetchQuery.eq("bus_time_slot_id", slotIds[0]);
   } else if (slotIds.length > 1) {
@@ -2028,7 +1966,6 @@ export async function saveBulkBusDefaults(
     const rows = assignments.map((a) => ({
       student_profile_id: a.student_profile_id,
       day_of_week: dayOfWeek,
-      direction,
       bus_time_slot_id: a.bus_time_slot_id,
       bus_stop_id: a.bus_stop_id ?? null,
       note: a.note ?? null,
@@ -2036,7 +1973,7 @@ export async function saveBulkBusDefaults(
     }));
     const { error: upsertErr } = await supabase
       .from("student_bus_defaults")
-      .upsert(rows, { onConflict: "student_profile_id,day_of_week,direction" });
+      .upsert(rows, { onConflict: "student_profile_id,day_of_week" });
     if (upsertErr) {
       logger.error("[saveBulkBusDefaults] upsert", upsertErr.message);
       return { error: upsertErr.message };
@@ -2050,7 +1987,6 @@ export async function saveBulkBusDefaults(
 
 export async function getBulkBusDefaults(
   dayOfWeek: number,
-  direction: "pickup" | "dropoff",
   busTimeSlotId?: string
 ): Promise<BusDefaultAssignment[]> {
   const auth = await verifyAdmin();
@@ -2060,8 +1996,7 @@ export async function getBulkBusDefaults(
   let query = supabase
     .from("student_bus_defaults")
     .select("*")
-    .eq("day_of_week", dayOfWeek)
-    .eq("direction", direction);
+    .eq("day_of_week", dayOfWeek);
   if (busTimeSlotId) {
     query = query.eq("bus_time_slot_id", busTimeSlotId);
   }
@@ -2082,7 +2017,7 @@ export async function getBulkBusDefaults(
       .from("students")
       .select("profile_id, korean_name, english_name, age")
       .in("profile_id", profileIds),
-    buildStopToBusMaps(supabase, dayOfWeek, direction),
+    buildStopToBusMaps(supabase, dayOfWeek),
     stopIds.length
       ? supabase.from("bus_stops").select("id, name").in("id", stopIds)
       : Promise.resolve({ data: [] as { id: string; name: string }[] }),
@@ -2265,8 +2200,7 @@ export async function listBusStopSchedules(
     .from("bus_stop_schedules")
     .select("*")
     .eq("bus_stop_id", busStopId)
-    .order("day_of_week")
-    .order("direction");
+    .order("day_of_week");
   if (busTimeSlotId) {
     query = query.eq("bus_time_slot_id", busTimeSlotId);
   }
@@ -2281,7 +2215,6 @@ export async function listBusStopSchedules(
 export async function upsertBusStopSchedule(
   busStopId: string,
   dayOfWeek: number,
-  direction: "pickup" | "dropoff",
   estimatedTime: string,
   busTimeSlotId?: string
 ): Promise<{ error?: string }> {
@@ -2296,12 +2229,11 @@ export async function upsertBusStopSchedule(
     {
       bus_stop_id: busStopId,
       day_of_week: dayOfWeek,
-      direction,
       estimated_time: estimatedTime,
       bus_time_slot_id: busTimeSlotId ?? null,
       updated_at: new Date().toISOString(),
     },
-    { onConflict: "bus_stop_id,day_of_week,direction,bus_time_slot_id" }
+    { onConflict: "bus_stop_id,day_of_week,bus_time_slot_id" }
   );
   if (error) {
     logger.error("[upsertBusStopSchedule]", error.message);
@@ -2313,7 +2245,6 @@ export async function upsertBusStopSchedule(
 export async function deleteBusStopSchedule(
   busStopId: string,
   dayOfWeek: number,
-  direction: "pickup" | "dropoff",
   busTimeSlotId?: string
 ): Promise<{ error?: string }> {
   const auth = await verifyAdmin();
@@ -2324,8 +2255,7 @@ export async function deleteBusStopSchedule(
     .from("bus_stop_schedules")
     .delete()
     .eq("bus_stop_id", busStopId)
-    .eq("day_of_week", dayOfWeek)
-    .eq("direction", direction);
+    .eq("day_of_week", dayOfWeek);
   if (busTimeSlotId) {
     query = query.eq("bus_time_slot_id", busTimeSlotId);
   } else {
@@ -2340,9 +2270,7 @@ export async function deleteBusStopSchedule(
 }
 
 
-export async function getWeeklyDropoffExportData(
-  direction: "pickup" | "dropoff" = "dropoff"
-): Promise<
+export async function getWeeklyDropoffExportData(): Promise<
   DropoffExportData | { error: string }
 > {
   const auth = await verifyAdmin();
@@ -2354,7 +2282,6 @@ export async function getWeeklyDropoffExportData(
   const { data: slotData, error: slotError } = await supabase
     .from("bus_time_slots")
     .select("*")
-    .eq("direction", direction)
     .eq("is_active", true)
     .order("time");
   if (slotError) {
@@ -2412,14 +2339,12 @@ export async function getWeeklyDropoffExportData(
       ? supabase
           .from("student_bus_defaults")
           .select("student_profile_id, bus_stop_id, bus_time_slot_id, day_of_week, note")
-          .eq("direction", direction)
           .in("bus_time_slot_id", slotIds)
       : Promise.resolve({ data: [], error: null }),
     slotIds.length > 0
       ? supabase
           .from("bus_stop_day_assignments")
           .select("bus_stop_id, bus_number_id, bus_time_slot_id, day_of_week")
-          .eq("direction", direction)
           .in("bus_time_slot_id", slotIds)
       : Promise.resolve({ data: [], error: null }),
   ]);
@@ -2535,7 +2460,6 @@ export async function getWeeklyDropoffExportData(
 export async function bulkCreateBusChanges(
   studentProfileId: string,
   dates: string[],
-  direction: "pickup" | "dropoff",
   changeType: "change" | "no_ride" | "absent",
   newBusTimeSlotId?: string,
   newBusNumberId?: string,
@@ -2553,7 +2477,6 @@ export async function bulkCreateBusChanges(
   const rows = dates.map((d) => ({
     student_profile_id: studentProfileId,
     request_date: d,
-    direction,
     change_type: changeType,
     new_bus_time_slot_id: newBusTimeSlotId || null,
     new_bus_number_id: newBusNumberId || null,
@@ -2564,11 +2487,11 @@ export async function bulkCreateBusChanges(
     updated_at: now,
   }));
 
-  // UNIQUE (student_profile_id, request_date, direction) 충돌 시 skip
+  // UNIQUE (student_profile_id, request_date) 충돌 시 skip
   const { data: inserted, error } = await supabase
     .from("bus_change_requests")
     .upsert(rows, {
-      onConflict: "student_profile_id,request_date,direction",
+      onConflict: "student_profile_id,request_date",
       ignoreDuplicates: true,
     })
     .select("id");
@@ -2583,7 +2506,6 @@ export async function bulkCreateBusChanges(
 
   logger.info("[bulkCreateBusChanges]", `${created}건 생성, ${skipped}건 건너뜀`, {
     studentProfileId,
-    direction,
     changeType,
   });
   revalidatePath("/admin/bus");

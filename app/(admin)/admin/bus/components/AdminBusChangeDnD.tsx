@@ -53,9 +53,8 @@ export function AdminBusChangeDnD({
   const [busStops, setBusStops] = useState<BusStop[]>([]);
   const [busTimeSlots, setBusTimeSlots] = useState<BusTimeSlot[]>([]);
 
-  // Date / direction
+  // Date
   const [selectedDates, setSelectedDates] = useState<Date[]>([new Date(today)]);
-  const [direction, setDirection] = useState<"pickup" | "dropoff">("dropoff");
 
   // Student selection
   const [studentSearch, setStudentSearch] = useState("");
@@ -95,7 +94,7 @@ export function AdminBusChangeDnD({
     });
   }, []);
 
-  // When student / date / direction changes → load existing data
+  // When student / date changes → load existing data
   useEffect(() => {
     if (!selectedStudentId) return;
     setLoadingStudent(true);
@@ -103,11 +102,11 @@ export function AdminBusChangeDnD({
     const dow = (() => { const d = new Date(firstDate).getDay(); return d === 0 ? 7 : d; })();
     Promise.all([
       getStudentBusDefaults(selectedStudentId),
-      getExistingBusChange(selectedStudentId, firstDate, direction),
+      getExistingBusChange(selectedStudentId, firstDate),
       getStudentAfterschoolDetail(selectedStudentId),
     ]).then(([defaults, existing, afterschool]) => {
       setAfterschoolDays(afterschool);
-      const def = defaults.find((d) => d.day_of_week === dow && d.direction === direction) ?? null;
+      const def = defaults.find((d) => d.day_of_week === dow) ?? null;
       setStudentDefault(def);
       if (existing) {
         const loadedSlotId = existing.new_bus_time_slot_id ?? def?.bus_time_slot_id ?? "";
@@ -137,7 +136,7 @@ export function AdminBusChangeDnD({
       }
       setLoadingStudent(false);
     });
-  }, [selectedStudentId, selectedDates, direction]);
+  }, [selectedStudentId, selectedDates]);
 
   // ── Derived ──
 
@@ -170,7 +169,7 @@ export function AdminBusChangeDnD({
         .slice(0, 20)
     : [];
 
-  const dirSlots = busTimeSlots.filter((s) => s.direction === direction);
+  const dirSlots = busTimeSlots;
 
   const baseStops =
     stopMode === "pickup"
@@ -243,7 +242,6 @@ export function AdminBusChangeDnD({
       const result = await bulkCreateBusChanges(
         selectedStudentId,
         selectedDates.map((d) => formatDateYmdKst(d)),
-        direction,
         changeType,
         slotId,
         busNumberId,
@@ -275,7 +273,7 @@ export function AdminBusChangeDnD({
           reason || undefined
         )
       : await createAdminBusChange(
-          selectedStudentId, singleDate, direction,
+          selectedStudentId, singleDate,
           changeType,
           slotId,
           busNumberId,
@@ -288,7 +286,7 @@ export function AdminBusChangeDnD({
       toast.error(result.error);
     } else {
       // 방과후 연동: 교시 변경 시 enrollment 업데이트
-      if (direction === "dropoff" && isAfterschoolDay) {
+      if (isAfterschoolDay) {
         if (isAfterschoolSlot) {
           if (afterschoolToday && afterschoolToday.second_period !== newSecondPeriod) {
             await updateAfterschoolSecondPeriod(selectedStudentId, dow, newSecondPeriod);
@@ -322,23 +320,10 @@ export function AdminBusChangeDnD({
 
   return (
     <div className="border rounded-xl bg-slate-50/40 p-4 space-y-4">
-      {/* Header: date + direction */}
+      {/* Header: date */}
       <div className="flex items-center gap-2 flex-wrap">
         <span className="text-sm font-semibold text-slate-700">당일 변경</span>
         <MultiDatePicker selected={selectedDates} onSelect={setSelectedDates} />
-        <div className="flex rounded-lg overflow-hidden border border-slate-200">
-          {(["pickup", "dropoff"] as const).map((d) => (
-            <button
-              key={d}
-              onClick={() => setDirection(d)}
-              className={`px-3 py-1 text-xs font-medium transition-colors ${
-                direction === d ? "bg-slate-700 text-white" : "bg-white text-slate-600 hover:bg-slate-50"
-              }`}
-            >
-              {d === "pickup" ? "등원" : "하원"}
-            </button>
-          ))}
-        </div>
       </div>
 
       {/* Student search */}
@@ -443,8 +428,8 @@ export function AdminBusChangeDnD({
             </div>
           </div>
 
-          {/* 방과후 교시 선택 (하원 + 방과후 등록된 날만 표시) */}
-          {direction === "dropoff" && isAfterschoolDay && (
+          {/* 방과후 교시 선택 (방과후 등록된 날만 표시) */}
+          {isAfterschoolDay && (
             <div>
               <label className="text-xs font-medium text-slate-600 block mb-1">
                 방과후 교시

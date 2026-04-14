@@ -9,13 +9,12 @@ import { MonitorBusCard, BUS_CARD_COLORS } from "@/components/bus/MonitorBusCard
 import { useBusRealtime } from "@/lib/hooks/use-bus-realtime";
 import { applyCheckRecord, applyChangeRequest } from "@/lib/bus/realtime-utils";
 
-const DIR_LABEL = { pickup: "등원", dropoff: "하원" } as const;
 const DAY_LABELS = ["월", "화", "수", "목", "금"] as const;
 
 /** ISO day (1=Mon ~ 5=Fri) → 금주 해당 요일의 YYYY-MM-DD */
 function getDateForIsoDay(isoDay: number): string {
   const now = new Date();
-  const currentIso = now.getDay() === 0 ? 7 : now.getDay(); // JS 0=Sun → ISO 7
+  const currentIso = now.getDay() === 0 ? 7 : now.getDay();
   const diff = isoDay - currentIso;
   const target = new Date(now);
   target.setDate(now.getDate() + diff);
@@ -28,8 +27,8 @@ function getDateForIsoDay(isoDay: number): string {
 /** 오늘의 ISO day (1~5, 주말이면 금요일=5) */
 function getTodayIsoDay(): number {
   const jsDay = new Date().getDay();
-  if (jsDay === 0) return 5; // 일요일 → 금요일
-  if (jsDay === 6) return 5; // 토요일 → 금요일
+  if (jsDay === 0) return 5;
+  if (jsDay === 6) return 5;
   return jsDay;
 }
 
@@ -38,14 +37,12 @@ type TimeGroup = {
   slotId: string;
   slotTime: string;
   slotLabel: string;
-  direction: "pickup" | "dropoff";
   cards: BusManifestGroup[];
 };
 
-function getDefaultSlotId(slots: BusTimeSlot[], direction: "pickup" | "dropoff"): string {
-  const dirSlots = slots.filter((s) => s.direction === direction);
-  const kindergarten = dirSlots.find((s) => s.label.includes("유치부"));
-  return kindergarten?.id ?? dirSlots[0]?.id ?? "";
+function getDefaultSlotId(slots: BusTimeSlot[]): string {
+  const kindergarten = slots.find((s) => s.label.includes("유치부"));
+  return kindergarten?.id ?? slots[0]?.id ?? "";
 }
 
 export function BusMonitorClient({
@@ -53,7 +50,6 @@ export function BusMonitorClient({
 }: {
   busTimeSlots: BusTimeSlot[];
 }) {
-  const [direction, setDirection] = useState<"pickup" | "dropoff">("dropoff");
   const [dayOfWeek, setDayOfWeek] = useState<number>(getTodayIsoDay);
   const [allGroups, setAllGroups] = useState<TimeGroup[]>([]);
   const [loading, setLoading] = useState(false);
@@ -62,22 +58,20 @@ export function BusMonitorClient({
 
   // Race condition 방지
   const loadIdRef = useRef(0);
-  // 중복 로드 방지: `${direction}-${dayOfWeek}`
+  // 중복 로드 방지
   const loadedKeyRef = useRef("");
 
-  const loadData = useCallback(async (dir: "pickup" | "dropoff", day: number, slotId: string) => {
-    const key = `${dir}-${day}`;
+  const loadData = useCallback(async (day: number) => {
+    const key = `${day}`;
 
-    // 이미 같은 direction+day 데이터가 로드되어 있으면 스킵
     if (loadedKeyRef.current === key) return;
 
     const id = ++loadIdRef.current;
     setLoading(true);
 
     const date = getDateForIsoDay(day);
-    const result = await getDailyBusManifest(date, dir);
+    const result = await getDailyBusManifest(date);
 
-    // stale 응답 무시
     if (loadIdRef.current !== id) return;
 
     const timeMap = new Map<string, TimeGroup>();
@@ -88,7 +82,6 @@ export function BusMonitorClient({
           slotId: g.bus_time_slot_id,
           slotTime: g.slot_time,
           slotLabel: g.slot_label,
-          direction: dir,
           cards: [],
         });
       }
@@ -105,20 +98,12 @@ export function BusMonitorClient({
     setInitialLoaded(true);
   }, []);
 
-  // 초기 로드: mount 시 기본 필터로 1회 자동 로드
+  // 초기 로드
   useEffect(() => {
-    const defaultSlot = getDefaultSlotId(busTimeSlots, "dropoff");
+    const defaultSlot = getDefaultSlotId(busTimeSlots);
     setSlotFilter(defaultSlot);
-    loadData("dropoff", getTodayIsoDay(), defaultSlot);
+    loadData(getTodayIsoDay());
   }, [busTimeSlots, loadData]);
-
-  const handleDirectionChange = (newDir: "pickup" | "dropoff") => {
-    if (newDir === direction) return;
-    setDirection(newDir);
-    setSlotFilter("");
-    setAllGroups([]);
-    loadedKeyRef.current = "";
-  };
 
   const handleDayChange = (newDay: number) => {
     if (newDay === dayOfWeek) return;
@@ -128,32 +113,30 @@ export function BusMonitorClient({
     loadedKeyRef.current = "";
   };
 
-  const handleSlotSelect = useCallback(async (slotId: string, dir: "pickup" | "dropoff", day: number) => {
+  const handleSlotSelect = useCallback(async (slotId: string, day: number) => {
     setSlotFilter(slotId);
-    await loadData(dir, day, slotId);
+    await loadData(day);
   }, [loadData]);
 
   const handleRefresh = useCallback(() => {
     loadedKeyRef.current = "";
     if (slotFilter) {
-      loadData(direction, dayOfWeek, slotFilter);
+      loadData(dayOfWeek);
     }
-  }, [slotFilter, direction, dayOfWeek, loadData]);
+  }, [slotFilter, dayOfWeek, loadData]);
 
   // Realtime: 오늘 요일 탭에서만 활성화
   const todayDate = getDateForIsoDay(getTodayIsoDay());
   const isViewingToday = dayOfWeek === getTodayIsoDay();
 
-  // Realtime 헬퍼: 이벤트 발생 시 현재 슬롯 재로드
   const reloadToday = useCallback(() => {
     loadedKeyRef.current = "";
-    if (slotFilter) loadData(direction, dayOfWeek, slotFilter);
-  }, [slotFilter, direction, dayOfWeek, loadData]);
+    if (slotFilter) loadData(dayOfWeek);
+  }, [slotFilter, dayOfWeek, loadData]);
 
   useBusRealtime(todayDate, {
     onCheckRecord: (event, row) => {
       if (!isViewingToday) return;
-      // payload가 비어있으면(unauthenticated) refetch로 폴백
       if (!row.student_profile_id) { reloadToday(); return; }
       setAllGroups((prev) =>
         prev.map((tg) => ({
@@ -164,7 +147,6 @@ export function BusMonitorClient({
     },
     onChangeRequest: (event, row) => {
       if (!isViewingToday) return;
-      // payload 비거나 DELETE, 호차변경 → refetch
       if (!row.student_profile_id || event === "DELETE" || row.change_type === "change") { reloadToday(); return; }
       setAllGroups((prev) =>
         prev.map((tg) => {
@@ -177,9 +159,6 @@ export function BusMonitorClient({
       );
     },
   }, { enabled: isViewingToday });
-
-  // 해당 direction의 시간대 목록
-  const directionSlots = busTimeSlots.filter((s) => s.direction === direction);
 
   // 선택된 시간대의 카드만 필터
   const filteredGroups = allGroups.filter((tg) =>
@@ -213,10 +192,6 @@ export function BusMonitorClient({
           <div className="h-8 w-20 bg-slate-200 rounded" />
         </div>
         <div className="flex gap-2">
-          <div className="h-10 w-20 bg-slate-200 rounded" />
-          <div className="h-10 w-20 bg-slate-200 rounded" />
-        </div>
-        <div className="flex gap-2">
           {[1, 2, 3].map((i) => (
             <div key={i} className="h-9 w-28 bg-slate-200 rounded" />
           ))}
@@ -248,28 +223,8 @@ export function BusMonitorClient({
 
   return (
     <div className="w-full space-y-4">
-      {/* Row 1: 등원/하원 토글 + 나이 범례 */}
+      {/* Row 1: 나이 범례 */}
       <div className="flex items-center gap-3 flex-wrap">
-        <div className="flex gap-2">
-          <Button
-            size="lg"
-            variant={direction === "pickup" ? "default" : "outline"}
-            onClick={() => handleDirectionChange("pickup")}
-            className="text-lg px-6"
-          >
-            등원
-          </Button>
-          <Button
-            size="lg"
-            variant={direction === "dropoff" ? "default" : "outline"}
-            onClick={() => handleDirectionChange("dropoff")}
-            className="text-lg px-6"
-          >
-            하원
-          </Button>
-        </div>
-
-        {/* 나이별 색상 범례 */}
         <div className="flex items-center gap-3 ml-auto">
           <span className="text-xs text-slate-400">나이:</span>
           <span className="text-xs font-bold text-pink-700">5세</span>
@@ -283,7 +238,7 @@ export function BusMonitorClient({
       <div className="flex items-center gap-3 flex-wrap">
         <div className="flex gap-1.5">
           {DAY_LABELS.map((label, idx) => {
-            const isoDay = idx + 1; // 1=월 ~ 5=금
+            const isoDay = idx + 1;
             return (
               <Button
                 key={isoDay}
@@ -312,17 +267,17 @@ export function BusMonitorClient({
 
       {/* Row 3: 시간대 버튼 목록 */}
       <div className="flex gap-2 flex-wrap">
-        {directionSlots.map((slot) => (
+        {busTimeSlots.map((slot) => (
           <Button
             key={slot.id}
             size="sm"
             variant={slotFilter === slot.id ? "default" : "outline"}
-            onClick={() => handleSlotSelect(slot.id, direction, dayOfWeek)}
+            onClick={() => handleSlotSelect(slot.id, dayOfWeek)}
           >
             {formatTime(slot.time)} {slot.label}
           </Button>
         ))}
-        {directionSlots.length === 0 && (
+        {busTimeSlots.length === 0 && (
           <p className="text-sm text-slate-400">시간대가 없습니다.</p>
         )}
       </div>
@@ -345,20 +300,14 @@ export function BusMonitorClient({
       {/* 호차별 카드 그리드 */}
       <div className="space-y-4">
         {filteredGroups.map((tg) => (
-          <div key={`${tg.slotTime}-${tg.direction}`}>
+          <div key={tg.slotTime}>
             {/* 시간대 헤더 */}
             <div className="flex items-center gap-3 mb-2">
               <span className="text-lg font-bold text-slate-700">
                 {formatTime(tg.slotTime)}
               </span>
-              <span
-                className={`text-base font-bold px-3 py-0.5 rounded-full ${
-                  tg.direction === "pickup"
-                    ? "bg-blue-100 text-blue-700"
-                    : "bg-orange-100 text-orange-700"
-                }`}
-              >
-                {DIR_LABEL[tg.direction]}
+              <span className="text-base font-bold px-3 py-0.5 rounded-full bg-orange-100 text-orange-700">
+                하원
               </span>
               {tg.slotLabel && (
                 <span className="text-base text-slate-500">{tg.slotLabel}</span>

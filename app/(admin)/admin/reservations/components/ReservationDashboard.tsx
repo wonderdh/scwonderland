@@ -28,6 +28,17 @@ import {
   ATTENDANCE_STATUSES,
   type AttendanceStatus,
 } from "@/lib/constants/attendance";
+import {
+  groupAttendanceReservations,
+  groupBusReservations,
+} from "@/lib/utils/group-consecutive-reservations";
+
+function formatGroupRange(startDate: string, endDate: string, count: number) {
+  if (count === 1) return format(parseISO(startDate), "M/d(EEE)", { locale: ko });
+  const start = format(parseISO(startDate), "M/d", { locale: ko });
+  const end = format(parseISO(endDate), "M/d", { locale: ko });
+  return `${start} ~ ${end} (${count}일)`;
+}
 
 type StudentOption = {
   id: string;
@@ -73,7 +84,6 @@ export function ReservationDashboard({
   // 예약 폼 상태 — 버스
   const [busStudentId, setBusStudentId] = useState("");
   const [busDates, setBusDates] = useState<Date[]>([]);
-  const [busDirection, setBusDirection] = useState<"pickup" | "dropoff">("dropoff");
   const [busChangeType, setBusChangeType] = useState<"no_ride" | "change" | "absent">("no_ride");
   const [busSlotId, setBusSlotId] = useState("");
   const [busNumberId, setBusNumberId] = useState("");
@@ -83,6 +93,16 @@ export function ReservationDashboard({
   const { attendance, busChanges } = initialReservations;
   const attCount = attendance.length;
   const busCount = busChanges.length;
+
+  // 연속 날짜 그룹화
+  const attendanceGroups = useMemo(
+    () => groupAttendanceReservations(attendance),
+    [attendance],
+  );
+  const busChangeGroups = useMemo(
+    () => groupBusReservations(busChanges),
+    [busChanges],
+  );
 
   // 캘린더 히트맵 데이터
   const heatmapDates = useMemo(() => {
@@ -155,7 +175,6 @@ export function ReservationDashboard({
     const result = await bulkCreateBusChanges(
       busStudentId,
       dates,
-      busDirection,
       busChangeType,
       busSlotId || undefined,
       busNumberId || undefined,
@@ -173,19 +192,29 @@ export function ReservationDashboard({
     router.refresh();
   }
 
-  async function handleDeleteAttendance(id: string) {
-    if (!window.confirm("이 출결 예약을 삭제하시겠습니까?")) return;
-    const result = await deleteAttendance(id);
-    if (result.error) return toast.error(result.error);
-    toast.success("삭제되었습니다.");
+  async function handleDeleteAttendance(ids: string[]) {
+    const msg =
+      ids.length === 1
+        ? "이 출결 예약을 삭제하시겠습니까?"
+        : `연속된 ${ids.length}일 출결 예약을 모두 삭제하시겠습니까?`;
+    if (!window.confirm(msg)) return;
+    const results = await Promise.all(ids.map((id) => deleteAttendance(id)));
+    const failed = results.find((r) => r.error);
+    if (failed?.error) return toast.error(failed.error);
+    toast.success(`${ids.length}건 삭제되었습니다.`);
     router.refresh();
   }
 
-  async function handleDeleteBusChange(id: string) {
-    if (!window.confirm("이 버스 변경을 삭제하시겠습니까?")) return;
-    const result = await deleteAdminBusChange(id);
-    if (result.error) return toast.error(result.error);
-    toast.success("삭제되었습니다.");
+  async function handleDeleteBusChange(ids: string[]) {
+    const msg =
+      ids.length === 1
+        ? "이 버스 변경을 삭제하시겠습니까?"
+        : `연속된 ${ids.length}일 버스 변경을 모두 삭제하시겠습니까?`;
+    if (!window.confirm(msg)) return;
+    const results = await Promise.all(ids.map((id) => deleteAdminBusChange(id)));
+    const failed = results.find((r) => r.error);
+    if (failed?.error) return toast.error(failed.error);
+    toast.success(`${ids.length}건 삭제되었습니다.`);
     router.refresh();
   }
 
@@ -326,38 +355,41 @@ export function ReservationDashboard({
                 </span>
               </div>
               <ul className="divide-y divide-slate-100 max-h-72 overflow-y-auto">
-                {attendance.map((a) => (
-                  <li
-                    key={a.id}
-                    className="flex items-center gap-3 px-4 py-2.5 text-sm"
-                  >
-                    <span className="w-20 text-xs text-slate-500">
-                      {format(parseISO(a.attendance_date), "M/d(EEE)", { locale: ko })}
-                    </span>
-                    <span className="font-medium text-slate-800 min-w-0 truncate flex-1">
-                      {a.student_name}
-                    </span>
-                    <Badge
-                      className={`text-[10px] ${
-                        ATTENDANCE_STATUS_CONFIG[a.status as AttendanceStatus]?.badgeClass ?? "bg-slate-100 text-slate-600"
-                      }`}
+                {attendanceGroups.map((g) => {
+                  const head = g.items[0];
+                  return (
+                    <li
+                      key={head.id}
+                      className="flex items-center gap-3 px-4 py-2.5 text-sm"
                     >
-                      {ATTENDANCE_STATUS_CONFIG[a.status as AttendanceStatus]?.label ?? a.status}
-                    </Badge>
-                    {a.note && (
-                      <span className="text-xs text-slate-400 truncate max-w-24">
-                        {a.note}
+                      <span className={`text-xs text-slate-500 ${g.count > 1 ? "w-32" : "w-20"}`}>
+                        {formatGroupRange(g.startDate, g.endDate, g.count)}
                       </span>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteAttendance(a.id)}
-                      className="text-xs text-slate-300 hover:text-red-500 shrink-0"
-                    >
-                      삭제
-                    </button>
-                  </li>
-                ))}
+                      <span className="font-medium text-slate-800 min-w-0 truncate flex-1">
+                        {head.student_name}
+                      </span>
+                      <Badge
+                        className={`text-[10px] ${
+                          ATTENDANCE_STATUS_CONFIG[head.status as AttendanceStatus]?.badgeClass ?? "bg-slate-100 text-slate-600"
+                        }`}
+                      >
+                        {ATTENDANCE_STATUS_CONFIG[head.status as AttendanceStatus]?.label ?? head.status}
+                      </Badge>
+                      {head.note && (
+                        <span className="text-xs text-slate-400 truncate max-w-24">
+                          {head.note}
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteAttendance(g.items.map((i) => i.id))}
+                        className="text-xs text-slate-300 hover:text-red-500 shrink-0"
+                      >
+                        삭제
+                      </button>
+                    </li>
+                  );
+                })}
               </ul>
             </div>
           )}
@@ -371,37 +403,37 @@ export function ReservationDashboard({
                 </span>
               </div>
               <ul className="divide-y divide-slate-100 max-h-72 overflow-y-auto">
-                {busChanges.map((b) => (
-                  <li
-                    key={b.id}
-                    className="flex items-center gap-3 px-4 py-2.5 text-sm"
-                  >
-                    <span className="w-20 text-xs text-slate-500">
-                      {format(parseISO(b.request_date), "M/d(EEE)", { locale: ko })}
-                    </span>
-                    <span className="font-medium text-slate-800 min-w-0 truncate flex-1">
-                      {b.student_name}
-                    </span>
-                    <Badge variant="outline" className="text-[10px]">
-                      {b.direction === "pickup" ? "등원" : "하원"}
-                    </Badge>
-                    <Badge className="bg-orange-100 text-orange-700 text-[10px]">
-                      {BUS_TYPE_LABELS[b.change_type] ?? b.change_type}
-                    </Badge>
-                    {b.new_bus_number_label && (
-                      <span className="text-xs text-slate-500">
-                        → {b.new_bus_number_label}
-                      </span>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteBusChange(b.id)}
-                      className="text-xs text-slate-300 hover:text-red-500 shrink-0"
+                {busChangeGroups.map((g) => {
+                  const head = g.items[0];
+                  return (
+                    <li
+                      key={head.id}
+                      className="flex items-center gap-3 px-4 py-2.5 text-sm"
                     >
-                      삭제
-                    </button>
-                  </li>
-                ))}
+                      <span className={`text-xs text-slate-500 ${g.count > 1 ? "w-32" : "w-20"}`}>
+                        {formatGroupRange(g.startDate, g.endDate, g.count)}
+                      </span>
+                      <span className="font-medium text-slate-800 min-w-0 truncate flex-1">
+                        {head.student_name}
+                      </span>
+                      <Badge className="bg-orange-100 text-orange-700 text-[10px]">
+                        {BUS_TYPE_LABELS[head.change_type] ?? head.change_type}
+                      </Badge>
+                      {head.new_bus_number_label && (
+                        <span className="text-xs text-slate-500">
+                          → {head.new_bus_number_label}
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteBusChange(g.items.map((i) => i.id))}
+                        className="text-xs text-slate-300 hover:text-red-500 shrink-0"
+                      >
+                        삭제
+                      </button>
+                    </li>
+                  );
+                })}
               </ul>
             </div>
           )}
@@ -514,24 +546,6 @@ export function ReservationDashboard({
                 onChange={setBusStudentId}
               />
 
-              <label className="text-xs font-medium text-slate-600">방향</label>
-              <div className="flex gap-2">
-                {(["pickup", "dropoff"] as const).map((dir) => (
-                  <button
-                    key={dir}
-                    type="button"
-                    onClick={() => setBusDirection(dir)}
-                    className={`rounded-lg px-4 py-1.5 text-xs font-medium transition-colors ${
-                      busDirection === dir
-                        ? "bg-blue-100 text-blue-700 ring-2 ring-blue-300"
-                        : "bg-slate-100 text-slate-500"
-                    }`}
-                  >
-                    {dir === "pickup" ? "등원" : "하원"}
-                  </button>
-                ))}
-              </div>
-
               <label className="text-xs font-medium text-slate-600">
                 유형
               </label>
@@ -569,9 +583,7 @@ export function ReservationDashboard({
                     className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
                   >
                     <option value="">선택...</option>
-                    {busTimeSlots
-                      .filter((s) => s.direction === busDirection)
-                      .map((s) => (
+                    {busTimeSlots.map((s) => (
                         <option key={s.id} value={s.id}>
                           {s.label}
                         </option>

@@ -313,7 +313,6 @@ export type StudentBusDefault = {
   id: string;
   student_profile_id: string;
   day_of_week: number;
-  direction: "pickup" | "dropoff";
   bus_time_slot_id: string;
   bus_stop_id?: string | null;
   bus_stop_name?: string | null;
@@ -330,7 +329,6 @@ export type BusChangeRequest = {
   id: string;
   student_profile_id: string;
   request_date: string;
-  direction: "pickup" | "dropoff";
   change_type: "change" | "no_ride" | "absent";
   new_bus_time_slot_id: string | null;
   new_bus_number_id: string | null;
@@ -389,7 +387,6 @@ export type NoRideEntry = {
   korean_name: string | null;
   english_name: string | null;
   student_number: string | null;
-  direction: "pickup" | "dropoff";
   original_slot_time?: string;
   original_bus_label?: string;
   change_type?: "no_ride" | "absent";
@@ -581,5 +578,4 @@ export type BusCheckBatchItem = {
   studentProfileId: string;
   busTimeSlotId: string;
   busNumberId: string;
-  direction: "pickup" | "dropoff";
 };

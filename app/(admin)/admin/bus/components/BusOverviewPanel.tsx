@@ -15,11 +15,6 @@ const DAYS = [
   { value: 5, label: "금" },
 ];
 
-const DIRECTIONS: { value: "pickup" | "dropoff"; label: string }[] = [
-  { value: "pickup", label: "등원" },
-  { value: "dropoff", label: "하원" },
-];
-
 export function BusOverviewPanel({
   busNumbers,
   busTimeSlots,
@@ -43,7 +38,7 @@ export function BusOverviewPanel({
   );
 }
 
-/* ── 요일별 탭 (기존 BusOverviewPanel 내용) ── */
+/* ── 요일별 탭 ── */
 
 function ByDayContent({
   busNumbers,
@@ -57,32 +52,31 @@ function ByDayContent({
   const defaultDay = jsDay >= 1 && jsDay <= 5 ? jsDay : 1;
 
   const [day, setDay] = useState(defaultDay);
-  const [direction, setDirection] = useState<"pickup" | "dropoff">("dropoff");
   const [data, setData] = useState<BusDefaultAssignment[]>([]);
   const [stopSortOrderMap, setStopSortOrderMap] = useState<Map<string, number>>(new Map());
   const [afterschoolIds, setAfterschoolIds] = useState<Set<string>>(new Set<string>());
   const [loading, setLoading] = useState(false);
   const fetchVersionRef = useRef(0);
 
-  const filteredSlots = busTimeSlots.filter((s) => s.direction === direction && s.is_active);
+  const filteredSlots = busTimeSlots.filter((s) => s.is_active);
 
   const getDefaultSlotId = useCallback(
-    (dir: "pickup" | "dropoff") => {
-      const slots = busTimeSlots.filter((s) => s.direction === dir && s.is_active);
+    () => {
+      const slots = busTimeSlots.filter((s) => s.is_active);
       return slots.length > 0 ? slots[0].id : "";
     },
     [busTimeSlots]
   );
 
-  const [slotId, setSlotId] = useState<string>(() => getDefaultSlotId("dropoff"));
+  const [slotId, setSlotId] = useState<string>(() => getDefaultSlotId());
 
   const fetchData = useCallback(async () => {
     const version = ++fetchVersionRef.current;
     setLoading(true);
     try {
       const [result, stopDayData, afterschoolResult] = await Promise.all([
-        getBulkBusDefaults(day, direction, slotId || undefined),
-        listBusStopDayAssignments(day, direction, slotId || undefined),
+        getBulkBusDefaults(day, slotId || undefined),
+        listBusStopDayAssignments(day, slotId || undefined),
         listAfterschoolStudentIdsByDay(day),
       ]);
       if (version !== fetchVersionRef.current) return;
@@ -94,15 +88,11 @@ function ByDayContent({
     } finally {
       if (version === fetchVersionRef.current) setLoading(false);
     }
-  }, [day, direction, slotId]);
+  }, [day, slotId]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
-
-  useEffect(() => {
-    setSlotId(getDefaultSlotId(direction));
-  }, [direction, getDefaultSlotId]);
 
   const grouped = groupByBusAndStop(data, busNumbers, stopSortOrderMap);
 
@@ -121,22 +111,6 @@ function ByDayContent({
               }`}
             >
               {d.label}
-            </button>
-          ))}
-        </div>
-
-        <div className="flex rounded-lg border border-slate-200 overflow-hidden">
-          {DIRECTIONS.map((dir) => (
-            <button
-              key={dir.value}
-              onClick={() => setDirection(dir.value)}
-              className={`px-4 py-1.5 text-sm font-medium transition-colors ${
-                direction === dir.value
-                  ? "bg-blue-600 text-white"
-                  : "bg-white text-slate-600 hover:bg-slate-50"
-              }`}
-            >
-              {dir.label}
             </button>
           ))}
         </div>

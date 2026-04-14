@@ -45,10 +45,8 @@ export function BusStudentAssignmentManager({
   allStudents: StudentItem[];
 }) {
   const [day, setDay] = useState(1);
-  const [direction, setDirection] = useState<"pickup" | "dropoff">("dropoff");
   const [timeSlotId, setTimeSlotId] = useState(() => {
-    const slots = busTimeSlots.filter((s) => s.direction === "dropoff");
-    return slots[0]?.id ?? "";
+    return busTimeSlots[0]?.id ?? "";
   });
   const [stops, setStops] = useState<BusStop[]>(initialStops);
   const [dayAssignments, setDayAssignments] = useState<BusStopDayAssignment[]>([]);
@@ -77,17 +75,16 @@ export function BusStudentAssignmentManager({
   const [editingNoteValue, setEditingNoteValue] = useState("");
   const [notePopupPos, setNotePopupPos] = useState<{ x: number; y: number } | null>(null);
 
-  // Filter time slots by direction
-  const filteredSlots = busTimeSlots.filter((s) => s.direction === direction);
+  const filteredSlots = busTimeSlots;
 
   const fetchAll = useCallback(async () => {
     const version = ++fetchVersionRef.current;
     setLoading(true);
     const [defaults, stopDayData, allDirDefaults, asIds] = await Promise.all([
-      getBulkBusDefaults(day, direction, timeSlotId || undefined),
-      listBusStopDayAssignments(day, direction, timeSlotId || undefined),
-      // 같은 요일+방향의 전체 배정 조회 (다른 시간대 배정 학생 필터용)
-      getBulkBusDefaults(day, direction),
+      getBulkBusDefaults(day, timeSlotId || undefined),
+      listBusStopDayAssignments(day, timeSlotId || undefined),
+      // 같은 요일의 전체 배정 조회 (다른 시간대 배정 학생 필터용)
+      getBulkBusDefaults(day),
       listAfterschoolStudentIdsByDay(day),
     ]);
     // 이미 다른 필터로 변경된 경우 무시
@@ -103,7 +100,7 @@ export function BusStudentAssignmentManager({
     );
     setHasChanges(false);
     setLoading(false);
-  }, [day, direction, timeSlotId]);
+  }, [day, timeSlotId]);
 
   const refreshStops = useCallback(async () => {
     const data = await listBusStops();
@@ -327,7 +324,6 @@ export function BusStudentAssignmentManager({
     setSaving(true);
     const result = await saveBulkBusDefaults(
       day,
-      direction,
       localAssignments.map((a) => ({
         student_profile_id: a.student_profile_id,
         bus_time_slot_id: a.bus_time_slot_id,
@@ -480,30 +476,6 @@ export function BusStudentAssignmentManager({
               {d.label}
             </button>
           ))}
-        </div>
-
-        {/* 방향 */}
-        <div className="flex gap-1">
-          <button
-            onClick={() => guardedSetFilter(() => { setDirection("pickup"); setTimeSlotId(busTimeSlots.find(s => s.direction === "pickup")?.id ?? ""); })}
-            className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
-              direction === "pickup"
-                ? "bg-blue-600 text-white"
-                : "bg-blue-50 text-blue-600 hover:bg-blue-100"
-            }`}
-          >
-            등원
-          </button>
-          <button
-            onClick={() => guardedSetFilter(() => { setDirection("dropoff"); setTimeSlotId(busTimeSlots.find(s => s.direction === "dropoff")?.id ?? ""); })}
-            className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
-              direction === "dropoff"
-                ? "bg-orange-600 text-white"
-                : "bg-orange-50 text-orange-600 hover:bg-orange-100"
-            }`}
-          >
-            하원
-          </button>
         </div>
 
         {/* 시간대 */}

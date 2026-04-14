@@ -17,13 +17,13 @@
 | 함수 | 파라미터 | DB 테이블 |
 |------|---------|----------|
 | `listBusTimeSlots` | () | bus_time_slots |
-| `getDailyBusManifest` | (date, direction) | bus_time_slots, student_bus_defaults, bus_change_requests, bus_check_records, students, bus_numbers, bus_stops |
+| `getDailyBusManifest` | (date) | bus_time_slots, student_bus_defaults, bus_change_requests, bus_check_records, students, bus_numbers, bus_stops |
 | `listAllActiveStudentNames` | () | students, profiles |
 
 ## 타입
 - `BusManifestGroup` — 호차별 학생 그룹
 - `BusManifestEntry` — 개별 학생 승하차 정보
-- `BusTimeSlot` — 시간대 정보 (id, time, label, direction)
+- `BusTimeSlot` — 시간대 정보 (id, time, label)
 - `AfterSchoolBusEntry` — 방과후 학생 정보
 
 ## 데이터 흐름
@@ -39,12 +39,10 @@
 2. 최소한의 래퍼 (min-h-screen bg-slate-100)
 
 ### BusMonitorClient (핵심 컴포넌트)
-1. **초기 로드**: `getDailyBusManifest()` 등원/하원 각각 + `listAllActiveStudentNames()` 병렬 호출
-2. **시간대별 그룹 병합**:
-   - pickup/dropoff 결과를 `TimeGroup`으로 병합
-   - 시간순 정렬, 같은 시간이면 등원 먼저
+1. **초기 로드**: `getDailyBusManifest()` + `listAllActiveStudentNames()` 병렬 호출
+2. **시간대별 그룹 병합**: 결과를 `TimeGroup`으로 병합, 시간순 정렬
 3. **미배정 학생 계산**: manifest에 없는 학생 목록 생성
-4. **방과후 학생**: 하원 결과의 `afterschoolStudents` 별도 표시
+4. **방과후 학생**: 매니페스트의 `afterschoolStudents` 별도 표시
 5. **필터링**:
    - 전체 보기 / 현재 시간 이후
    - 그룹 필터: 유치부, 오후반, 방과후 (시간대 label 기반)

@@ -44,7 +44,6 @@ export function BusNumbersManager({
 
   // Filters
   const [day, setDay] = useState(1);
-  const [direction, setDirection] = useState<"pickup" | "dropoff">("dropoff");
   const [timeSlotId, setTimeSlotId] = useState("");
 
   // Master stop list
@@ -70,16 +69,16 @@ export function BusNumbersManager({
   const [saving, setSaving] = useState(false);
   const [dragOverTarget, setDragOverTarget] = useState<string | null>(null);
 
-  const filteredSlots = busTimeSlots.filter((s) => s.direction === direction);
+  const filteredSlots = busTimeSlots;
 
   // ── Fetch ──
 
   const fetchDayAssignments = useCallback(async () => {
-    let data = await listBusStopDayAssignments(day, direction, timeSlotId || undefined);
+    let data = await listBusStopDayAssignments(day, timeSlotId || undefined);
     // 특정 시간대 선택 시 데이터가 없으면 기본(전체) 배정을 복사해서 표시
     const isSlotFallback = timeSlotId && data.length === 0;
     if (isSlotFallback) {
-      data = await listBusStopDayAssignments(day, direction, undefined);
+      data = await listBusStopDayAssignments(day, undefined);
     }
     const map = new Map<string, StopAssignment>();
     for (const a of data) map.set(a.bus_stop_id, { busNumberId: a.bus_number_id, sortOrder: a.sort_order });
@@ -88,15 +87,15 @@ export function BusNumbersManager({
     serverAssignments.current = isSlotFallback
       ? new Map()
       : new Map(map.entries().map(([k, v]) => [k, { ...v }]));
-  }, [day, direction, timeSlotId]);
+  }, [day, timeSlotId]);
 
   const fetchSchedules = useCallback(async () => {
-    const data = await listBusStopSchedulesBulk(day, direction, timeSlotId || undefined);
+    const data = await listBusStopSchedulesBulk(day, timeSlotId || undefined);
     const map = new Map<string, string>();
     for (const s of data) map.set(s.bus_stop_id, s.estimated_time?.slice(0, 5) ?? "");
     setScheduleMap(map);
     serverSchedules.current = new Map(map);
-  }, [day, direction, timeSlotId]);
+  }, [day, timeSlotId]);
 
   useEffect(() => { fetchDayAssignments(); }, [fetchDayAssignments]);
   useEffect(() => { fetchSchedules(); }, [fetchSchedules]);
@@ -264,7 +263,7 @@ export function BusNumbersManager({
       bus_number_id: a.busNumberId,
       sort_order: a.sortOrder,
     }));
-    const aResult = await saveBusStopDayAssignments(day, assignmentArr, direction, timeSlotId || undefined);
+    const aResult = await saveBusStopDayAssignments(day, assignmentArr, timeSlotId || undefined);
     if (aResult.error) errors.push(`배정 저장: ${aResult.error}`);
 
     // 2. Save schedule changes
@@ -275,10 +274,10 @@ export function BusNumbersManager({
       const server = serverSchedules.current.get(stopId) ?? "";
       if (local === server) continue;
       if (local) {
-        const r = await upsertBusStopSchedule(stopId, day, direction, local, slotId);
+        const r = await upsertBusStopSchedule(stopId, day, local, slotId);
         if (r.error) errors.push(`시간 저장: ${r.error}`);
       } else {
-        const r = await deleteBusStopSchedule(stopId, day, direction, slotId);
+        const r = await deleteBusStopSchedule(stopId, day, slotId);
         if (r.error) errors.push(`시간 삭제: ${r.error}`);
       }
     }
@@ -310,7 +309,7 @@ export function BusNumbersManager({
     const errors: string[] = [];
     for (const d of DAYS) {
       if (d.value === day) continue;
-      const r = await upsertBusStopSchedule(stopId, d.value, direction, time, slotId);
+      const r = await upsertBusStopSchedule(stopId, d.value, time, slotId);
       if (r.error) errors.push(`${d.label}: ${r.error}`);
     }
     if (errors.length) toast.error(errors.join(", "));
@@ -425,25 +424,6 @@ export function BusNumbersManager({
               {d.label}
             </button>
           ))}
-        </div>
-
-        <div className="flex rounded-lg border border-slate-200 overflow-hidden">
-          <button
-            onClick={() => guardFilterChange(() => { setDirection("pickup"); setTimeSlotId(""); })}
-            className={`px-3 py-1.5 text-xs font-medium transition-colors ${
-              direction === "pickup" ? "bg-blue-600 text-white" : "bg-white text-slate-500 hover:bg-slate-50"
-            }`}
-          >
-            등원
-          </button>
-          <button
-            onClick={() => guardFilterChange(() => { setDirection("dropoff"); setTimeSlotId(""); })}
-            className={`px-3 py-1.5 text-xs font-medium transition-colors ${
-              direction === "dropoff" ? "bg-orange-600 text-white" : "bg-white text-slate-500 hover:bg-slate-50"
-            }`}
-          >
-            하원
-          </button>
         </div>
 
         <select

@@ -51,14 +51,13 @@ export function FullOverviewPanel() {
   const [unassigned, setUnassigned] = useState<{ day: number; profile_id: string; korean_name: string | null; english_name: string | null; age: number | null }[]>([]);
   const [afterschoolSet, setAfterschoolSet] = useState<Set<string>>(new Set());
   const [activeSlot, setActiveSlot] = useState<string>("");
-  const [direction, setDirection] = useState<"pickup" | "dropoff">("dropoff");
   const [search, setSearch] = useState("");
   const [downloading, setDownloading] = useState(false);
   const tableRef = useRef<HTMLDivElement>(null);
 
-  const loadData = useCallback(async (dir: "pickup" | "dropoff") => {
+  const loadData = useCallback(async () => {
     setLoading(true);
-    const result = await getWeeklyDropoffExportData(dir);
+    const result = await getWeeklyDropoffExportData();
     if ("error" in result) {
       setLoading(false);
       return;
@@ -74,9 +73,8 @@ export function FullOverviewPanel() {
     }
     setAfterschoolSet(asSet);
 
-    const dirSlots = result.slots.filter((s) => s.direction === dir);
-    if (dirSlots.length > 0) {
-      setActiveSlot(dirSlots[0].id);
+    if (result.slots.length > 0) {
+      setActiveSlot(result.slots[0].id);
     } else {
       setActiveSlot("");
     }
@@ -84,8 +82,8 @@ export function FullOverviewPanel() {
   }, []);
 
   useEffect(() => {
-    loadData(direction);
-  }, [direction, loadData]);
+    loadData();
+  }, [loadData]);
 
   // 검색어로 매칭되는 profileId Set
   const highlightIds = useMemo(() => {
@@ -107,8 +105,7 @@ export function FullOverviewPanel() {
     if (!tableRef.current) return;
     setDownloading(true);
     try {
-      const dirSlots = slots.filter((s) => s.direction === direction);
-      const selectedSlot = dirSlots.find((s) => s.id === activeSlot);
+      const selectedSlot = slots.find((s) => s.id === activeSlot);
       const slotTime = selectedSlot ? formatTime(selectedSlot.time) : "";
       const slotLabel = selectedSlot?.label ?? "";
       const { toPng } = await import("html-to-image");
@@ -117,26 +114,24 @@ export function FullOverviewPanel() {
         pixelRatio: 2,
       });
       const link = document.createElement("a");
-      const dlLabel = direction === "pickup" ? "등원표" : "하원표";
-      link.download = `${dlLabel}_${slotTime}_${slotLabel}.png`;
+      link.download = `하원표_${slotTime}_${slotLabel}.png`;
       link.href = dataUrl;
       link.click();
     } catch (err) {
       console.error("이미지 다운로드 실패:", err);
     }
     setDownloading(false);
-  }, [slots, activeSlot, direction]);
+  }, [slots, activeSlot]);
 
   if (loading) return <LoadingState className="py-8" />;
 
-  const dirSlots = slots.filter((s) => s.direction === direction);
+  const dirSlots = slots;
 
-  const dirLabel = direction === "pickup" ? "등원" : "하원";
+  const dirLabel = "하원";
 
   if (dirSlots.length === 0) {
     return (
       <div className="space-y-4">
-        <DirectionToggle direction={direction} onChange={setDirection} />
         <p className="text-sm text-slate-400 py-4">{dirLabel} 시간대가 등록되지 않았습니다.</p>
       </div>
     );
@@ -194,9 +189,8 @@ export function FullOverviewPanel() {
 
   return (
     <div className="space-y-4">
-      {/* 등원/하원 토글 + 검색 + 다운로드 */}
+      {/* 검색 + 다운로드 */}
       <div className="flex items-center gap-3 flex-wrap">
-        <DirectionToggle direction={direction} onChange={setDirection} />
         <Input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -373,33 +367,3 @@ export function FullOverviewPanel() {
   );
 }
 
-/* ── 등원/하원 토글 ── */
-
-function DirectionToggle({
-  direction,
-  onChange,
-}: {
-  direction: "pickup" | "dropoff";
-  onChange: (d: "pickup" | "dropoff") => void;
-}) {
-  return (
-    <div className="flex rounded-lg border border-slate-200 overflow-hidden">
-      {([
-        { value: "pickup" as const, label: "등원" },
-        { value: "dropoff" as const, label: "하원" },
-      ]).map((d) => (
-        <button
-          key={d.value}
-          onClick={() => onChange(d.value)}
-          className={`px-4 py-1.5 text-sm font-medium transition-colors ${
-            direction === d.value
-              ? "bg-blue-600 text-white"
-              : "bg-white text-slate-600 hover:bg-slate-50"
-          }`}
-        >
-          {d.label}
-        </button>
-      ))}
-    </div>
-  );
-}

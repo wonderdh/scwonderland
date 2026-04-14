@@ -69,7 +69,6 @@ export function DailyBusChanges() {
         {changes.map((ch) => {
           const name = ch.korean_name || ch.english_name || "이름 없음";
           const cfg = CHANGE_TYPE_CONFIG[ch.change_type] ?? CHANGE_TYPE_CONFIG.change;
-          const dir = ch.direction === "pickup" ? "등원" : "하원";
 
           const newSlotTime = ch.new_time_slot_time ? ch.new_time_slot_time.slice(0, 5) : "";
           const newSlotLabel = ch.new_time_slot_label ?? "";
@@ -95,9 +94,6 @@ export function DailyBusChanges() {
               </span>
               <span className="text-xs text-muted-foreground shrink-0">{dateLabel}</span>
               <span className="font-medium text-foreground truncate">{name}</span>
-              {ch.change_type !== "absent" && (
-                <span className="text-muted-foreground shrink-0">{dir}</span>
-              )}
               {/* PC: 기존→변경 표시 */}
               {origText && (
                 <span className="text-xs text-muted-foreground shrink-0 hidden sm:inline">

@@ -333,23 +333,20 @@ export async function bulkReserveAttendance(
   // 결석 시 버스 미탑승 자동 연동
   let busCount = 0;
   if (autoBusNoRide && status === "absent") {
-    const busRows = dates.flatMap((d) =>
-      (["pickup", "dropoff"] as const).map((dir) => ({
-        student_profile_id: studentProfileId,
-        request_date: d,
-        direction: dir,
-        change_type: "absent",
-        status: "approved",
-        reason: "출결 예약 연동 (결석)",
-        requested_at: now,
-        updated_at: now,
-      })),
-    );
+    const busRows = dates.map((d) => ({
+      student_profile_id: studentProfileId,
+      request_date: d,
+      change_type: "absent",
+      status: "approved",
+      reason: "출결 예약 연동 (결석)",
+      requested_at: now,
+      updated_at: now,
+    }));
 
     const { data: inserted, error: busError } = await supabase
       .from("bus_change_requests")
       .upsert(busRows, {
-        onConflict: "student_profile_id,request_date,direction",
+        onConflict: "student_profile_id,request_date",
         ignoreDuplicates: true,
       })
       .select("id");

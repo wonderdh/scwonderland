@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input";
 import type { BusManifestGroup, NoRideEntry } from "@/lib/types";
 import { getDailyBusManifest } from "@/app/(admin)/admin/actions";
 
-const DIR_LABEL = { pickup: "등원", dropoff: "하원" } as const;
 const DAY_NAMES = ["일", "월", "화", "수", "목", "금", "토"];
 
 function formatTime(t: string) {
@@ -18,18 +17,17 @@ export function TeacherBusClient() {
   const now = new Date();
   const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   const [date, setDate] = useState(today);
-  const [direction, setDirection] = useState<"pickup" | "dropoff">("pickup");
   const [groups, setGroups] = useState<BusManifestGroup[]>([]);
   const [noRides, setNoRides] = useState<NoRideEntry[]>([]);
   const [loading, setLoading] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
-    const result = await getDailyBusManifest(date, direction);
+    const result = await getDailyBusManifest(date);
     setGroups(result.groups);
     setNoRides(result.noRides);
     setLoading(false);
-  }, [date, direction]);
+  }, [date]);
 
   useEffect(() => {
     load();
@@ -49,29 +47,13 @@ export function TeacherBusClient() {
           className="w-40"
         />
         <span className="text-sm text-slate-500">({dayName})</span>
-        <div className="flex gap-1">
-          <Button
-            size="sm"
-            variant={direction === "pickup" ? "default" : "outline"}
-            onClick={() => setDirection("pickup")}
-          >
-            등원
-          </Button>
-          <Button
-            size="sm"
-            variant={direction === "dropoff" ? "default" : "outline"}
-            onClick={() => setDirection("dropoff")}
-          >
-            하원
-          </Button>
-        </div>
         <Button size="sm" variant="ghost" onClick={load} disabled={loading}>
           {loading ? <><Spinner size="sm" /> 불러오는 중...</> : "새로고침"}
         </Button>
       </div>
 
       <h3 className="text-sm font-semibold text-slate-700">
-        {date} ({dayName}) — {DIR_LABEL[direction]}
+        {date} ({dayName}) — 하원
       </h3>
 
       {groups.length === 0 && !loading && (

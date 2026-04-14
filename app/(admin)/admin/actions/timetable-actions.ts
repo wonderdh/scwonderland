@@ -46,7 +46,6 @@ export async function createAcademyPeriod(
       name: trimmed,
       start_time: startTime,
       end_time: endTime,
-      has_pickup: false,
       has_dropoff: false,
       group_label: groupLabel?.trim() || null,
     })
@@ -82,7 +81,6 @@ export async function updateAcademyPeriod(
       name: trimmed,
       start_time: startTime,
       end_time: endTime,
-      has_pickup: false,
       has_dropoff: false,
       group_label: groupLabel?.trim() || null,
       updated_at: new Date().toISOString(),

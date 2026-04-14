@@ -315,7 +315,6 @@ export const busLabels = {
   korean: {
     title: "승하차 현황",
     noData: "승하차 정보가 없습니다.",
-    pickup: "등원",
     dropoff: "하원",
     busNumber: "호차",
     timeSlot: "시간대",

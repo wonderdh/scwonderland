@@ -51,7 +51,6 @@ export type BusNumber = {
 
 export type BusTimeSlot = {
   id: string;
-  direction: "pickup" | "dropoff";
   label: string;
   time: string;
   is_active: boolean;
@@ -64,7 +63,6 @@ export type AcademyPeriod = {
   name: string;
   start_time: string;
   end_time: string;
-  has_pickup: boolean;
   has_dropoff: boolean;
   group_label: "유치부" | "방과후" | "오후반" | null;
   is_active: boolean;
@@ -76,7 +74,6 @@ export type BusCheckRecord = {
   id: string;
   student_profile_id: string;
   check_date: string;
-  direction: "pickup" | "dropoff";
   bus_time_slot_id: string;
   bus_number_id: string;
   boarded_at: string | null;
@@ -90,7 +87,6 @@ export type BusStopDayAssignment = {
   bus_stop_id: string;
   bus_number_id: string;
   day_of_week: number;
-  direction: "pickup" | "dropoff";
   bus_time_slot_id: string | null;
   sort_order: number;
   created_at: string;
@@ -111,7 +107,6 @@ export type BusStopSchedule = {
   id: string;
   bus_stop_id: string;
   day_of_week: number;
-  direction: "pickup" | "dropoff";
   bus_time_slot_id: string | null;
   estimated_time: string;
   created_at: string;

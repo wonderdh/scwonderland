@@ -13,8 +13,6 @@ import { useBusRealtime } from "@/lib/hooks/use-bus-realtime";
 import { applyCheckRecord, applyChangeRequest } from "@/lib/bus/realtime-utils";
 import { WEEKDAY_NAMES_7 } from "@/lib/constants/date";
 
-const DIR_LABEL = { pickup: "등원", dropoff: "하원" } as const;
-
 function getToday() {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
@@ -36,7 +34,6 @@ type PendingChange = {
   student: BusManifestEntry;
   busTimeSlotId: string;
   busNumberId: string;
-  direction: "pickup" | "dropoff";
 };
 
 function groupStudentsByStop(students: BusManifestEntry[]): StopGroup[] {
@@ -89,10 +86,8 @@ function StudentRow({
   onToggleCheck: () => void;
   onToggleUncheck: () => void;
 }) {
-  // 나이별 색상
   const ageColor = getAgeColor(student.age);
 
-  // 결석 학생은 별도 처리
   if (student.is_absent) {
     return (
       <div
@@ -112,10 +107,8 @@ function StudentRow({
     );
   }
 
-  // 선택된 상태 시각화
   const isSelected = pendingAction !== null;
 
-  // 배경색 결정
   let bgClass = "bg-white";
   if (pendingAction === "board") bgClass = "bg-blue-50 ring-2 ring-blue-400 ring-inset";
   else if (pendingAction === "unboard") bgClass = "bg-slate-50 ring-2 ring-slate-300 ring-inset";
@@ -127,7 +120,6 @@ function StudentRow({
 
   return (
     <div className={`flex items-center gap-3 px-4 py-3 transition-all ${bgClass} ${student.is_changed && !isChecked && !isBoarded && !isSelected ? "border-l-4 border-l-amber-400" : ""}`}>
-      {/* 탑승 토글 */}
       <button
         type="button"
         disabled={isChecked && pendingAction !== "uncheck"}
@@ -183,7 +175,6 @@ function StudentRow({
         </div>
       </button>
 
-      {/* 타임스탬프 */}
       {isBoarded && student.boarded_at && !isChecked && !isSelected && (
         <span className="text-xs tabular-nums text-blue-500">
           {fmtISO(student.boarded_at)}
@@ -195,7 +186,6 @@ function StudentRow({
         </span>
       )}
 
-      {/* 하차 버튼 */}
       {isBoarded && !isChecked && pendingAction !== "unboard" && (
         <button
           type="button"
@@ -210,7 +200,6 @@ function StudentRow({
         </button>
       )}
 
-      {/* 하차 취소 */}
       {isChecked && (
         <button
           type="button"
@@ -231,18 +220,16 @@ function StudentRow({
 /* ── 호차 카드 ── */
 function StaffBusCard({
   card,
-  direction,
   pendingChanges,
   onToggleBoard,
   onToggleCheck,
   onToggleUncheck,
 }: {
   card: BusManifestGroup;
-  direction: "pickup" | "dropoff";
   pendingChanges: Map<string, PendingChange>;
-  onToggleBoard: (student: BusManifestEntry, busTimeSlotId: string, busNumberId: string, direction: "pickup" | "dropoff") => void;
-  onToggleCheck: (student: BusManifestEntry, busTimeSlotId: string, busNumberId: string, direction: "pickup" | "dropoff") => void;
-  onToggleUncheck: (student: BusManifestEntry, busTimeSlotId: string, busNumberId: string, direction: "pickup" | "dropoff") => void;
+  onToggleBoard: (student: BusManifestEntry, busTimeSlotId: string, busNumberId: string) => void;
+  onToggleCheck: (student: BusManifestEntry, busTimeSlotId: string, busNumberId: string) => void;
+  onToggleUncheck: (student: BusManifestEntry, busTimeSlotId: string, busNumberId: string) => void;
 }) {
   const activeStudents = card.students.filter((s) => !s.is_absent);
   const total = activeStudents.length;
@@ -254,7 +241,6 @@ function StaffBusCard({
   const boardPct = total > 0 ? Math.round((boarded / total) * 100) : 0;
   const checkPct = total > 0 ? Math.round((checked / total) * 100) : 0;
 
-  // 이 카드에 pending change가 있는지
   const hasPending = card.students.some((s) => pendingChanges.has(s.student_profile_id));
 
   return (
@@ -263,7 +249,6 @@ function StaffBusCard({
         hasPending ? "border-blue-300 shadow-sm" : allDone ? "border-green-200 bg-green-50/30" : "border-slate-200 bg-white"
       }`}
     >
-      {/* 헤더 */}
       <div className="px-4 pt-4 pb-3">
         <div className="flex items-baseline justify-between mb-3">
           <div className="flex items-center gap-2">
@@ -281,7 +266,6 @@ function StaffBusCard({
           </span>
         </div>
 
-        {/* 프로그레스 */}
         <div className="space-y-1.5">
           <div className="flex items-center gap-2">
             <span className="text-[11px] text-slate-400 w-6">탑승</span>
@@ -310,7 +294,6 @@ function StaffBusCard({
         </div>
       </div>
 
-      {/* 학생 목록 */}
       <div className="border-t border-slate-100 divide-y divide-slate-100">
         {stopGroups.map((group, gi) => (
           <div key={gi}>
@@ -337,13 +320,13 @@ function StaffBusCard({
                 isChecked={!!student.checked_at}
                 pendingAction={pendingChanges.get(student.student_profile_id)?.action ?? null}
                 onToggle={() =>
-                  onToggleBoard(student, card.bus_time_slot_id, card.bus_number_id, direction)
+                  onToggleBoard(student, card.bus_time_slot_id, card.bus_number_id)
                 }
                 onToggleCheck={() =>
-                  onToggleCheck(student, card.bus_time_slot_id, card.bus_number_id, direction)
+                  onToggleCheck(student, card.bus_time_slot_id, card.bus_number_id)
                 }
                 onToggleUncheck={() =>
-                  onToggleUncheck(student, card.bus_time_slot_id, card.bus_number_id, direction)
+                  onToggleUncheck(student, card.bus_time_slot_id, card.bus_number_id)
                 }
               />
             ))}
@@ -363,14 +346,12 @@ export function BusStaffMonitor({
   staffProfileId: string;
 }) {
   const [date, setDate] = useState(getToday);
-  const [direction, setDirection] = useState<"pickup" | "dropoff">("pickup");
   const [groups, setGroups] = useState<BusManifestGroup[]>([]);
   const [noRides, setNoRides] = useState<NoRideEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, startSaving] = useTransition();
   const [slotFilter, setSlotFilter] = useState<string | null>(null);
 
-  // 일괄 저장용 pending changes
   const [pendingChanges, setPendingChanges] = useState<Map<string, PendingChange>>(new Map());
 
   const load = useCallback(async () => {
@@ -378,27 +359,25 @@ export function BusStaffMonitor({
     const currentDate = getToday();
     setDate(currentDate);
 
-    const result = await getDailyBusManifest(currentDate, direction);
+    const result = await getDailyBusManifest(currentDate);
     const filtered = busNumberId
       ? result.groups.filter((g) => g.bus_number_id === busNumberId)
       : result.groups;
 
     setGroups(filtered);
 
-    // 미탑승/결석: 내 호차에서 원래 배정됐던 학생만
     const myBusLabel = busNumberId ? filtered[0]?.bus_label : null;
     const myNoRides = myBusLabel
       ? result.noRides.filter((r) => r.original_bus_label === myBusLabel)
       : result.noRides;
     setNoRides(myNoRides);
     setLoading(false);
-  }, [direction, busNumberId]);
+  }, [busNumberId]);
 
   useEffect(() => {
     load();
   }, [load]);
 
-  // 고유 시간대 목록
   const timeSlots = useMemo(() => {
     const map = new Map<string, string>();
     for (const g of groups) {
@@ -411,7 +390,6 @@ export function BusStaffMonitor({
       .map(([time, label]) => ({ time, label }));
   }, [groups]);
 
-  // 필터 적용
   const filteredGroups = useMemo(() => {
     if (slotFilter === "all") return groups;
     if (slotFilter && slotFilter !== "all") {
@@ -421,27 +399,24 @@ export function BusStaffMonitor({
     return groups.filter((g) => g.slot_time >= now);
   }, [groups, slotFilter]);
 
-  // 탑승 토글
   const toggleBoard = useCallback(
-    (student: BusManifestEntry, busTimeSlotId: string, busNumberId: string, dir: "pickup" | "dropoff") => {
+    (student: BusManifestEntry, busTimeSlotId: string, busNumberId: string) => {
       const sid = student.student_profile_id;
       setPendingChanges((prev) => {
         const next = new Map(prev);
         const existing = next.get(sid);
 
         if (student.boarded_at) {
-          // 이미 탑승 → unboard 토글
           if (existing?.action === "unboard") {
             next.delete(sid);
           } else {
-            next.set(sid, { action: "unboard", student, busTimeSlotId, busNumberId, direction: dir });
+            next.set(sid, { action: "unboard", student, busTimeSlotId, busNumberId });
           }
         } else {
-          // 미탑승 → board 토글
           if (existing?.action === "board") {
             next.delete(sid);
           } else {
-            next.set(sid, { action: "board", student, busTimeSlotId, busNumberId, direction: dir });
+            next.set(sid, { action: "board", student, busTimeSlotId, busNumberId });
           }
         }
         return next;
@@ -450,9 +425,8 @@ export function BusStaffMonitor({
     []
   );
 
-  // 하차 토글
   const toggleCheck = useCallback(
-    (student: BusManifestEntry, busTimeSlotId: string, busNumberId: string, dir: "pickup" | "dropoff") => {
+    (student: BusManifestEntry, busTimeSlotId: string, busNumberId: string) => {
       const sid = student.student_profile_id;
       setPendingChanges((prev) => {
         const next = new Map(prev);
@@ -461,7 +435,7 @@ export function BusStaffMonitor({
         if (existing?.action === "check") {
           next.delete(sid);
         } else {
-          next.set(sid, { action: "check", student, busTimeSlotId, busNumberId, direction: dir });
+          next.set(sid, { action: "check", student, busTimeSlotId, busNumberId });
         }
         return next;
       });
@@ -469,9 +443,8 @@ export function BusStaffMonitor({
     []
   );
 
-  // 하차 취소 토글
   const toggleUncheck = useCallback(
-    (student: BusManifestEntry, busTimeSlotId: string, busNumberId: string, dir: "pickup" | "dropoff") => {
+    (student: BusManifestEntry, busTimeSlotId: string, busNumberId: string) => {
       const sid = student.student_profile_id;
       setPendingChanges((prev) => {
         const next = new Map(prev);
@@ -480,7 +453,7 @@ export function BusStaffMonitor({
         if (existing?.action === "uncheck") {
           next.delete(sid);
         } else {
-          next.set(sid, { action: "uncheck", student, busTimeSlotId, busNumberId, direction: dir });
+          next.set(sid, { action: "uncheck", student, busTimeSlotId, busNumberId });
         }
         return next;
       });
@@ -488,14 +461,12 @@ export function BusStaffMonitor({
     []
   );
 
-  // 일괄 저장
   const saveAll = useCallback(() => {
     if (pendingChanges.size === 0) return;
 
     const changes = [...pendingChanges.values()];
     setPendingChanges(new Map());
 
-    // 낙관적 UI 업데이트
     const now = new Date().toISOString();
     setGroups((prev) =>
       prev.map((c) => ({
@@ -521,7 +492,6 @@ export function BusStaffMonitor({
           studentProfileId: ch.student.student_profile_id,
           busTimeSlotId: ch.busTimeSlotId,
           busNumberId: ch.busNumberId,
-          direction: ch.direction,
         })),
         date,
         staffProfileId
@@ -532,17 +502,14 @@ export function BusStaffMonitor({
       } else {
         toast.success(`${changes.length}건 저장 완료`);
       }
-      // 성공/실패 무관하게 DB 최신 데이터로 동기화
       await load();
     });
   }, [pendingChanges, date, staffProfileId, load]);
 
-  // 전체 취소
   const clearAll = useCallback(() => {
     setPendingChanges(new Map());
   }, []);
 
-  // Realtime: 최신 상태값 접근용 ref (stale closure 방지)
   const pendingChangesRef = useRef(pendingChanges);
   pendingChangesRef.current = pendingChanges;
   const groupsRef = useRef(groups);
@@ -552,8 +519,8 @@ export function BusStaffMonitor({
 
   useBusRealtime(date, {
     onCheckRecord: (event, row) => {
-      if (!row.student_profile_id) { load(); return; } // 빈 payload → refetch
-      if (pendingChangesRef.current.size > 0) return;  // 선택 중 → 무시
+      if (!row.student_profile_id) { load(); return; }
+      if (pendingChangesRef.current.size > 0) return;
       setGroups((prev) => applyCheckRecord(prev, event, row));
     },
     onChangeRequest: (event, row) => {
@@ -579,7 +546,6 @@ export function BusStaffMonitor({
 
   return (
     <div className="max-w-lg mx-auto space-y-4 pb-24">
-      {/* 날짜 헤더 */}
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-bold text-slate-800">
           {date.slice(5).replace("-", "/")}
@@ -597,25 +563,6 @@ export function BusStaffMonitor({
         </button>
       </div>
 
-      {/* 등원/하원 토글 */}
-      <div className="flex rounded-xl bg-slate-100 p-1">
-        {(["pickup", "dropoff"] as const).map((dir) => (
-          <button
-            key={dir}
-            type="button"
-            onClick={() => { setDirection(dir); setPendingChanges(new Map()); }}
-            className={`flex-1 py-2.5 text-sm font-semibold rounded-lg transition-all ${
-              direction === dir
-                ? "bg-white shadow-sm " + (dir === "pickup" ? "text-blue-600" : "text-orange-600")
-                : "text-slate-400 hover:text-slate-500"
-            }`}
-          >
-            {DIR_LABEL[dir]}
-          </button>
-        ))}
-      </div>
-
-      {/* 시간대 필터 */}
       {timeSlots.length > 0 && (
         <div className="flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-none">
           <button
@@ -658,7 +605,6 @@ export function BusStaffMonitor({
         </div>
       )}
 
-      {/* 요약 통계 */}
       {totalStudents > 0 && (
         <div className="flex items-center gap-3 px-1">
           <div className="flex items-center gap-1.5">
@@ -676,7 +622,6 @@ export function BusStaffMonitor({
         </div>
       )}
 
-      {/* 데이터 없음 */}
       {filteredGroups.length === 0 && !loading && (
         <div className="text-center py-16">
           <p className="text-sm text-slate-400">
@@ -696,13 +641,11 @@ export function BusStaffMonitor({
         </div>
       )}
 
-      {/* 호차별 카드 */}
       <div className="space-y-3">
         {filteredGroups.map((card) => (
           <StaffBusCard
             key={`${card.bus_time_slot_id}-${card.bus_number_id}`}
             card={card}
-            direction={direction}
             pendingChanges={pendingChanges}
             onToggleBoard={toggleBoard}
             onToggleCheck={toggleCheck}
@@ -711,7 +654,6 @@ export function BusStaffMonitor({
         ))}
       </div>
 
-      {/* 미탑승 / 결석 섹션 */}
       {noRides.length > 0 && (
         <div className="rounded-2xl border border-orange-200 overflow-hidden">
           <div className="px-4 py-3 bg-orange-50 flex items-center gap-2">
@@ -745,7 +687,6 @@ export function BusStaffMonitor({
         </div>
       )}
 
-      {/* 하단 고정 저장 바 */}
       {pendingCount > 0 && (
         <div className="fixed bottom-0 left-0 right-0 z-50 safe-area-bottom">
           <div className="max-w-lg mx-auto px-4 pb-4 pt-2">

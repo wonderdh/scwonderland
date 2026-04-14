@@ -17,8 +17,8 @@
 | `ReportCardListItem` | 리포트카드 목록용 간소 타입 (id, year, month) |
 | `LearningRecord` | 학습 기록 (category: test/assessment/note/level_change) |
 | `BusNumber` | 호차 (label, is_active) |
-| `BusTimeSlot` | 버스 시간대 (direction: pickup/dropoff, label, time) |
-| `AcademyPeriod` | 수업 교시 (start_time, end_time, group_label, has_pickup/dropoff, is_active) |
+| `BusTimeSlot` | 버스 시간대 (label, time) |
+| `AcademyPeriod` | 수업 교시 (start_time, end_time, group_label, has_dropoff, is_active) |
 | `BusCheckRecord` | 승하차 체크 기록 |
 | `BusStopDayAssignment` | 정류장 요일별 호차 배정 |
 | `BusStop` | 정류장 (name, sort_order, is_active) |

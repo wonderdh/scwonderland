@@ -239,8 +239,8 @@
 | 함수 | 권한 | 테이블 | 설명 |
 |------|------|--------|------|
 | `listBusTimeSlots()` | - | `bus_time_slots` | 활성 시간대 목록 |
-| `createBusTimeSlot(direction, label, time)` | admin | `bus_time_slots` | 시간대 생성 |
-| `updateBusTimeSlot(id, direction, label, time)` | admin | `bus_time_slots` | 시간대 수정 |
+| `createBusTimeSlot(label, time)` | admin | `bus_time_slots` | 시간대 생성 |
+| `updateBusTimeSlot(id, label, time)` | admin | `bus_time_slots` | 시간대 수정 |
 | `deleteBusTimeSlot(id)` | admin | `bus_time_slots` | 시간대 soft delete |
 
 ### 학생 목록
@@ -258,21 +258,21 @@
 | `deleteStudentBusDefault(id)` | authenticated | `student_bus_defaults` | 학생 기본 승하차 삭제 |
 | `deleteStudentBusDefaults(ids)` | authenticated | `student_bus_defaults` | 복수 삭제 |
 | `saveBulkBusDefaults(entries)` | admin | `student_bus_defaults` | 대량 기본 배정 저장 (기존 삭제 후 삽입) |
-| `getBulkBusDefaults(direction, dayOfWeek, busTimeSlotId)` | admin | `student_bus_defaults`, `students`, `bus_stops` | 대량 기본 배정 조회 |
+| `getBulkBusDefaults(dayOfWeek, busTimeSlotId)` | admin | `student_bus_defaults`, `students`, `bus_stops` | 대량 기본 배정 조회 |
 
 ### 일일 명부
 
 | 함수 | 권한 | 테이블 | 설명 |
 |------|------|--------|------|
-| `getDailyBusManifest(date, direction)` | authenticated | `student_bus_defaults`, `bus_change_requests`, `bus_time_slots`, `bus_numbers`, `students`, `bus_check_records`, `bus_stops`, `afterschool_enrollments` | 일일 승하차 명부 (변경 요청 반영, 방과후 포함) |
+| `getDailyBusManifest(date)` | authenticated | `student_bus_defaults`, `bus_change_requests`, `bus_time_slots`, `bus_numbers`, `students`, `bus_check_records`, `bus_stops`, `afterschool_enrollments` | 일일 하차 명부 (변경 요청 반영, 방과후 포함) |
 
 ### 탑승 체크
 
 | 함수 | 권한 | 테이블 | 설명 |
 |------|------|--------|------|
-| `boardBusStudent(studentProfileId, date, direction, slotId, busNumberId)` | authenticated | `bus_check_records` | 탑승 체크 (boarded_at 기록) |
+| `boardBusStudent(studentProfileId, date, slotId, busNumberId)` | authenticated | `bus_check_records` | 탑승 체크 (boarded_at 기록) |
 | `unboardBusStudent(checkRecordId)` | authenticated | `bus_check_records` | 탑승 체크 취소 |
-| `checkBusStudent(studentProfileId, date, direction, slotId, busNumberId)` | authenticated | `bus_check_records` | 하차 체크 (checked_at 기록) |
+| `checkBusStudent(studentProfileId, date, slotId, busNumberId)` | authenticated | `bus_check_records` | 하차 체크 (checked_at 기록) |
 | `uncheckBusStudent(checkRecordId)` | authenticated | `bus_check_records` | 하차 체크 취소 |
 
 ### 변경 요청
@@ -288,7 +288,7 @@
 | `cancelBusChangeRequest(requestId)` | authenticated | `bus_change_requests` | 변경 요청 취소 (pending만) |
 | `createAdminBusChange(...)` | admin | `bus_change_requests` | 관리자 직접 변경 생성 (auto-approved) |
 | `updateAdminBusChange(requestId, ...)` | admin | `bus_change_requests` | 관리자 직접 변경 수정 |
-| `getExistingBusChange(studentProfileId, date, direction)` | admin | `bus_change_requests` | 기존 변경 요청 조회 |
+| `getExistingBusChange(studentProfileId, date)` | admin | `bus_change_requests` | 기존 변경 요청 조회 |
 | `deleteAdminBusChange(requestId)` | admin | `bus_change_requests` | 관리자 변경 삭제 |
 
 ### 정류장 관리
@@ -303,7 +303,7 @@
 | `saveBusStopDayAssignments(busStopId, assignments)` | admin | `bus_stop_day_assignments` | 정류장 요일별 배정 저장 |
 | `listBusStopSchedulesBulk(busStopIds)` | - | `bus_stop_schedules` | 복수 정류장 시간표 조회 |
 | `listBusStopSchedules(busStopId)` | - | `bus_stop_schedules` | 정류장 시간표 조회 |
-| `upsertBusStopSchedule(busStopId, dayOfWeek, direction, slotId, time)` | admin | `bus_stop_schedules` | 정류장 시간표 생성/수정 |
+| `upsertBusStopSchedule(busStopId, dayOfWeek, slotId, time)` | admin | `bus_stop_schedules` | 정류장 시간표 생성/수정 |
 | `deleteBusStopSchedule(scheduleId)` | admin | `bus_stop_schedules` | 정류장 시간표 삭제 |
 
 ### 버스 담당자
@@ -313,7 +313,7 @@
 | `createBusStaff(email, name, busNumberId?)` | admin | Auth API, `profiles`, `bus_staff` | 버스 담당자 생성 (Auth + profile + bus_staff) |
 | `listBusStaff()` | - | `bus_staff`, `profiles`, Auth API, `bus_numbers` | 버스 담당자 목록 |
 | `updateBusStaff(staffId, busNumberId?)` | admin | `bus_staff` | 버스 담당자 호차 배정 수정 |
-| `bulkCreateBusChanges(studentProfileId, dates[], direction, changeType, ...)` | admin | `bus_change_requests` | 다중 날짜 버스 변경 일괄 등록 (UNIQUE 충돌 skip, created/skipped 카운트 반환) |
+| `bulkCreateBusChanges(studentProfileId, dates[], changeType, ...)` | admin | `bus_change_requests` | 다중 날짜 버스 변경 일괄 등록 (UNIQUE 충돌 skip, created/skipped 카운트 반환) |
 
 ---
 

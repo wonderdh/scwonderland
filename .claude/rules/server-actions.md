@@ -117,12 +117,12 @@ paths:
 - `getUpcomingReservations(daysAhead?)` — 향후 N일 출결+버스 변경 통합 조회 (관리자)
 
 **bus-actions.ts — 승하차 관리 (~48개):**
-- `bulkCreateBusChanges(studentProfileId, dates[], direction, changeType, ...)` — 다중 날짜 버스 변경 일괄 등록 (관리자, UNIQUE 충돌 skip)
+- `bulkCreateBusChanges(studentProfileId, dates[], changeType, ...)` — 다중 날짜 버스 변경 일괄 등록 (관리자, UNIQUE 충돌 skip)
 - `listBusNumbers()` / `createBusNumber(...)` / `updateBusNumber(...)` / `deleteBusNumber(...)` — 호차 CRUD
 - `listBusTimeSlots()` / `createBusTimeSlot(...)` / `updateBusTimeSlot(...)` / `deleteBusTimeSlot(...)` — 시간대 CRUD
 - `listAllActiveStudentNames()` — 전체 활성 학생 목록 (배정용)
 - `getStudentBusDefaults(studentProfileId)` / `upsertStudentBusDefault(...)` / `deleteStudentBusDefault(...)` / `deleteStudentBusDefaults(ids[])` / `getBulkBusDefaults(...)` — 기본 배정
-- `getDailyBusManifest(date, direction)` — 일일 매니페스트 (groups + noRides + afterschoolStudents 반환)
+- `getDailyBusManifest(date)` — 일일 매니페스트 (groups + noRides + afterschoolStudents 반환)
 - `boardBusStudent(...)` / `unboardBusStudent(...)` / `checkBusStudent(...)` / `uncheckBusStudent(...)` — 탑승/하차 체크
 - `listBusStops(busNumberId)` / `createBusStop(...)` / `updateBusStop(...)` / `deleteBusStop(...)` — 정류장 CRUD
 - `listPendingChangeRequests()` / `approveChangeRequest(...)` / `rejectChangeRequest(...)` — 변경요청 관리

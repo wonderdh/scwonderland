@@ -34,7 +34,6 @@ export function BusAssignmentManager({
   allStudents: StudentItem[];
 }) {
   const [day, setDay] = useState(1);
-  const [direction, setDirection] = useState<"pickup" | "dropoff">("dropoff");
   const [timeSlotId, setTimeSlotId] = useState("");
   const [stops, setStops] = useState<BusStop[]>(initialStops);
   const [loading, setLoading] = useState(false);
@@ -46,17 +45,16 @@ export function BusAssignmentManager({
   const [localAssignments, setLocalAssignments] = useState<BusDefaultAssignment[]>([]);
   const [hasChanges, setHasChanges] = useState(false);
 
-  // Filter time slots by direction
-  const filteredSlots = busTimeSlots.filter((s) => s.direction === direction);
+  const filteredSlots = busTimeSlots;
 
   const fetchAssignments = useCallback(async () => {
     setLoading(true);
-    const data = await getBulkBusDefaults(day, direction, timeSlotId || undefined);
+    const data = await getBulkBusDefaults(day, timeSlotId || undefined);
     setServerAssignments(data);
     setLocalAssignments(data);
     setHasChanges(false);
     setLoading(false);
-  }, [day, direction, timeSlotId]);
+  }, [day, timeSlotId]);
 
   const refreshStops = useCallback(async () => {
     const data = await listBusStops();
@@ -114,7 +112,7 @@ export function BusAssignmentManager({
   }
 
   // D&D handlers — 로컬 상태만 수정
-  const handleDragStart = (e: React.DragEvent, student: StudentItem, fromAssignment?: BusDefaultAssignment) => {
+  const handleDragStart = (e: React.DragEvent, student: StudentItem) => {
     e.dataTransfer.setData(
       "application/json",
       JSON.stringify({ studentProfileId: student.profile_id })
@@ -205,10 +203,8 @@ export function BusAssignmentManager({
     setSaving(true);
     const result = await saveBulkBusDefaults(
       day,
-      direction,
       localAssignments.map((a) => ({
         student_profile_id: a.student_profile_id,
-        bus_number_id: a.bus_number_id,
         bus_time_slot_id: a.bus_time_slot_id,
         bus_stop_id: a.bus_stop_id,
       }))
@@ -246,28 +242,6 @@ export function BusAssignmentManager({
               {d.label}
             </button>
           ))}
-        </div>
-        <div className="flex gap-1">
-          <button
-            onClick={() => guardedSetFilter(() => setDirection("pickup"))}
-            className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
-              direction === "pickup"
-                ? "bg-blue-600 text-white"
-                : "bg-blue-50 text-blue-600 hover:bg-blue-100"
-            }`}
-          >
-            등원
-          </button>
-          <button
-            onClick={() => guardedSetFilter(() => setDirection("dropoff"))}
-            className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
-              direction === "dropoff"
-                ? "bg-orange-600 text-white"
-                : "bg-orange-50 text-orange-600 hover:bg-orange-100"
-            }`}
-          >
-            하원
-          </button>
         </div>
         <select
           value={timeSlotId}

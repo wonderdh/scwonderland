@@ -15,7 +15,6 @@ import {
 import { useBusRealtime } from "@/lib/hooks/use-bus-realtime";
 import { formatTime } from "@/lib/bus/utils";
 
-const DIR_LABEL = { pickup: "등원", dropoff: "하원" } as const;
 const DAY_NAMES = ["일", "월", "화", "수", "목", "금", "토"];
 
 function formatCheckedTime(iso: string) {
@@ -37,7 +36,6 @@ type PendingChange = {
   student: BusManifestEntry;
   busTimeSlotId: string;
   busNumberId: string;
-  direction: "pickup" | "dropoff";
 };
 
 type TimeGroup = {
@@ -62,7 +60,6 @@ export function BusDashboard({ busTimeSlots, busNumbers }: { busTimeSlots: BusTi
   const now = new Date();
   const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   const [date, setDate] = useState(today);
-  const [direction, setDirection] = useState<"pickup" | "dropoff">("dropoff");
   const [groups, setGroups] = useState<BusManifestGroup[]>([]);
   const [noRides, setNoRides] = useState<NoRideEntry[]>([]);
   const [afterschoolStudents, setAfterSchoolStudents] = useState<AfterSchoolBusEntry[]>([]);
@@ -71,8 +68,7 @@ export function BusDashboard({ busTimeSlots, busNumbers }: { busTimeSlots: BusTi
   const [isPending, startTransition] = useTransition();
   const [pendingChanges, setPendingChanges] = useState<Map<string, PendingChange>>(new Map());
   const [selectedSlotId, setSelectedSlotId] = useState<string>(() => {
-    const slots = busTimeSlots.filter((s) => s.direction === "dropoff");
-    return slots[0]?.id ?? "";
+    return busTimeSlots[0]?.id ?? "";
   });
   // showChangeModal removed — moved to BusChangeRequestsPanel
 
@@ -82,12 +78,12 @@ export function BusDashboard({ busTimeSlots, busNumbers }: { busTimeSlots: BusTi
 
   const load = useCallback(async () => {
     setLoading(true);
-    const result = await getDailyBusManifest(date, direction);
+    const result = await getDailyBusManifest(date);
     setGroups(result.groups);
     setNoRides(result.noRides);
     setAfterSchoolStudents(result.afterschoolStudents);
     setLoading(false);
-  }, [date, direction]);
+  }, [date]);
 
   useEffect(() => {
     load();
@@ -119,12 +115,12 @@ export function BusDashboard({ busTimeSlots, busNumbers }: { busTimeSlots: BusTi
         if (next.get(sid)?.action === action) {
           next.delete(sid); // 같은 액션 재클릭 → 취소
         } else {
-          next.set(sid, { action, student, busTimeSlotId, busNumberId, direction });
+          next.set(sid, { action, student, busTimeSlotId, busNumberId });
         }
         return next;
       });
     },
-    [direction]
+    []
   );
 
   const handleCheck = useCallback(
@@ -141,12 +137,12 @@ export function BusDashboard({ busTimeSlots, busNumbers }: { busTimeSlots: BusTi
         if (next.get(sid)?.action === action) {
           next.delete(sid);
         } else {
-          next.set(sid, { action, student, busTimeSlotId, busNumberId, direction });
+          next.set(sid, { action, student, busTimeSlotId, busNumberId });
         }
         return next;
       });
     },
-    [direction]
+    []
   );
 
   const saveAll = useCallback(() => {
@@ -179,7 +175,6 @@ export function BusDashboard({ busTimeSlots, busNumbers }: { busTimeSlots: BusTi
           studentProfileId: ch.student.student_profile_id,
           busTimeSlotId: ch.busTimeSlotId,
           busNumberId: ch.busNumberId,
-          direction: ch.direction,
         })),
         date,
         adminId
@@ -218,7 +213,7 @@ export function BusDashboard({ busTimeSlots, busNumbers }: { busTimeSlots: BusTi
   const filteredGroups = groups.filter((g) => g.bus_time_slot_id === selectedSlotId);
   const timeGroups = groupByTime(filteredGroups);
 
-  const directionSlots = busTimeSlots.filter((s) => s.direction === direction);
+  const directionSlots = busTimeSlots;
 
   // 미탑승/결석 분리
   const noRideOnly = noRides.filter((n) => n.change_type !== "absent");
@@ -235,22 +230,6 @@ export function BusDashboard({ busTimeSlots, busNumbers }: { busTimeSlots: BusTi
           className="w-40"
         />
         <span className="text-sm text-slate-500">({dayName})</span>
-        <div className="flex gap-1">
-          <Button
-            size="sm"
-            variant={direction === "pickup" ? "default" : "outline"}
-            onClick={() => { setDirection("pickup"); setSelectedSlotId(busTimeSlots.find(s => s.direction === "pickup")?.id ?? ""); }}
-          >
-            등원
-          </Button>
-          <Button
-            size="sm"
-            variant={direction === "dropoff" ? "default" : "outline"}
-            onClick={() => { setDirection("dropoff"); setSelectedSlotId(busTimeSlots.find(s => s.direction === "dropoff")?.id ?? ""); }}
-          >
-            하원
-          </Button>
-        </div>
         {directionSlots.length > 0 && (
           <select
             value={selectedSlotId}
@@ -270,7 +249,7 @@ export function BusDashboard({ busTimeSlots, busNumbers }: { busTimeSlots: BusTi
       </div>
 
       <h3 className="text-sm font-semibold text-slate-700">
-        {date} ({dayName}) — {DIR_LABEL[direction]}
+        {date} ({dayName}) — 하원
       </h3>
 
       {/* 매니페스트 */}
@@ -323,8 +302,8 @@ export function BusDashboard({ busTimeSlots, busNumbers }: { busTimeSlots: BusTi
         ))}
       </div>
 
-      {/* 방과후 학생 (하원 시만) */}
-      {afterschoolStudents.length > 0 && direction === "dropoff" && (
+      {/* 방과후 학생 */}
+      {afterschoolStudents.length > 0 && (
         <div>
           <div className="flex items-center gap-3 mb-3">
             <span className="text-sm font-semibold text-violet-700">

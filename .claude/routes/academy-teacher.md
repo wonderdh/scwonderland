@@ -64,7 +64,7 @@
 | `createClassNotice` | (FormData) | class_notices, class_notice_attachments + Storage |
 | `updateClassNotice` | (FormData) | class_notices, class_notice_attachments + Storage |
 | `deleteClassNotice` | (noticeId) | class_notices, class_notice_attachments + Storage |
-| `getDailyBusManifest` | (date, direction) | bus_time_slots, student_bus_defaults, bus_change_requests, bus_check_records 등 |
+| `getDailyBusManifest` | (date) | bus_time_slots, student_bus_defaults, bus_change_requests, bus_check_records 등 |
 | `getGroupTimetableGrid` | (groupName) | academy_period_groups, academy_periods, classes, schedule_cells, teachers |
 
 ## 타입

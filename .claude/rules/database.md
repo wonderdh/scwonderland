@@ -23,7 +23,7 @@ Supabase Auth Users
     │   └── class_schedules (class_id XOR student_profile_id, period_id FK,
     │       day, teacher_profile_id FK, label, textbook_id FK→textbooks ON DELETE SET NULL)
     │
-    ├── academy_periods (name, start_time, end_time, group_label, has_pickup, has_dropoff, is_active)
+    ├── academy_periods (name, start_time, end_time, group_label, has_dropoff, is_active)
     │
     ├── report_cards (student_profile_id FK, author_id FK, year, month, content, content_ko, reply, reply_en)
     │   └── UNIQUE (student_profile_id, year, month)
@@ -46,13 +46,17 @@ Supabase Auth Users
     │   └── UNIQUE (student_profile_id, attendance_date)  -- DB 트리거: after_attendance_bus_sync
     │
     ├── bus_numbers (label, is_active)
-    ├── bus_time_slots (direction, label, time, is_active)
-    ├── bus_stop_day_assignments (bus_stop_id FK, day_of_week, bus_number_id FK, direction)
-    ├── bus_stop_schedules (bus_stop_id FK, day_of_week, direction, slot_id FK, estimated_time)
+    ├── bus_time_slots (label, time, is_active)
+    ├── bus_stop_day_assignments (bus_stop_id FK, day_of_week, bus_number_id FK)
+    ├── bus_stop_schedules (bus_stop_id FK, day_of_week, slot_id FK, estimated_time)
+    │   └── UNIQUE (bus_stop_id, day_of_week, bus_time_slot_id)
     ├── bus_staff (profile_id FK, bus_number_id FK)
-    ├── bus_check_records (student_profile_id, check_date, direction, slot_id, bus_number_id, boarded_at, checked_at)
-    ├── student_bus_defaults (student_profile_id FK, day_of_week, direction, bus_time_slot_id FK, bus_number_id FK, bus_stop_id FK)
-    ├── bus_change_requests (student_profile_id, request_date, direction, change_type, new_bus_time_slot_id, new_bus_number_id, new_bus_stop_id, reason, status, reviewed_by, reviewed_at)
+    ├── bus_check_records (student_profile_id, check_date, slot_id, bus_number_id, boarded_at, checked_at)
+    │   └── UNIQUE (student_profile_id, check_date)
+    ├── student_bus_defaults (student_profile_id FK, day_of_week, bus_time_slot_id FK, bus_number_id FK, bus_stop_id FK)
+    │   └── UNIQUE (student_profile_id, day_of_week)
+    ├── bus_change_requests (student_profile_id, request_date, change_type, new_bus_time_slot_id, new_bus_number_id, new_bus_stop_id, reason, status, reviewed_by, reviewed_at)
+    │   └── UNIQUE (student_profile_id, request_date)
     └── afterschool_enrollments (class_id FK, student_profile_id FK, day_of_week, second_period BOOLEAN)
         └── UNIQUE (class_id, student_profile_id, day_of_week)
     │

@@ -26,11 +26,11 @@
 ### admin/actions (barrel export)
 | 함수 | 파라미터 | DB 테이블 |
 |------|---------|----------|
-| `getDailyBusManifest` | (date, direction) | bus_time_slots, student_bus_defaults, bus_change_requests, bus_check_records, students, bus_numbers, bus_stops |
-| `boardBusStudent` | (studentProfileId, date, direction, busTimeSlotId, busNumberId) | bus_check_records |
-| `unboardBusStudent` | (studentProfileId, date, direction) | bus_check_records |
-| `checkBusStudent` | (studentProfileId, date, direction, busTimeSlotId, busNumberId, staffProfileId) | bus_check_records |
-| `uncheckBusStudent` | (studentProfileId, date, direction) | bus_check_records |
+| `getDailyBusManifest` | (date) | bus_time_slots, student_bus_defaults, bus_change_requests, bus_check_records, students, bus_numbers, bus_stops |
+| `boardBusStudent` | (studentProfileId, date, busTimeSlotId, busNumberId) | bus_check_records |
+| `unboardBusStudent` | (studentProfileId, date) | bus_check_records |
+| `checkBusStudent` | (studentProfileId, date, busTimeSlotId, busNumberId, staffProfileId) | bus_check_records |
+| `uncheckBusStudent` | (studentProfileId, date) | bus_check_records |
 
 ## 타입
 - `BusStaffProfile` — id, profile_id, email, name, bus_number_id, bus_label, created_at
@@ -52,23 +52,22 @@
 2. `<BusStaffMonitor busNumberId={...} staffProfileId={...} />` 렌더링
 
 ### BusStaffMonitor (핵심 컴포넌트)
-1. **데이터 로드**: `getDailyBusManifest(date, direction)` → 자기 호차 그룹만 필터링
-2. **등원/하원 토글**: 상단 토글 버튼으로 방향 전환
-3. **시간대 필터**: "현재 이후" (기본), "전체", 개별 시간대
-4. **정류장별 그룹핑**: `groupStudentsByStop()` — estimated_time + note 기준, 그룹 내 나이순→이름순
-5. **일괄 저장 방식** (핵심):
+1. **데이터 로드**: `getDailyBusManifest(date)` → 자기 호차 그룹만 필터링
+2. **시간대 필터**: "현재 이후" (기본), "전체", 개별 시간대
+3. **정류장별 그룹핑**: `groupStudentsByStop()` — estimated_time + note 기준, 그룹 내 나이순→이름순
+4. **일괄 저장 방식** (핵심):
    - 학생 클릭 → `pendingChanges` Map에 추가/제거 (board/unboard/check/uncheck)
    - 하단 고정 바에 선택 인원 표시
    - "확인" 클릭 → 낙관적 UI 업데이트 + `Promise.allSettled`로 일괄 서버 저장
    - 에러 시 전체 새로고침, 성공 시 toast
-6. **UI 상태 시각화**:
+5. **UI 상태 시각화**:
    - 미탑승: 흰색 배경, ○ 아이콘
    - 탑승 대기(pending board): 파란 ring
    - 탑승 완료: 파란 배경, ● + 탑승 시간
    - 하차 대기(pending check): 초록 ring
    - 하차 완료: 초록 배경, ✓ + 하차 시간
-7. **요약 통계**: 탑승/하차 진행률 (상단)
-8. **프로그레스 바**: 호차 카드별 탑승/하차 progress bar
+6. **요약 통계**: 탑승/하차 진행률 (상단)
+7. **프로그레스 바**: 호차 카드별 탑승/하차 progress bar
 
 ### error.tsx
 - 에러 바운더리: "문제가 발생했습니다" + "다시 시도" 버튼

@@ -5,7 +5,6 @@ export type CheckRecordRow = {
   boarded_at: string | null;
   checked_at: string | null;
   check_date: string;
-  direction: "pickup" | "dropoff";
 };
 
 export type ChangeRequestRow = {
@@ -16,7 +15,6 @@ export type ChangeRequestRow = {
   new_bus_time_slot_id: string | null;
   new_bus_stop_id: string | null;
   request_date: string;
-  direction: "pickup" | "dropoff";
   status: string;
 };
 
@@ -82,7 +80,6 @@ export function applyChangeRequest(
         korean_name: (student as BusManifestEntry).korean_name,
         english_name: (student as BusManifestEntry).english_name,
         student_number: (student as BusManifestEntry).student_number,
-        direction: row.direction,
         original_bus_label: originalBusLabel,
         change_type: "no_ride",
       }
@@ -91,7 +88,6 @@ export function applyChangeRequest(
         korean_name: null,
         english_name: null,
         student_number: null,
-        direction: row.direction,
         change_type: "no_ride",
       });
 

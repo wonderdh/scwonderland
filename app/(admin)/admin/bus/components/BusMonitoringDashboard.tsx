@@ -11,7 +11,6 @@ import { MonitorBusCard } from "@/components/bus/MonitorBusCard";
 import { useBusRealtime } from "@/lib/hooks/use-bus-realtime";
 import { applyCheckRecord, applyChangeRequest } from "@/lib/bus/realtime-utils";
 
-const DIR_LABEL = { pickup: "등원", dropoff: "하원" } as const;
 const DAY_NAMES = ["일", "월", "화", "수", "목", "금", "토"];
 
 export function BusMonitoringDashboard({
@@ -22,7 +21,6 @@ export function BusMonitoringDashboard({
   const now = new Date();
   const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   const [date, setDate] = useState(today);
-  const [direction, setDirection] = useState<"pickup" | "dropoff">("dropoff");
   const [groups, setGroups] = useState<BusManifestGroup[]>([]);
   const [afterschoolStudents, setAfterSchoolStudents] = useState<AfterSchoolBusEntry[]>([]);
   const [loading, setLoading] = useState(false);
@@ -32,14 +30,14 @@ export function BusMonitoringDashboard({
     const version = ++loadVersionRef.current;
     setLoading(true);
     try {
-      const result = await getDailyBusManifest(date, direction);
+      const result = await getDailyBusManifest(date);
       if (loadVersionRef.current !== version) return;
       setGroups(result.groups);
       setAfterSchoolStudents(result.afterschoolStudents);
     } finally {
       if (loadVersionRef.current === version) setLoading(false);
     }
-  }, [date, direction]);
+  }, [date]);
 
   useEffect(() => {
     load();
@@ -79,11 +77,10 @@ export function BusMonitoringDashboard({
     a.slotTime.localeCompare(b.slotTime)
   );
 
-  // 현재 방향의 시간대 필터
-  const directionSlots = busTimeSlots.filter((s) => s.direction === direction);
+  // 시간대 목록
+  const directionSlots = busTimeSlots;
   const [selectedSlotId, setSelectedSlotId] = useState(() => {
-    const slots = busTimeSlots.filter((s) => s.direction === "dropoff");
-    return slots[0]?.id ?? "";
+    return busTimeSlots[0]?.id ?? "";
   });
 
   const filteredTimeGroups = timeGroups.filter((tg) =>
@@ -101,28 +98,6 @@ export function BusMonitoringDashboard({
           className="w-40"
         />
         <span className="text-sm text-slate-500">({dayName})</span>
-        <div className="flex gap-1">
-          <Button
-            size="sm"
-            variant={direction === "pickup" ? "default" : "outline"}
-            onClick={() => {
-              setDirection("pickup");
-              setSelectedSlotId(busTimeSlots.find(s => s.direction === "pickup")?.id ?? "");
-            }}
-          >
-            등원
-          </Button>
-          <Button
-            size="sm"
-            variant={direction === "dropoff" ? "default" : "outline"}
-            onClick={() => {
-              setDirection("dropoff");
-              setSelectedSlotId(busTimeSlots.find(s => s.direction === "dropoff")?.id ?? "");
-            }}
-          >
-            하원
-          </Button>
-        </div>
         {directionSlots.length > 0 && (
           <select
             value={selectedSlotId}
@@ -188,8 +163,8 @@ export function BusMonitoringDashboard({
         ))}
       </div>
 
-      {/* 방과후 학생 (하원 시만) */}
-      {afterschoolStudents.length > 0 && direction === "dropoff" && (
+      {/* 방과후 학생 */}
+      {afterschoolStudents.length > 0 && (
         <div>
           <div className="flex items-center gap-3 mb-3">
             <span className="text-sm font-semibold text-violet-700">

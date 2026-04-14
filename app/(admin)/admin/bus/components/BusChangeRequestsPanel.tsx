@@ -17,7 +17,6 @@ import { toast } from "sonner";
 import { AdminBusChangeDnD } from "./AdminBusChangeDnD";
 import { formatTime } from "@/lib/bus/utils";
 
-const DIR_LABEL = { pickup: "등원", dropoff: "하원" } as const;
 const TYPE_LABEL = { change: "변경", no_ride: "미탑승", absent: "결석" } as const;
 const STATUS_LABEL = { pending: "대기중", approved: "승인", rejected: "거절" } as const;
 const STATUS_COLOR = {
@@ -301,7 +300,7 @@ function RequestCard({
   onConfirm: () => void;
   onCancel: () => void;
 }) {
-  const dirSlots = busTimeSlots.filter((s) => s.direction === req.direction);
+  const dirSlots = busTimeSlots;
   const filteredStops = editStopMode === "pickup"
     ? busStops.filter((s) => s.name.includes("픽업"))
     : busStops.filter((s) => !s.name.includes("픽업"));
@@ -318,9 +317,6 @@ function RequestCard({
           {req.korean_name || req.english_name}
         </span>
         <span className="text-xs bg-slate-100 px-2 py-0.5 rounded">{req.request_date}</span>
-        <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">
-          {DIR_LABEL[req.direction]}
-        </span>
         <span className={`text-xs px-2 py-0.5 rounded ${
           req.change_type === "no_ride"
             ? "bg-red-100 text-red-700"

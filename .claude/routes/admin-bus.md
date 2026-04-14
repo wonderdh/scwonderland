@@ -16,9 +16,9 @@
 | `bus/components/BusDashboard.tsx` | 실시간 대시보드 (당일 승하차 매니페스트, 탑승/확인 체크) |
 | `bus/components/BusChangeRequestsPanel.tsx` | 학생/학부모 변경 요청 승인/거절 관리 |
 | `bus/components/BusStudentAssignmentManager.tsx` | 학생별 버스 기본 배정 관리 (요일별 호차/정류장/시간대) |
-| `bus/components/BusStopAssignmentManager.tsx` | 정류장 → 호차 배정 관리 (요일/방향/시간대별) |
+| `bus/components/BusStopAssignmentManager.tsx` | 정류장 → 호차 배정 관리 (요일/시간대별) |
 | `bus/components/BusManagePanel.tsx` | 호차 CRUD + 정류장 CRUD |
-| `bus/components/BusTimeSlotsManager.tsx` | 버스 시간대 CRUD (등원/하원별) |
+| `bus/components/BusTimeSlotsManager.tsx` | 버스 시간대 CRUD (하원) |
 | `bus/components/BusStaffManager.tsx` | 버스 직원 관리 (기사, 보조교사 계정 생성/관리) |
 | `bus/components/BusNumbersManager.tsx` | 호차 번호 CRUD (BusManagePanel 하위) |
 | `bus/components/BusAssignmentManager.tsx` | (레거시 또는 하위 컴포넌트) |
@@ -40,7 +40,7 @@
 | 함수 | 파라미터 | DB 테이블 |
 |------|---------|----------|
 | `listBusTimeSlots` | (없음) | `bus_time_slots` |
-| `createBusTimeSlot` | direction, label, time | `bus_time_slots` |
+| `createBusTimeSlot` | label, time | `bus_time_slots` |
 | `updateBusTimeSlot` | id, label, time | `bus_time_slots` |
 | `deleteBusTimeSlot` | id | `bus_time_slots` (soft delete: is_active=false) |
 
@@ -48,20 +48,20 @@
 | 함수 | 파라미터 | DB 테이블 |
 |------|---------|----------|
 | `getStudentBusDefaults` | studentProfileId | `student_bus_defaults`, `bus_time_slots`, `bus_stops`, `bus_stop_day_assignments` |
-| `upsertStudentBusDefault` | studentProfileId, day, direction, timeSlotId, stopId? | `student_bus_defaults` |
+| `upsertStudentBusDefault` | studentProfileId, day, timeSlotId, stopId? | `student_bus_defaults` |
 | `deleteStudentBusDefault` | id | `student_bus_defaults` |
 | `deleteStudentBusDefaults` | ids[] | `student_bus_defaults` |
-| `saveBulkBusDefaults` | updates[{studentProfileId, day, direction, timeSlotId, stopId?}] | `student_bus_defaults`, `bus_stop_day_assignments` |
+| `saveBulkBusDefaults` | updates[{studentProfileId, day, timeSlotId, stopId?}] | `student_bus_defaults`, `bus_stop_day_assignments` |
 | `getBulkBusDefaults` | (없음) | `student_bus_defaults`, `students`, `bus_time_slots`, `bus_stops`, `bus_stop_day_assignments` |
 
 #### 당일 매니페스트
 | 함수 | 파라미터 | DB 테이블 |
 |------|---------|----------|
-| `getDailyBusManifest` | date, direction, busTimeSlotId? | `student_bus_defaults`, `bus_change_requests`, `students`, `bus_stops`, `bus_stop_day_assignments`, `bus_daily_records` |
-| `boardBusStudent` | manifestEntryId(studentProfileId), date, direction, busNumberId, timeSlotId? | `bus_daily_records` |
-| `unboardBusStudent` | studentProfileId, date, direction, timeSlotId? | `bus_daily_records` |
-| `checkBusStudent` | studentProfileId, date, direction, timeSlotId? | `bus_daily_records` |
-| `uncheckBusStudent` | studentProfileId, date, direction, timeSlotId? | `bus_daily_records` |
+| `getDailyBusManifest` | date, busTimeSlotId? | `student_bus_defaults`, `bus_change_requests`, `students`, `bus_stops`, `bus_stop_day_assignments`, `bus_daily_records` |
+| `boardBusStudent` | manifestEntryId(studentProfileId), date, busNumberId, timeSlotId? | `bus_daily_records` |
+| `unboardBusStudent` | studentProfileId, date, timeSlotId? | `bus_daily_records` |
+| `checkBusStudent` | studentProfileId, date, timeSlotId? | `bus_daily_records` |
+| `uncheckBusStudent` | studentProfileId, date, timeSlotId? | `bus_daily_records` |
 
 #### 변경 요청
 | 함수 | 파라미터 | DB 테이블 |
@@ -71,11 +71,11 @@
 | `approveChangeRequest` | requestId, adminId | `bus_change_requests`, `student_bus_defaults` |
 | `rejectChangeRequest` | requestId, adminId, reason? | `bus_change_requests` |
 | `getStudentChangeRequests` | studentProfileId | `bus_change_requests`, `bus_numbers`, `bus_time_slots`, `bus_stops` |
-| `submitBusChangeRequest` | studentProfileId, day, direction, timeSlotId, stopId?, reason? | `bus_change_requests` |
+| `submitBusChangeRequest` | studentProfileId, day, timeSlotId, stopId?, reason? | `bus_change_requests` |
 | `cancelBusChangeRequest` | requestId | `bus_change_requests` |
-| `createAdminBusChange` | studentProfileId, day, direction, timeSlotId, stopId?, reason? | `bus_change_requests`, `student_bus_defaults` |
-| `updateAdminBusChange` | requestId, day?, direction?, timeSlotId?, stopId?, reason? | `bus_change_requests` |
-| `getExistingBusChange` | studentProfileId, date, direction, timeSlotId? | `bus_change_requests` |
+| `createAdminBusChange` | studentProfileId, day, timeSlotId, stopId?, reason? | `bus_change_requests`, `student_bus_defaults` |
+| `updateAdminBusChange` | requestId, day?, timeSlotId?, stopId?, reason? | `bus_change_requests` |
+| `getExistingBusChange` | studentProfileId, date, timeSlotId? | `bus_change_requests` |
 | `deleteAdminBusChange` | requestId | `bus_change_requests` |
 
 #### 정류장 관리
@@ -86,10 +86,10 @@
 | `updateBusStop` | id, name | `bus_stops` |
 | `deleteBusStop` | id | `bus_stops` (soft delete: is_active=false) |
 | `listBusStopDayAssignments` | busStopId | `bus_stop_day_assignments` |
-| `saveBusStopDayAssignments` | busStopId, assignments[{day, direction, busNumberId, timeSlotId?}] | `bus_stop_day_assignments` |
+| `saveBusStopDayAssignments` | busStopId, assignments[{day, busNumberId, timeSlotId?}] | `bus_stop_day_assignments` |
 | `listBusStopSchedulesBulk` | (없음) | `bus_stop_schedules` |
 | `listBusStopSchedules` | busStopId | `bus_stop_schedules` |
-| `upsertBusStopSchedule` | busStopId, direction, time | `bus_stop_schedules` |
+| `upsertBusStopSchedule` | busStopId, time | `bus_stop_schedules` |
 | `deleteBusStopSchedule` | id | `bus_stop_schedules` |
 
 #### 직원 관리
@@ -128,8 +128,8 @@
 ## 주의사항
 - 가장 복잡한 라우트 (8개 탭, 12개 컴포넌트, ~1800줄 액션 파일)
 - 호차/시간대/정류장 삭제는 모두 soft delete (`is_active = false`)
-- 학생 버스 배정 구조: 학생 → 요일별(1~5) → 방향(pickup/dropoff) → 시간대 + 정류장
-- 정류장 → 호차 매핑: `bus_stop_day_assignments` (요일+방향+시간대별로 다를 수 있음)
+- 학생 버스 배정 구조: 학생 → 요일별(1~5) → 시간대 + 정류장 (하원)
+- 정류장 → 호차 매핑: `bus_stop_day_assignments` (요일+시간대별로 다를 수 있음)
 - 호차는 정류장에서 파생됨 (`deriveBusFromStopsBulk` 헬퍼)
 - 당일 매니페스트: 기본 배정 + 변경 요청(승인/거절) 반영하여 당일 탑승 목록 생성
 - `bus_daily_records`: 실제 탑승/확인 기록 (boarded_at, checked_at)

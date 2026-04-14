@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import type { StudentBusDefault, BusTimeSlot, BusStop, AfterschoolStatus } from "@/lib/types";
 import { detectAfterschoolSlot } from "@/lib/bus/afterschool-sync";
@@ -25,7 +24,6 @@ import { LoadingState } from "@/components/LoadingState";
 import { formatTime } from "@/lib/bus/utils";
 
 const DAY_NAMES = ["", "월", "화", "수", "목", "금"];
-const DIR_LABEL = { pickup: "등원", dropoff: "하원" } as const;
 
 // 방과후 등록 상태별 카드 색상
 const AFTERSCHOOL_STYLES: Record<AfterschoolStatus, { border: string; bg: string; badge: string; label: string }> = {
@@ -45,9 +43,6 @@ export function StudentBusTab({ studentProfileId }: { studentProfileId: string }
 
   // 방과후 등록 상태 (요일 → 상태)
   const [afterschoolMap, setAfterschoolMap] = useState<Map<number, AfterschoolStatus>>(new Map());
-
-  // 서브탭
-  const [activeTab, setActiveTab] = useState<string>("combined");
 
   // 편집 상태 (통합: 개별+일괄)
   const [editingDay, setEditingDay] = useState<number | null>(null);
@@ -85,20 +80,14 @@ export function StudentBusTab({ studentProfileId }: { studentProfileId: string }
     load();
   }, [load]);
 
-  const currentDirection = activeTab === "dropoff" ? "dropoff" : "pickup";
-
-  function getDefault(day: number, dir: "pickup" | "dropoff") {
-    return defaults.find((d) => d.day_of_week === day && d.direction === dir);
+  function getDefault(day: number) {
+    return defaults.find((d) => d.day_of_week === day);
   }
 
-  function openEdit(day: number, dir?: "pickup" | "dropoff") {
-    const direction = dir ?? currentDirection;
-    if (dir && activeTab === "combined") {
-      setActiveTab(dir);
-    }
+  function openEdit(day: number) {
     setEditingDay(day);
     setCheckedDays(new Set([day]));
-    const existing = getDefault(day, direction);
+    const existing = getDefault(day);
     setEditSlotId(existing?.bus_time_slot_id ?? "");
     setEditStopId(existing?.bus_stop_id ?? "");
     setEditNote(existing?.note ?? "");
@@ -134,7 +123,6 @@ export function StudentBusTab({ studentProfileId }: { studentProfileId: string }
     }
     setSaving(true);
     setError("");
-    const dir = currentDirection;
 
     // 방과후 슬롯 판별
     const selectedSlot = busTimeSlots.find((s) => s.id === editSlotId);
@@ -144,7 +132,6 @@ export function StudentBusTab({ studentProfileId }: { studentProfileId: string }
       const result = await upsertStudentBusDefault(
         studentProfileId,
         day,
-        dir,
         editSlotId,
         undefined,
         editNote || undefined,
@@ -156,43 +143,41 @@ export function StudentBusTab({ studentProfileId }: { studentProfileId: string }
         return;
       }
 
-      // 방과후 연동: 하원 변경 시 자동 동기화
-      if (dir === "dropoff") {
-        const asStatus = afterschoolMap.get(day);
-        const isEnrolled = asStatus && asStatus !== "none";
+      // 방과후 연동: 변경 시 자동 동기화
+      const asStatus = afterschoolMap.get(day);
+      const isEnrolled = asStatus && asStatus !== "none";
 
-        if (isAfterschoolSlot) {
-          if (!isEnrolled) {
-            // 방과후 미등록 → 자동 등록
-            const classResult = await getOrCreateAfterschoolClass();
-            if (!classResult.id) {
-              toast.error("방과후 자동 등록 실패: 방과후 반을 찾을 수 없습니다.");
-            } else {
-              const enrollResult = await enrollStudent(classResult.id, studentProfileId, [day], newSecondPeriod);
-              if (enrollResult.error) {
-                toast.error(`방과후 자동 등록 실패: ${enrollResult.error}`);
-              } else {
-                toast.success(
-                  `${DAY_NAMES[day]}요일 방과후가 자동으로 등록됐습니다. (${newSecondPeriod ? "1·2교시" : "1교시"})`
-                );
-              }
-            }
+      if (isAfterschoolSlot) {
+        if (!isEnrolled) {
+          // 방과후 미등록 → 자동 등록
+          const classResult = await getOrCreateAfterschoolClass();
+          if (!classResult.id) {
+            toast.error("방과후 자동 등록 실패: 방과후 반을 찾을 수 없습니다.");
           } else {
-            // 이미 등록 → 교시만 동기화
-            const currentSecondPeriod = asStatus === "both";
-            if (currentSecondPeriod !== newSecondPeriod) {
-              const syncResult = await updateAfterschoolSecondPeriod(studentProfileId, day, newSecondPeriod);
-              if (!syncResult.error) {
-                toast.success(
-                  `${DAY_NAMES[day]}요일 방과후 교시가 ${newSecondPeriod ? "1·2교시" : "1교시"}로 업데이트됐습니다.`
-                );
-              }
+            const enrollResult = await enrollStudent(classResult.id, studentProfileId, [day], newSecondPeriod);
+            if (enrollResult.error) {
+              toast.error(`방과후 자동 등록 실패: ${enrollResult.error}`);
+            } else {
+              toast.success(
+                `${DAY_NAMES[day]}요일 방과후가 자동으로 등록됐습니다. (${newSecondPeriod ? "1·2교시" : "1교시"})`
+              );
             }
           }
-        } else if (isEnrolled) {
-          // 방과후 슬롯 아닌 걸 선택 → 해당 요일 enrollment 삭제
-          await deleteAfterschoolEnrollmentDay(studentProfileId, day);
+        } else {
+          // 이미 등록 → 교시만 동기화
+          const currentSecondPeriod = asStatus === "both";
+          if (currentSecondPeriod !== newSecondPeriod) {
+            const syncResult = await updateAfterschoolSecondPeriod(studentProfileId, day, newSecondPeriod);
+            if (!syncResult.error) {
+              toast.success(
+                `${DAY_NAMES[day]}요일 방과후 교시가 ${newSecondPeriod ? "1·2교시" : "1교시"}로 업데이트됐습니다.`
+              );
+            }
+          }
         }
+      } else if (isEnrolled) {
+        // 방과후 슬롯 아닌 걸 선택 → 해당 요일 enrollment 삭제
+        await deleteAfterschoolEnrollmentDay(studentProfileId, day);
       }
     }
     closeEdit();
@@ -202,9 +187,8 @@ export function StudentBusTab({ studentProfileId }: { studentProfileId: string }
   }
 
   async function handleDelete() {
-    const dir = currentDirection;
     const ids = Array.from(checkedDays)
-      .map((day) => getDefault(day, dir)?.id)
+      .map((day) => getDefault(day)?.id)
       .filter((id): id is string => !!id);
     if (ids.length === 0) return;
     setSaving(true);
@@ -223,13 +207,10 @@ export function StudentBusTab({ studentProfileId }: { studentProfileId: string }
 
   // 체크된 요일 중 기존 데이터가 있는 개수
   const checkedWithData = Array.from(checkedDays).filter(
-    (day) => !!getDefault(day, currentDirection)
+    (day) => !!getDefault(day)
   ).length;
 
   if (loading) return <LoadingState className="py-4" />;
-
-  const pickupSlots = busTimeSlots.filter((s) => s.direction === "pickup");
-  const dropoffSlots = busTimeSlots.filter((s) => s.direction === "dropoff");
 
   if (busTimeSlots.length === 0) {
     return (
@@ -243,93 +224,40 @@ export function StudentBusTab({ studentProfileId }: { studentProfileId: string }
 
   return (
     <div className="space-y-4">
-      <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v); closeEdit(); }}>
-        <TabsList variant="line">
-          <TabsTrigger value="combined">종합</TabsTrigger>
-          <TabsTrigger value="pickup">등원</TabsTrigger>
-          <TabsTrigger value="dropoff">하원</TabsTrigger>
-        </TabsList>
+      {error && (
+        <p className="text-xs text-red-500 bg-red-50 px-3 py-2 rounded">{error}</p>
+      )}
 
-        {error && (
-          <p className="text-xs text-red-500 bg-red-50 px-3 py-2 rounded">{error}</p>
-        )}
-
-        {/* 등원 탭 */}
-        <TabsContent value="pickup">
-          <DirectionGrid
-            direction="pickup"
-            defaults={defaults}
-            editingDay={editingDay}
-            afterschoolMap={afterschoolMap}
-            onCellClick={(day) => openEdit(day)}
-          />
-          {editingDay !== null && (
-            <EditPanel
-              direction="pickup"
-              checkedDays={checkedDays}
-              onToggleDay={toggleDay}
-              slots={pickupSlots}
-              stops={busStops}
-              slotId={editSlotId}
-              stopId={editStopId}
-              note={editNote}
-              onSlotChange={setEditSlotId}
-              onStopChange={setEditStopId}
-              onNoteChange={setEditNote}
-              onSave={handleSave}
-              onCancel={closeEdit}
-              onDelete={checkedWithData > 0 ? () => setDeleteConfirmOpen(true) : undefined}
-              saving={saving}
-              afterschoolMap={afterschoolMap}
-            />
-          )}
-        </TabsContent>
-
-        {/* 하원 탭 */}
-        <TabsContent value="dropoff">
-          <DirectionGrid
-            direction="dropoff"
-            defaults={defaults}
-            editingDay={editingDay}
-            afterschoolMap={afterschoolMap}
-            onCellClick={(day) => openEdit(day)}
-          />
-          {editingDay !== null && (
-            <EditPanel
-              direction="dropoff"
-              checkedDays={checkedDays}
-              onToggleDay={toggleDay}
-              slots={dropoffSlots}
-              stops={busStops}
-              slotId={editSlotId}
-              stopId={editStopId}
-              note={editNote}
-              onSlotChange={setEditSlotId}
-              onStopChange={setEditStopId}
-              onNoteChange={setEditNote}
-              onSave={handleSave}
-              onCancel={closeEdit}
-              onDelete={checkedWithData > 0 ? () => setDeleteConfirmOpen(true) : undefined}
-              saving={saving}
-              afterschoolMap={afterschoolMap}
-            />
-          )}
-        </TabsContent>
-
-        {/* 종합 탭 */}
-        <TabsContent value="combined">
-          <CombinedGrid
-            defaults={defaults}
-            afterschoolMap={afterschoolMap}
-            onCellClick={(day, dir) => openEdit(day, dir)}
-          />
-        </TabsContent>
-      </Tabs>
+      <DirectionGrid
+        defaults={defaults}
+        editingDay={editingDay}
+        afterschoolMap={afterschoolMap}
+        onCellClick={(day) => openEdit(day)}
+      />
+      {editingDay !== null && (
+        <EditPanel
+          checkedDays={checkedDays}
+          onToggleDay={toggleDay}
+          slots={busTimeSlots}
+          stops={busStops}
+          slotId={editSlotId}
+          stopId={editStopId}
+          note={editNote}
+          onSlotChange={setEditSlotId}
+          onStopChange={setEditStopId}
+          onNoteChange={setEditNote}
+          onSave={handleSave}
+          onCancel={closeEdit}
+          onDelete={checkedWithData > 0 ? () => setDeleteConfirmOpen(true) : undefined}
+          saving={saving}
+          afterschoolMap={afterschoolMap}
+        />
+      )}
 
       <ConfirmDialog
         open={deleteConfirmOpen}
         title="승하차 설정 삭제"
-        description={`선택한 ${checkedWithData}개 요일의 ${DIR_LABEL[currentDirection]} 설정을 삭제하시겠습니까?`}
+        description={`선택한 ${checkedWithData}개 요일의 하원 설정을 삭제하시겠습니까?`}
         onConfirm={handleDelete}
         onCancel={() => setDeleteConfirmOpen(false)}
         disabled={saving}
@@ -338,16 +266,14 @@ export function StudentBusTab({ studentProfileId }: { studentProfileId: string }
   );
 }
 
-/* ── 방향별 카드 그리드 ── */
+/* ── 요일별 카드 그리드 ── */
 
 function DirectionGrid({
-  direction,
   defaults,
   editingDay,
   afterschoolMap,
   onCellClick,
 }: {
-  direction: "pickup" | "dropoff";
   defaults: StudentBusDefault[];
   editingDay: number | null;
   afterschoolMap: Map<number, AfterschoolStatus>;
@@ -356,7 +282,7 @@ function DirectionGrid({
   return (
     <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-3">
       {[1, 2, 3, 4, 5].map((day) => {
-        const def = defaults.find((d) => d.day_of_week === day && d.direction === direction);
+        const def = defaults.find((d) => d.day_of_week === day);
         const isEditing = editingDay === day;
         const asStatus = afterschoolMap.get(day) ?? "none";
         return (
@@ -374,7 +300,7 @@ function DirectionGrid({
   );
 }
 
-/* ── 요일 카드 (단일 방향) ── */
+/* ── 요일 카드 ── */
 
 function DayCell({
   day,
@@ -436,84 +362,9 @@ function DayCell({
   );
 }
 
-/* ── 종합 탭 그리드 ── */
-
-function CombinedGrid({
-  defaults,
-  afterschoolMap,
-  onCellClick,
-}: {
-  defaults: StudentBusDefault[];
-  afterschoolMap: Map<number, AfterschoolStatus>;
-  onCellClick: (day: number, dir: "pickup" | "dropoff") => void;
-}) {
-  return (
-    <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-3">
-      {[1, 2, 3, 4, 5].map((day) => {
-        const pickup = defaults.find((d) => d.day_of_week === day && d.direction === "pickup");
-        const dropoff = defaults.find((d) => d.day_of_week === day && d.direction === "dropoff");
-        const asStatus = afterschoolMap.get(day) ?? "none";
-        const asStyle = AFTERSCHOOL_STYLES[asStatus];
-        return (
-          <div key={day} className={`rounded-lg border overflow-hidden ${asStatus !== "none" ? `${asStyle.border} ${asStyle.bg}` : "border-slate-200 bg-white"}`}>
-            <div className="flex items-center gap-1.5 px-3 pt-2 pb-1">
-              <span className="text-xs font-semibold text-slate-500">{DAY_NAMES[day]}</span>
-              {asStatus !== "none" && (
-                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${asStyle.badge}`}>
-                  {asStyle.label}
-                </span>
-              )}
-            </div>
-            {/* 등원 */}
-            <button
-              type="button"
-              onClick={() => onCellClick(day, "pickup")}
-              className="w-full text-left px-3 py-1.5 hover:bg-green-50/50 transition-colors"
-            >
-              <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-green-100 text-green-700">
-                등원
-              </span>
-              {pickup ? (
-                <div className="text-xs text-slate-600 mt-0.5">
-                  {pickup.time_slot_time ? formatTime(pickup.time_slot_time) : "-"}
-                  {pickup.bus_label && <span className="ml-1">{pickup.bus_label}</span>}
-                  {pickup.bus_stop_name && <span className="text-slate-400 ml-1">{pickup.bus_stop_name}</span>}
-                </div>
-              ) : (
-                <div className="text-xs text-slate-300 mt-0.5">-</div>
-              )}
-            </button>
-            <div className="border-t border-slate-100" />
-            {/* 하원 */}
-            <button
-              type="button"
-              onClick={() => onCellClick(day, "dropoff")}
-              className="w-full text-left px-3 py-1.5 hover:bg-orange-50/50 transition-colors"
-            >
-              <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-orange-100 text-orange-700">
-                하원
-              </span>
-              {dropoff ? (
-                <div className="text-xs text-slate-600 mt-0.5">
-                  {dropoff.time_slot_time ? formatTime(dropoff.time_slot_time) : "-"}
-                  {dropoff.bus_label && <span className="ml-1">{dropoff.bus_label}</span>}
-                  {dropoff.bus_stop_name && <span className="text-slate-400 ml-1">{dropoff.bus_stop_name}</span>}
-                </div>
-              ) : (
-                <div className="text-xs text-slate-300 mt-0.5">-</div>
-              )}
-            </button>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
 /* ── 편집 패널 ── */
 
 function EditPanel({
-  direction,
   checkedDays,
   onToggleDay,
   slots,
@@ -530,7 +381,6 @@ function EditPanel({
   saving,
   afterschoolMap,
 }: {
-  direction: "pickup" | "dropoff";
   checkedDays: Set<number>;
   onToggleDay: (day: number) => void;
   slots: BusTimeSlot[];
@@ -547,19 +397,18 @@ function EditPanel({
   saving: boolean;
   afterschoolMap?: Map<number, AfterschoolStatus>;
 }) {
-  // 하원 편집 시 방과후 등록된 요일 표시
-  const afterschoolCheckedDays =
-    direction === "dropoff" && afterschoolMap
-      ? Array.from(checkedDays).filter((d) => {
-          const s = afterschoolMap.get(d);
-          return s && s !== "none";
-        })
-      : [];
+  // 방과후 등록된 요일 표시
+  const afterschoolCheckedDays = afterschoolMap
+    ? Array.from(checkedDays).filter((d) => {
+        const s = afterschoolMap.get(d);
+        return s && s !== "none";
+      })
+    : [];
 
   return (
     <div className="mt-3 border rounded-lg p-4 bg-slate-50 space-y-3">
       <div className="flex items-center gap-2 text-sm font-medium text-slate-700">
-        편집 — {DIR_LABEL[direction]}
+        편집 — 하원
       </div>
 
       {afterschoolCheckedDays.length > 0 && (
