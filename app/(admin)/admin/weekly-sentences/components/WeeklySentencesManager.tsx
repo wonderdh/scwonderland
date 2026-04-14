@@ -59,7 +59,10 @@ export function WeeklySentencesManager({
     return map;
   }, [sentences]);
 
-  const autoWeek = computeAutoWeekNumber();
+  const autoWeek = computeAutoWeekNumber(
+    config?.auto_base_week ?? 1,
+    config?.auto_base_sunday ?? "2026-04-12",
+  );
   const activeWeek =
     config?.mode === "manual" && config?.manual_week
       ? config.manual_week
@@ -133,8 +136,9 @@ export function WeeklySentencesManager({
   async function handleConfigChange(
     mode: "auto" | "manual",
     manualWeek?: number,
+    autoBaseWeek?: number,
   ) {
-    const result = await updateWeeklySentenceConfig(mode, manualWeek);
+    const result = await updateWeeklySentenceConfig(mode, manualWeek, autoBaseWeek);
     if (result.error) {
       toast.error(result.error);
       return;
@@ -145,11 +149,16 @@ export function WeeklySentencesManager({
             ...prev,
             mode,
             manual_week: mode === "manual" ? (manualWeek ?? null) : null,
+            auto_base_week: autoBaseWeek ?? prev.auto_base_week,
           }
         : null,
     );
     toast.success(
-      mode === "auto" ? "자동 모드로 전환되었습니다." : `Week ${manualWeek}로 고정되었습니다.`,
+      autoBaseWeek
+        ? `현재 주차를 Week ${autoBaseWeek}로 설정했습니다.`
+        : mode === "auto"
+          ? "자동 모드로 전환되었습니다."
+          : `Week ${manualWeek}로 고정되었습니다.`,
     );
     startTransition(() => router.refresh());
   }
@@ -180,45 +189,76 @@ export function WeeklySentencesManager({
         <h2 className="mb-3 text-sm font-medium text-slate-600">주차 설정</h2>
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-2 text-sm">
-            <span className="text-slate-500">자동 계산 주차:</span>
-            <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-semibold text-blue-700">
-              Week {autoWeek}
-            </span>
-          </div>
-          <div className="flex items-center gap-2 text-sm">
-            <span className="text-slate-500">현재 활성:</span>
+            <span className="text-slate-500">현재 주차:</span>
             <span className="rounded-full bg-orange-50 px-2.5 py-0.5 text-xs font-semibold text-orange-700">
               Week {activeWeek}
             </span>
             {config?.mode === "manual" && (
-              <span className="text-xs text-amber-600">(수동)</span>
+              <span className="text-xs text-amber-600">(수동 고정)</span>
+            )}
+            {config?.mode !== "manual" && (
+              <span className="text-xs text-blue-500">(자동 +1/주)</span>
             )}
           </div>
-          <div className="ml-auto flex items-center gap-2">
-            <Button
-              size="sm"
-              variant={config?.mode !== "manual" ? "default" : "outline"}
-              className="h-8 text-xs"
-              onClick={() => handleConfigChange("auto")}
-              disabled={config?.mode !== "manual"}
-            >
-              자동
-            </Button>
-            <select
-              value={config?.mode === "manual" ? (config.manual_week ?? "") : ""}
-              onChange={(e) => {
-                const v = Number(e.target.value);
-                if (v) handleConfigChange("manual", v);
-              }}
-              className="h-8 rounded-lg border border-slate-200 px-2 text-xs text-slate-700"
-            >
-              <option value="">수동 선택...</option>
-              {Array.from({ length: 48 }, (_, i) => i + 1).map((w) => (
-                <option key={w} value={w}>
-                  Week {w}
-                </option>
-              ))}
-            </select>
+          <div className="ml-auto flex flex-wrap items-center gap-2">
+            {/* 현재 주차 직접 설정 */}
+            <div className="flex items-center gap-1">
+              <span className="text-xs text-slate-500">현재 주차:</span>
+              <input
+                type="number"
+                min={1}
+                max={48}
+                defaultValue={autoWeek}
+                className="h-8 w-16 rounded-lg border border-slate-200 px-2 text-center text-xs"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    const v = Number((e.target as HTMLInputElement).value);
+                    if (v >= 1 && v <= 48) handleConfigChange("auto", undefined, v);
+                  }
+                }}
+                id="week-base-input"
+              />
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 text-xs"
+                onClick={() => {
+                  const el = document.getElementById("week-base-input") as HTMLInputElement;
+                  const v = Number(el?.value);
+                  if (v >= 1 && v <= 48) handleConfigChange("auto", undefined, v);
+                }}
+              >
+                설정
+              </Button>
+            </div>
+            <div className="h-6 w-px bg-slate-200" />
+            {/* 수동 고정 / 자동 전환 */}
+            {config?.mode === "manual" ? (
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 text-xs"
+                onClick={() => handleConfigChange("auto")}
+              >
+                자동으로 전환
+              </Button>
+            ) : (
+              <select
+                value=""
+                onChange={(e) => {
+                  const v = Number(e.target.value);
+                  if (v) handleConfigChange("manual", v);
+                }}
+                className="h-8 rounded-lg border border-slate-200 px-2 text-xs text-slate-700"
+              >
+                <option value="">수동 고정...</option>
+                {Array.from({ length: 48 }, (_, i) => i + 1).map((w) => (
+                  <option key={w} value={w}>
+                    Week {w}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
         </div>
       </div>
@@ -226,7 +266,7 @@ export function WeeklySentencesManager({
       {/* 검색 */}
       <div className="flex items-center gap-3">
         <Input
-          placeholder="주차 번호 검색 (1~52)"
+          placeholder="주차 번호 검색 (1~48)"
           type="number"
           min={1}
           max={52}

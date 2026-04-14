@@ -20,14 +20,17 @@ export async function getCurrentWeeklySentences(): Promise<{
   const supabase = await createClient();
   const { data: cfg } = await supabase
     .from("weekly_sentence_config")
-    .select("mode, manual_week")
+    .select("mode, manual_week, auto_base_week, auto_base_sunday")
     .eq("id", 1)
     .maybeSingle();
 
   const weekNumber =
     cfg?.mode === "manual" && cfg?.manual_week
       ? cfg.manual_week
-      : computeAutoWeekNumber();
+      : computeAutoWeekNumber(
+          cfg?.auto_base_week ?? 1,
+          cfg?.auto_base_sunday ?? "2026-04-12",
+        );
 
   const { data: items } = await supabase
     .from("weekly_sentences")
@@ -206,18 +209,29 @@ export async function getWeeklySentenceConfig(): Promise<WeeklySentenceConfig | 
 export async function updateWeeklySentenceConfig(
   mode: "auto" | "manual",
   manualWeek?: number | null,
+  autoBaseWeek?: number,
 ): Promise<{ error?: string }> {
   const auth = await verifyAdmin();
   if ("error" in auth) return { error: auth.error };
 
+  const { getCurrentSunday } = await import("@/lib/utils/weekly-sentence-week");
+
+  const updateData: Record<string, unknown> = {
+    mode,
+    manual_week: mode === "manual" ? (manualWeek ?? null) : null,
+    updated_at: new Date().toISOString(),
+  };
+
+  // 기준 주차 변경: "지금이 N주차" → 이번 주 일요일을 base로 저장
+  if (autoBaseWeek && autoBaseWeek >= 1 && autoBaseWeek <= 48) {
+    updateData.auto_base_week = autoBaseWeek;
+    updateData.auto_base_sunday = getCurrentSunday();
+  }
+
   const supabase = createAdminClient();
   const { error } = await supabase
     .from("weekly_sentence_config")
-    .update({
-      mode,
-      manual_week: mode === "manual" ? (manualWeek ?? null) : null,
-      updated_at: new Date().toISOString(),
-    })
+    .update(updateData)
     .eq("id", 1);
 
   if (error) {

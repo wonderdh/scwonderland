@@ -160,6 +160,8 @@ export type WeeklySentenceConfig = {
   id: number;
   mode: "auto" | "manual";
   manual_week: number | null;
+  auto_base_week: number;
+  auto_base_sunday: string;
   updated_at: string;
 };
 
