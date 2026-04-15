@@ -9,7 +9,7 @@ import {
   bulkReserveAttendance,
 } from "@/app/(admin)/admin/actions";
 import { MultiDatePicker } from "@/components/MultiDatePicker";
-import { formatDateYmdKst } from "@/lib/utils/date-kst";
+import { formatDateYmdKst, todayWeekdayArray } from "@/lib/utils/date-kst";
 import {
   ATTENDANCE_STATUS_CONFIG,
   ATTENDANCE_STATUSES,
@@ -34,7 +34,7 @@ export function StudentSearchPanel({
 }) {
   const [query, setQuery] = useState("");
   const [selectedStudent, setSelectedStudent] = useState<StudentItem | null>(null);
-  const [selectedDates, setSelectedDates] = useState<Date[]>([]);
+  const [selectedDates, setSelectedDates] = useState<Date[]>(() => todayWeekdayArray());
   const [currentStatus, setCurrentStatus] = useState<string | null>(null);
   const [currentNote, setCurrentNote] = useState<string | null>(null);
   const [pendingStatus, setPendingStatus] = useState<string | null>(null);
@@ -135,7 +135,7 @@ export function StudentSearchPanel({
 
   function selectStudent(s: StudentItem) {
     setSelectedStudent(s);
-    setSelectedDates([]);
+    setSelectedDates(todayWeekdayArray());
     setQuery(s.korean_name ?? s.english_name ?? "");
   }
 

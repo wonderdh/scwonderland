@@ -22,7 +22,7 @@ import type {
   ReservationBusChange,
 } from "@/app/(admin)/admin/actions";
 import type { BusNumber, BusTimeSlot } from "@/lib/types";
-import { formatDateYmdKst } from "@/lib/utils/date-kst";
+import { formatDateYmdKst, todayWeekdayArray } from "@/lib/utils/date-kst";
 import {
   ATTENDANCE_STATUS_CONFIG,
   ATTENDANCE_STATUSES,
@@ -76,14 +76,14 @@ export function ReservationDashboard({
 
   // 예약 폼 상태 — 출결
   const [attStudentId, setAttStudentId] = useState("");
-  const [attDates, setAttDates] = useState<Date[]>([]);
+  const [attDates, setAttDates] = useState<Date[]>(() => todayWeekdayArray());
   const [attStatus, setAttStatus] = useState("absent");
   const [attNote, setAttNote] = useState("");
   const [attAutoBus, setAttAutoBus] = useState(true);
 
   // 예약 폼 상태 — 버스
   const [busStudentId, setBusStudentId] = useState("");
-  const [busDates, setBusDates] = useState<Date[]>([]);
+  const [busDates, setBusDates] = useState<Date[]>(() => todayWeekdayArray());
   const [busChangeType, setBusChangeType] = useState<"no_ride" | "change" | "absent">("no_ride");
   const [busSlotId, setBusSlotId] = useState("");
   const [busNumberId, setBusNumberId] = useState("");
@@ -161,7 +161,7 @@ export function ReservationDashboard({
         ? ` (버스 미탑승 ${result.busCount}건 연동)`
         : "";
     toast.success(`${result.count}일 출결 예약 완료${busMsg}`);
-    setAttDates([]);
+    setAttDates(todayWeekdayArray());
     setAttNote("");
     router.refresh();
   }
@@ -187,7 +187,7 @@ export function ReservationDashboard({
     toast.success(
       `${result.created}건 생성${result.skipped ? `, ${result.skipped}건 건너뜀` : ""}`,
     );
-    setBusDates([]);
+    setBusDates(todayWeekdayArray());
     setBusReason("");
     router.refresh();
   }

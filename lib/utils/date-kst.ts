@@ -94,3 +94,15 @@ export function nowKstParts(): { year: number; month: number; day: number } {
   const day = Number(parts.find((p) => p.type === "day")?.value);
   return { year, month, day };
 }
+
+/**
+ * MultiDatePicker 초기값용 Date 배열. 평일이면 `[오늘]`, 주말이면 `[]`.
+ * 출결/버스 등 날짜 선택 폼에서 기본값으로 사용.
+ */
+export function todayWeekdayArray(): Date[] {
+  const { year, month, day } = nowKstParts();
+  const d = new Date(year, month - 1, day);
+  const dow = d.getDay(); // 0=일, 6=토
+  if (dow === 0 || dow === 6) return [];
+  return [d];
+}

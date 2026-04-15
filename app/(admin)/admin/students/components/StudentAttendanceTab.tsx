@@ -13,7 +13,7 @@ import {
 import type { AttendanceRecord, AttendanceStats } from "@/lib/types";
 import { LoadingState } from "@/components/LoadingState";
 import { MultiDatePicker } from "@/components/MultiDatePicker";
-import { formatDateYmdKst } from "@/lib/utils/date-kst";
+import { formatDateYmdKst, todayWeekdayArray } from "@/lib/utils/date-kst";
 import { WEEKDAY_NAMES_7 } from "@/lib/constants/date";
 import {
   ATTENDANCE_STATUS_CONFIG,
@@ -53,7 +53,7 @@ export function StudentAttendanceTab({ studentProfileId }: { studentProfileId: s
 
   // Record form state
   const [showForm, setShowForm] = useState(false);
-  const [formDates, setFormDates] = useState<Date[]>([]);
+  const [formDates, setFormDates] = useState<Date[]>(() => todayWeekdayArray());
   const [formStatus, setFormStatus] = useState("present");
   const [formNote, setFormNote] = useState("");
   const [saving, setSaving] = useState(false);
@@ -94,7 +94,7 @@ export function StudentAttendanceTab({ studentProfileId }: { studentProfileId: s
       setActionError(result.error);
       return;
     }
-    setFormDates([]);
+    setFormDates(todayWeekdayArray());
     setShowForm(false);
     router.refresh();
     await reload();
