@@ -1,4 +1,4 @@
-import { PageHeader } from "@/components/PageHeader";
+import { PageHeader } from "@/components/navigation/PageHeader";
 import { AcademyNoticesManager } from "./components/AcademyNoticesManager";
 
 export default function AdminAcademyNoticesPage() {

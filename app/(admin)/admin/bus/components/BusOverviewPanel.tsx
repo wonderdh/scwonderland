@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { getBulkBusDefaults, listBusStopDayAssignments, listAfterschoolStudentIdsByDay } from "../../actions";
-import { getAgeColor } from "@/lib/student-age-colors";
+import { getAgeColor } from "@/lib/ui/student-age-colors";
 import type { BusNumber, BusTimeSlot, BusDefaultAssignment } from "@/lib/types";
 import { FullOverviewPanel } from "./DropoffOverviewPanel";
 

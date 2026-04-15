@@ -4,7 +4,7 @@ import { useState } from "react";
 import type { AcademyPeriod, GroupTimetableData } from "@/lib/types";
 import { TimetableManager } from "./TimetableManager";
 import { GroupTimetableGrid } from "./GroupTimetableGrid";
-import { PageHeader } from "@/components/PageHeader";
+import { PageHeader } from "@/components/navigation/PageHeader";
 
 type TabId = "periods" | "kindergarten" | "afternoon";
 

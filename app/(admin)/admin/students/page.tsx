@@ -9,7 +9,7 @@ import {
 } from "../actions";
 import { AdminListSidebar } from "../components/AdminListSidebar";
 import { ScrollToSection } from "../components/ScrollToSection";
-import { PageHeader } from "@/components/PageHeader";
+import { PageHeader } from "@/components/navigation/PageHeader";
 import { AddStudentForm } from "./components/AddStudentForm";
 import { StudentGroupedList } from "./components/StudentGroupedList";
 import { StudentInfoCard } from "./components/StudentSelectedView";

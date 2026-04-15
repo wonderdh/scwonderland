@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useTransition, useMemo, useRef } from "react";
 import { toast } from "sonner";
 import type { BusManifestGroup, BusManifestEntry, NoRideEntry } from "@/lib/types";
-import { getAgeColor } from "@/lib/student-age-colors";
+import { getAgeColor } from "@/lib/ui/student-age-colors";
 import {
   getDailyBusManifest,
   batchBusCheckRecord,

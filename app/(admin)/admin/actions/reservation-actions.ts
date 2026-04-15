@@ -2,7 +2,7 @@
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { verifyAdmin } from "./auth-helpers";
-import { logger } from "@/lib/logger";
+import { logger } from "@/lib/server/logger";
 import { todayKst, formatDateYmdKst } from "@/lib/utils/date-kst";
 
 export type ReservationAttendance = {

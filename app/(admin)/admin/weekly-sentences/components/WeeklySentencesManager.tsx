@@ -6,17 +6,17 @@ import { toast } from "sonner";
 import { Pencil, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { LoadingState } from "@/components/LoadingState";
-import { ConfirmDialog } from "@/components/ConfirmDialog";
-import { FormGroup } from "@/components/FormGroup";
-import { PageHeader } from "@/components/PageHeader";
+import { LoadingState } from "@/components/feedback/LoadingState";
+import { ConfirmDialog } from "@/components/overlays/ConfirmDialog";
+import { FormGroup } from "@/components/forms/FormGroup";
+import { PageHeader } from "@/components/navigation/PageHeader";
 import {
   upsertWeeklySentence,
   deleteWeeklySentence,
   bulkImportWeeklySentences,
   updateWeeklySentenceConfig,
 } from "@/app/(admin)/admin/actions";
-import { WEEKLY_SENTENCE_LEVELS } from "@/lib/weekly-sentence-levels";
+import { WEEKLY_SENTENCE_LEVELS } from "@/lib/constants/weekly-sentence";
 import { computeAutoWeekNumber } from "@/lib/utils/weekly-sentence-week";
 import type { WeeklySentence, WeeklySentenceConfig } from "@/lib/types";
 

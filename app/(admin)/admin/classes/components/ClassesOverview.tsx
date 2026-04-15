@@ -2,8 +2,8 @@
 
 import { useMemo, useState } from "react";
 import type { ClassWithDetails, TeacherOption } from "@/lib/types";
-import { TeacherBadges } from "@/components/TeacherBadges";
-import { GROUP_ORDER, type GroupKey } from "@/lib/class-groups";
+import { TeacherBadges } from "@/components/badges/TeacherBadges";
+import { GROUP_ORDER, type GroupKey } from "@/lib/constants/class";
 import { ClassesExcelDownload } from "./ClassesExcelDownload";
 
 type FlatClassStudent = {

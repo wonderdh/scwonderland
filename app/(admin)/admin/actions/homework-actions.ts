@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { verifyAuthenticated, verifyTeacherOrAdmin } from "./auth-helpers";
-import { logger } from "@/lib/logger";
+import { logger } from "@/lib/server/logger";
 import {
   STORAGE_BUCKETS,
   generateStoragePath,

@@ -43,15 +43,15 @@ npm run lint     # ESLint 실행
 - 소프트 삭제: `TrashView` 공유 컴포넌트 (`?section=trash`), 삭제 전 관련 데이터 정리
 - 원어민 교사 영어 UI: `teacher-labels.ts` 9개 라벨 세트, `academy/layout.tsx`에서 감지
 - DB 초기 데이터: 유치부 6반, 오후반 19개, Native 교사 10명 (`{이름}@scwonderland.com`, Wonder0225!)
-- 공유 UI 컴포넌트: `components/ui/` (shadcn/ui), `components/` (AudioRecorder, ConfirmDialog, FileUpload, QueryTabNav 등)
+- 공유 UI 컴포넌트 (`components/` 8개 서브폴더): `ui/` (shadcn/ui) · `forms/` (AudioRecorder, FileUpload, FileList, FormGroup, MultiDatePicker) · `feedback/` (LoadingState, Spinner, NavigationProgress) · `overlays/` (ConfirmDialog) · `navigation/` (Breadcrumb, PageHeader, QueryTabNav, LogoutButton) · `badges/` (StatusBadge, TeacherBadges) · `bus/` · `skeletons/`
 
 ### 공통 유틸 (반드시 사용)
 - **정렬:** 학생 명단 정렬은 `lib/utils/student-sort.ts#sortStudentsByAgeAndName()` 단일 소스
 - **날짜/시간:** `lib/utils/date-kst.ts`의 `todayKst()`, `formatDateKst()`, `formatDateTimeKst()`, `nowKstParts()`. `new Date().toLocaleDateString(...)` 분산 사용 금지
 - **HTML escape:** `lib/utils/escape-html.ts#escapeHtml()` — 프린트용 새 창 등 React 밖 HTML 생성 시 XSS 방지 필수
-- **로거:** `lib/logger.ts#logger` — 서버 `console.log/error` 직접 사용 금지, PII 로깅 금지
+- **로거:** `lib/server/logger.ts#logger` — 서버 `console.log/error` 직접 사용 금지, PII 로깅 금지
 - **인증:** `app/(admin)/admin/actions/auth-helpers.ts` — `verifyAdmin()` / `verifyAuthenticated()` / `verifyTeacherOrAdmin()` 중 상황에 맞게 선택
-- **다중 날짜:** `components/MultiDatePicker.tsx` — 출결/버스/예약 등 날짜 선택이 필요한 곳에서 공유. 1개=당일, 여러 개=일괄. 토·일 비활성. 범위 자동 채움
+- **다중 날짜:** `components/forms/MultiDatePicker.tsx` — 출결/버스/예약 등 날짜 선택이 필요한 곳에서 공유. 1개=당일, 여러 개=일괄. 토·일 비활성. 범위 자동 채움
 - **출결 상태:** `lib/constants/attendance.ts` — `ATTENDANCE_STATUSES`, `ATTENDANCE_STATUS_CONFIG`, `getStatusLabel()`, `shouldShowNote()`. 출결 UI에서 로컬 STATUS_CONFIG 정의 금지, 이 상수를 import할 것
 - **시간표 색상:** `lib/constants/timetable.ts` — `TEACHER_COLOR_PALETTE`(12색), `buildTeacherColorMap()`. 시간표 컴포넌트에서 로컬 복붙 금지
 - **요일 이름:** `lib/constants/date.ts` — `WEEKDAY_NAMES_5`(월~금), `WEEKDAY_NAMES_7`(일~토). `["월","화","수","목","금"]` 하드코딩 금지

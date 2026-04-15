@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import { LogoutButton } from "@/components/LogoutButton";
+import { LogoutButton } from "@/components/navigation/LogoutButton";
 
 export default async function AcademyDashboardPage() {
   const supabase = await createClient();

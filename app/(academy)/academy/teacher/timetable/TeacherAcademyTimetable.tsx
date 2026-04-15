@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import type { GroupTimetableData } from "@/lib/types";
-import { CLASS_COLOR_PALETTE } from "@/lib/class-colors";
+import { CLASS_COLOR_PALETTE } from "@/lib/constants/class";
 
 type GroupKey = "유치부" | "오후반";
 

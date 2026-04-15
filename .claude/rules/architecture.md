@@ -143,13 +143,13 @@ public/
 | 파일 | 역할 |
 |------|------|
 | `proxy.ts` | Supabase 세션 갱신 (Next.js 16 proxy, 모든 요청에서 토큰 리프레시) |
-| `lib/menu-routes.ts` | (site) 라우트 중앙 설정 |
-| `lib/auth-utils.ts` | 이메일 정규화 + 인증 에러 메시지 (공유) |
+| `lib/navigation/menu-routes.ts` | (site) 라우트 중앙 설정 |
+| `lib/auth/auth-utils.ts` | 이메일 정규화 + 인증 에러 메시지 (공유) |
 | `lib/types/` | 공유 타입 정의 (database.ts: DB row / api.ts: 조인·UI 타입 / index.ts: barrel re-export) |
 | `lib/supabase/storage.ts` | Storage 버킷 정의, 파일 검증/경로 생성 헬퍼 |
 | `app/(admin)/admin/actions.ts` | Admin Server Actions barrel re-export (~101개 함수) |
 | `app/(admin)/admin/actions/` | 도메인별 분할 (15개 파일) |
 | `app/(academy)/academy/actions.ts` | Academy Server Actions (7개 함수) |
 | `lib/supabase/admin.ts` | Admin Supabase 클라이언트 (service role) |
-| `lib/teacher-labels.ts` | 교사 포털 한국어/영어 라벨 맵 (9개 라벨 세트) |
+| `lib/ui/teacher-labels.ts` | 교사 포털 한국어/영어 라벨 맵 (9개 라벨 세트) |
 | `docs/*.sql` | DB 스키마 및 마이그레이션 |

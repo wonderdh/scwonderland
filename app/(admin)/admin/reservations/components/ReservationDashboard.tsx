@@ -6,13 +6,13 @@ import { toast } from "sonner";
 import { format, parseISO } from "date-fns";
 import { ko } from "date-fns/locale";
 import { Calendar } from "@/components/ui/calendar";
-import { MultiDatePicker } from "@/components/MultiDatePicker";
+import { MultiDatePicker } from "@/components/forms/MultiDatePicker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { LoadingState } from "@/components/LoadingState";
-import { StatusBadge } from "@/components/StatusBadge";
-import { PageHeader } from "@/components/PageHeader";
-import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { LoadingState } from "@/components/feedback/LoadingState";
+import { StatusBadge } from "@/components/badges/StatusBadge";
+import { PageHeader } from "@/components/navigation/PageHeader";
+import { ConfirmDialog } from "@/components/overlays/ConfirmDialog";
 import { BUS_CHANGE_TYPE_CONFIG } from "@/lib/constants/bus";
 import {
   bulkReserveAttendance,

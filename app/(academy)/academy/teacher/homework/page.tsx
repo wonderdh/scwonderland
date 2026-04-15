@@ -1,7 +1,7 @@
 import { getCurrentTeacherProfile, getTeacherClasses } from "../../actions";
 import { redirect } from "next/navigation";
 import { TeacherHomeworkClient } from "./components/TeacherHomeworkClient";
-import { homeworkLabels } from "@/lib/teacher-labels";
+import { homeworkLabels } from "@/lib/ui/teacher-labels";
 
 export default async function TeacherHomeworkPage() {
   const profile = await getCurrentTeacherProfile();

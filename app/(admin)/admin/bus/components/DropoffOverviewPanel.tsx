@@ -4,10 +4,10 @@ import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { LoadingState } from "@/components/LoadingState";
+import { LoadingState } from "@/components/feedback/LoadingState";
 // html-to-image는 대용량(~100KB) 라이브러리라 이미지 내보내기 시점에만 동적 로드.
 import { getWeeklyDropoffExportData } from "../../actions";
-import { getAgeColor } from "@/lib/student-age-colors";
+import { getAgeColor } from "@/lib/ui/student-age-colors";
 import { formatTime } from "@/lib/bus/utils";
 import type { DropoffExportRow, BusTimeSlot, BusNumber } from "@/lib/types";
 import { WEEKDAY_NAMES_5 } from "@/lib/constants/date";

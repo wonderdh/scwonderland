@@ -12,9 +12,9 @@ import {
   getClassTextbookProgress,
   batchUpdateProgress,
 } from "@/app/(admin)/admin/actions";
-import { textbookLabels, batchUpdateLabels } from "@/lib/teacher-labels";
+import { textbookLabels, batchUpdateLabels } from "@/lib/ui/teacher-labels";
 import { useTeacherType } from "./TeacherTypeContext";
-import { LoadingState } from "@/components/LoadingState";
+import { LoadingState } from "@/components/feedback/LoadingState";
 
 export function TeacherTextbookClient({
   classes,

@@ -17,7 +17,7 @@ import { TeacherClassesTab } from "./components/TeacherClassesTab";
 import { TeacherTimetableTab } from "./components/TeacherTimetableTab";
 import { TrashView } from "../components/TrashView";
 import { BulkPasswordResetDialog } from "../students/components/BulkPasswordResetDialog";
-import { PageHeader } from "@/components/PageHeader";
+import { PageHeader } from "@/components/navigation/PageHeader";
 
 const VALID_TABS: TeacherTabId[] = ["info", "classes", "timetable"];
 

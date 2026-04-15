@@ -3,7 +3,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { verifyAuthenticated as verifyAuthenticatedUser, verifyTeacherOrAdmin } from "./auth-helpers";
-import { logger } from "@/lib/logger";
+import { logger } from "@/lib/server/logger";
 import { todayKst } from "@/lib/utils/date-kst";
 import type { LearningRecord } from "@/lib/types";
 

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { BusStaffProfile, BusNumber } from "@/lib/types";
-import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { ConfirmDialog } from "@/components/overlays/ConfirmDialog";
 import {
   createBusStaff,
   updateBusStaff,

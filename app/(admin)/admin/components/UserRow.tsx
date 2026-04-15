@@ -4,7 +4,7 @@ import { useState } from "react";
 import type { UserWithProfile } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { ConfirmDialog } from "@/components/overlays/ConfirmDialog";
 import { toast } from "sonner";
 
 type UserRowProps = {

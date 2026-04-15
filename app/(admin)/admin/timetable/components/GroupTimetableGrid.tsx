@@ -3,7 +3,7 @@
 import { useState, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import type { GroupTimetableData, CellEntry } from "@/lib/types";
-import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { ConfirmDialog } from "@/components/overlays/ConfirmDialog";
 import {
   getGroupTimetableGrid,
   setClassScheduleSlot,

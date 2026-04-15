@@ -27,7 +27,7 @@
 3. 모든 콘텐츠 정적, DB 조회 없음
 
 ## 의존성
-- `lib/menu-routes.ts` — Navigation 메뉴 경로 매핑
+- `lib/navigation/menu-routes.ts` — Navigation 메뉴 경로 매핑
 - `app/(site)/_components/common/ImageWithFallback.tsx` — Hero 이미지 에러 핸들링
 
 ## 주의사항

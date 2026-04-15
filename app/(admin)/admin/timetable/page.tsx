@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { listAcademyPeriods, getGroupTimetableGrid } from "../actions";
-import { PageHeader } from "@/components/PageHeader";
+import { PageHeader } from "@/components/navigation/PageHeader";
 import { TimetablePageClient } from "./components/TimetablePageClient";
 
 export default async function AdminTimetablePage() {

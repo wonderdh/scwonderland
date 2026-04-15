@@ -5,8 +5,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import type { ReportCard, ReportCardListItem } from "@/lib/types";
 import { verifyAdmin } from "./auth-helpers";
-import { translateText } from "@/lib/translate";
-import { logger } from "@/lib/logger";
+import { translateText } from "@/lib/server/translate";
+import { logger } from "@/lib/server/logger";
 
 export type UntranslatedReport = {
   id: string;

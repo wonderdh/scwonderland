@@ -11,9 +11,9 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Check, Clock, ImagePlus, Paperclip, Pin } from "lucide-react";
-import { PageHeader } from "@/components/PageHeader";
-import { FormGroup } from "@/components/FormGroup";
-import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { PageHeader } from "@/components/navigation/PageHeader";
+import { FormGroup } from "@/components/forms/FormGroup";
+import { ConfirmDialog } from "@/components/overlays/ConfirmDialog";
 
 type NoticeWithCounts = Notice & {
   image_count: number;

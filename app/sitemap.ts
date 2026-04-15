@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { menuIdToPath, itemSlugs } from "@/lib/menu-routes";
+import { menuIdToPath, itemSlugs } from "@/lib/navigation/menu-routes";
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://scwonderland.com";
 

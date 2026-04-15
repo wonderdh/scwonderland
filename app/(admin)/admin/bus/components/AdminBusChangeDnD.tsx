@@ -4,12 +4,12 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { toastSuccess, toastError } from "@/lib/toast";
+import { toastSuccess, toastError } from "@/lib/ui/toast";
 import { Info } from "lucide-react";
-import { getAgeColor } from "@/lib/student-age-colors";
+import { getAgeColor } from "@/lib/ui/student-age-colors";
 import type { BusStop, BusTimeSlot, StudentBusDefault } from "@/lib/types";
 import { detectAfterschoolSlot } from "@/lib/bus/afterschool-sync";
-import { MultiDatePicker } from "@/components/MultiDatePicker";
+import { MultiDatePicker } from "@/components/forms/MultiDatePicker";
 import { formatDateYmdKst } from "@/lib/utils/date-kst";
 import {
   listBusStops,

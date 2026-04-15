@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { STORAGE_BUCKETS } from "@/lib/supabase/storage";
-import { logger } from "@/lib/logger";
+import { logger } from "@/lib/server/logger";
 import {
   uploadFilesFromFormData,
   rollbackUploadedFiles,

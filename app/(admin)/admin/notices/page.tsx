@@ -1,5 +1,5 @@
 import { listNotices } from "../actions/notice-actions";
-import { PageHeader } from "@/components/PageHeader";
+import { PageHeader } from "@/components/navigation/PageHeader";
 import { NoticesManager } from "./components/NoticesManager";
 
 export default async function AdminNoticesPage() {

@@ -12,7 +12,7 @@ import { BusStudentAssignmentManager } from "./components/BusStudentAssignmentMa
 import { BusNumbersManager } from "./components/BusNumbersManager";
 import { BusExportButton } from "./components/BusExportButton";
 import { DailyBusChanges } from "@/components/bus/DailyBusChanges";
-import { PageHeader } from "@/components/PageHeader";
+import { PageHeader } from "@/components/navigation/PageHeader";
 
 const VALID_TABS: BusTabId[] = ["today", "requests", "assignment", "master"];
 

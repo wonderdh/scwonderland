@@ -1,3 +1,7 @@
+// 반 그룹 순서 (전체 앱에서 공유)
+export const GROUP_ORDER = ["유치부", "오후반", ""] as const;
+export type GroupKey = (typeof GROUP_ORDER)[number];
+
 // IMPORTANT: All strings must be complete Tailwind class names (no dynamic concat) for purging to work.
 export const CLASS_COLOR_PALETTE: { bg: string; text: string; border: string }[] = [
   { bg: "bg-blue-100",    text: "text-blue-800",    border: "border-blue-300"    },

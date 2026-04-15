@@ -52,20 +52,59 @@ paths:
 
 ## Shared Components (components/)
 
+루트 `components/` 아래 8개 서브폴더로 용도별 분류. 공통 import 경로: `@/components/<folder>/<Name>`.
+
+### forms/ — 폼 입력
 | 컴포넌트 | 역할 |
 |---------|------|
-| `LogoutButton` | 로그아웃 + 리다이렉트 (admin + academy 공유, labels prop으로 영어 지원) |
-| `AudioRecorder` | 오디오 녹음 컴포넌트 (숙제 제출용) |
-| `FileUpload` | 파일 업로드 컴포넌트 |
-| `FileList` | 파일 목록 표시 컴포넌트 |
-| `MultiDatePicker` | 다중 날짜 캘린더. 첫 클릭=앵커, 두 번째=범위 채움, 이후=개별 토글. 토·일 비활성. 출결/버스/예약에서 공유 |
-| `PageHeader` | 각 admin 섹션 상단 헤더 (제목 + 설명) |
-| `Breadcrumb` | admin 경로 표시 (Home > Section > Detail) |
-| `FormGroup` | 라벨·도움말·에러를 포함한 폼 필드 wrapper |
-| `StatusBadge` | 색·아이콘·라벨이 결합된 상태 뱃지 (StatusConfig 기반) |
-| `LoadingState` | 스피너 + 컨텍스트 라벨 (`label` prop 필수) |
-| `ConfirmDialog` | 삭제/민감 액션 확인 모달. `danger` 변형 + `impactList` 영향 범위 표시 지원 |
-| `ui/` | shadcn/ui 컴포넌트 (avatar, badge, button, calendar, card, input, label, popover, separator, tabs, textarea, tooltip) |
+| `forms/AudioRecorder` | 오디오 녹음 (숙제 제출용) |
+| `forms/FileUpload` | 파일 업로드 (드롭존, 다중 파일) |
+| `forms/FileList` | 업로드된 파일 목록 (삭제 가능, 타입별 아이콘) |
+| `forms/FormGroup` | 라벨·도움말·에러를 포함한 폼 필드 wrapper |
+| `forms/MultiDatePicker` | 다중 날짜 캘린더. 첫 클릭=앵커, 두 번째=범위 채움, 이후=개별 토글. 토·일 비활성. 출결/버스/예약에서 공유 |
+
+### feedback/ — 로딩·진행 표시
+| 컴포넌트 | 역할 |
+|---------|------|
+| `feedback/LoadingState` | 스피너 + 컨텍스트 라벨 (`label` prop 필수) |
+| `feedback/Spinner` | 회전 로딩 스피너 (3가지 크기) |
+| `feedback/NavigationProgress` | 페이지 전환 progress 바 |
+
+### overlays/ — 모달·다이얼로그
+| 컴포넌트 | 역할 |
+|---------|------|
+| `overlays/ConfirmDialog` | 삭제·민감 액션 확인 모달. `danger` 변형 + `impactList` 영향 범위 표시 지원 |
+
+### navigation/ — 내비게이션·헤더
+| 컴포넌트 | 역할 |
+|---------|------|
+| `navigation/Breadcrumb` | admin 경로 표시 (Home > Section > Detail) |
+| `navigation/PageHeader` | 각 admin 섹션 상단 헤더 (제목 + 설명 + 액션) |
+| `navigation/QueryTabNav` | URL 쿼리 기반 탭 네비게이션 |
+| `navigation/LogoutButton` | 로그아웃 + 리다이렉트 (admin + academy + bus 공유, `labels` prop으로 영어 지원) |
+
+### badges/ — 상태·교사 뱃지
+| 컴포넌트 | 역할 |
+|---------|------|
+| `badges/StatusBadge` | 색·아이콘·라벨 결합 상태 뱃지 (StatusConfig 기반) |
+| `badges/TeacherBadges` | 담당 교사 색상 칩 목록 (특정 교사 제외 옵션) |
+
+### bus/ — 버스 도메인
+| 컴포넌트 | 역할 |
+|---------|------|
+| `bus/DailyBusChanges` | 일일 버스 변경요청 표시 (실시간 업데이트, 결석 중복제거) |
+| `bus/MonitorBusCard` | 모니터 화면용 버스 탑승 카드 (정류장별 학생, `extra_stops` 지원) |
+
+### skeletons/ — 로딩 스켈레톤
+| 컴포넌트 | 역할 |
+|---------|------|
+| `skeletons/AdminDashboardSkeleton` | 대시보드 스켈레톤 (통계 + 네비 카드) |
+| `skeletons/AdminListPageSkeleton` | 관리자 목록 페이지 스켈레톤 |
+| `skeletons/SkeletonList` | 일반 목록 스켈레톤 |
+| `skeletons/SkeletonTable` | 테이블 스켈레톤 |
+
+### ui/ — shadcn/ui primitives
+avatar, badge, button, calendar, card, input, label, popover, separator, tabs, textarea, tooltip
 
 ## Academy Components (app/(academy)/academy/)
 

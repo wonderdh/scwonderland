@@ -1,6 +1,6 @@
 import { getCurrentTeacherProfile } from "../../actions";
 import { redirect } from "next/navigation";
-import { attendanceLabels } from "@/lib/teacher-labels";
+import { attendanceLabels } from "@/lib/ui/teacher-labels";
 
 export default async function TeacherAttendancePage() {
   const profile = await getCurrentTeacherProfile();

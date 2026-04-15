@@ -3,8 +3,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { LoadingState } from "@/components/LoadingState";
-import { Spinner } from "@/components/Spinner";
+import { LoadingState } from "@/components/feedback/LoadingState";
+import { Spinner } from "@/components/feedback/Spinner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { StudentBusDefault, BusChangeRequest, BusNumber, BusTimeSlot } from "@/lib/types";

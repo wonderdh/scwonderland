@@ -1,5 +1,5 @@
 import type { BusManifestGroup, BusManifestEntry, BusManifestExtraStop } from "@/lib/types";
-import { getAgeColor } from "@/lib/student-age-colors";
+import { getAgeColor } from "@/lib/ui/student-age-colors";
 import { groupStudentsByStop, formatTime, formatCheckedTime, type StopGroup } from "@/lib/bus/utils";
 
 // 학생 있는 정류장 + 학생 없는 정류장(show_empty_stops) 을 한 리스트로 병합.

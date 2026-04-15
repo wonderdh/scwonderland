@@ -4,7 +4,7 @@ import { updateReportCardReply } from "@/app/(admin)/admin/actions";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Spinner } from "@/components/Spinner";
+import { Spinner } from "@/components/feedback/Spinner";
 
 export function ReportCardReplyForm({
   reportCardId,

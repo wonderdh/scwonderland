@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { verifyAdmin, verifyAuthenticated } from "./auth-helpers";
-import { logger } from "@/lib/logger";
+import { logger } from "@/lib/server/logger";
 import type { Textbook, ClassTextbook, StudentTextbookProgress, ClassTextbookProgressRow } from "@/lib/types";
 
 const COVER_BUCKET = "textbook-covers";

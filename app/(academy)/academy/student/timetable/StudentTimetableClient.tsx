@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { getStudentTimetable } from "@/app/(admin)/admin/actions/schedule-actions";
 import { getStudentAfterschoolDays } from "@/app/(admin)/admin/actions/afterschool-actions";
 import type { StudentTimetableRow } from "@/lib/types";
-import { LoadingState } from "@/components/LoadingState";
+import { LoadingState } from "@/components/feedback/LoadingState";
 import { escapeHtml } from "@/lib/utils/escape-html";
 import { WEEKDAY_NAMES_5 } from "@/lib/constants/date";
 import { TEACHER_COLOR_PALETTE, buildTeacherColorMap } from "@/lib/constants/timetable";

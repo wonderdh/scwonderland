@@ -13,8 +13,8 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useAsyncData } from "../../hooks/useAsyncData";
-import { LoadingState } from "@/components/LoadingState";
-import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { LoadingState } from "@/components/feedback/LoadingState";
+import { ConfirmDialog } from "@/components/overlays/ConfirmDialog";
 
 const STATUS_MAP = {
   not_started: { label: "시작 전", color: "bg-slate-100 text-slate-600" },

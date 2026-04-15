@@ -2,12 +2,12 @@
 
 import { useActionState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { toastSuccess } from "@/lib/toast";
+import { toastSuccess } from "@/lib/ui/toast";
 import { createStudent } from "../../actions";
-import { Spinner } from "@/components/Spinner";
+import { Spinner } from "@/components/feedback/Spinner";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { FormGroup } from "@/components/FormGroup";
+import { FormGroup } from "@/components/forms/FormGroup";
 
 type FormState = { error?: string; success?: string } | null;
 

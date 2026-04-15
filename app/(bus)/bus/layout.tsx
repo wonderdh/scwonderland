@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
-import { LogoutButton } from "@/components/LogoutButton";
+import { LogoutButton } from "@/components/navigation/LogoutButton";
 
 export const metadata: Metadata = {
   title: "버스 동승",

@@ -10,10 +10,10 @@ paths:
 
 - **로딩**: `<Spinner />` 단독 사용 금지 (인라인 버튼 제외). 섹션 로딩은 `<LoadingState label="..." />` (label 필수).
 - **삭제 확인**: `window.confirm()` 금지. 모든 삭제·민감 액션은 `<ConfirmDialog>` 사용. 영향 범위가 있으면 `impactList` prop으로 명시.
-- **토스트**: `lib/toast.ts`의 `toastSuccess`/`toastError` 사용 권장 (sonner 직접 import도 허용). 에러 토스트는 `closeButton + duration 8s`.
+- **토스트**: `lib/ui/toast.ts`의 `toastSuccess`/`toastError` 사용 권장 (sonner 직접 import도 허용). 에러 토스트는 `closeButton + duration 8s`.
 - **상태 표시**: 색만으로 의미 전달 금지. `<StatusBadge config={CONFIG.X} />` 사용 — config는 `lib/constants/attendance.ts` 또는 `lib/constants/bus.ts`에서 가져옴 (label·icon·badgeClass 포함).
 
-## Routing (lib/menu-routes.ts)
+## Routing (lib/navigation/menu-routes.ts)
 
 모든 (site) 라우트 매핑이 중앙 관리됨:
 
@@ -26,14 +26,14 @@ getMenuIdFromPathname("/program/map") // → "programs"
 
 **새 페이지 추가 시:** 폴더 생성 → `itemSlugs` 업데이트 → 카테고리 layout 확인
 
-## Email Normalization (lib/auth-utils.ts)
+## Email Normalization (lib/auth/auth-utils.ts)
 
 `@`가 없으면 자동으로 `@{NEXT_PUBLIC_EMAIL_DOMAIN}` 추가:
 ```typescript
 normalizeEmail("student123")      // → "student123@scwonderland.com"
 normalizeEmail("user@gmail.com")  // → "user@gmail.com"
 ```
-`lib/auth-utils.ts`에 중앙화됨. `getAuthErrorMessage()`도 동일 파일에 위치.
+`lib/auth/auth-utils.ts`에 중앙화됨. `getAuthErrorMessage()`도 동일 파일에 위치.
 
 ## Authentication Flow
 
@@ -110,10 +110,10 @@ nowKstParts()              // { year: 2026, month: 4, day: 9 }
 
 ## 다중 날짜 선택 (MultiDatePicker)
 
-날짜 선택이 필요한 곳에서는 `<input type="date">` 대신 `components/MultiDatePicker.tsx`를 사용한다:
+날짜 선택이 필요한 곳에서는 `<input type="date">` 대신 `components/forms/MultiDatePicker.tsx`를 사용한다:
 
 ```tsx
-import { MultiDatePicker } from "@/components/MultiDatePicker";
+import { MultiDatePicker } from "@/components/forms/MultiDatePicker";
 
 const [dates, setDates] = useState<Date[]>([]);
 <MultiDatePicker selected={dates} onSelect={setDates} />
@@ -150,7 +150,7 @@ if (dates.length === 1) {
 
 `"use server"` 파일에서는 `export type`이 불가능 (런타임에 제거됨). 공유 타입은 `lib/types/`에 정의하고, 컴포넌트에서 직접 `import type { ... } from "@/lib/types"` 사용.
 
-## Teacher Type Differentiation (lib/teacher-labels.ts)
+## Teacher Type Differentiation (lib/ui/teacher-labels.ts)
 
 교사 포털은 `teacher_type`에 따라 UI/라벨/탭이 다름:
 

@@ -3,15 +3,15 @@
 import { useCallback, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { getAgeColor } from "@/lib/student-age-colors";
+import { getAgeColor } from "@/lib/ui/student-age-colors";
 import {
   enrollStudent,
   removeAfterschoolStudent,
   bulkUpdateEnrollmentDays,
 } from "../../actions";
 import type { AfterschoolStudentEnrollment, DayEnrollment } from "@/lib/types";
-import { Spinner } from "@/components/Spinner";
-import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { Spinner } from "@/components/feedback/Spinner";
+import { ConfirmDialog } from "@/components/overlays/ConfirmDialog";
 
 const DAY_LABELS = ["월", "화", "수", "목", "금"];
 const AGE_GROUPS: { label: string; test: (age: number | null) => boolean }[] = [

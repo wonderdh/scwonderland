@@ -1,10 +1,10 @@
 "use server";
 
 import { createAdminClient } from "@/lib/supabase/admin";
-import { normalizeEmail } from "@/lib/auth-utils";
+import { normalizeEmail } from "@/lib/auth/auth-utils";
 import { revalidatePath } from "next/cache";
 import { verifyAdmin, verifyAuthenticated } from "./auth-helpers";
-import { logger } from "@/lib/logger";
+import { logger } from "@/lib/server/logger";
 import { todayKst } from "@/lib/utils/date-kst";
 import type {
   BusNumber,

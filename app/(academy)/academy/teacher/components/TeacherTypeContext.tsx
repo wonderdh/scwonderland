@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext } from "react";
-import type { TeacherType } from "@/lib/teacher-labels";
+import type { TeacherType } from "@/lib/ui/teacher-labels";
 
 const TeacherTypeContext = createContext<TeacherType>("korean");
 

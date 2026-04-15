@@ -9,16 +9,16 @@ import {
   updateAcademyNotice,
   deleteAcademyNotice,
 } from "../../actions";
-import { FileUpload } from "@/components/FileUpload";
-import { FileList } from "@/components/FileList";
+import { FileUpload } from "@/components/forms/FileUpload";
+import { FileList } from "@/components/forms/FileList";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import type { AcademyNotice, AcademyNoticeAttachment } from "@/lib/types";
-import { LoadingState } from "@/components/LoadingState";
-import { PageHeader } from "@/components/PageHeader";
-import { FormGroup } from "@/components/FormGroup";
-import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { LoadingState } from "@/components/feedback/LoadingState";
+import { PageHeader } from "@/components/navigation/PageHeader";
+import { FormGroup } from "@/components/forms/FormGroup";
+import { ConfirmDialog } from "@/components/overlays/ConfirmDialog";
 import { toast } from "sonner";
 
 export function AcademyNoticesManager() {

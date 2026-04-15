@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { ConfirmDialog } from "@/components/overlays/ConfirmDialog";
 import type { BusNumber, BusStop, BusTimeSlot } from "@/lib/types";
 import {
   listBusStopDayAssignments,

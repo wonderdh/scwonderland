@@ -20,9 +20,9 @@
 | `app/(academy)/academy/student/textbooks/StudentTextbooksClient.tsx` | 교재 진도 현황 조회 (읽기 전용) |
 | `app/(academy)/academy/student/timetable/StudentTimetableClient.tsx` | 개인 시간표 조회 및 출력, 방과후 등록 현황 |
 | `app/(admin)/admin/students/components/ReportCardReadView.tsx` | 리포트카드 읽기 전용 뷰 (공유 컴포넌트) |
-| `components/AudioRecorder.tsx` | 음성 녹음 컴포넌트 (숙제 제출용) |
-| `components/FileList.tsx` | 첨부파일 목록 표시 |
-| `components/LoadingState.tsx` | 로딩 상태 표시 |
+| `components/forms/AudioRecorder.tsx` | 음성 녹음 컴포넌트 (숙제 제출용) |
+| `components/forms/FileList.tsx` | 첨부파일 목록 표시 |
+| `components/feedback/LoadingState.tsx` | 로딩 상태 표시 |
 
 ## Server Actions
 
@@ -120,7 +120,7 @@
 - `app/(admin)/admin/actions.ts` — barrel export (모든 admin action)
 - `app/(admin)/admin/actions/schedule-actions.ts` — `getStudentTimetable` 직접 import
 - `app/(admin)/admin/actions/afterschool-actions.ts` — `getStudentAfterschoolDays` 직접 import
-- `lib/teacher-labels.ts` — (리포트카드 읽기 뷰에서 간접 사용)
+- `lib/ui/teacher-labels.ts` — (리포트카드 읽기 뷰에서 간접 사용)
 
 ## 주의사항
 - 학생 포털은 읽기 전용이 대부분 (교재 진도 변경 불가, 공지 작성 불가)

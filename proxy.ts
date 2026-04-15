@@ -1,6 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import { logger } from "@/lib/logger";
+import { logger } from "@/lib/server/logger";
 
 const MOBILE_UA = /Android|iPhone|iPad|iPod|Mobile/i;
 

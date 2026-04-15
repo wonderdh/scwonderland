@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { DailyBusChanges } from "@/components/bus/DailyBusChanges";
-import { PageHeader } from "@/components/PageHeader";
+import { PageHeader } from "@/components/navigation/PageHeader";
 
 export default async function AdminDashboardPage() {
   const [stats, todayStats, admins] = await Promise.all([getDashboardStats(), getTodayStats(), listAdmins()]);

@@ -4,7 +4,7 @@ import type { UserWithProfile } from "@/lib/types";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { ConfirmDialog } from "@/components/overlays/ConfirmDialog";
 import { toast } from "sonner";
 
 type Variant = "student" | "teacher";

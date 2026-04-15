@@ -10,12 +10,12 @@ import {
   deleteClassNotice,
 } from "@/app/(admin)/admin/actions";
 import { toast } from "sonner";
-import { noticeLabels } from "@/lib/teacher-labels";
-import { LoadingState } from "@/components/LoadingState";
-import { Spinner } from "@/components/Spinner";
+import { noticeLabels } from "@/lib/ui/teacher-labels";
+import { LoadingState } from "@/components/feedback/LoadingState";
+import { Spinner } from "@/components/feedback/Spinner";
 import { formatFileSize } from "@/lib/supabase/storage";
-import { FileUpload } from "@/components/FileUpload";
-import { FileList } from "@/components/FileList";
+import { FileUpload } from "@/components/forms/FileUpload";
+import { FileList } from "@/components/forms/FileList";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";

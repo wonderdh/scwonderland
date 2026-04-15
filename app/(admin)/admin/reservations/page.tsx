@@ -4,7 +4,7 @@ import {
   listBusNumbers,
   listBusTimeSlots,
 } from "@/app/(admin)/admin/actions";
-import { PageHeader } from "@/components/PageHeader";
+import { PageHeader } from "@/components/navigation/PageHeader";
 import { ReservationDashboard } from "./components/ReservationDashboard";
 
 export default async function AdminReservationsPage() {

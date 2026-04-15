@@ -3,7 +3,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { verifyAdmin, verifyAuthenticated } from "./auth-helpers";
-import { logger } from "@/lib/logger";
+import { logger } from "@/lib/server/logger";
 import type { DayEnrollment, AfterschoolStudentEnrollment } from "@/lib/types";
 
 // ── 방과후 반 조회 or 자동 생성 ──

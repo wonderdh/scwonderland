@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { logger } from "@/lib/logger";
+import { logger } from "@/lib/server/logger";
 
 /**
  * 관리자 권한 검증: 인증 + role=admin 확인

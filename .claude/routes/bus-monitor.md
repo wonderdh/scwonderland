@@ -72,7 +72,7 @@
 
 ## 의존성
 - `app/(admin)/admin/actions.ts` — barrel export (getDailyBusManifest, listBusTimeSlots, listAllActiveStudentNames)
-- `lib/student-age-colors.ts` — `getAgeColor()` 함수
+- `lib/ui/student-age-colors.ts` — `getAgeColor()` 함수
 - `lib/hooks/use-bus-realtime.ts` — Realtime 구독 훅 (선택적 사용)
 - `components/ui/button.tsx` — 필터 버튼
 

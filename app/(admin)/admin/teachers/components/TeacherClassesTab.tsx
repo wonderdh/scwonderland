@@ -5,9 +5,9 @@ import { listClassTextbooks } from "../../actions/textbook-actions";
 import { TEXTBOOK_CATEGORIES } from "../../actions/textbook-constants";
 import type { ClassWithDetails, ClassStudentRow, ClassTextbook } from "@/lib/types";
 import { useCallback, useEffect, useState } from "react";
-import { LoadingState } from "@/components/LoadingState";
-import { TeacherBadges } from "@/components/TeacherBadges";
-import { GROUP_ORDER, type GroupKey } from "@/lib/class-groups";
+import { LoadingState } from "@/components/feedback/LoadingState";
+import { TeacherBadges } from "@/components/badges/TeacherBadges";
+import { GROUP_ORDER, type GroupKey } from "@/lib/constants/class";
 
 const GROUP_STYLE: Record<GroupKey, { icon: string; label: string; headerBg: string; headerText: string }> = {
   유치부: { icon: "🌅", label: "유치부", headerBg: "bg-amber-100", headerText: "text-amber-800" },

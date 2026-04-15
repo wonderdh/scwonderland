@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { verifyAuthenticated, verifyAdmin, verifyTeacherOrAdmin } from "./auth-helpers";
-import { logger } from "@/lib/logger";
+import { logger } from "@/lib/server/logger";
 import { sortStudentsByAgeAndName } from "@/lib/utils/student-sort";
 import type { AttendanceRecord, AttendanceStats, StudentWithAttendance } from "@/lib/types";
 

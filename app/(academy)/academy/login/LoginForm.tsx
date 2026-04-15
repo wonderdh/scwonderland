@@ -13,8 +13,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Spinner } from "@/components/Spinner";
-import { normalizeEmail, getAuthErrorMessage } from "@/lib/auth-utils";
+import { Spinner } from "@/components/feedback/Spinner";
+import { normalizeEmail, getAuthErrorMessage } from "@/lib/auth/auth-utils";
 
 const DEFAULT_REDIRECT = "/academy/dashboard";
 

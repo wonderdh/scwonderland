@@ -7,7 +7,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { dashboardLabels } from "@/lib/teacher-labels";
+import { dashboardLabels } from "@/lib/ui/teacher-labels";
 
 const arrowIcon = (
   <svg className="size-3" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">

@@ -8,7 +8,7 @@ import {
   getDefaultMenuItemHref,
   getMenuIdFromPathname,
   getMenuItemHref,
-} from "@/lib/menu-routes";
+} from "@/lib/navigation/menu-routes";
 
 const menuItems = [
   { id: "about", label: "About Wonderland" },

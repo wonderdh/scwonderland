@@ -12,11 +12,11 @@ import {
   listBusTimeSlots,
   listBusStops,
 } from "../../actions";
-import { LoadingState } from "@/components/LoadingState";
-import { StatusBadge } from "@/components/StatusBadge";
-import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { LoadingState } from "@/components/feedback/LoadingState";
+import { StatusBadge } from "@/components/badges/StatusBadge";
+import { ConfirmDialog } from "@/components/overlays/ConfirmDialog";
 import { BUS_REQUEST_STATUS_CONFIG, BUS_CHANGE_TYPE_CONFIG } from "@/lib/constants/bus";
-import { toastSuccess, toastError } from "@/lib/toast";
+import { toastSuccess, toastError } from "@/lib/ui/toast";
 import { AdminBusChangeDnD } from "./AdminBusChangeDnD";
 import { formatTime } from "@/lib/bus/utils";
 

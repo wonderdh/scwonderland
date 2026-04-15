@@ -1,6 +1,6 @@
 import { listClassesWithDetails, listAllStudents } from "@/app/(admin)/admin/actions";
 import { AdminAttendanceClient } from "./components/AdminAttendanceClient";
-import { PageHeader } from "@/components/PageHeader";
+import { PageHeader } from "@/components/navigation/PageHeader";
 import { todayKst } from "@/lib/utils/date-kst";
 
 export default async function AdminAttendancePage() {

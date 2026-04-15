@@ -2,7 +2,7 @@ import {
   listAllWeeklySentences,
   getWeeklySentenceConfig,
 } from "@/app/(admin)/admin/actions";
-import { PageHeader } from "@/components/PageHeader";
+import { PageHeader } from "@/components/navigation/PageHeader";
 import { WeeklySentencesManager } from "./components/WeeklySentencesManager";
 
 export default async function AdminWeeklySentencesPage() {

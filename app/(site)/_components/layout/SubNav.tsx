@@ -5,7 +5,7 @@ import {
   getCategoryItemLabels,
   getMenuItemHref,
   itemSlugs,
-} from "@/lib/menu-routes";
+} from "@/lib/navigation/menu-routes";
 
 type SubNavProps = {
   categoryTitle: string;

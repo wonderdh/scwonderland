@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { translateReportCard } from "@/app/(admin)/admin/actions";
 import type { UntranslatedReport } from "@/app/(admin)/admin/actions";
-import { Spinner } from "@/components/Spinner";
+import { Spinner } from "@/components/feedback/Spinner";
 
 export function ReportTranslateManager({
   reports,

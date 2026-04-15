@@ -7,8 +7,8 @@ import {
   listAcademyNotices,
   getAcademyNoticeWithAttachments,
 } from "@/app/(admin)/admin/actions";
-import { FileList } from "@/components/FileList";
-import { LoadingState } from "@/components/LoadingState";
+import { FileList } from "@/components/forms/FileList";
+import { LoadingState } from "@/components/feedback/LoadingState";
 import type { ClassNotice, ClassNoticeAttachment, AcademyNotice, AcademyNoticeAttachment } from "@/lib/types";
 
 type NoticeItem = {

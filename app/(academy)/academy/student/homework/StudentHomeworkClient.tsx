@@ -8,9 +8,9 @@ import {
   getSubmissionFiles,
 } from "@/app/(admin)/admin/actions";
 import { toast } from "sonner";
-import { AudioRecorder } from "@/components/AudioRecorder";
-import { LoadingState } from "@/components/LoadingState";
-import { Spinner } from "@/components/Spinner";
+import { AudioRecorder } from "@/components/forms/AudioRecorder";
+import { LoadingState } from "@/components/feedback/LoadingState";
+import { Spinner } from "@/components/feedback/Spinner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import type { HomeworkAssignment, HomeworkSubmission, HomeworkSubmissionFile } from "@/lib/types";

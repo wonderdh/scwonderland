@@ -4,9 +4,9 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { verifyAdmin } from "./auth-helpers";
-import { logger } from "@/lib/logger";
+import { logger } from "@/lib/server/logger";
 import { computeAutoWeekNumber } from "@/lib/utils/weekly-sentence-week";
-import { SHEET_LEVEL_MAP } from "@/lib/weekly-sentence-levels";
+import { SHEET_LEVEL_MAP } from "@/lib/constants/weekly-sentence";
 import type { WeeklySentence, WeeklySentenceConfig } from "@/lib/types";
 // xlsx는 default export가 없으므로 bulk import 함수에서만 동적 import로 사용
 

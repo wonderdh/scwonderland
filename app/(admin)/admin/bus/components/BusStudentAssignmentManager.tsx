@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { ConfirmDialog } from "@/components/overlays/ConfirmDialog";
 import type { BusNumber, BusTimeSlot, BusStop, BusDefaultAssignment, BusStopDayAssignment } from "@/lib/types";
 import {
   getBulkBusDefaults,
@@ -13,7 +13,7 @@ import {
   listBusStopDayAssignments,
   listAfterschoolStudentIdsByDay,
 } from "../../actions";
-import { getAgeColor } from "@/lib/student-age-colors";
+import { getAgeColor } from "@/lib/ui/student-age-colors";
 
 const DAYS = [
   { value: 1, label: "월" },

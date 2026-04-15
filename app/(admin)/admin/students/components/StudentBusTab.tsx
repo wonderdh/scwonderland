@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { ConfirmDialog } from "@/components/overlays/ConfirmDialog";
 import type { StudentBusDefault, BusTimeSlot, BusStop, AfterschoolStatus } from "@/lib/types";
 import { detectAfterschoolSlot } from "@/lib/bus/afterschool-sync";
 import { toast } from "sonner";
@@ -20,7 +20,7 @@ import {
   getOrCreateAfterschoolClass,
   enrollStudent,
 } from "../../actions";
-import { LoadingState } from "@/components/LoadingState";
+import { LoadingState } from "@/components/feedback/LoadingState";
 import { formatTime } from "@/lib/bus/utils";
 
 const DAY_NAMES = ["", "월", "화", "수", "목", "금"];

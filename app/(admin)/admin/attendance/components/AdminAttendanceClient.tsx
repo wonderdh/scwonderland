@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { getAgeColor, getAgeLabel } from "@/lib/student-age-colors";
+import { getAgeColor, getAgeLabel } from "@/lib/ui/student-age-colors";
 import { useAttendanceEditor, type GroupFilter } from "../hooks/useAttendanceEditor";
 import { StudentSearchPanel } from "./StudentSearchPanel";
 import type { ClassWithDetails } from "@/lib/types";
@@ -11,8 +11,8 @@ import {
   shouldShowNote,
   type AttendanceStatus,
 } from "@/lib/constants/attendance";
-import { LoadingState } from "@/components/LoadingState";
-import { StatusBadge } from "@/components/StatusBadge";
+import { LoadingState } from "@/components/feedback/LoadingState";
+import { StatusBadge } from "@/components/badges/StatusBadge";
 
 type StudentItem = {
   id: string;

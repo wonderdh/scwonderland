@@ -216,7 +216,7 @@ score/max_score × 100
 - `app/(academy)/academy/teacher/learning/components/TeacherLearningClient.tsx` — 신규
 - `app/(admin)/admin/actions/learning-actions.ts` — 기존 함수에 author 권한 체크 추가
 - `app/(academy)/academy/actions.ts` — 클래스별 조회 함수 추가
-- `lib/teacher-labels.ts` — `learningLabels` 추가 (한국어만, 원어민 미제공)
+- `lib/ui/teacher-labels.ts` — `learningLabels` 추가 (한국어만, 원어민 미제공)
 
 ---
 
@@ -293,7 +293,7 @@ My Classes | Textbooks | Attendance | Homework | Report Cards | Timetable
 - `app/(academy)/academy/teacher/classes/page.tsx` — 탭 UI로 강화
 - `app/(admin)/admin/actions/learning-actions.ts` — 교사 입력 허용
 - `app/(academy)/academy/actions.ts` — 함수 다수 추가
-- `lib/teacher-labels.ts` — `learningLabels` 추가
+- `lib/ui/teacher-labels.ts` — `learningLabels` 추가
 
 ### 신규 파일
 - `app/(academy)/academy/teacher/students/page.tsx`

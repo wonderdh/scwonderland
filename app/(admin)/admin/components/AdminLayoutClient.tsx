@@ -3,8 +3,8 @@
 import { usePathname } from "next/navigation";
 import { AdminSidebar } from "@/app/(admin)/admin/components/AdminSidebar";
 import { AdminMobileHeader } from "@/app/(admin)/admin/components/AdminMobileHeader";
-import { Breadcrumb } from "@/components/Breadcrumb";
-import { getBreadcrumbForPath } from "@/lib/admin-nav";
+import { Breadcrumb } from "@/components/navigation/Breadcrumb";
+import { getBreadcrumbForPath } from "@/lib/navigation/admin-nav";
 
 export function AdminLayoutClient({
   children,

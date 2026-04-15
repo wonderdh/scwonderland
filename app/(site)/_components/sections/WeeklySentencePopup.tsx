@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { todayKst } from "@/lib/utils/date-kst";
-import { WEEKLY_SENTENCE_LEVELS } from "@/lib/weekly-sentence-levels";
+import { WEEKLY_SENTENCE_LEVELS } from "@/lib/constants/weekly-sentence";
 
 const DISMISS_KEY = "wonderland.weekly-sentence-dismissed";
 

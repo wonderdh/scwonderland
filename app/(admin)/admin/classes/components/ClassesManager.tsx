@@ -18,11 +18,11 @@ import { batchUpdateClassTextbooks } from "../../actions";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { ConfirmDialog } from "@/components/ConfirmDialog";
-import { CLASS_COLOR_PALETTE } from "@/lib/class-colors";
-import { getAgeColor } from "@/lib/student-age-colors";
-import { TeacherBadges } from "@/components/TeacherBadges";
-import { GROUP_ORDER } from "@/lib/class-groups";
+import { ConfirmDialog } from "@/components/overlays/ConfirmDialog";
+import { CLASS_COLOR_PALETTE } from "@/lib/constants/class";
+import { getAgeColor } from "@/lib/ui/student-age-colors";
+import { TeacherBadges } from "@/components/badges/TeacherBadges";
+import { GROUP_ORDER } from "@/lib/constants/class";
 import { sortStudentsByAgeAndName } from "@/lib/utils/student-sort";
 
 const MANAGE_GROUP_STYLE: Record<string, {

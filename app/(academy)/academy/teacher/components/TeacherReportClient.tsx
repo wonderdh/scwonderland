@@ -9,11 +9,11 @@ import {
   deleteReportCard,
 } from "@/app/(admin)/admin/actions";
 import type { ReportCard } from "@/lib/types";
-import { reportLabels, ENGLISH_MONTHS } from "@/lib/teacher-labels";
+import { reportLabels, ENGLISH_MONTHS } from "@/lib/ui/teacher-labels";
 import { useTeacherType } from "./TeacherTypeContext";
-import { getAgeColor } from "@/lib/student-age-colors";
-import { LoadingState } from "@/components/LoadingState";
-import { Spinner } from "@/components/Spinner";
+import { getAgeColor } from "@/lib/ui/student-age-colors";
+import { LoadingState } from "@/components/feedback/LoadingState";
+import { Spinner } from "@/components/feedback/Spinner";
 
 const MONTHS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 

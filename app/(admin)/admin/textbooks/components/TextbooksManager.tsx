@@ -12,8 +12,8 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { ConfirmDialog } from "@/components/ConfirmDialog";
-import { FormGroup } from "@/components/FormGroup";
+import { ConfirmDialog } from "@/components/overlays/ConfirmDialog";
+import { FormGroup } from "@/components/forms/FormGroup";
 
 export function TextbooksManager({
   initialTextbooks,

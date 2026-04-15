@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Spinner } from "@/components/Spinner";
+import { Spinner } from "@/components/feedback/Spinner";
 import { Input } from "@/components/ui/input";
 import type { BusManifestGroup, NoRideEntry } from "@/lib/types";
 import { getDailyBusManifest } from "@/app/(admin)/admin/actions";

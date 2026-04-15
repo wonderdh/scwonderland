@@ -14,7 +14,7 @@
 | 파일 | 역할 |
 |------|------|
 | `app/(bus)/bus/components/BusStaffMonitor.tsx` | 버스 직원용 탑승/하차 체크 메인 컴포넌트 (일괄 저장 방식) |
-| `components/LogoutButton.tsx` | 로그아웃 버튼 |
+| `components/navigation/LogoutButton.tsx` | 로그아웃 버튼 |
 
 ## Server Actions
 

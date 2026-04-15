@@ -3,10 +3,10 @@
 import { useState, useEffect, useCallback, useTransition, useRef } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Spinner } from "@/components/Spinner";
+import { Spinner } from "@/components/feedback/Spinner";
 import { Input } from "@/components/ui/input";
 import type { BusManifestGroup, BusManifestEntry, BusTimeSlot, BusNumber, NoRideEntry, AfterSchoolBusEntry } from "@/lib/types";
-import { getAgeColor } from "@/lib/student-age-colors";
+import { getAgeColor } from "@/lib/ui/student-age-colors";
 import {
   getDailyBusManifest,
   batchBusCheckRecord,

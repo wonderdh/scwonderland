@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { verifyAdmin, verifyAuthenticated } from "./auth-helpers";
-import { logger } from "@/lib/logger";
+import { logger } from "@/lib/server/logger";
 import type { ClassWithDetails, ClassStudentRow, ClassTeacherInfo, AdminStudentClassItem } from "@/lib/types";
 
 // ── 내부 헬퍼: class_id → 교사 목록 매핑 ──

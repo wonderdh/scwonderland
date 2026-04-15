@@ -6,7 +6,7 @@ import type { ClassWithDetails, AcademyPeriod } from "@/lib/types";
 import { ClassesManager } from "./ClassesManager";
 import { ClassesOverview } from "./ClassesOverview";
 import { ClassScheduleManager } from "./ClassScheduleManager";
-import { PageHeader } from "@/components/PageHeader";
+import { PageHeader } from "@/components/navigation/PageHeader";
 
 type TabId = "overview" | "manage" | "schedule";
 

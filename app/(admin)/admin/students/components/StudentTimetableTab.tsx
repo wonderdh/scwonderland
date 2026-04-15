@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { getStudentTimetable } from "../../actions";
 import { getStudentAfterschoolDays } from "../../actions/afterschool-actions";
 import type { StudentTimetableRow } from "@/lib/types";
-import { LoadingState } from "@/components/LoadingState";
+import { LoadingState } from "@/components/feedback/LoadingState";
 import { useAsyncData } from "../../hooks/useAsyncData";
 import { escapeHtml } from "@/lib/utils/escape-html";
 import { WEEKDAY_NAMES_5 } from "@/lib/constants/date";

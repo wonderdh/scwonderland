@@ -6,9 +6,9 @@ import {
   recordAttendance,
 } from "@/app/(admin)/admin/actions";
 import { toast } from "sonner";
-import { attendanceLabels } from "@/lib/teacher-labels";
-import { LoadingState } from "@/components/LoadingState";
-import { Spinner } from "@/components/Spinner";
+import { attendanceLabels } from "@/lib/ui/teacher-labels";
+import { LoadingState } from "@/components/feedback/LoadingState";
+import { Spinner } from "@/components/feedback/Spinner";
 import { Button } from "@/components/ui/button";
 import {
   ATTENDANCE_STATUS_CONFIG,

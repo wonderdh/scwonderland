@@ -2,20 +2,20 @@
 
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
-import { getAgeColor, getAgeLabel } from "@/lib/student-age-colors";
+import { getAgeColor, getAgeLabel } from "@/lib/ui/student-age-colors";
 import {
   getStudentAttendanceByDate,
   recordAttendance,
   bulkReserveAttendance,
 } from "@/app/(admin)/admin/actions";
-import { MultiDatePicker } from "@/components/MultiDatePicker";
+import { MultiDatePicker } from "@/components/forms/MultiDatePicker";
 import { formatDateYmdKst, todayWeekdayArray } from "@/lib/utils/date-kst";
 import {
   ATTENDANCE_STATUS_CONFIG,
   ATTENDANCE_STATUSES,
   type AttendanceStatus,
 } from "@/lib/constants/attendance";
-import { LoadingState } from "@/components/LoadingState";
+import { LoadingState } from "@/components/feedback/LoadingState";
 
 type StudentItem = {
   id: string;

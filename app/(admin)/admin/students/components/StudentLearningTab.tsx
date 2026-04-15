@@ -12,8 +12,8 @@ import type { LearningRecord } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { LoadingState } from "@/components/LoadingState";
-import { Spinner } from "@/components/Spinner";
+import { LoadingState } from "@/components/feedback/LoadingState";
+import { Spinner } from "@/components/feedback/Spinner";
 
 const CATEGORIES: { value: LearningRecord["category"]; label: string }[] = [
   { value: "test", label: "시험" },

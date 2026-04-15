@@ -2,10 +2,10 @@
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import { normalizeEmail } from "@/lib/auth-utils";
+import { normalizeEmail } from "@/lib/auth/auth-utils";
 import { revalidatePath } from "next/cache";
 import { verifyAdmin } from "./auth-helpers";
-import { logger } from "@/lib/logger";
+import { logger } from "@/lib/server/logger";
 import type { UserWithProfile } from "@/lib/types";
 
 export async function createStudent(

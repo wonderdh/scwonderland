@@ -28,7 +28,7 @@ paths:
 - **Blue** (`#3a75ff`): 타임라인 아이콘, 보조 컬러
 - **Slate** 계열: Admin/Academy 전체 UI
 
-## 학생 나이별 색상 팔레트 (lib/student-age-colors.ts)
+## 학생 나이별 색상 팔레트 (lib/ui/student-age-colors.ts)
 
 학생 이름을 표시할 때 나이별 색상으로 구분. **반드시 이 규칙을 따를 것.**
 

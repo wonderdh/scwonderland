@@ -11,8 +11,8 @@ import {
   bulkReserveAttendance,
 } from "../../actions";
 import type { AttendanceRecord, AttendanceStats } from "@/lib/types";
-import { LoadingState } from "@/components/LoadingState";
-import { MultiDatePicker } from "@/components/MultiDatePicker";
+import { LoadingState } from "@/components/feedback/LoadingState";
+import { MultiDatePicker } from "@/components/forms/MultiDatePicker";
 import { formatDateYmdKst, todayWeekdayArray } from "@/lib/utils/date-kst";
 import { WEEKDAY_NAMES_7 } from "@/lib/constants/date";
 import {

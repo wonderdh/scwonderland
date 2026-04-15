@@ -3,9 +3,9 @@
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
-import { LogoutButton } from "@/components/LogoutButton";
+import { LogoutButton } from "@/components/navigation/LogoutButton";
 import { AdminSidebar } from "./AdminSidebar";
-import { getBreadcrumbForPath } from "@/lib/admin-nav";
+import { getBreadcrumbForPath } from "@/lib/navigation/admin-nav";
 
 export function AdminMobileHeader({ adminId }: { adminId: string }) {
   const pathname = usePathname();

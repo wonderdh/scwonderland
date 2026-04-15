@@ -1,6 +1,6 @@
 "use client";
 
-import { LogoutButton } from "@/components/LogoutButton";
+import { LogoutButton } from "@/components/navigation/LogoutButton";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -21,7 +21,7 @@ import {
   LogOut,
   ExternalLink,
 } from "lucide-react";
-import { ADMIN_NAV_GROUPS, type AdminNavItem } from "@/lib/admin-nav";
+import { ADMIN_NAV_GROUPS, type AdminNavItem } from "@/lib/navigation/admin-nav";
 
 const ICON_MAP: Record<AdminNavItem["icon"], React.ComponentType<{ className?: string }>> = {
   home: Home,

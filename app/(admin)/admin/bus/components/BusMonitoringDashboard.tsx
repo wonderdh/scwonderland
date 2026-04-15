@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { BusManifestGroup, BusTimeSlot, AfterSchoolBusEntry } from "@/lib/types";
-import { getAgeColor } from "@/lib/student-age-colors";
+import { getAgeColor } from "@/lib/ui/student-age-colors";
 import { getDailyBusManifest } from "../../actions";
 import { formatTime } from "@/lib/bus/utils";
 import { MonitorBusCard } from "@/components/bus/MonitorBusCard";

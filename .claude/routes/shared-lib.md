@@ -101,32 +101,63 @@
 - 문서: PDF/ZIP/DOCX/XLSX, 20MB
 - 오디오: WebM/OGG/MP4/MP3/WAV, 50MB
 
-## 인증 유틸리티
+## 인증 유틸리티 (`lib/auth/`)
 
 | 파일 | 역할 |
 |------|------|
-| `lib/auth-utils.ts` | 이메일 정규화(`normalizeEmail`: 한글 입력 자동 변환 + 도메인 자동 추가) + Auth 에러 메시지 한국어 변환(`getAuthErrorMessage`) |
+| `lib/auth/auth-utils.ts` | 이메일 정규화(`normalizeEmail`: 한글 입력 자동 변환 + 도메인 자동 추가) + Auth 에러 메시지 한국어 변환(`getAuthErrorMessage`) |
+| `lib/auth/korean-to-english.ts` | 한타→영타 변환 (두벌식 키보드 매핑). `containsKorean(str)` 감지 + `koreanToEnglish(str)` 변환. 로그인 시 한글 입력 자동 변환에 사용 |
 
-## 일반 유틸리티
+## UI 자산 (`lib/ui/`)
+
+클라이언트 렌더링 계층에서만 사용되는 라벨·색상·피드백 자산.
 
 | 파일 | 역할 |
 |------|------|
-| `lib/utils.ts` | Tailwind CSS 클래스 병합 유틸리티. `cn()` = `twMerge(clsx(...))` |
-| `lib/korean-to-english.ts` | 한타→영타 변환 (두벌식 키보드 매핑). `containsKorean(str)` 감지 + `koreanToEnglish(str)` 변환. 로그인 시 한글 입력 자동 변환에 사용 |
-| `lib/student-age-colors.ts` | 학생 나이별 색상 팔레트. `getAgeColor(age)` -> `{bg, text, border}`. 5세=pink, 6세=sky, 7세=emerald, 기타=slate. `getAgeLabel(age)` -> "N세" |
-| `lib/menu-routes.ts` | 사이트 메뉴 경로 매핑. menuId↔URL 변환, 아이템 slug 관리. `getMenuItemHref()`, `getDefaultMenuItemHref()`, `getCategoryItemLabels()`, `getMenuIdFromPathname()` |
-| `lib/teacher-labels.ts` | 원어민/한국인 교사 UI 라벨 세트. 9개 라벨 객체(dashboardLabels, reportLabels, textbookLabels, batchUpdateLabels, noticeLabels, homeworkLabels, attendanceLabels, timetableLabels, busLabels). 각각 korean/native 키 |
-| `lib/class-groups.ts` | 반 그룹 순서 상수. `GROUP_ORDER = ["유치부", "오후반", ""]`, `GroupKey` 타입. 그룹 필터 UI 전역 공유 |
+| `lib/ui/teacher-labels.ts` | 원어민/한국인 교사 UI 라벨 세트. 9개 라벨 객체(dashboardLabels, reportLabels, textbookLabels, batchUpdateLabels, noticeLabels, homeworkLabels, attendanceLabels, timetableLabels, busLabels). 각각 korean/native 키 |
+| `lib/ui/student-age-colors.ts` | 학생 나이별 색상 팔레트. `getAgeColor(age)` -> `{bg, text, border}`. 5세=pink, 6세=sky, 7세=emerald, 기타=slate. `getAgeLabel(age)` -> "N세" |
+| `lib/ui/toast.ts` | Sonner 토스트 래퍼. `toastSuccess/toastError/toastInfo`. 에러 토스트는 `closeButton + duration 8s` 기본값 |
+
+## Navigation 구조 (`lib/navigation/`)
+
+라우팅·메뉴 구조 선언 + pathname 기반 헬퍼.
+
+| 파일 | 역할 |
+|------|------|
+| `lib/navigation/admin-nav.ts` | 관리자 메뉴 구조 + 브레드크럼 생성. `ADMIN_NAV_GROUPS`, `getBreadcrumbFromPathname()`. AdminSidebar/AdminMobileHeader 공유 |
+| `lib/navigation/menu-routes.ts` | 사이트 메뉴 경로 매핑. menuId↔URL 변환, 아이템 slug 관리. `getMenuItemHref()`, `getDefaultMenuItemHref()`, `getCategoryItemLabels()`, `getMenuIdFromPathname()` |
+
+## Server 전용 유틸 (`lib/server/`)
+
+서버 컴포넌트·Server Action에서만 import 가능. 경로로 경계를 명시.
+
+| 파일 | 역할 |
+|------|------|
+| `lib/server/logger.ts` | 서버 구조화 로거. `logger.info(tag, msg, ctx?)` / `logger.warn(...)` / `logger.error(...)`. 서버 코드에서 `console.log/error` 직접 사용 금지. PII(이메일/전화)는 context에서 제외, `user_id`만 기록 |
+| `lib/server/translate.ts` | DeepL 번역 서버 전용. `DEEPL_API_KEY` 참조. 리포트카드 자동 번역에 사용 |
+
+## 일반 유틸리티 (`lib/utils/`)
+
+| 파일 | 역할 |
+|------|------|
+| `lib/utils/cn.ts` | Tailwind CSS 클래스 병합 유틸리티. `cn()` = `twMerge(clsx(...))`. shadcn/ui 컴포넌트 전역 사용 (components.json `aliases.utils` = `@/lib/utils/cn`) |
 | `lib/utils/student-sort.ts` | 학생 정렬 공통 유틸. `sortStudentsByAgeAndName<T>(students, ageFirst?)` — 나이순 → 한글 이름순. `age`, `korean_name`, `first_name` 필드를 가진 모든 타입에 적용 가능. 모든 학생 명단 정렬은 이 단일 소스를 통과해야 한다 |
+| `lib/utils/student-name.ts` | 학생 이름 포맷. `formatStudentName(student, { preferEnglish? })` — korean_name/english_name 조합을 컨텍스트에 맞게 표시. 원어민 UI에서는 `{ preferEnglish: true }` |
 | `lib/utils/date-kst.ts` | KST 날짜/시간 유틸. `todayKst()` → `"YYYY-MM-DD"` (DB `DATE` 컬럼용), `formatDateYmdKst(input)`, `formatDateKst(input)` → `"2026년 4월 9일"`, `formatDateTimeKst(input)` → `"2026. 04. 09. 15:30"`, `formatTimeKst(input)` → `"15:30"`, `nowKstParts()` → `{ year, month, day }`. `new Date().toLocaleDateString(...)` 분산 사용 금지 |
 | `lib/utils/escape-html.ts` | HTML 특수문자 이스케이프. `escapeHtml(input)` — React 밖 HTML 생성(`document.write`, `innerHTML = ...`) 시 XSS 방지 필수. 프린트용 새 창 생성에서 사용 |
 | `lib/utils/weekly-sentence-week.ts` | 주간 문장 주차 계산. `WEEK1_START_KST = "2026-04-05"`, `computeAutoWeekNumber(today?)` → 1~48 (48주 순환). 랜딩 팝업 + 관리자 페이지에서 사용 |
-| `lib/weekly-sentence-levels.ts` | 주간 문장 레벨 상수 3개 (기초/중급/상급, 기초는 Q&A answer 컬럼) + XLSX 시트명↔level 매핑 (`SHEET_LEVEL_MAP`) |
-| `lib/utils/student-name.ts` | 학생 이름 포맷. `formatStudentName(student, { preferEnglish? })` — korean_name/english_name 조합을 컨텍스트에 맞게 표시. 원어민 UI에서는 `{ preferEnglish: true }` |
+| `lib/utils/group-consecutive-reservations.ts` | 연속 예약 날짜 그룹핑 유틸 |
+
+## 도메인 상수 (`lib/constants/`)
+
+| 파일 | 역할 |
+|------|------|
 | `lib/constants/attendance.ts` | **출결 상태 단일 소스**. `ATTENDANCE_STATUSES` (4종 배열), `AttendanceStatus` 타입, `ATTENDANCE_STATUS_CONFIG` (label/labelEn/activeClass/inactiveClass/badgeClass), `getStatusLabel(status, teacherType)`, `shouldShowNote(status)`. 모든 출결 UI에서 import |
 | `lib/constants/timetable.ts` | **시간표 색상 단일 소스**. `TEACHER_COLOR_PALETTE` (12색), `buildTeacherColorMap(rows)`. StudentTimetableClient/Tab에서 공유 |
 | `lib/constants/date.ts` | **요일 상수**. `WEEKDAY_NAMES_5` (월~금), `WEEKDAY_NAMES_7` (일~토). 시간표·출결·버스 등에서 공유 |
-| `lib/logger.ts` | 서버 구조화 로거. `logger.info(tag, msg, ctx?)` / `logger.warn(...)` / `logger.error(...)`. 서버 코드에서 `console.log/error` 직접 사용 금지. PII(이메일/전화)는 context에서 제외, `user_id`만 기록 |
+| `lib/constants/bus.ts` | 버스 상태 상수 (버스 타입·변경 요청 상태 등) |
+| `lib/constants/class.ts` | 반 도메인 통합 상수. `GROUP_ORDER = ["유치부", "오후반", ""]`, `GroupKey` 타입, `CLASS_COLOR_PALETTE` (8색 팔레트), `getClassColor(colorIndex, fallbackIndex)` 순환 함수 |
+| `lib/constants/weekly-sentence.ts` | 주간 문장 레벨 상수 3개 (기초/중급/상급, 기초는 Q&A answer 컬럼) + XLSX 시트명↔level 매핑 (`SHEET_LEVEL_MAP`) |
 
 ## 버스 유틸리티 (`lib/bus/`)
 

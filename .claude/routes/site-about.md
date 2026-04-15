@@ -31,7 +31,7 @@
 4. 하위 page.tsx가 children으로 렌더링
 
 ## 의존성
-- `lib/menu-routes.ts` — SubNav 메뉴 아이템/경로 매핑
+- `lib/navigation/menu-routes.ts` — SubNav 메뉴 아이템/경로 매핑
 - `PageContent` — certification 등 간단한 페이지에서 사용
 
 ## 주의사항

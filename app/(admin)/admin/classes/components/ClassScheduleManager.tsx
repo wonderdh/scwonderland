@@ -12,9 +12,9 @@ import {
   deleteClassSchedule,
   listClassSchedules,
 } from "../../actions";
-import { LoadingState } from "@/components/LoadingState";
-import { Spinner } from "@/components/Spinner";
-import { GROUP_ORDER } from "@/lib/class-groups";
+import { LoadingState } from "@/components/feedback/LoadingState";
+import { Spinner } from "@/components/feedback/Spinner";
+import { GROUP_ORDER } from "@/lib/constants/class";
 
 const DAY_LABELS = ["월", "화", "수", "목", "금"];
 

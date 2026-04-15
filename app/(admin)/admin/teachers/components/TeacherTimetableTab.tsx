@@ -3,8 +3,8 @@
 import { useState, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import type { GroupTimetableData } from "@/lib/types";
-import { CLASS_COLOR_PALETTE } from "@/lib/class-colors";
-import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { CLASS_COLOR_PALETTE } from "@/lib/constants/class";
+import { ConfirmDialog } from "@/components/overlays/ConfirmDialog";
 import {
   addSingleClassSchedule,
   deleteClassSchedule,

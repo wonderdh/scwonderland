@@ -4,8 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ConfirmDialog } from "@/components/ConfirmDialog";
-import { FormGroup } from "@/components/FormGroup";
+import { ConfirmDialog } from "@/components/overlays/ConfirmDialog";
+import { FormGroup } from "@/components/forms/FormGroup";
 import type { AcademyPeriod } from "@/lib/types";
 import {
   createAcademyPeriod,
