@@ -63,7 +63,8 @@
 | `StudentBusDefault` | 학생 기본 승하차 설정 (요일별, bus_stop 포함) |
 | `BusChangeRequest` | 승하차 변경 요청 (change_type: change/no_ride/absent, status: pending/approved/rejected) |
 | `BusManifestEntry` | 승하차 명부 항목 (탑승 여부, 변경 여부, bus_stop 정보 포함) |
-| `BusManifestGroup` | 승하차 명부 그룹 (시간대+호차별 학생 목록) |
+| `BusManifestGroup` | 승하차 명부 그룹 (시간대+호차별 학생 목록). `extra_stops?`: `show_empty_stops=true` 슬롯에서 학생 없는 정류장도 전달 |
+| `BusManifestExtraStop` | 빈 정류장 메타 (`bus_stop_id`, `bus_stop_name`, `bus_stop_sort_order`, `estimated_time`) — 모니터 카드에 "배정 학생 없음" 렌더용 |
 | `NoRideEntry` | 미탑승 항목 |
 | `AfterSchoolBusEntry` | 방과후 버스 항목 |
 | `BusStaffProfile` | 버스 담당자 프로필 |

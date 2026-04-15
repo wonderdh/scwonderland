@@ -119,7 +119,7 @@ paths:
 **bus-actions.ts — 승하차 관리 (~50개):**
 - `bulkCreateBusChanges(studentProfileId, dates[], changeType, ...)` — 다중 날짜 버스 변경 일괄 등록 (관리자, UNIQUE 충돌 skip)
 - `listBusNumbers()` / `createBusNumber(...)` / `updateBusNumber(...)` / `deleteBusNumber(...)` — 호차 CRUD
-- `listBusTimeSlots()` / `createBusTimeSlot(...)` / `updateBusTimeSlot(...)` / `deleteBusTimeSlot(...)` — 시간대 CRUD
+- `listBusTimeSlots()` / `createBusTimeSlot(label, time, showEmptyStops?)` / `updateBusTimeSlot(id, label, time, showEmptyStops?)` / `deleteBusTimeSlot(id)` — 시간대 CRUD. `showEmptyStops` 플래그가 true면 해당 시간대에서 모니터가 배정 학생 없는 정류장·호차 카드도 노출 (오후반용)
 - `listAllActiveStudentNames()` — 전체 활성 학생 목록 (배정용)
 - `getStudentBusDefaults(studentProfileId)` / `upsertStudentBusDefault(...)` / `deleteStudentBusDefault(...)` / `deleteStudentBusDefaults(ids[])` / `getBulkBusDefaults(...)` — 기본 배정
 - `getDailyBusManifest(date)` — 일일 매니페스트 (groups + noRides + afterschoolStudents 반환)

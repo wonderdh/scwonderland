@@ -46,7 +46,7 @@ Supabase Auth Users
     │   └── UNIQUE (student_profile_id, attendance_date)  -- DB 트리거: after_attendance_bus_sync
     │
     ├── bus_numbers (label, is_active)
-    ├── bus_time_slots (label, time, is_active)
+    ├── bus_time_slots (label, time, is_active, show_empty_stops)  -- show_empty_stops: 모니터에서 배정 학생 없는 정류장·호차 카드도 노출 (오후반용, 기본 false)
     ├── bus_stop_day_assignments (bus_stop_id FK, day_of_week, bus_number_id FK)
     ├── bus_stop_schedules (bus_stop_id FK, day_of_week, slot_id FK, estimated_time)
     │   └── UNIQUE (bus_stop_id, day_of_week, bus_time_slot_id)

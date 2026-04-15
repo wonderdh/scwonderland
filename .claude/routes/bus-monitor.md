@@ -21,9 +21,10 @@
 | `listAllActiveStudentNames` | () | students, profiles |
 
 ## 타입
-- `BusManifestGroup` — 호차별 학생 그룹
+- `BusManifestGroup` — 호차별 학생 그룹. `extra_stops?`는 `show_empty_stops=true` 시간대에서 학생 0명인 정류장 메타를 포함
 - `BusManifestEntry` — 개별 학생 승하차 정보
-- `BusTimeSlot` — 시간대 정보 (id, time, label)
+- `BusManifestExtraStop` — 빈 정류장 (모니터에서 "배정 학생 없음"으로 렌더)
+- `BusTimeSlot` — 시간대 정보 (id, time, label, `show_empty_stops`)
 - `AfterSchoolBusEntry` — 방과후 학생 정보
 
 ## 데이터 흐름
@@ -84,3 +85,4 @@
 - **호차 색상 일관성**: 호차 라벨 알파벳순 정렬 후 팔레트 인덱스 매핑 → 호차 색상 일관 유지
 - `UnassignedCard`: 어느 호차에도 배정되지 않은 학생 카드 (하단)
 - `AfterSchoolBusEntry`: 방과후 학생 별도 섹션 (보라색 테마)
+- **빈 정류장 표시**: `bus_time_slots.show_empty_stops=true` 시간대는 `getDailyBusManifest`가 `extra_stops`로 학생 0명 호차/정류장도 내려줌 → `MonitorBusCard`(`components/bus/MonitorBusCard.tsx`)가 `mergeStopGroups()`로 병합해 "배정 학생 없음" 플레이스홀더로 렌더 (오후반 16:20/17:45 등)

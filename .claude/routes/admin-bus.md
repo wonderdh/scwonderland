@@ -18,7 +18,7 @@
 | `bus/components/BusStudentAssignmentManager.tsx` | 학생별 버스 기본 배정 관리 (요일별 호차/정류장/시간대) |
 | `bus/components/BusStopAssignmentManager.tsx` | 정류장 → 호차 배정 관리 (요일/시간대별) |
 | `bus/components/BusManagePanel.tsx` | 호차 CRUD + 정류장 CRUD |
-| `bus/components/BusTimeSlotsManager.tsx` | 버스 시간대 CRUD (하원) |
+| `bus/components/BusTimeSlotsManager.tsx` | 버스 시간대 CRUD (하원). **학생 없어도 정류장 표시** 체크박스(`show_empty_stops`)로 해당 시간대에서 모니터가 배정 학생이 없는 정류장·호차 카드도 노출하도록 설정 — 오후반(16:20, 17:45 등)용 |
 | `bus/components/BusStaffManager.tsx` | 버스 직원 관리 (기사, 보조교사 계정 생성/관리) |
 | `bus/components/BusNumbersManager.tsx` | 마스터 탭 호차/정류장 관리 — 요일·시간대별 호차↔정류장 드래그 배정, 정류장별 도착시간 입력, **다른 요일에 복사** 모달(요일×시간대 단위 일괄 덮어쓰기, `copyBusDayDataToOtherDays` 사용) |
 | `bus/components/BusAssignmentManager.tsx` | (레거시 또는 하위 컴포넌트) |
@@ -40,8 +40,8 @@
 | 함수 | 파라미터 | DB 테이블 |
 |------|---------|----------|
 | `listBusTimeSlots` | (없음) | `bus_time_slots` |
-| `createBusTimeSlot` | label, time | `bus_time_slots` |
-| `updateBusTimeSlot` | id, label, time | `bus_time_slots` |
+| `createBusTimeSlot` | label, time, showEmptyStops? | `bus_time_slots` |
+| `updateBusTimeSlot` | id, label, time, showEmptyStops? | `bus_time_slots` |
 | `deleteBusTimeSlot` | id | `bus_time_slots` (soft delete: is_active=false) |
 
 #### 학생 기본 배정
@@ -111,7 +111,7 @@
 - `BusStopDayAssignment`, `BusStopSchedule` from `lib/types`
 - `BusDefaultAssignment`, `StudentBusDefault` from `lib/types`
 - `BusChangeRequest` from `lib/types`
-- `BusManifestGroup`, `BusManifestEntry` from `lib/types`
+- `BusManifestGroup`, `BusManifestEntry`, `BusManifestExtraStop` from `lib/types`
 - `NoRideEntry`, `AfterSchoolBusEntry` from `lib/types`
 - `BusTabId` = "overview" | "dashboard" | "requests" | "student-assign" | "stop-assign" | "bus-manage" | "timeslots" | "staff"
 
@@ -139,3 +139,4 @@
 - `createAdminBusChange`: 관리자가 직접 변경 (승인 절차 없이 즉시 적용)
 - 버스 직원: `bus_staff` 역할 (driver/assistant), 별도 Auth 계정 생성
 - 학생 이름 표시 시 `getAgeColor(age)` 나이별 색상 적용 필수
+- `bus_time_slots.show_empty_stops`: 켜진 시간대는 `getDailyBusManifest`가 `bus_stop_day_assignments` 보강 쿼리로 학생 0명인 호차·정류장까지 `extra_stops`에 포함시켜 반환 → 모니터 카드가 "배정 학생 없음" 플레이스홀더로 렌더. 기본 false → 기존 동작 유지, 오후반(16:20/17:45) 같은 시간대만 관리자 UI에서 체크

@@ -18,6 +18,7 @@ import type {
   BusChangeRequest,
   BusManifestGroup,
   BusManifestEntry,
+  BusManifestExtraStop,
   NoRideEntry,
   AfterSchoolBusEntry,
   DropoffExportRow,
@@ -213,7 +214,8 @@ async function buildStopToBusMaps(
 
 export async function createBusTimeSlot(
   label: string,
-  time: string
+  time: string,
+  showEmptyStops: boolean = false
 ): Promise<{ error?: string; id?: string }> {
   const auth = await verifyAdmin();
   if ("error" in auth) return { error: auth.error };
@@ -224,7 +226,7 @@ export async function createBusTimeSlot(
 
   const { data, error } = await supabase
     .from("bus_time_slots")
-    .insert({ label: trimmed, time })
+    .insert({ label: trimmed, time, show_empty_stops: showEmptyStops })
     .select("id")
     .single();
   if (error) {
@@ -237,7 +239,8 @@ export async function createBusTimeSlot(
 export async function updateBusTimeSlot(
   id: string,
   label: string,
-  time: string
+  time: string,
+  showEmptyStops?: boolean
 ): Promise<{ error?: string }> {
   const auth = await verifyAdmin();
   if ("error" in auth) return { error: auth.error };
@@ -245,9 +248,18 @@ export async function updateBusTimeSlot(
   const trimmed = label.trim();
   if (!trimmed) return { error: "시간대 이름을 입력해 주세요." };
 
+  const patch: Record<string, unknown> = {
+    label: trimmed,
+    time,
+    updated_at: new Date().toISOString(),
+  };
+  if (typeof showEmptyStops === "boolean") {
+    patch.show_empty_stops = showEmptyStops;
+  }
+
   const { error } = await supabase
     .from("bus_time_slots")
-    .update({ label: trimmed, time, updated_at: new Date().toISOString() })
+    .update(patch)
     .eq("id", id);
   if (error) {
     logger.error("[updateBusTimeSlot]", error.message);
@@ -423,6 +435,7 @@ export async function getDailyBusManifest(
     { data: changes },
     afterschoolEnrollments,
     stopBusMaps,
+    { data: flaggedSlotsRaw },
   ] = await Promise.all([
     supabase
       .from("student_bus_defaults")
@@ -440,7 +453,17 @@ export async function getDailyBusManifest(
           .eq("day_of_week", isoDay)
       : Promise.resolve({ data: null }),
     buildStopToBusMaps(supabase, isoDay),
+    supabase
+      .from("bus_time_slots")
+      .select("id, label, time")
+      .eq("is_active", true)
+      .eq("show_empty_stops", true),
   ]);
+
+  // 학생 배정 여부와 무관하게 정류장을 표시해야 하는 시간대 (오후반 등)
+  const flaggedSlotIds = new Set<string>(
+    (flaggedSlotsRaw ?? []).map((s) => s.id as string)
+  );
 
   // 방과후 학생 ID 수집 (Phase 2에서 학생 정보 함께 조회)
   const enrolledIds = isWeekday && afterschoolEnrollments.data?.length
@@ -450,7 +473,7 @@ export async function getDailyBusManifest(
   const defaultRows = defaults ?? [];
   const changeRows = changes ?? [];
 
-  if (!defaultRows.length && !changeRows.length) {
+  if (!defaultRows.length && !changeRows.length && flaggedSlotIds.size === 0) {
     // 방과후 학생만 있는 경우에도 조회 필요
     let afterschoolStudents: AfterSchoolBusEntry[] = [];
     if (enrolledIds.length) {
@@ -506,10 +529,12 @@ export async function getDailyBusManifest(
     stopSchedulesResult,
     stopNamesResult,
   ] = await Promise.all([
-    supabase
-      .from("students")
-      .select("profile_id, korean_name, english_name, student_number, age")
-      .in("profile_id", allStudentIds),
+    allStudentIds.length
+      ? supabase
+          .from("students")
+          .select("profile_id, korean_name, english_name, student_number, age")
+          .in("profile_id", allStudentIds)
+      : Promise.resolve({ data: [] as { profile_id: string; korean_name: string; english_name: string; student_number: string; age: number | null }[] }),
     afterschoolOnlyIds.length
       ? supabase
           .from("students")
@@ -605,8 +630,25 @@ export async function getDailyBusManifest(
   }
 
   const changeMap = new Map(changeRows.map((c) => [c.student_profile_id, c]));
-  const groupMap = new Map<string, { slotId: string; busId: string; students: BusManifestEntry[] }>();
+  type GroupBucket = {
+    slotId: string;
+    busId: string;
+    students: BusManifestEntry[];
+    takenStopIds: Set<string>;
+    extraStops?: BusManifestExtraStop[];
+  };
+  const groupMap = new Map<string, GroupBucket>();
   const noRides: NoRideEntry[] = [];
+
+  function ensureGroup(slotId: string, busId: string): GroupBucket {
+    const key = `${slotId}-${busId}`;
+    let group = groupMap.get(key);
+    if (!group) {
+      group = { slotId, busId, students: [], takenStopIds: new Set() };
+      groupMap.set(key, group);
+    }
+    return group;
+  }
 
   for (const def of defaultRows) {
     const student = studentMap.get(def.student_profile_id);
@@ -624,13 +666,11 @@ export async function getDailyBusManifest(
       // 결석: new_bus_stop_id 유무와 관계없이 항상 원래 호차 그룹에 is_absent=true로 추가
       if (change.change_type === "absent") {
         if (derivedBusId) {
-          const key = `${def.bus_time_slot_id}-${derivedBusId}`;
-          if (!groupMap.has(key)) {
-            groupMap.set(key, { slotId: def.bus_time_slot_id, busId: derivedBusId, students: [] });
-          }
+          const absentGroup = ensureGroup(def.bus_time_slot_id, derivedBusId);
+          if (def.bus_stop_id) absentGroup.takenStopIds.add(def.bus_stop_id);
           const stopName = def.bus_stop_id ? stopNameMap.get(def.bus_stop_id) : undefined;
           const stopTime = def.bus_stop_id ? getStopTime(def.bus_stop_id, def.bus_time_slot_id) : undefined;
-          groupMap.get(key)!.students.push({
+          absentGroup.students.push({
             student_profile_id: def.student_profile_id,
             korean_name: student.korean_name,
             english_name: student.english_name,
@@ -681,18 +721,16 @@ export async function getDailyBusManifest(
         ? (stopBusMaps.getBySlot(newStopId, newSlotId) ?? change.new_bus_number_id ?? derivedBusId)
         : (change.new_bus_number_id ?? derivedBusId);
       if (!newBusId) continue; // 미배정 — 그룹에 넣지 않음
-      const key = `${newSlotId}-${newBusId}`;
-      if (!groupMap.has(key)) {
-        groupMap.set(key, { slotId: newSlotId, busId: newBusId, students: [] });
-      }
+      const changedGroup = ensureGroup(newSlotId, newBusId);
       const effectiveStopId = newStopId ?? def.bus_stop_id;
+      if (effectiveStopId) changedGroup.takenStopIds.add(effectiveStopId);
       const stopName = effectiveStopId ? stopNameMap.get(effectiveStopId) : undefined;
       const effectiveSlotId2 = change.new_bus_time_slot_id ?? def.bus_time_slot_id;
       const stopTime = newStopId
         ? getStopTime(newStopId, effectiveSlotId2)
         : (def.bus_stop_id ? getStopTime(def.bus_stop_id, effectiveSlotId2) : null);
       const estimatedTime = newStopId ? stopTime : (stopTime ?? def.estimated_time);
-      groupMap.get(key)!.students.push({
+      changedGroup.students.push({
         student_profile_id: def.student_profile_id,
         korean_name: student.korean_name,
         english_name: student.english_name,
@@ -712,13 +750,11 @@ export async function getDailyBusManifest(
     } else {
       // 미배정(호차 파생 불가) → 미배정 그룹 처리하지 않고 건너뜀
       if (!derivedBusId) continue;
-      const key = `${def.bus_time_slot_id}-${derivedBusId}`;
-      if (!groupMap.has(key)) {
-        groupMap.set(key, { slotId: def.bus_time_slot_id, busId: derivedBusId, students: [] });
-      }
+      const defaultGroup = ensureGroup(def.bus_time_slot_id, derivedBusId);
+      if (def.bus_stop_id) defaultGroup.takenStopIds.add(def.bus_stop_id);
       const stopTime2 = def.bus_stop_id ? getStopTime(def.bus_stop_id, def.bus_time_slot_id) : undefined;
       const stopName2 = def.bus_stop_id ? stopNameMap.get(def.bus_stop_id) : undefined;
-      groupMap.get(key)!.students.push({
+      defaultGroup.students.push({
         student_profile_id: def.student_profile_id,
         korean_name: student.korean_name,
         english_name: student.english_name,
@@ -736,6 +772,111 @@ export async function getDailyBusManifest(
     }
   }
 
+  // ── Phase 3: show_empty_stops 시간대 보강 ──
+  // 학생 배정 없는 호차·정류장도 카드/헤더로 노출. 오후반처럼 수시 변동 노선에서 사용.
+  if (flaggedSlotIds.size > 0) {
+    const flaggedSlotArr = [...flaggedSlotIds];
+
+    const { data: allDayAssignments } = await supabase
+      .from("bus_stop_day_assignments")
+      .select("bus_stop_id, bus_number_id, bus_time_slot_id, sort_order")
+      .eq("day_of_week", isoDay);
+    const assignmentRows = allDayAssignments ?? [];
+
+    // 누락된 정류장 이름·스케줄·시간대 정보 보강 로드
+    const neededStopIds = new Set<string>();
+    for (const row of assignmentRows) neededStopIds.add(row.bus_stop_id);
+    const missingStopIds = [...neededStopIds].filter((id) => !stopNameMap.has(id));
+    const missingSlotIds = flaggedSlotArr.filter((id) => !slotMap.has(id));
+
+    const [
+      extraStopNamesRes,
+      extraStopSchedulesRes,
+      extraSlotsRes,
+    ] = await Promise.all([
+      missingStopIds.length
+        ? supabase.from("bus_stops").select("id, name").in("id", missingStopIds)
+        : Promise.resolve({ data: [] as { id: string; name: string }[] }),
+      missingStopIds.length
+        ? supabase
+            .from("bus_stop_schedules")
+            .select("bus_stop_id, estimated_time, bus_time_slot_id")
+            .in("bus_stop_id", missingStopIds)
+            .eq("day_of_week", isoDay)
+        : Promise.resolve({ data: [] as { bus_stop_id: string; estimated_time: string; bus_time_slot_id: string | null }[] }),
+      missingSlotIds.length
+        ? supabase.from("bus_time_slots").select("id, label, time").in("id", missingSlotIds)
+        : Promise.resolve({ data: [] as { id: string; label: string; time: string }[] }),
+    ]);
+
+    for (const s of extraStopNamesRes.data ?? []) stopNameMap.set(s.id, s.name);
+    for (const ss of extraStopSchedulesRes.data ?? []) {
+      if (!stopScheduleMap.has(ss.bus_stop_id)) stopScheduleMap.set(ss.bus_stop_id, new Map());
+      const slotKey = ss.bus_time_slot_id ?? "_";
+      stopScheduleMap.get(ss.bus_stop_id)!.set(slotKey, ss.estimated_time);
+    }
+    for (const s of extraSlotsRes.data ?? []) slotMap.set(s.id, { label: s.label, time: s.time });
+
+    // 각 flagged slot 에 대해 (stopId → busId) 를 slot-specific 우선, null fallback 으로 해석
+    for (const slotId of flaggedSlotArr) {
+      const resolved = new Map<string, { busId: string; sortOrder: number }>();
+      // 1차: slot-specific
+      for (const row of assignmentRows) {
+        if (row.bus_time_slot_id === slotId) {
+          resolved.set(row.bus_stop_id, {
+            busId: row.bus_number_id,
+            sortOrder: row.sort_order ?? 0,
+          });
+        }
+      }
+      // 2차: null fallback (slot-specific 이 없는 경우만)
+      for (const row of assignmentRows) {
+        if (row.bus_time_slot_id === null && !resolved.has(row.bus_stop_id)) {
+          resolved.set(row.bus_stop_id, {
+            busId: row.bus_number_id,
+            sortOrder: row.sort_order ?? 0,
+          });
+        }
+      }
+
+      // busId 별로 정류장 리스트
+      const byBus = new Map<string, { stopId: string; sortOrder: number }[]>();
+      for (const [stopId, info] of resolved) {
+        if (!byBus.has(info.busId)) byBus.set(info.busId, []);
+        byBus.get(info.busId)!.push({ stopId, sortOrder: info.sortOrder });
+      }
+
+      for (const [busId, stops] of byBus) {
+        const group = ensureGroup(slotId, busId);
+        const extras: BusManifestExtraStop[] = [];
+        for (const s of stops) {
+          if (group.takenStopIds.has(s.stopId)) continue;
+          const name = stopNameMap.get(s.stopId);
+          if (!name) continue;
+          const time = getStopTime(s.stopId, slotId);
+          extras.push({
+            bus_stop_id: s.stopId,
+            bus_stop_name: name,
+            bus_stop_sort_order: s.sortOrder,
+            estimated_time: time,
+          });
+        }
+        if (extras.length) {
+          extras.sort((a, b) => {
+            const orderA = a.bus_stop_sort_order ?? Number.MAX_SAFE_INTEGER;
+            const orderB = b.bus_stop_sort_order ?? Number.MAX_SAFE_INTEGER;
+            if (orderA !== orderB) return orderA - orderB;
+            const timeA = a.estimated_time ?? "99:99";
+            const timeB = b.estimated_time ?? "99:99";
+            if (timeA !== timeB) return timeA.localeCompare(timeB);
+            return a.bus_stop_name.localeCompare(b.bus_stop_name);
+          });
+          group.extraStops = extras;
+        }
+      }
+    }
+  }
+
   const groups: BusManifestGroup[] = [...groupMap.values()]
     .map((g) => ({
       bus_time_slot_id: g.slotId,
@@ -744,6 +885,7 @@ export async function getDailyBusManifest(
       bus_number_id: g.busId,
       bus_label: busMap.get(g.busId) ?? "",
       students: g.students,
+      extra_stops: g.extraStops?.length ? g.extraStops : undefined,
     }))
     .sort((a, b) => {
       const timeCmp = a.slot_time.localeCompare(b.slot_time);

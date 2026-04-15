@@ -373,6 +373,13 @@ export type BusManifestEntry = {
   check_record_id?: string | null;
 };
 
+export type BusManifestExtraStop = {
+  bus_stop_id: string;
+  bus_stop_name: string;
+  bus_stop_sort_order: number | null;
+  estimated_time: string | null;
+};
+
 export type BusManifestGroup = {
   bus_time_slot_id: string;
   slot_time: string;
@@ -380,6 +387,9 @@ export type BusManifestGroup = {
   bus_number_id: string;
   bus_label: string;
   students: BusManifestEntry[];
+  // show_empty_stops=true 시간대에서 학생은 없지만 (요일·슬롯)에 배정된 정류장 목록.
+  // 모니터 카드에서 빈 그룹 헤더로 표시할 때 사용.
+  extra_stops?: BusManifestExtraStop[];
 };
 
 export type NoRideEntry = {

@@ -1,6 +1,43 @@
-import type { BusManifestGroup, BusManifestEntry } from "@/lib/types";
+import type { BusManifestGroup, BusManifestEntry, BusManifestExtraStop } from "@/lib/types";
 import { getAgeColor } from "@/lib/student-age-colors";
 import { groupStudentsByStop, formatTime, formatCheckedTime, type StopGroup } from "@/lib/bus/utils";
+
+// 학생 있는 정류장 + 학생 없는 정류장(show_empty_stops) 을 한 리스트로 병합.
+// sort_order → estimated_time → stopName 순으로 정렬.
+function mergeStopGroups(
+  students: BusManifestEntry[],
+  extras: BusManifestExtraStop[] | undefined
+): StopGroup[] {
+  const fromStudents = groupStudentsByStop(students);
+  if (!extras?.length) return fromStudents;
+
+  type Enriched = StopGroup & { sortOrder: number };
+  const enriched: Enriched[] = fromStudents.map((g) => ({
+    ...g,
+    sortOrder: g.students[0]?.bus_stop_sort_order ?? 9999,
+  }));
+
+  const existingNames = new Set(enriched.map((g) => g.stopName));
+  for (const extra of extras) {
+    if (existingNames.has(extra.bus_stop_name)) continue;
+    enriched.push({
+      stopName: extra.bus_stop_name,
+      estimatedTime: extra.estimated_time,
+      students: [],
+      sortOrder: extra.bus_stop_sort_order ?? 9999,
+    });
+  }
+
+  enriched.sort((a, b) => {
+    if (a.sortOrder !== b.sortOrder) return a.sortOrder - b.sortOrder;
+    const ta = a.estimatedTime ?? "99:99";
+    const tb = b.estimatedTime ?? "99:99";
+    if (ta !== tb) return ta.localeCompare(tb);
+    return a.stopName.localeCompare(b.stopName);
+  });
+
+  return enriched.map(({ sortOrder: _unused, ...rest }) => rest);
+}
 
 // 호차별 색상 팔레트 (Tailwind purge-safe 리터럴)
 export const BUS_CARD_COLORS = [
@@ -107,7 +144,7 @@ export function MonitorBusCard(props: MonitorBusCardProps) {
   const checkedCount = activeStudents.filter((s) => s.checked_at).length;
   const totalCount = activeStudents.length;
   const allDone = checkedCount === totalCount && totalCount > 0;
-  const stopGroups = groupStudentsByStop(card.students);
+  const stopGroups = mergeStopGroups(card.students, card.extra_stops);
 
   if (props.variant === "admin") {
     return <AdminBusCard card={card} boardedCount={boardedCount} checkedCount={checkedCount} totalCount={totalCount} allDone={allDone} stopGroups={stopGroups} />;
@@ -168,6 +205,12 @@ function AdminBusCard({ card, boardedCount, checkedCount, totalCount, allDone, s
                     📍 {group.stopName}
                   </span>
                 )}
+              </div>
+            )}
+
+            {group.students.length === 0 && (
+              <div className="px-4 py-1.5 pl-8 text-xs italic text-slate-400">
+                배정 학생 없음
               </div>
             )}
 
@@ -304,6 +347,7 @@ function renderMonitorStudent(student: BusManifestEntry, card: BusManifestGroup)
 }
 
 function renderMonitorStopGroup(group: StopGroup, gi: number, card: BusManifestGroup) {
+  const isEmpty = group.students.length === 0;
   return (
     <div key={gi}>
       {(group.stopName || group.estimatedTime) && (
@@ -321,9 +365,15 @@ function renderMonitorStopGroup(group: StopGroup, gi: number, card: BusManifestG
           )}
         </div>
       )}
-      <div className="grid grid-cols-2">
-        {group.students.map((s) => renderMonitorStudent(s, card))}
-      </div>
+      {isEmpty ? (
+        <div className="px-4 py-1.5 text-sm text-slate-400 italic">
+          배정 학생 없음
+        </div>
+      ) : (
+        <div className="grid grid-cols-2">
+          {group.students.map((s) => renderMonitorStudent(s, card))}
+        </div>
+      )}
     </div>
   );
 }

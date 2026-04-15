@@ -34,7 +34,7 @@
 
 ## 타입
 - `BusStaffProfile` — id, profile_id, email, name, bus_number_id, bus_label, created_at
-- `BusManifestGroup` — bus_time_slot_id, bus_number_id, bus_label, slot_time, slot_label, students[]
+- `BusManifestGroup` — bus_time_slot_id, bus_number_id, bus_label, slot_time, slot_label, students[], extra_stops? (빈 정류장)
 - `BusManifestEntry` — student_profile_id, korean_name, english_name, age, boarded_at, checked_at, estimated_time, note, is_changed 등
 
 ## 데이터 흐름

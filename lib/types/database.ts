@@ -54,6 +54,7 @@ export type BusTimeSlot = {
   label: string;
   time: string;
   is_active: boolean;
+  show_empty_stops: boolean;
   created_at: string;
   updated_at: string;
 };

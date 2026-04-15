@@ -48,6 +48,7 @@ export type {
   BusChangeRequest,
   BusManifestEntry,
   BusManifestGroup,
+  BusManifestExtraStop,
   NoRideEntry,
   AfterSchoolBusEntry,
   BusStaffProfile,

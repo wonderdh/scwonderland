@@ -239,8 +239,8 @@
 | 함수 | 권한 | 테이블 | 설명 |
 |------|------|--------|------|
 | `listBusTimeSlots()` | - | `bus_time_slots` | 활성 시간대 목록 |
-| `createBusTimeSlot(label, time)` | admin | `bus_time_slots` | 시간대 생성 |
-| `updateBusTimeSlot(id, label, time)` | admin | `bus_time_slots` | 시간대 수정 |
+| `createBusTimeSlot(label, time, showEmptyStops?)` | admin | `bus_time_slots` | 시간대 생성. `showEmptyStops` true면 모니터 빈 정류장·호차 노출 |
+| `updateBusTimeSlot(id, label, time, showEmptyStops?)` | admin | `bus_time_slots` | 시간대 수정 (플래그 optional patch) |
 | `deleteBusTimeSlot(id)` | admin | `bus_time_slots` | 시간대 soft delete |
 
 ### 학생 목록
