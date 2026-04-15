@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import type { BusNumber, BusStop, BusTimeSlot } from "@/lib/types";
 import {
   createBusNumber,
@@ -68,6 +69,17 @@ export function BusNumbersManager({
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [dragOverTarget, setDragOverTarget] = useState<string | null>(null);
+  const [deleteBusConfirm, setDeleteBusConfirm] = useState<{ open: boolean; id?: string; label?: string }>({ open: false });
+  const [deleteStopConfirm, setDeleteStopConfirm] = useState<{ open: boolean; id?: string; name?: string }>({ open: false });
+  const [copyTimeConfirm, setCopyTimeConfirm] = useState<{
+    open: boolean;
+    stopId?: string;
+    day?: number;
+    time?: string;
+    slotId?: string;
+    dayLabel?: string;
+  }>({ open: false });
+  const [filterChangeConfirm, setFilterChangeConfirm] = useState<{ open: boolean; setter?: () => void }>({ open: false });
 
   const filteredSlots = busTimeSlots;
 
@@ -124,11 +136,18 @@ export function BusNumbersManager({
 
   function guardFilterChange(setter: () => void) {
     if (hasChanges) {
-      if (!confirm("저장하지 않은 변경사항이 있습니다. 계속하시겠습니까?")) return;
-      setDayAssignments(new Map(serverAssignments.current.entries().map(([k, v]) => [k, { ...v }])));
-      setScheduleMap(new Map(serverSchedules.current));
+      setFilterChangeConfirm({ open: true, setter });
+      return;
     }
     setter();
+  }
+
+  function confirmFilterChange() {
+    const setter = filterChangeConfirm.setter;
+    setFilterChangeConfirm({ open: false });
+    setDayAssignments(new Map(serverAssignments.current.entries().map(([k, v]) => [k, { ...v }])));
+    setScheduleMap(new Map(serverSchedules.current));
+    setter?.();
   }
 
   // ── Derived: get ordered stops for a bus ──
@@ -302,10 +321,14 @@ export function BusNumbersManager({
       return;
     }
     const dayLabel = DAYS.find((d) => d.value === day)?.label ?? "";
-    if (!confirm(`${dayLabel}요일 시간(${time})을 전체 요일에 동일하게 적용하시겠습니까?\n(현재 요일 시간이 미저장이면 먼저 저장해 주세요)`)) return;
+    setCopyTimeConfirm({ open: true, stopId, day, time, slotId: timeSlotId || undefined, dayLabel });
+  }
 
+  async function confirmCopyTime() {
+    const { stopId, day, time, slotId } = copyTimeConfirm;
+    setCopyTimeConfirm({ open: false });
+    if (!stopId || !day || !time) return;
     setLoading(true);
-    const slotId = timeSlotId || undefined;
     const errors: string[] = [];
     for (const d of DAYS) {
       if (d.value === day) continue;
@@ -337,8 +360,14 @@ export function BusNumbersManager({
     setLoading(false);
   }
 
-  async function handleDeleteBus(id: string, label: string) {
-    if (!confirm(`"${label}" 호차를 삭제하시겠습니까?`)) return;
+  function handleDeleteBus(id: string, label: string) {
+    setDeleteBusConfirm({ open: true, id, label });
+  }
+
+  async function confirmDeleteBus() {
+    const id = deleteBusConfirm.id;
+    setDeleteBusConfirm({ open: false });
+    if (!id) return;
     setLoading(true);
     const result = await deleteBusNumber(id);
     if (result.error) toast.error(result.error);
@@ -378,8 +407,15 @@ export function BusNumbersManager({
     setLoading(false);
   }
 
-  async function handleDeleteStop(stopId: string) {
-    if (!confirm("정류장을 삭제하시겠습니까?")) return;
+  function handleDeleteStop(stopId: string) {
+    const stop = stops.find((s) => s.id === stopId);
+    setDeleteStopConfirm({ open: true, id: stopId, name: stop?.name });
+  }
+
+  async function confirmDeleteStop() {
+    const stopId = deleteStopConfirm.id;
+    setDeleteStopConfirm({ open: false });
+    if (!stopId) return;
     setLoading(true);
     const result = await deleteBusStop(stopId);
     if (result.error) toast.error(result.error);
@@ -602,14 +638,14 @@ export function BusNumbersManager({
                       }}
                       autoFocus
                     />
-                    <Button size="sm" variant="outline" className="h-5 text-[10px] px-1.5" onClick={() => handleUpdateStop(stop.id)}>저장</Button>
+                    <Button size="sm" variant="outline" className="h-5 text-xs px-1.5" onClick={() => handleUpdateStop(stop.id)}>저장</Button>
                   </>
                 ) : (
                   <>
                     <span className="text-xs text-slate-400">📍</span>
                     <span className="text-xs text-slate-700 flex-1">{stop.name}</span>
-                    <button className="text-[10px] text-slate-400 hover:text-slate-600" onClick={() => { setEditingStopId(stop.id); setEditStopName(stop.name); }}>수정</button>
-                    <button className="text-[10px] text-red-400 hover:text-red-600" onClick={() => handleDeleteStop(stop.id)}>×</button>
+                    <button className="text-xs text-slate-400 hover:text-slate-600" onClick={() => { setEditingStopId(stop.id); setEditStopName(stop.name); }}>수정</button>
+                    <button className="text-xs text-red-400 hover:text-red-600" onClick={() => handleDeleteStop(stop.id)}>×</button>
                   </>
                 )}
               </div>
@@ -617,6 +653,54 @@ export function BusNumbersManager({
           </div>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={deleteBusConfirm.open}
+        title={`"${deleteBusConfirm.label ?? ""}" 호차를 삭제하시겠습니까?`}
+        description="이 호차에 배정된 학생/정류장이 있으면 함께 영향을 받습니다."
+        impactList={[
+          "이 호차에 배정된 정류장이 미배정 상태가 됩니다.",
+          "이 호차를 참조하는 학생 배정·변경 요청에 영향이 갈 수 있습니다.",
+        ]}
+        danger
+        confirmLabel="삭제"
+        onConfirm={confirmDeleteBus}
+        onCancel={() => setDeleteBusConfirm({ open: false })}
+      />
+
+      <ConfirmDialog
+        open={deleteStopConfirm.open}
+        title={`${deleteStopConfirm.name ? `"${deleteStopConfirm.name}" ` : ""}정류장을 삭제하시겠습니까?`}
+        description="이 정류장에 의존하는 데이터에 영향을 줄 수 있습니다."
+        impactList={[
+          "이 정류장을 기본 배정으로 사용하는 학생이 미배정 상태가 됩니다.",
+          "이 정류장이 포함된 스케줄·변경 요청에 영향이 갈 수 있습니다.",
+        ]}
+        danger
+        confirmLabel="삭제"
+        onConfirm={confirmDeleteStop}
+        onCancel={() => setDeleteStopConfirm({ open: false })}
+      />
+
+      <ConfirmDialog
+        open={copyTimeConfirm.open}
+        variant="primary"
+        title={`${copyTimeConfirm.dayLabel ?? ""}요일 시간(${copyTimeConfirm.time ?? ""})을 전체 요일에 적용할까요?`}
+        description="현재 요일 시간이 미저장이면 먼저 저장해 주세요."
+        confirmLabel="적용"
+        onConfirm={confirmCopyTime}
+        onCancel={() => setCopyTimeConfirm({ open: false })}
+      />
+
+      <ConfirmDialog
+        open={filterChangeConfirm.open}
+        variant="primary"
+        title="저장하지 않은 변경사항이 있습니다"
+        description="계속하면 지금까지의 변경이 사라집니다. 계속하시겠습니까?"
+        confirmLabel="계속"
+        onConfirm={confirmFilterChange}
+        onCancel={() => setFilterChangeConfirm({ open: false })}
+      />
     </div>
   );
 }
@@ -663,7 +747,7 @@ function StopRow({
       <button
         onClick={onCopyAllDays}
         title="이 시간을 월~금 전체 요일에 동일하게 적용합니다"
-        className="text-[10px] text-slate-400 hover:text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap"
+        className="text-xs text-slate-400 hover:text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap"
       >
         전체 요일 적용
       </button>

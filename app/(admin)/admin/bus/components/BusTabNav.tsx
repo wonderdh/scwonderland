@@ -1,36 +1,45 @@
 "use client";
 
 import Link from "next/link";
+import { CalendarCheck, RefreshCw, UserCog, Settings } from "lucide-react";
+import type { ComponentType } from "react";
 
-export type BusTabId = "stop-assign" | "student-assign" | "overview" | "dashboard" | "bus-manage" | "timeslots" | "requests" | "staff";
+export type BusTabId = "today" | "requests" | "assignment" | "master";
 
-const TABS: { id: BusTabId; label: string }[] = [
-  { id: "overview", label: "배정 현황" },
-  { id: "dashboard", label: "대시보드" },
-  { id: "requests", label: "변경 요청" },
-  { id: "student-assign", label: "학생 배정" },
-  { id: "stop-assign", label: "정류장 배치" },
-  { id: "bus-manage", label: "호차/정류장" },
-  { id: "timeslots", label: "시간대 관리" },
-  { id: "staff", label: "담당자 관리" },
+const TABS: { id: BusTabId; label: string; icon: ComponentType<{ className?: string }> }[] = [
+  { id: "today", label: "오늘 운행", icon: CalendarCheck },
+  { id: "requests", label: "변경요청", icon: RefreshCw },
+  { id: "assignment", label: "배정 관리", icon: UserCog },
+  { id: "master", label: "마스터", icon: Settings },
 ];
 
 export function BusTabNav({ currentTab }: { currentTab: BusTabId }) {
   return (
-    <nav className="flex border-b bg-card rounded-t-xl overflow-x-auto">
-      {TABS.map((t) => (
-        <Link
-          key={t.id}
-          href={`/admin/bus?tab=${t.id}`}
-          className={`px-4 py-3 text-sm font-medium transition-colors whitespace-nowrap ${
-            currentTab === t.id
-              ? "text-foreground border-b-2 border-primary bg-muted/50"
-              : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
-          }`}
-        >
-          {t.label}
-        </Link>
-      ))}
+    <nav
+      className="flex border-b bg-card rounded-t-xl overflow-x-auto"
+      role="tablist"
+      aria-label="승하차 관리 탭"
+    >
+      {TABS.map((t) => {
+        const Icon = t.icon;
+        const active = currentTab === t.id;
+        return (
+          <Link
+            key={t.id}
+            href={`/admin/bus?tab=${t.id}`}
+            role="tab"
+            aria-selected={active}
+            className={`flex items-center gap-2 px-5 h-12 text-base font-medium transition-colors whitespace-nowrap border-b-[3px] ${
+              active
+                ? "bg-orange-50 text-orange-700 border-orange-500"
+                : "text-slate-600 border-transparent hover:text-slate-900 hover:bg-slate-50"
+            }`}
+          >
+            <Icon className="h-6 w-6 shrink-0" aria-hidden />
+            <span>{t.label}</span>
+          </Link>
+        );
+      })}
     </nav>
   );
 }

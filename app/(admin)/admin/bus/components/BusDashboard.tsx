@@ -390,7 +390,7 @@ export function BusDashboard({ busTimeSlots, busNumbers }: { busTimeSlots: BusTi
                 key={student.student_profile_id}
                 className="px-4 py-2.5 flex items-center gap-3 text-sm"
               >
-                <span className="text-[10px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded font-medium shrink-0">
+                <span className="text-xs bg-red-100 text-red-600 px-1.5 py-0.5 rounded font-medium shrink-0">
                   결석
                 </span>
                 <span className="font-medium text-red-700">
@@ -523,7 +523,7 @@ function BusCard({
             <span className="text-sm font-medium truncate text-orange-600">
               {student.korean_name || student.english_name}
             </span>
-            <span className="shrink-0 text-[10px] bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded font-medium">
+            <span className="shrink-0 text-xs bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded font-medium">
               결석
             </span>
           </div>
@@ -579,18 +579,18 @@ function BusCard({
             </span>
             {student.is_changed && (
               <>
-                <span className="shrink-0 text-[10px] bg-amber-200 text-amber-800 px-1.5 py-0.5 rounded font-medium">
+                <span className="shrink-0 text-xs bg-amber-200 text-amber-800 px-1.5 py-0.5 rounded font-medium">
                   변경
                 </span>
                 {student.original_bus_label && (
-                  <span className="shrink-0 text-[10px] text-amber-500">
+                  <span className="shrink-0 text-xs text-amber-500">
                     ({student.original_bus_label} → {card.bus_label})
                   </span>
                 )}
               </>
             )}
             {student.note && (
-              <span className="text-[10px] text-slate-400 truncate">({student.note})</span>
+              <span className="text-xs text-slate-400 truncate">({student.note})</span>
             )}
           </div>
         </div>

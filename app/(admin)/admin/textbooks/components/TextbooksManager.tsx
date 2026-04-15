@@ -13,6 +13,7 @@ import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { FormGroup } from "@/components/FormGroup";
 
 export function TextbooksManager({
   initialTextbooks,
@@ -49,11 +50,11 @@ export function TextbooksManager({
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4">
-        <h1 className="text-2xl font-semibold text-slate-800">교재 관리</h1>
+        <h2 className="text-xl font-semibold text-slate-800">교재 목록</h2>
         <button
           type="button"
           onClick={() => setCreateOpen(true)}
-          className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500 transition-colors"
+          className="inline-flex items-center h-11 rounded-lg bg-emerald-600 px-4 text-base font-medium text-white hover:bg-emerald-500 transition-colors"
         >
           + 교재 추가
         </button>
@@ -156,19 +157,19 @@ export function TextbooksManager({
       )}
       <ConfirmDialog
         open={!!deleteTarget}
-        title="교재 삭제"
-        description={(() => {
-          if (!deleteTarget) return undefined;
-          if (deleteTargetLoading) return `"${deleteTarget.title}" 교재의 연관 데이터를 확인하는 중…`;
-          if (!deleteTargetCounts) return `"${deleteTarget.title}" 교재를 삭제할까요?`;
-          const parts: string[] = [];
-          if (deleteTargetCounts.classAssignCount > 0) parts.push(`반 배정 ${deleteTargetCounts.classAssignCount}건`);
-          if (deleteTargetCounts.progressCount > 0) parts.push(`학생 진도 ${deleteTargetCounts.progressCount}건`);
-          if (parts.length === 0) return `"${deleteTarget.title}" 교재를 삭제할까요? 연관 데이터가 없습니다.`;
-          return `"${deleteTarget.title}" 교재를 삭제하면 ${parts.join(", ")}이(가) 함께 삭제됩니다. 계속할까요?`;
+        danger
+        title={deleteTarget ? `"${deleteTarget.title}" 교재를 삭제하시겠습니까?` : "교재를 삭제하시겠습니까?"}
+        description={deleteTargetLoading ? "연관 데이터를 확인하는 중입니다…" : "삭제된 교재는 복구할 수 없습니다."}
+        impactList={(() => {
+          const items: string[] = [];
+          if (deleteTargetCounts) {
+            if (deleteTargetCounts.classAssignCount > 0) items.push(`반 배정 ${deleteTargetCounts.classAssignCount}건이 해제됩니다`);
+            if (deleteTargetCounts.progressCount > 0) items.push(`학생 진도 ${deleteTargetCounts.progressCount}건이 함께 삭제됩니다`);
+          }
+          if (items.length === 0) items.push("연관 데이터가 없습니다.");
+          return items;
         })()}
         confirmLabel="삭제"
-        variant="danger"
         disabled={deletePending || deleteTargetLoading}
         onCancel={() => { setDeleteTarget(null); setDeleteTargetCounts(null); }}
         onConfirm={async () => {
@@ -226,11 +227,11 @@ function TextbookCard({
       )}
 
       <div className="flex flex-1 flex-col gap-1.5 p-2.5">
-        <h3 className="text-sm font-semibold text-slate-800 truncate leading-tight">{textbook.title}</h3>
+        <h3 className="text-base font-semibold text-slate-800 truncate leading-tight">{textbook.title}</h3>
         {textbook.series && (
-          <p className="text-[11px] text-slate-500 truncate">{textbook.series}</p>
+          <p className="text-sm text-slate-500 truncate">{textbook.series}</p>
         )}
-        <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
+        <div className="flex items-center gap-1.5 text-sm text-slate-500">
           <span className="rounded bg-blue-50 px-1.5 py-0.5 text-blue-700 font-medium">{categoryLabel}</span>
           {textbook.level && (
             <span className="rounded bg-slate-100 px-1 py-0.5">Lv.{textbook.level}</span>
@@ -242,14 +243,16 @@ function TextbookCard({
           <button
             type="button"
             onClick={onEdit}
-            className="rounded bg-slate-100 px-2 py-1 text-[11px] font-medium text-slate-700 hover:bg-slate-200 transition-colors"
+            aria-label="교재 수정"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100 text-sm font-medium text-slate-700 hover:bg-slate-200 transition-colors"
           >
             수정
           </button>
           <button
             type="button"
             onClick={onDelete}
-            className="rounded bg-red-50 px-2 py-1 text-[11px] font-medium text-red-600 hover:bg-red-100 transition-colors"
+            aria-label="교재 삭제"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-red-50 text-sm font-medium text-red-600 hover:bg-red-100 transition-colors"
           >
             삭제
           </button>
@@ -368,62 +371,50 @@ function TextbookFormModal({
             </svg>
           </button>
         </div>
-        <form onSubmit={handleSubmit} className="space-y-3">
+        <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
             <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>
           )}
-          <div>
-            <label htmlFor="tf-title" className="mb-1 block text-sm font-medium text-slate-700">
-              교재명 *
-            </label>
+          <FormGroup label="교재명" htmlFor="tf-title" required>
             <input
               id="tf-title"
               type="text"
               value={form.title}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-slate-800"
+              className="flex h-11 w-full rounded-md border border-slate-200 bg-transparent px-3 text-base text-slate-800"
               placeholder="예: Let's Go 1"
               required
             />
-          </div>
+          </FormGroup>
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label htmlFor="tf-series" className="mb-1 block text-sm font-medium text-slate-700">
-                시리즈
-              </label>
+            <FormGroup label="시리즈" htmlFor="tf-series">
               <input
                 id="tf-series"
                 type="text"
                 value={form.series}
                 onChange={(e) => setForm({ ...form, series: e.target.value })}
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-slate-800"
+                className="flex h-11 w-full rounded-md border border-slate-200 bg-transparent px-3 text-base text-slate-800"
                 placeholder="예: Let's Go"
               />
-            </div>
-            <div>
-              <label htmlFor="tf-level" className="mb-1 block text-sm font-medium text-slate-700">
-                레벨
-              </label>
+            </FormGroup>
+            <FormGroup label="레벨" htmlFor="tf-level">
               <input
                 id="tf-level"
                 type="text"
                 value={form.level}
                 onChange={(e) => setForm({ ...form, level: e.target.value })}
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-slate-800"
+                className="flex h-11 w-full rounded-md border border-slate-200 bg-transparent px-3 text-base text-slate-800"
                 placeholder="예: 1, Beginner"
               />
-            </div>
+            </FormGroup>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label htmlFor="tf-category" className="mb-1 block text-sm font-medium text-slate-700">
-                카테고리
-              </label>
+            <FormGroup label="카테고리" htmlFor="tf-category">
               <select
                 id="tf-category"
                 value={form.category}
                 onChange={(e) => setForm({ ...form, category: e.target.value })}
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-slate-800"
+                className="flex h-11 w-full rounded-md border border-slate-200 bg-transparent px-3 text-base text-slate-800"
               >
                 {TEXTBOOK_CATEGORIES.map((c) => (
                   <option key={c.value} value={c.value}>
@@ -431,34 +422,28 @@ function TextbookFormModal({
                   </option>
                 ))}
               </select>
-            </div>
-            <div>
-              <label htmlFor="tf-units" className="mb-1 block text-sm font-medium text-slate-700">
-                총 단원 수
-              </label>
+            </FormGroup>
+            <FormGroup label="총 단원 수" htmlFor="tf-units">
               <input
                 id="tf-units"
                 type="number"
                 min={1}
                 value={form.total_units}
                 onChange={(e) => setForm({ ...form, total_units: Number(e.target.value) || 1 })}
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-slate-800"
+                className="flex h-11 w-full rounded-md border border-slate-200 bg-transparent px-3 text-base text-slate-800"
               />
-            </div>
+            </FormGroup>
           </div>
-          <div>
-            <label htmlFor="tf-desc" className="mb-1 block text-sm font-medium text-slate-700">
-              설명
-            </label>
+          <FormGroup label="설명" htmlFor="tf-desc">
             <textarea
               id="tf-desc"
               value={form.description}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-slate-800"
+              className="w-full rounded-md border border-slate-200 bg-transparent px-3 py-2 text-base text-slate-800"
               rows={2}
               placeholder="교재에 대한 간단한 설명"
             />
-          </div>
+          </FormGroup>
 
           {/* 커버 이미지 */}
           <div>
@@ -511,14 +496,14 @@ function TextbookFormModal({
             <button
               type="button"
               onClick={onClose}
-              className="rounded-lg bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-200"
+              className="inline-flex h-11 items-center rounded-lg bg-slate-100 px-4 text-base font-medium text-slate-700 hover:bg-slate-200"
             >
               취소
             </button>
             <button
               type="submit"
               disabled={pending}
-              className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500 disabled:opacity-50"
+              className="inline-flex h-11 items-center rounded-lg bg-emerald-600 px-4 text-base font-medium text-white hover:bg-emerald-500 disabled:opacity-50"
             >
               {pending ? "저장 중…" : "저장"}
             </button>

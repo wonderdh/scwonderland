@@ -4,6 +4,7 @@ import { useState, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import type { GroupTimetableData } from "@/lib/types";
 import { CLASS_COLOR_PALETTE } from "@/lib/class-colors";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import {
   addSingleClassSchedule,
   deleteClassSchedule,
@@ -96,6 +97,7 @@ export function TeacherTimetableTab({
   const [pendingDeletes, setPendingDeletes] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [conflictKeys, setConflictKeys] = useState<string[]>([]);
 
   const refreshData = useCallback(async () => {
     const newData = await getGroupTimetableGrid(activeGroup);
@@ -168,33 +170,43 @@ export function TeacherTimetableTab({
       }
     }
 
-    // 충돌이 있으면 한 번만 확인
+    // 충돌이 있으면 모달로 확인
     if (conflictKeys.length > 0) {
       setSaving(false);
-      const ok = window.confirm(
-        `선생님이 같은 시간에 이미 다른 반에 배정되어 있습니다.\n통합 수업으로 함께 배정하시겠습니까?`
-      );
-      if (!ok) {
-        await refreshData();
-        router.refresh();
-        return;
-      }
-      setSaving(true);
-      for (const key of conflictKeys) {
-        const [classId, periodId, dayStr] = key.split("|");
-        const pending = pendingChanges.get(key)!;
-        const result = await addSingleClassSchedule(
-          classId, periodId, parseInt(dayStr, 10),
-          pending.teacherId, pending.label, pending.textbookId, null, true,
-        );
-        if (result.error) { setError(result.error); setSaving(false); return; }
-      }
+      setConflictKeys(conflictKeys);
+      return;
     }
 
     setPendingChanges(new Map());
     await refreshData();
     router.refresh();
     setSaving(false);
+  }
+
+  async function handleConfirmMerge() {
+    const keys = conflictKeys;
+    setConflictKeys([]);
+    setSaving(true);
+    for (const key of keys) {
+      const [classId, periodId, dayStr] = key.split("|");
+      const pending = pendingChanges.get(key);
+      if (!pending) continue;
+      const result = await addSingleClassSchedule(
+        classId, periodId, parseInt(dayStr, 10),
+        pending.teacherId, pending.label, pending.textbookId, null, true,
+      );
+      if (result.error) { setError(result.error); setSaving(false); return; }
+    }
+    setPendingChanges(new Map());
+    await refreshData();
+    router.refresh();
+    setSaving(false);
+  }
+
+  async function handleCancelMerge() {
+    setConflictKeys([]);
+    await refreshData();
+    router.refresh();
   }
 
   function handleGroupChange(key: GroupKey) {
@@ -323,7 +335,7 @@ export function TeacherTimetableTab({
                     <tr key={period.id} className="border-b last:border-b-0">
                       <td className="py-2 px-3 border-r align-middle">
                         <div className="font-medium text-foreground text-xs">{period.name}</div>
-                        <div className="text-[10px] text-muted-foreground">
+                        <div className="text-xs text-muted-foreground">
                           {period.start_time.slice(0, 5)}~{period.end_time.slice(0, 5)}
                         </div>
                       </td>
@@ -386,7 +398,7 @@ export function TeacherTimetableTab({
                                   <div key={i} className="truncate">{n}</div>
                                 ))}
                                 {displayLabel && (
-                                  <div className="text-[10px] opacity-70 truncate">{displayLabel}</div>
+                                  <div className="text-xs opacity-70 truncate">{displayLabel}</div>
                                 )}
                                 <button
                                   type="button"
@@ -421,7 +433,7 @@ export function TeacherTimetableTab({
                                 }`}
                               >
                                 <div className="truncate">{pendingClass?.name ?? "✓"}</div>
-                                {pendingLabel && <div className="text-[10px] opacity-70 truncate">{pendingLabel}</div>}
+                                {pendingLabel && <div className="text-xs opacity-70 truncate">{pendingLabel}</div>}
                               </button>
                             </td>
                           );
@@ -451,6 +463,17 @@ export function TeacherTimetableTab({
           </div>
         </>
       )}
+
+      <ConfirmDialog
+        open={conflictKeys.length > 0}
+        title="통합 수업으로 배정하시겠습니까?"
+        description={`선생님이 같은 시간에 이미 다른 반에 배정되어 있습니다.\n통합 수업으로 함께 배정하시겠습니까?`}
+        confirmLabel="통합 배정"
+        cancelLabel="취소"
+        variant="primary"
+        onConfirm={handleConfirmMerge}
+        onCancel={handleCancelMerge}
+      />
     </div>
   );
 }

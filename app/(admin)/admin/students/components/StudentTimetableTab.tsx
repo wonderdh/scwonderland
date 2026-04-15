@@ -110,7 +110,7 @@ export function StudentTimetableTab({
   }, [classRows]);
 
   if (loading) {
-    return <LoadingState />;
+    return <LoadingState label="시간표 불러오는 중..." />;
   }
 
   return (
@@ -184,7 +184,7 @@ export function StudentTimetableTab({
                             </div>
                           )}
                           {cell.label && (
-                            <div className={`text-[10px] font-medium ${
+                            <div className={`text-xs font-medium ${
                               cell.teacher_name ? "opacity-70" : ""
                             }`}>
                               {cell.label}

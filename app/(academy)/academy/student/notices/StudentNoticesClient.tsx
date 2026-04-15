@@ -109,7 +109,7 @@ export function StudentNoticesClient({
   const filtered = tab === "all" ? notices : notices.filter((n) => n.type === tab);
 
   if (loading) {
-    return <LoadingState />;
+    return <LoadingState label="공지사항 불러오는 중..." />;
   }
 
   if (selectedNotice) {

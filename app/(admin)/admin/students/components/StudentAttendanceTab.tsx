@@ -128,7 +128,7 @@ export function StudentAttendanceTab({ studentProfileId }: { studentProfileId: s
   };
 
   if (loading) {
-    return <LoadingState />;
+    return <LoadingState label="출결 기록 불러오는 중..." />;
   }
 
   return (
@@ -198,7 +198,7 @@ export function StudentAttendanceTab({ studentProfileId }: { studentProfileId: s
                   {day}
                 </span>
                 {cfg && (
-                  <div className={`mt-0.5 rounded px-1 py-0.5 text-[10px] font-medium ${cfg.badgeClass}`}>
+                  <div className={`mt-0.5 rounded px-1 py-0.5 text-xs font-medium ${cfg.badgeClass}`}>
                     {cfg.label}
                   </div>
                 )}
@@ -281,7 +281,7 @@ export function StudentAttendanceTab({ studentProfileId }: { studentProfileId: s
               const cfg = ATTENDANCE_STATUS_CONFIG[rec.status as AttendanceStatus];
               return (
                 <li key={rec.id} className="flex items-center gap-3 rounded-lg border bg-card px-4 py-2.5">
-                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${cfg?.badgeClass}`}>
+                  <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${cfg?.badgeClass}`}>
                     {cfg?.label}
                   </span>
                   <span className="text-sm text-foreground">{rec.attendance_date}</span>

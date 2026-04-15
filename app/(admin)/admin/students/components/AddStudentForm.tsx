@@ -2,12 +2,12 @@
 
 import { useActionState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
+import { toastSuccess } from "@/lib/toast";
 import { createStudent } from "../../actions";
 import { Spinner } from "@/components/Spinner";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { FormGroup } from "@/components/FormGroup";
 
 type FormState = { error?: string; success?: string } | null;
 
@@ -20,7 +20,7 @@ export function AddStudentForm() {
       if (result.error) return { error: result.error };
       formRef.current?.reset();
       router.refresh();
-      toast.success("학생이 추가되었습니다.");
+      toastSuccess("학생이 추가되었습니다.");
       return { success: "학생이 추가되었습니다." };
     },
     null as FormState
@@ -30,12 +30,9 @@ export function AddStudentForm() {
     <form
       ref={formRef}
       action={formAction}
-      className="flex flex-wrap items-end gap-3 p-4 rounded-xl border bg-card"
+      className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-5 rounded-xl border bg-card"
     >
-      <div className="min-w-[140px]">
-        <Label htmlFor="student-email">
-          아이디 <span className="text-destructive">*</span>
-        </Label>
+      <FormGroup label="아이디" htmlFor="student-email" required>
         <Input
           id="student-email"
           type="text"
@@ -44,13 +41,9 @@ export function AddStudentForm() {
           placeholder="test1"
           autoComplete="off"
           disabled={isPending}
-          className="mt-1"
         />
-      </div>
-      <div className="min-w-[120px]">
-        <Label htmlFor="student-password">
-          비밀번호 <span className="text-destructive">*</span>
-        </Label>
+      </FormGroup>
+      <FormGroup label="비밀번호" htmlFor="student-password" required>
         <Input
           id="student-password"
           type="password"
@@ -58,13 +51,9 @@ export function AddStudentForm() {
           required
           autoComplete="new-password"
           disabled={isPending}
-          className="mt-1"
         />
-      </div>
-      <div className="min-w-[120px]">
-        <Label htmlFor="student-korean-name">
-          한글 이름 <span className="text-destructive">*</span>
-        </Label>
+      </FormGroup>
+      <FormGroup label="한글 이름" htmlFor="student-korean-name" required>
         <Input
           id="student-korean-name"
           type="text"
@@ -72,22 +61,18 @@ export function AddStudentForm() {
           required
           placeholder="홍길동"
           disabled={isPending}
-          className="mt-1"
         />
-      </div>
-      <div className="min-w-[120px]">
-        <Label htmlFor="student-english-name">영어 이름</Label>
+      </FormGroup>
+      <FormGroup label="영어 이름" htmlFor="student-english-name">
         <Input
           id="student-english-name"
           type="text"
           name="english_name"
           placeholder="John Hong"
           disabled={isPending}
-          className="mt-1"
         />
-      </div>
-      <div className="min-w-[80px] max-w-[100px]">
-        <Label htmlFor="student-age">나이</Label>
+      </FormGroup>
+      <FormGroup label="나이" htmlFor="student-age">
         <Input
           id="student-age"
           type="number"
@@ -96,31 +81,34 @@ export function AddStudentForm() {
           max={20}
           placeholder="7"
           disabled={isPending}
-          className="mt-1"
         />
-      </div>
-      <div className="min-w-[100px]">
-        <Label htmlFor="student-group">그룹</Label>
+      </FormGroup>
+      <FormGroup label="그룹" htmlFor="student-group">
         <select
           id="student-group"
           name="group_type"
           disabled={isPending}
-          className="mt-1 flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex h-11 w-full rounded-md border border-input bg-transparent px-3 text-base shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
         >
           <option value="">미지정</option>
           <option value="유치부">유치부</option>
           <option value="오후반">오후반</option>
         </select>
+      </FormGroup>
+
+      <div className="md:col-span-2 lg:col-span-3 flex items-center justify-between pt-2 border-t border-slate-200">
+        <p className="text-sm text-slate-500">* 필수 입력</p>
+        <Button type="submit" disabled={isPending}>
+          {isPending ? (<><Spinner size="sm" /> 추가 중...</>) : "추가"}
+        </Button>
       </div>
-      <Button type="submit" disabled={isPending}>{isPending ? <><Spinner size="sm" /> 추가 중...</> : "추가"}</Button>
-      <p className="w-full text-xs text-muted-foreground">* 필수 입력</p>
       {state?.error && (
-        <p className="w-full text-sm text-destructive" role="alert">
+        <p className="md:col-span-2 lg:col-span-3 text-sm text-destructive" role="alert">
           {state.error}
         </p>
       )}
       {state?.success && (
-        <p className="w-full text-sm text-green-600" role="status">
+        <p className="md:col-span-2 lg:col-span-3 text-sm text-green-600" role="status">
           {state.success}
         </p>
       )}

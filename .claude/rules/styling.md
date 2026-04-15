@@ -70,3 +70,12 @@ students.sort((a, b) => {
 - **md** (768px+): 태블릿
 - **모바일** (<768px): 단일 컬럼, 햄버거 메뉴, FAB
 - CSS Modules 내부: 1280px (태블릿), 768px (모바일)
+
+## Senior-Friendly UI Tokens (admin)
+
+- admin-root wrapper: 17px base font, 1.6 line-height (defined in app/globals.css)
+- 본문 최소 글씨: text-sm (15px). text-[10px]·text-[11px] 본문 사용 금지
+- Button 기본: h-11 text-base (sm: h-10, lg: h-12)
+- Input/Select 기본: h-11 text-base
+- 터치 타겟 최소: 44px
+- 상태 표시: 색만으로 의미 전달 금지 — 항상 아이콘 + 라벨 (StatusBadge 사용)

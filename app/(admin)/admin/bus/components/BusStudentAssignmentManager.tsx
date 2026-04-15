@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import type { BusNumber, BusTimeSlot, BusStop, BusDefaultAssignment, BusStopDayAssignment } from "@/lib/types";
 import {
   getBulkBusDefaults,
@@ -107,16 +108,25 @@ export function BusStudentAssignmentManager({
     setStops(data);
   }, []);
 
+  const [filterChangeConfirm, setFilterChangeConfirm] = useState<{ open: boolean; setter?: () => void }>({ open: false });
+
   // 필터 변경 시 미저장 경고
   const guardedSetFilter = useCallback(
     (setter: () => void) => {
       if (hasChanges) {
-        if (!confirm("저장하지 않은 변경사항이 있습니다. 계속하시겠습니까?")) return;
+        setFilterChangeConfirm({ open: true, setter });
+        return;
       }
       setter();
     },
     [hasChanges]
   );
+
+  function confirmFilterChange() {
+    const setter = filterChangeConfirm.setter;
+    setFilterChangeConfirm({ open: false });
+    setter?.();
+  }
 
   useEffect(() => {
     fetchAll();
@@ -372,7 +382,7 @@ export function BusStudentAssignmentManager({
         onClick={assigned ? (e) => { e.stopPropagation(); openNoteEditor(profileId, e); } : undefined}
         className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md cursor-grab active:cursor-grabbing hover:shadow-sm select-none ${ac.bg} ${ac.text} border ${ac.border} ${assigned ? "cursor-pointer" : ""}`}
       >
-        {isAfterschool && <span className="text-violet-500 text-[10px] leading-none">●</span>}
+        {isAfterschool && <span className="text-violet-500 text-xs leading-none">●</span>}
         {studentName(name)}
         {hasNote && <span className="w-1.5 h-1.5 rounded-full bg-current opacity-50 shrink-0" />}
       </span>
@@ -637,7 +647,7 @@ export function BusStudentAssignmentManager({
                           <span
                             className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md cursor-default opacity-70 ${ac.bg} ${ac.text} border ${ac.border}`}
                           >
-                            {isAfterschool && <span className="text-violet-500 text-[10px] leading-none">●</span>}
+                            {isAfterschool && <span className="text-violet-500 text-xs leading-none">●</span>}
                             {a.korean_name || a.english_name || "이름 없음"}
                           </span>
                         </span>
@@ -712,6 +722,16 @@ export function BusStudentAssignmentManager({
           </div>
         </>
       )}
+
+      <ConfirmDialog
+        open={filterChangeConfirm.open}
+        variant="primary"
+        title="저장하지 않은 변경사항이 있습니다"
+        description="계속하면 지금까지의 변경이 사라집니다. 계속하시겠습니까?"
+        confirmLabel="계속"
+        onConfirm={confirmFilterChange}
+        onCancel={() => setFilterChangeConfirm({ open: false })}
+      />
     </div>
   );
 }

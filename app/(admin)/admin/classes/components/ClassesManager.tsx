@@ -567,11 +567,11 @@ export function ClassesManager({
       )}
 
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-foreground">반 관리</h1>
+        <h2 className="text-xl font-semibold text-foreground">반 목록</h2>
         <button
           type="button"
           onClick={() => setCreateOpen(true)}
-          className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500 shadow-sm"
+          className="inline-flex items-center h-11 rounded-lg bg-emerald-600 px-4 text-base font-medium text-white hover:bg-emerald-500 shadow-sm"
         >
           + 반 추가
         </button>
@@ -659,7 +659,7 @@ export function ClassesManager({
                     <div className={`flex items-center gap-2 rounded-lg px-3 py-1.5 ${style.sectionBg}`}>
                       <span className="text-sm leading-none">{style.icon}</span>
                       <span className={`text-xs font-semibold ${style.sectionText}`}>{label}</span>
-                      <span className={`ml-auto rounded-full px-2 py-0.5 text-[10px] font-medium ${style.countBg}`}>
+                      <span className={`ml-auto rounded-full px-2 py-0.5 text-xs font-medium ${style.countBg}`}>
                         {groupClasses.length}개
                       </span>
                     </div>
@@ -957,14 +957,14 @@ export function ClassesManager({
                           <span className="text-foreground text-xs min-w-0 truncate">{t.title}</span>
                           <div className="flex items-center gap-1.5 ml-auto shrink-0">
                             {t.series && (
-                              <span className="text-[10px] text-muted-foreground">{t.series}</span>
+                              <span className="text-xs text-muted-foreground">{t.series}</span>
                             )}
                             {t.level && (
-                              <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-medium text-blue-700">
+                              <span className="rounded bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">
                                 Lv.{t.level}
                               </span>
                             )}
-                            <span className="text-[10px] text-muted-foreground/70">
+                            <span className="text-xs text-muted-foreground/70">
                               {t.total_units}단원
                             </span>
                           </div>
@@ -1015,20 +1015,20 @@ export function ClassesManager({
       )}
       <ConfirmDialog
         open={!!deleteTarget}
-        title="반 삭제"
-        description={(() => {
-          if (!deleteTarget) return undefined;
-          if (deleteTargetLoading) return `"${deleteTarget.name}" 반의 연관 데이터를 확인하는 중…`;
-          if (!deleteTargetCounts) return `"${deleteTarget.name}" 반을 삭제할까요?`;
-          const parts: string[] = [];
-          if (deleteTargetCounts.studentCount > 0) parts.push(`학생 ${deleteTargetCounts.studentCount}명`);
-          if (deleteTargetCounts.homeworkCount > 0) parts.push(`숙제 ${deleteTargetCounts.homeworkCount}건`);
-          if (deleteTargetCounts.noticeCount > 0) parts.push(`공지 ${deleteTargetCounts.noticeCount}건`);
-          if (parts.length === 0) return `"${deleteTarget.name}" 반을 삭제할까요? 연관 데이터가 없습니다.`;
-          return `"${deleteTarget.name}" 반을 삭제하면 ${parts.join(", ")}이(가) 함께 삭제됩니다. 계속할까요?`;
+        danger
+        title={deleteTarget ? `"${deleteTarget.name}" 반을 삭제하시겠습니까?` : "반을 삭제하시겠습니까?"}
+        description={deleteTargetLoading ? "연관 데이터를 확인하는 중입니다…" : "삭제된 반은 복구할 수 없습니다."}
+        impactList={(() => {
+          const items: string[] = [];
+          if (deleteTargetCounts) {
+            if (deleteTargetCounts.studentCount > 0) items.push(`${deleteTargetCounts.studentCount}명의 학생 등록이 해제됩니다`);
+            if (deleteTargetCounts.homeworkCount > 0) items.push(`숙제 ${deleteTargetCounts.homeworkCount}건이 함께 삭제됩니다`);
+            if (deleteTargetCounts.noticeCount > 0) items.push(`공지 ${deleteTargetCounts.noticeCount}건이 함께 삭제됩니다`);
+          }
+          if (items.length === 0) items.push("연관 데이터가 없습니다.");
+          return items;
         })()}
         confirmLabel="삭제"
-        variant="danger"
         disabled={deleteClassPending || deleteTargetLoading}
         onCancel={() => { setDeleteTarget(null); setDeleteTargetCounts(null); }}
         onConfirm={async () => {
@@ -1097,35 +1097,35 @@ function ClassCard({
       }}
     >
       {/* 헤더 */}
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b bg-muted/50 px-4 py-2.5">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b bg-muted/50 px-4 py-3">
         <div className="flex items-center gap-2">
-          <span className="font-semibold text-foreground text-sm">{classRow.name}</span>
-          <span className="rounded-full bg-violet-100 px-2 py-0.5 text-xs font-medium text-violet-700">
+          <span className="text-lg font-semibold text-foreground">{classRow.name}</span>
+          <span className="rounded-full bg-violet-100 px-2.5 py-0.5 text-base font-medium text-violet-700">
             {classRow.student_count}명
           </span>
           {isDropTarget && (
-            <span className={`text-xs font-medium animate-pulse ${
+            <span className={`text-sm font-medium animate-pulse ${
               globalMode === "students" ? "text-emerald-600" : "text-blue-600"
             }`}>
               여기에 놓기
             </span>
           )}
         </div>
-        <div className="flex items-center gap-1.5">
-          <span className="text-xs text-muted-foreground mr-1">
+        <div className="flex items-center gap-2">
+          <span className="text-base text-muted-foreground mr-1">
             담당: <TeacherBadges teachers={classRow.teachers} />
           </span>
           <button
             type="button"
             onClick={onEdit}
-            className="rounded-lg bg-secondary px-2 py-0.5 text-xs font-medium text-secondary-foreground hover:bg-secondary/80"
+            className="h-11 inline-flex items-center rounded-lg bg-secondary px-3 text-base font-medium text-secondary-foreground hover:bg-secondary/80"
           >
             수정
           </button>
           <button
             type="button"
             onClick={onDelete}
-            className="rounded-lg bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive hover:bg-destructive/20"
+            className="h-11 inline-flex items-center rounded-lg bg-destructive/10 px-3 text-base font-medium text-destructive hover:bg-destructive/20"
           >
             삭제
           </button>
@@ -1158,7 +1158,7 @@ function ClassCard({
                         </span>
                       )}
                       {isPending && (
-                        <span className="ml-1.5 text-[10px] text-amber-600">미저장</span>
+                        <span className="ml-1.5 text-xs text-amber-600">미저장</span>
                       )}
                     </span>
                     <button
@@ -1201,7 +1201,7 @@ function ClassCard({
                       {ct.total_units}단원
                     </span>
                     {isPending && (
-                      <span className="ml-1.5 text-[10px] text-amber-600">미저장</span>
+                      <span className="ml-1.5 text-xs text-amber-600">미저장</span>
                     )}
                   </span>
                   <button

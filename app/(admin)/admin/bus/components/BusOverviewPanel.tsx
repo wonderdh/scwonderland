@@ -172,7 +172,7 @@ function ByDayContent({
                             className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium border ${color.bg} ${color.text} ${color.border}`}
                           >
                             {isAfterSchool && (
-                              <span className="text-violet-500 text-[10px] leading-none">●</span>
+                              <span className="text-violet-500 text-xs leading-none">●</span>
                             )}
                             {s.korean_name}
                             {s.note && (

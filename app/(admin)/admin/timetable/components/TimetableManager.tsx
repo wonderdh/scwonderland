@@ -4,6 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { FormGroup } from "@/components/FormGroup";
 import type { AcademyPeriod } from "@/lib/types";
 import {
   createAcademyPeriod,
@@ -41,6 +43,7 @@ export function TimetableManager({
   const [editGroupLabel, setEditGroupLabel] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
 
   async function handleCreate() {
     setLoading(true);
@@ -82,13 +85,13 @@ export function TimetableManager({
     setLoading(false);
   }
 
-  async function handleDelete(id: string, name: string) {
-    if (!confirm(`"${name}" 수업 시간대를 삭제하시겠습니까?`)) return;
+  async function performDelete(id: string) {
     setLoading(true);
     const result = await deleteAcademyPeriod(id);
     if (result.error) setError(result.error);
     else router.refresh();
     setLoading(false);
+    setDeleteTarget(null);
   }
 
   // 그룹별로 분리
@@ -208,7 +211,7 @@ export function TimetableManager({
               size="sm"
               variant="ghost"
               className="h-7 text-xs text-red-500 hover:text-red-700"
-              onClick={() => handleDelete(period.id, period.name)}
+              onClick={() => setDeleteTarget({ id: period.id, name: period.name })}
               disabled={loading}
             >
               삭제
@@ -221,70 +224,79 @@ export function TimetableManager({
 
   return (
     <div className="space-y-4">
-      <h3 className="text-sm font-semibold text-slate-700">수업 시간대</h3>
+      <h3 className="text-lg font-semibold text-slate-800">수업 시간대</h3>
 
       {error && (
-        <p className="text-xs text-red-500 bg-red-50 px-3 py-2 rounded">
+        <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded">
           {error}
         </p>
       )}
 
       {/* 추가 폼 */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <Input
-          placeholder="이름 (예: 1교시)"
-          value={newName}
-          onChange={(e) => setNewName(e.target.value)}
-          className="max-w-36"
-        />
-        <select
-          value={newStartTime}
-          onChange={(e) => setNewStartTime(e.target.value)}
-          className="h-9 px-2 border rounded text-sm w-24"
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 p-4 rounded-xl border border-slate-200 bg-slate-50/50">
+        <FormGroup label="이름" required>
+          <Input
+            placeholder="예: 1교시"
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            className="h-11 text-base"
+          />
+        </FormGroup>
+        <FormGroup label="시작 시간" required>
+          <select
+            value={newStartTime}
+            onChange={(e) => setNewStartTime(e.target.value)}
+            className="h-11 px-3 border rounded-lg text-base w-full bg-white"
+          >
+            <option value="">선택</option>
+            {TIME_OPTIONS.map((t) => (
+              <option key={t} value={t}>{t}</option>
+            ))}
+          </select>
+        </FormGroup>
+        <FormGroup
+          label="종료 시간"
+          required
+          error={newStartTime && newEndTime && newStartTime >= newEndTime ? "시작 시간은 종료 시간보다 빨라야 합니다." : null}
         >
-          <option value="">시작</option>
-          {TIME_OPTIONS.map((t) => (
-            <option key={t} value={t}>{t}</option>
-          ))}
-        </select>
-        <select
-          value={newEndTime}
-          onChange={(e) => setNewEndTime(e.target.value)}
-          className="h-9 px-2 border rounded text-sm w-24"
-        >
-          <option value="">종료</option>
-          {TIME_OPTIONS.map((t) => (
-            <option key={t} value={t}>{t}</option>
-          ))}
-        </select>
-        <select
-          value={newGroupLabel}
-          onChange={(e) => setNewGroupLabel(e.target.value)}
-          className="h-9 px-2 border rounded text-sm w-24"
-        >
-          <option value="">그룹</option>
-          {GROUP_OPTIONS.map((g) => (
-            <option key={g} value={g}>{g}</option>
-          ))}
-        </select>
-        <Button
-          size="sm"
-          onClick={handleCreate}
-          disabled={
-            loading || !newName.trim() || !newStartTime || !newEndTime || (!!newStartTime && !!newEndTime && newStartTime >= newEndTime)
-          }
-        >
-          추가
-        </Button>
+          <select
+            value={newEndTime}
+            onChange={(e) => setNewEndTime(e.target.value)}
+            className={`h-11 px-3 border rounded-lg text-base w-full bg-white ${newStartTime && newEndTime && newStartTime >= newEndTime ? "border-red-500" : ""}`}
+          >
+            <option value="">선택</option>
+            {TIME_OPTIONS.map((t) => (
+              <option key={t} value={t}>{t}</option>
+            ))}
+          </select>
+        </FormGroup>
+        <FormGroup label="그룹">
+          <div className="flex gap-2">
+            <select
+              value={newGroupLabel}
+              onChange={(e) => setNewGroupLabel(e.target.value)}
+              className="h-11 px-3 border rounded-lg text-base flex-1 bg-white"
+            >
+              <option value="">선택</option>
+              {GROUP_OPTIONS.map((g) => (
+                <option key={g} value={g}>{g}</option>
+              ))}
+            </select>
+            <Button
+              onClick={handleCreate}
+              disabled={
+                loading || !newName.trim() || !newStartTime || !newEndTime || (!!newStartTime && !!newEndTime && newStartTime >= newEndTime)
+              }
+            >
+              추가
+            </Button>
+          </div>
+        </FormGroup>
       </div>
-
-      {newStartTime && newEndTime && newStartTime >= newEndTime && (
-        <p className="text-xs text-red-500">시작 시간은 종료 시간보다 빨라야 합니다.</p>
-      )}
 
       {/* 목록 — 그룹별 */}
       {academyPeriods.length === 0 && (
-        <p className="text-xs text-slate-400 py-4">
+        <p className="text-base text-slate-500 py-4">
           등록된 수업 시간대가 없습니다.
         </p>
       )}
@@ -292,17 +304,28 @@ export function TimetableManager({
       {grouped.map((group) => (
         <div key={group.label || "__ungrouped"} className="space-y-1">
           {group.label ? (
-            <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wide px-1 pt-2 border-b pb-1">
+            <h4 className="text-base font-semibold text-slate-700 px-1 pt-2 border-b pb-1">
               {group.label}
             </h4>
           ) : grouped.length > 1 ? (
-            <h4 className="text-xs font-semibold text-slate-400 px-1 pt-2 border-b pb-1">
+            <h4 className="text-base font-semibold text-slate-500 px-1 pt-2 border-b pb-1">
               기타
             </h4>
           ) : null}
           {group.periods.map(renderPeriodRow)}
         </div>
       ))}
+
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        title="수업 시간대 삭제"
+        description={deleteTarget ? `"${deleteTarget.name}" 수업 시간대를 삭제하시겠습니까?` : undefined}
+        danger
+        impactList={["이 시간대에 배정된 시간표도 영향을 받을 수 있습니다."]}
+        disabled={loading}
+        onConfirm={() => deleteTarget && performDelete(deleteTarget.id)}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   );
 }

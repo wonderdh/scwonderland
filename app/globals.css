@@ -110,6 +110,13 @@ body {
   display: none;
 }
 
+/* Admin 영역 전용 타이포그래피 (시니어 친화) */
+:where(.admin-root) {
+  font-size: 17px;
+  line-height: 1.6;
+  color: var(--color-slate-800, #1e293b);
+}
+
 /* 접근성: focus 스타일 */
 :focus-visible {
   outline: 2px solid var(--brand-blue);

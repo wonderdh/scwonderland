@@ -5,6 +5,7 @@ import type { updateStudentProfile } from "../../actions";
 import { getStudentLinkedCounts } from "../../actions";
 import { usePasswordReset } from "../../hooks/usePasswordReset";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { FormGroup } from "@/components/FormGroup";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
@@ -118,19 +119,19 @@ export function StudentInfoCard({
   };
 
   return (
-    <div className="max-w-lg">
+    <div className="max-w-xl">
       <div className="flex items-center justify-between gap-4 mb-4">
-        <h2 className="text-lg font-semibold text-foreground">학생 정보</h2>
+        <h2 className="text-xl font-semibold text-foreground">학생 정보</h2>
         {!editing ? (
-          <Button variant="outline" size="sm" onClick={handleStartEdit}>
+          <Button variant="outline" onClick={handleStartEdit}>
             수정
           </Button>
         ) : (
           <div className="flex gap-2">
-            <Button variant="ghost" size="sm" onClick={handleCancel}>
+            <Button variant="ghost" onClick={handleCancel}>
               취소
             </Button>
-            <Button size="sm" onClick={handleSave} disabled={pending}>
+            <Button onClick={handleSave} disabled={pending}>
               {pending ? "저장 중…" : "저장"}
             </Button>
           </div>
@@ -150,88 +151,89 @@ export function StudentInfoCard({
         </p>
       )}
 
-      <dl className="divide-y divide-border">
-        <div className="py-3 flex gap-4">
-          <dt className="w-28 shrink-0 text-muted-foreground text-sm">아이디</dt>
-          <dd className="text-foreground font-mono">{user.email?.split("@")[0] || "—"}</dd>
+      {editing ? (
+        <div className="space-y-4">
+          <div className="py-2 flex gap-4 items-center">
+            <span className="w-28 shrink-0 text-base text-slate-600">아이디</span>
+            <span className="text-base text-slate-900 font-mono">{user.email?.split("@")[0] || "—"}</span>
+          </div>
+          <FormGroup label="한글 이름" required>
+            <Input
+              type="text"
+              value={koreanName}
+              onChange={(e) => setKoreanName(e.target.value)}
+              placeholder="한글 이름"
+            />
+          </FormGroup>
+          <FormGroup label="영어 이름">
+            <Input
+              type="text"
+              value={englishName}
+              onChange={(e) => setEnglishName(e.target.value)}
+              placeholder="영어 이름"
+            />
+          </FormGroup>
+          <FormGroup label="나이">
+            <Input
+              type="number"
+              value={age}
+              onChange={(e) => setAge(e.target.value)}
+              min={3}
+              max={20}
+              placeholder="나이"
+            />
+          </FormGroup>
+          <FormGroup label="그룹">
+            <select
+              value={groupType}
+              onChange={(e) => setGroupType(e.target.value as "유치부" | "오후반" | "")}
+              className="flex h-11 w-full max-w-[200px] rounded-md border border-input bg-transparent px-3 text-base shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            >
+              <option value="">미지정</option>
+              <option value="유치부">유치부</option>
+              <option value="오후반">오후반</option>
+            </select>
+          </FormGroup>
         </div>
-        <div className="py-3 flex gap-4 items-center">
-          <dt className="w-28 shrink-0 text-muted-foreground text-sm">한글 이름</dt>
-          <dd className="text-foreground flex-1 min-w-0">
-            {editing ? (
-              <Input
-                type="text"
-                value={koreanName}
-                onChange={(e) => setKoreanName(e.target.value)}
-                placeholder="한글 이름"
-              />
-            ) : (
-              (user.korean_name ?? user.first_name) || "—"
-            )}
-          </dd>
-        </div>
-        <div className="py-3 flex gap-4 items-center">
-          <dt className="w-28 shrink-0 text-muted-foreground text-sm">영어 이름</dt>
-          <dd className="text-foreground flex-1 min-w-0">
-            {editing ? (
-              <Input
-                type="text"
-                value={englishName}
-                onChange={(e) => setEnglishName(e.target.value)}
-                placeholder="영어 이름"
-              />
-            ) : (
-              (user.english_name ?? user.last_name) || "—"
-            )}
-          </dd>
-        </div>
-        <div className="py-3 flex gap-4 items-center">
-          <dt className="w-28 shrink-0 text-muted-foreground text-sm">나이</dt>
-          <dd className="text-foreground flex-1 min-w-0">
-            {editing ? (
-              <Input
-                type="number"
-                value={age}
-                onChange={(e) => setAge(e.target.value)}
-                min={3}
-                max={20}
-                placeholder="나이"
-              />
-            ) : (
-              user.age ? `${user.age}세` : "—"
-            )}
-          </dd>
-        </div>
-        <div className="py-3 flex gap-4 items-center">
-          <dt className="w-28 shrink-0 text-muted-foreground text-sm">그룹</dt>
-          <dd className="text-foreground flex-1 min-w-0">
-            {editing ? (
-              <select
-                value={groupType}
-                onChange={(e) => setGroupType(e.target.value as "유치부" | "오후반" | "")}
-                className="flex h-9 w-full max-w-[160px] rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-              >
-                <option value="">미지정</option>
-                <option value="유치부">유치부</option>
-                <option value="오후반">오후반</option>
-              </select>
-            ) : user.group_type ? (
-              <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${
-                user.group_type === "유치부"
-                  ? "bg-amber-100 text-amber-700"
-                  : "bg-sky-100 text-sky-700"
-              }`}>
-                <span className={`w-1.5 h-1.5 rounded-full ${
-                  user.group_type === "유치부" ? "bg-amber-400" : "bg-sky-400"
-                }`} />
-                {user.group_type}
-              </span>
-            ) : (
-              <span className="text-muted-foreground">미배정</span>
-            )}
-          </dd>
-        </div>
-      </dl>
+      ) : (
+        <dl className="divide-y divide-border">
+          <div className="py-3 flex gap-4">
+            <dt className="w-28 shrink-0 text-slate-500 text-base">아이디</dt>
+            <dd className="text-foreground text-base font-mono">{user.email?.split("@")[0] || "—"}</dd>
+          </div>
+          <div className="py-3 flex gap-4 items-center">
+            <dt className="w-28 shrink-0 text-slate-500 text-base">한글 이름</dt>
+            <dd className="text-foreground text-base flex-1 min-w-0">{(user.korean_name ?? user.first_name) || "—"}</dd>
+          </div>
+          <div className="py-3 flex gap-4 items-center">
+            <dt className="w-28 shrink-0 text-slate-500 text-base">영어 이름</dt>
+            <dd className="text-foreground text-base flex-1 min-w-0">{(user.english_name ?? user.last_name) || "—"}</dd>
+          </div>
+          <div className="py-3 flex gap-4 items-center">
+            <dt className="w-28 shrink-0 text-slate-500 text-base">나이</dt>
+            <dd className="text-foreground text-base flex-1 min-w-0">{user.age ? `${user.age}세` : "—"}</dd>
+          </div>
+          <div className="py-3 flex gap-4 items-center">
+            <dt className="w-28 shrink-0 text-slate-500 text-base">그룹</dt>
+            <dd className="text-foreground flex-1 min-w-0">
+              {user.group_type ? (
+                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-sm font-medium ${
+                  user.group_type === "유치부"
+                    ? "bg-amber-100 text-amber-700"
+                    : "bg-sky-100 text-sky-700"
+                }`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${
+                    user.group_type === "유치부" ? "bg-amber-400" : "bg-sky-400"
+                  }`} />
+                  {user.group_type}
+                </span>
+              ) : (
+                <span className="text-muted-foreground text-base">미배정</span>
+              )}
+            </dd>
+          </div>
+        </dl>
+      )}
 
       <Separator className="my-4" />
 
@@ -240,7 +242,6 @@ export function StudentInfoCard({
           <>
             <Button
               variant="outline"
-              size="sm"
               className="text-amber-700 border-amber-200 hover:bg-amber-50"
               onClick={openPwReset}
             >
@@ -248,7 +249,6 @@ export function StudentInfoCard({
             </Button>
             <Button
               variant="outline"
-              size="sm"
               className="text-destructive border-destructive/30 hover:bg-destructive/10"
               onClick={handleDelete}
               disabled={delPending || deleteModalLoading}
@@ -308,19 +308,22 @@ export function StudentInfoCard({
 
       <ConfirmDialog
         open={!!deleteModal}
-        title="학생 삭제"
-        description={deleteModal ? (() => {
+        danger
+        title="이 학생을 삭제하시겠습니까?"
+        description={(() => {
           const name = user.korean_name ?? user.first_name ?? "이 학생";
-          const lines: string[] = [`${name} 학생의 연관 데이터:`];
-          if (deleteModal.attendanceCount > 0) lines.push(`• 출결 기록 ${deleteModal.attendanceCount}건`);
-          if (deleteModal.progressCount > 0) lines.push(`• 교재 진도 ${deleteModal.progressCount}건`);
-          if (deleteModal.busDefaultCount > 0) lines.push(`• 버스 기본값 ${deleteModal.busDefaultCount}건`);
-          if (deleteModal.attendanceCount === 0 && deleteModal.progressCount === 0 && deleteModal.busDefaultCount === 0) {
-            lines.push("• 연관 데이터가 없습니다.");
+          return `${name} 학생 계정이 휴지통으로 이동됩니다.`;
+        })()}
+        impactList={(() => {
+          const items: string[] = [];
+          if (deleteModal) {
+            if (deleteModal.attendanceCount > 0) items.push(`출결 기록 ${deleteModal.attendanceCount}건이 함께 삭제됩니다`);
+            if (deleteModal.progressCount > 0) items.push(`교재 진도 ${deleteModal.progressCount}건이 함께 삭제됩니다`);
+            if (deleteModal.busDefaultCount > 0) items.push(`버스 기본 배정 ${deleteModal.busDefaultCount}건이 함께 삭제됩니다`);
           }
-          lines.push("삭제 시 모든 연관 데이터가 함께 삭제됩니다. 계속하시겠습니까?");
-          return lines.join("\n");
-        })() : undefined}
+          if (items.length === 0) items.push("관련 출결·승하차·리포트카드 데이터가 함께 삭제됩니다.");
+          return items;
+        })()}
         confirmLabel={delPending ? "삭제 중…" : "삭제"}
         disabled={delPending}
         onConfirm={handleDeleteConfirm}

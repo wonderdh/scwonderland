@@ -11,6 +11,7 @@ import {
 } from "../../actions";
 import type { AfterschoolStudentEnrollment, DayEnrollment } from "@/lib/types";
 import { Spinner } from "@/components/Spinner";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 
 const DAY_LABELS = ["월", "화", "수", "목", "금"];
 const AGE_GROUPS: { label: string; test: (age: number | null) => boolean }[] = [
@@ -96,6 +97,7 @@ export function AfterschoolPageClient({
   // 일괄 저장
   const hasDirty = students.some((s) => s._dirty);
   const [bulkSaving, setBulkSaving] = useState(false);
+  const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null);
 
   const refresh = useCallback(() => router.refresh(), [router]);
 
@@ -119,7 +121,6 @@ export function AfterschoolPageClient({
 
   // 학생 제거
   const handleRemove = async (studentProfileId: string) => {
-    if (!confirm("이 학생을 제거하시겠습니까?")) return;
     const result = await removeAfterschoolStudent(classId, studentProfileId);
     if (result.error) { toast.error(result.error); return; }
     toast.success("제거되었습니다.");
@@ -236,7 +237,7 @@ export function AfterschoolPageClient({
                         if (!group.length) return null;
                         return (
                           <div key={label}>
-                            <div className="px-3 py-1 text-[10px] font-semibold text-muted-foreground bg-muted/50 sticky top-0">{label}</div>
+                            <div className="px-3 py-1 text-xs font-semibold text-muted-foreground bg-muted/50 sticky top-0">{label}</div>
                             {group.map((s) => {
                               const ageColor = getAgeColor(s.age);
                               const name = s.korean_name ?? s.english_name ?? "—";
@@ -322,7 +323,7 @@ export function AfterschoolPageClient({
             disabled={enrolling || !enrollStudentId || !enrollDays.length}
             className="rounded-lg bg-violet-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-50 transition-colors"
           >
-            {enrolling ? <Spinner /> : "등록"}
+            {enrolling ? <Spinner srLabel="처리 중" /> : "등록"}
           </button>
         </div>
       </div>
@@ -336,7 +337,7 @@ export function AfterschoolPageClient({
             disabled={bulkSaving}
             className="rounded-lg bg-violet-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-50 transition-colors"
           >
-            {bulkSaving ? <Spinner /> : "일괄 저장"}
+            {bulkSaving ? <Spinner srLabel="처리 중" /> : "일괄 저장"}
           </button>
         </div>
       )}
@@ -347,9 +348,9 @@ export function AfterschoolPageClient({
         <div className="flex items-center gap-3 px-4 py-2 border-b bg-muted/20 text-xs text-muted-foreground">
           <span>셀 클릭으로 교시 변경:</span>
           <span className="inline-flex items-center gap-1">
-            <span className="w-10 h-5 rounded bg-violet-100 text-violet-700 font-semibold text-[10px] inline-flex items-center justify-center">1교시</span>
+            <span className="w-10 h-5 rounded bg-violet-100 text-violet-700 font-semibold text-xs inline-flex items-center justify-center">1교시</span>
             <span>→</span>
-            <span className="w-14 h-5 rounded bg-violet-600 text-white font-semibold text-[10px] inline-flex items-center justify-center">1·2교시</span>
+            <span className="w-14 h-5 rounded bg-violet-600 text-white font-semibold text-xs inline-flex items-center justify-center">1·2교시</span>
             <span>→ 없음</span>
           </span>
         </div>
@@ -364,7 +365,7 @@ export function AfterschoolPageClient({
                 return (
                   <th key={idx} className="px-2 py-2.5 text-center font-medium text-muted-foreground w-16">
                     <div>{label}</div>
-                    <div className="text-[10px] font-normal text-violet-500">{attending.length}명</div>
+                    <div className="text-xs font-normal text-violet-500">{attending.length}명</div>
                     {secondCount > 0 && (
                       <div className="text-[9px] font-normal text-violet-400">2교시 {secondCount}</div>
                     )}
@@ -390,7 +391,7 @@ export function AfterschoolPageClient({
                   if (!group.length) return [];
                   return [
                     <tr key={`group-${label}`} className="border-b bg-muted/30">
-                      <td colSpan={7} className="px-4 py-1.5 text-[11px] font-semibold text-muted-foreground">
+                      <td colSpan={7} className="px-4 py-1.5 text-xs font-semibold text-muted-foreground">
                         {label} · {group.length}명
                       </td>
                     </tr>,
@@ -415,7 +416,7 @@ export function AfterschoolPageClient({
                           })}
                           <td className="px-3 py-2 text-center">
                             <button
-                              onClick={() => handleRemove(s.student_profile_id)}
+                              onClick={() => setConfirmRemoveId(s.student_profile_id)}
                               className="text-red-400 hover:text-red-600 transition-colors"
                               title="제거"
                             >
@@ -473,7 +474,7 @@ export function AfterschoolPageClient({
                       return (
                         <th key={idx} colSpan={3} className={`px-3 py-2 text-center font-semibold text-muted-foreground ${idx > 0 ? "border-l-2 border-border" : ""}`}>
                           <div>{label}</div>
-                          <div className="text-[10px] font-normal text-violet-500">{count}명</div>
+                          <div className="text-xs font-normal text-violet-500">{count}명</div>
                         </th>
                       );
                     })}
@@ -481,7 +482,7 @@ export function AfterschoolPageClient({
                   <tr className="border-b bg-muted/10">
                     {DAY_LABELS.map((_, dayIdx) =>
                       VIZ_AGES.map(({ label }, ageIdx) => (
-                        <th key={`${dayIdx}-${ageIdx}`} className={`px-2 py-1.5 text-center font-medium text-muted-foreground text-[10px] whitespace-nowrap ${ageIdx === 0 && dayIdx > 0 ? "border-l-2 border-border" : ageIdx > 0 ? "border-l border-border/40" : ""}`}>
+                        <th key={`${dayIdx}-${ageIdx}`} className={`px-2 py-1.5 text-center font-medium text-muted-foreground text-xs whitespace-nowrap ${ageIdx === 0 && dayIdx > 0 ? "border-l-2 border-border" : ageIdx > 0 ? "border-l border-border/40" : ""}`}>
                           {label}
                         </th>
                       ))
@@ -516,6 +517,21 @@ export function AfterschoolPageClient({
           </div>
         );
       })()}
+
+      <ConfirmDialog
+        open={!!confirmRemoveId}
+        title="이 학생을 방과후 등록에서 제거하시겠습니까?"
+        description="방과후 시간표에서 빠지며, 일반 반 등록은 유지됩니다."
+        danger
+        onConfirm={() => {
+          if (confirmRemoveId) {
+            const id = confirmRemoveId;
+            setConfirmRemoveId(null);
+            void handleRemove(id);
+          }
+        }}
+        onCancel={() => setConfirmRemoveId(null)}
+      />
 
       {activeTab === "schedule-class" && (() => {
         const classNames = Array.from(
@@ -560,7 +576,7 @@ table { width: 100% !important; }
                   return (
                     <th key={day} colSpan={classNames.length} className={`px-3 py-2 text-center font-semibold text-muted-foreground ${idx > 0 ? "border-l-2 border-border" : ""}`}>
                       <div>{DAY_LABELS[day - 1]}</div>
-                      <div className="text-[10px] font-normal text-violet-500">{count}명</div>
+                      <div className="text-xs font-normal text-violet-500">{count}명</div>
                     </th>
                   );
                 })}
@@ -568,7 +584,7 @@ table { width: 100% !important; }
               <tr className="border-b bg-muted/10">
                 {days.map((day, dayIdx) =>
                   classNames.map((cls, clsIdx) => (
-                    <th key={`${day}-${clsIdx}`} className={`px-2 py-1.5 text-center font-medium text-muted-foreground text-[10px] whitespace-nowrap ${clsIdx === 0 && dayIdx > 0 ? "border-l-2 border-border" : clsIdx > 0 ? "border-l border-border/40" : ""}`}>
+                    <th key={`${day}-${clsIdx}`} className={`px-2 py-1.5 text-center font-medium text-muted-foreground text-xs whitespace-nowrap ${clsIdx === 0 && dayIdx > 0 ? "border-l-2 border-border" : clsIdx > 0 ? "border-l border-border/40" : ""}`}>
                       {cls}
                     </th>
                   ))

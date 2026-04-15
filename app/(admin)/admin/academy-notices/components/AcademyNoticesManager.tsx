@@ -16,6 +16,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import type { AcademyNotice, AcademyNoticeAttachment } from "@/lib/types";
 import { LoadingState } from "@/components/LoadingState";
+import { PageHeader } from "@/components/PageHeader";
+import { FormGroup } from "@/components/FormGroup";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { toast } from "sonner";
 
 export function AcademyNoticesManager() {
@@ -38,6 +41,7 @@ export function AcademyNoticesManager() {
   const [removeAttachmentIds, setRemoveAttachmentIds] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<AcademyNotice | null>(null);
 
   const loadNotices = useCallback(async () => {
     setLoading(true);
@@ -119,7 +123,6 @@ export function AcademyNoticesManager() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("이 공지를 삭제하시겠습니까?")) return;
     setDeleting(id);
     const result = await deleteAcademyNotice(id);
     setDeleting(null);
@@ -127,124 +130,125 @@ export function AcademyNoticesManager() {
       setError(result.error);
       return;
     }
+    setDeleteTarget(null);
     toast.success("공지사항이 삭제되었습니다.");
     router.refresh();
     await loadNotices();
   };
 
   if (loading) {
-    return <LoadingState />;
+    return <LoadingState label="공지 불러오는 중" />;
   }
 
   // Form view
   if (view === "form") {
     return (
-      <div className="rounded-xl border bg-card p-6 shadow-sm space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-foreground">
-            {editingId ? "공지 수정" : "새 공지 작성"}
-          </h2>
-          <Button variant="outline" size="sm" onClick={() => setView("list")}>
-            목록으로
-          </Button>
-        </div>
+      <div className="space-y-6">
+        <PageHeader
+          title={editingId ? "공지 수정" : "새 공지 작성"}
+          description="학생·교사 포털에 노출되는 공지입니다."
+          actions={
+            <Button variant="outline" onClick={() => setView("list")}>
+              목록으로
+            </Button>
+          }
+        />
+        <div className="rounded-xl border bg-card p-6 shadow-sm space-y-5">
+          {error && (
+            <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>
+          )}
 
-        {error && (
-          <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>
-        )}
-
-        <div>
-          <label className="mb-1 block text-xs text-muted-foreground">제목</label>
-          <Input
-            value={formTitle}
-            onChange={(e) => setFormTitle(e.target.value)}
-            placeholder="제목을 입력하세요"
-          />
-        </div>
-        <div>
-          <label className="mb-1 block text-xs text-muted-foreground">내용</label>
-          <Textarea
-            value={formContent}
-            onChange={(e) => setFormContent(e.target.value)}
-            placeholder="내용을 입력하세요"
-            rows={8}
-          />
-        </div>
-        <div>
-          <label className="mb-1 block text-xs text-muted-foreground">요약 (선택)</label>
-          <Input
-            value={formExcerpt}
-            onChange={(e) => setFormExcerpt(e.target.value)}
-            placeholder="목록에 표시될 요약 (미입력 시 자동 생성)"
-          />
-        </div>
-        <div className="flex gap-4">
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={formPublished}
-              onChange={(e) => setFormPublished(e.target.checked)}
-              className="rounded border-input"
+          <FormGroup label="제목" required>
+            <Input
+              value={formTitle}
+              onChange={(e) => setFormTitle(e.target.value)}
+              placeholder="제목을 입력하세요"
+              className="h-11 text-base"
             />
-            게시
-          </label>
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={formPinned}
-              onChange={(e) => setFormPinned(e.target.checked)}
-              className="rounded border-input"
+          </FormGroup>
+          <FormGroup label="내용">
+            <Textarea
+              value={formContent}
+              onChange={(e) => setFormContent(e.target.value)}
+              placeholder="내용을 입력하세요"
+              rows={8}
+              className="text-base"
             />
-            고정
-          </label>
-        </div>
-
-        {editingId && existingAttachments.length > 0 && (
-          <div className="space-y-2">
-            <h3 className="text-xs font-medium text-muted-foreground">기존 첨부파일</h3>
-            <FileList
-              files={existingAttachments
-                .filter((a) => !removeAttachmentIds.includes(a.id))
-                .map((a) => ({
-                  id: a.id,
-                  original_filename: a.original_filename,
-                  public_url: a.public_url,
-                  mime_type: a.mime_type,
-                  file_size: a.file_size,
-                }))}
-              onDelete={(id) => setRemoveAttachmentIds((prev) => [...prev, id])}
+          </FormGroup>
+          <FormGroup label="요약" help="선택 — 미입력 시 내용에서 자동 생성">
+            <Input
+              value={formExcerpt}
+              onChange={(e) => setFormExcerpt(e.target.value)}
+              placeholder="목록에 표시될 요약"
+              className="h-11 text-base"
             />
+          </FormGroup>
+          <div className="flex gap-6">
+            <label className="flex items-center gap-2 text-base">
+              <input
+                type="checkbox"
+                checked={formPublished}
+                onChange={(e) => setFormPublished(e.target.checked)}
+                className="h-4 w-4 rounded border-input"
+              />
+              게시
+            </label>
+            <label className="flex items-center gap-2 text-base">
+              <input
+                type="checkbox"
+                checked={formPinned}
+                onChange={(e) => setFormPinned(e.target.checked)}
+                className="h-4 w-4 rounded border-input"
+              />
+              고정
+            </label>
           </div>
-        )}
 
-        <div>
-          <label className="mb-1 block text-xs text-muted-foreground">이미지</label>
-          <FileUpload
-            accept="image/jpeg,image/png,image/webp"
-            multiple
-            maxFiles={10}
-            files={imageFiles}
-            onFilesChange={setImageFiles}
-            label="이미지 선택"
-          />
-        </div>
-        <div>
-          <label className="mb-1 block text-xs text-muted-foreground">첨부파일</label>
-          <FileUpload
-            accept=".pdf,.zip,.doc,.docx,.xls,.xlsx"
-            multiple
-            maxFiles={5}
-            files={attachmentFiles}
-            onFilesChange={setAttachmentFiles}
-            label="첨부파일 선택"
-          />
-        </div>
+          {editingId && existingAttachments.length > 0 && (
+            <div className="space-y-2">
+              <h3 className="text-base font-medium text-slate-700">기존 첨부파일</h3>
+              <FileList
+                files={existingAttachments
+                  .filter((a) => !removeAttachmentIds.includes(a.id))
+                  .map((a) => ({
+                    id: a.id,
+                    original_filename: a.original_filename,
+                    public_url: a.public_url,
+                    mime_type: a.mime_type,
+                    file_size: a.file_size,
+                  }))}
+                onDelete={(id) => setRemoveAttachmentIds((prev) => [...prev, id])}
+              />
+            </div>
+          )}
 
-        <div className="flex justify-end gap-2">
-          <Button variant="outline" onClick={() => setView("list")}>취소</Button>
-          <Button onClick={handleSave} disabled={saving || !formTitle.trim()}>
-            {saving ? "저장 중…" : editingId ? "수정" : "작성"}
-          </Button>
+          <FormGroup label="이미지">
+            <FileUpload
+              accept="image/jpeg,image/png,image/webp"
+              multiple
+              maxFiles={10}
+              files={imageFiles}
+              onFilesChange={setImageFiles}
+              label="이미지 선택"
+            />
+          </FormGroup>
+          <FormGroup label="첨부파일">
+            <FileUpload
+              accept=".pdf,.zip,.doc,.docx,.xls,.xlsx"
+              multiple
+              maxFiles={5}
+              files={attachmentFiles}
+              onFilesChange={setAttachmentFiles}
+              label="첨부파일 선택"
+            />
+          </FormGroup>
+
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setView("list")}>취소</Button>
+            <Button onClick={handleSave} disabled={saving || !formTitle.trim()}>
+              {saving ? "저장 중…" : editingId ? "수정" : "작성"}
+            </Button>
+          </div>
         </div>
       </div>
     );
@@ -252,10 +256,12 @@ export function AcademyNoticesManager() {
 
   // List view
   return (
-    <div className="space-y-4">
-      <div className="flex justify-end">
-        <Button onClick={openCreateForm}>+ 새 공지 작성</Button>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="Academy 공지 관리"
+        description="학생·교사 포털 내부에서 노출되는 공지를 관리하세요."
+        actions={<Button onClick={openCreateForm}>+ 새 공지 작성</Button>}
+      />
 
       {error && (
         <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>
@@ -273,18 +279,18 @@ export function AcademyNoticesManager() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
                     {n.is_pinned && (
-                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-700">
+                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-sm font-medium text-amber-700">
                         고정
                       </span>
                     )}
                     {!n.is_published && (
-                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500">
+                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-sm font-medium text-slate-500">
                         비게시
                       </span>
                     )}
-                    <h3 className="text-sm font-medium text-foreground truncate">{n.title}</h3>
+                    <h3 className="text-base font-semibold text-foreground truncate">{n.title}</h3>
                   </div>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <span>{new Date(n.published_at).toLocaleDateString("ko-KR")}</span>
                     {((n.image_count ?? 0) + (n.attachment_count ?? 0)) > 0 && (
                       <>
@@ -294,15 +300,14 @@ export function AcademyNoticesManager() {
                     )}
                   </div>
                 </div>
-                <div className="flex gap-1">
-                  <Button variant="outline" size="sm" onClick={() => openEditForm(n)}>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => openEditForm(n)}>
                     수정
                   </Button>
                   <Button
                     variant="outline"
-                    size="sm"
                     className="text-destructive hover:bg-destructive/10"
-                    onClick={() => handleDelete(n.id)}
+                    onClick={() => setDeleteTarget(n)}
                     disabled={deleting === n.id}
                   >
                     삭제
@@ -313,6 +318,17 @@ export function AcademyNoticesManager() {
           ))}
         </ul>
       )}
+
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        title="공지 삭제"
+        description={deleteTarget ? `"${deleteTarget.title}" 공지를 삭제할까요?` : undefined}
+        danger
+        impactList={["첨부된 이미지와 파일이 함께 삭제됩니다.", "이 작업은 되돌릴 수 없습니다."]}
+        disabled={deleting === deleteTarget?.id}
+        onConfirm={() => deleteTarget && handleDelete(deleteTarget.id)}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   );
 }

@@ -79,18 +79,18 @@ function TextbookCard({
         {/* 제목 + 상태 */}
         <div className="flex items-start gap-1">
           <h3 className="text-sm font-semibold text-slate-800 truncate leading-tight flex-1">{p.textbook_title}</h3>
-          <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium ${st.color}`}>
+          <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-xs font-medium ${st.color}`}>
             {st.label}
           </span>
         </div>
 
         {/* 시리즈 */}
         {p.textbook_series && (
-          <p className="text-[11px] text-slate-500 truncate">{p.textbook_series}</p>
+          <p className="text-xs text-slate-500 truncate">{p.textbook_series}</p>
         )}
 
         {/* 메타 정보 */}
-        <div className="flex items-center gap-1 flex-wrap text-[10px] text-slate-500">
+        <div className="flex items-center gap-1 flex-wrap text-xs text-slate-500">
           <span className="rounded bg-blue-50 px-1 py-0.5 text-blue-700 font-medium">{catLabel}</span>
           {p.textbook_level && (
             <span className="rounded bg-slate-100 px-1 py-0.5">Lv.{p.textbook_level}</span>
@@ -110,13 +110,13 @@ function TextbookCard({
               style={{ width: `${pct}%` }}
             />
           </div>
-          <p className="text-[10px] font-medium text-slate-500 mt-0.5 text-right">
+          <p className="text-xs font-medium text-slate-500 mt-0.5 text-right">
             {p.completed_units}/{p.total_units} ({pct}%)
           </p>
         </div>
 
         {/* 날짜 정보 */}
-        <div className="text-[10px] text-slate-400 space-y-0.5 border-t border-slate-100 pt-1">
+        <div className="text-xs text-slate-400 space-y-0.5 border-t border-slate-100 pt-1">
           <div className="flex justify-between">
             <span>배정일</span>
             <span className="text-slate-600">{formatDate(p.assigned_at)}</span>
@@ -134,7 +134,7 @@ function TextbookCard({
           <button
             type="button"
             onClick={onEdit}
-            className="rounded bg-slate-100 px-2 py-1 text-[11px] font-medium text-slate-700 hover:bg-slate-200 transition-colors"
+            className="rounded bg-slate-100 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-200 transition-colors"
           >
             수정
           </button>
@@ -142,7 +142,7 @@ function TextbookCard({
             <button
               type="button"
               onClick={onRemove}
-              className="rounded bg-red-50 px-2 py-1 text-[11px] font-medium text-red-600 hover:bg-red-100 transition-colors"
+              className="rounded bg-red-50 px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-100 transition-colors"
             >
               제거
             </button>
@@ -170,7 +170,7 @@ export function StudentTextbookTab({ studentProfileId }: { studentProfileId: str
   const completedBooks = (progress ?? []).filter((p) => p.status === "completed");
 
   if (loading && !progress) {
-    return <LoadingState />;
+    return <LoadingState label="교재 불러오는 중..." />;
   }
 
   return (
@@ -354,7 +354,7 @@ function AddTextbookModal({
           </button>
         </div>
         {loading ? (
-          <LoadingState className="py-4" />
+          <LoadingState label="교재 목록 불러오는 중..." className="py-4" />
         ) : options.length === 0 ? (
           <p className="py-4 text-center text-sm text-slate-500">배정 가능한 교재가 없습니다.</p>
         ) : (

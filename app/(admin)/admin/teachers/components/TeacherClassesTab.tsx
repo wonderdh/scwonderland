@@ -150,7 +150,7 @@ function ClassRow({
       {isExpanded && (
         <div className="border-t px-4 py-3 space-y-4">
           {!loaded ? (
-            <LoadingState className="py-4" />
+            <LoadingState label="반 정보 불러오는 중..." className="py-4" />
           ) : (
             <>
               {/* 담당 선생님 */}
@@ -167,7 +167,7 @@ function ClassRow({
                       } ${t.profile_id === currentTeacherId ? "ring-1 ring-primary/40" : ""}`}
                     >
                       {t.name ?? "—"}
-                      <span className="text-[10px] opacity-70">
+                      <span className="text-xs opacity-70">
                         ({t.teacher_type === "native" ? "원어민" : "한국인"})
                       </span>
                     </span>
@@ -220,7 +220,7 @@ function ClassRow({
                           className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 bg-blue-50/50 text-sm"
                         >
                           <span className="text-foreground">{ct.textbook_title}</span>
-                          <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-medium text-blue-700">{catLabel}</span>
+                          <span className="rounded bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">{catLabel}</span>
                           {ct.textbook_level && (
                             <span className="text-xs text-muted-foreground">Lv.{ct.textbook_level}</span>
                           )}

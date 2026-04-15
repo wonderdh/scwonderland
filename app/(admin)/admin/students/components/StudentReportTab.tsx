@@ -79,7 +79,7 @@ export function StudentReportTab({ studentProfileId }: { studentProfileId: strin
 
   const isInitialLoad = loading && report === null && list.length === 0 && !listLoading;
   if (isInitialLoad) {
-    return <LoadingState />;
+    return <LoadingState label="리포트카드 불러오는 중..." />;
   }
 
   return (
@@ -162,7 +162,7 @@ export function StudentReportTab({ studentProfileId }: { studentProfileId: strin
         </div>
         <div className="p-4 sm:p-5">
           {loading && (
-            <LoadingState className="py-0 mb-2" />
+            <LoadingState label="저장 중..." className="py-0 mb-2" />
           )}
           <label htmlFor="rc-content" className="sr-only">
             리포트 본문

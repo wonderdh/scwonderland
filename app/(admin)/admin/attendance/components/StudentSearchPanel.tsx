@@ -15,6 +15,7 @@ import {
   ATTENDANCE_STATUSES,
   type AttendanceStatus,
 } from "@/lib/constants/attendance";
+import { LoadingState } from "@/components/LoadingState";
 
 type StudentItem = {
   id: string;
@@ -143,7 +144,7 @@ export function StudentSearchPanel({
   const activeNote = pendingNote !== null ? pendingNote : (currentNote ?? "");
   const isDirty = pendingStatus !== null;
   const showNote = activeStatus === "absent" || activeStatus === "late" || !!activeNote;
-  const inputBase = "w-full text-sm border border-input rounded-lg px-3 py-2 bg-background focus:outline-none focus:ring-1 focus:ring-primary";
+  const inputBase = "w-full h-11 text-base border border-input rounded-lg px-3 py-2 bg-background focus:outline-none focus:ring-1 focus:ring-primary";
 
   // ── 모바일 ──
   if (mobile) {
@@ -199,38 +200,43 @@ export function StudentSearchPanel({
             <MultiDatePicker selected={selectedDates} onSelect={setSelectedDates} />
 
             {loadingStatus ? (
-              <div className="flex justify-center py-2">
-                <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-              </div>
+              <LoadingState label="출결 상태 불러오는 중" />
             ) : (
               <>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 gap-2">
                   {ATTENDANCE_STATUSES.map((key) => {
                     const cfg = ATTENDANCE_STATUS_CONFIG[key];
+                    const Icon = cfg.icon;
                     return (
                       <button
                         key={key}
                         onClick={() => handleToggleStatus(key)}
-                        className={`min-h-[52px] text-sm font-medium rounded-xl transition-all ${activeStatus === key ? cfg.activeClass : cfg.inactiveClass}`}
+                        className={`min-h-[52px] inline-flex items-center justify-center gap-2 text-base font-medium rounded-xl transition-all ${activeStatus === key ? cfg.activeClass : cfg.inactiveClass}`}
                       >
-                        {cfg.label}
+                        <Icon className="h-5 w-5 shrink-0" aria-hidden="true" />
+                        <span>{cfg.label}</span>
                       </button>
                     );
                   })}
                 </div>
                 {showNote && (
-                  <input
-                    type="text"
-                    value={activeNote}
-                    placeholder="메모 (선택)"
-                    onChange={(e) => setPendingNote(e.target.value)}
-                    className={inputBase}
-                  />
+                  <div className="space-y-1">
+                    <p className="text-sm text-slate-500">
+                      지각·조퇴·결석일 때 메모를 입력할 수 있습니다.
+                    </p>
+                    <input
+                      type="text"
+                      value={activeNote}
+                      placeholder="메모 (선택)"
+                      onChange={(e) => setPendingNote(e.target.value)}
+                      className={inputBase}
+                    />
+                  </div>
                 )}
                 <button
                   onClick={handleSave}
                   disabled={saving || !activeStatus}
-                  className="w-full py-3 rounded-xl bg-primary text-primary-foreground text-sm font-medium disabled:opacity-40 transition-colors"
+                  className="w-full h-11 rounded-xl bg-primary text-primary-foreground text-base font-medium disabled:opacity-40 transition-colors"
                 >
                   {saving ? "저장 중..." : isDirty ? "저장" : "재저장"}
                 </button>
@@ -308,29 +314,25 @@ export function StudentSearchPanel({
 
             <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
               <div className="flex items-start gap-3">
-                <label className="text-sm text-muted-foreground w-12 shrink-0 pt-2">날짜</label>
+                <label className="text-base font-medium text-slate-700 w-16 shrink-0 pt-2">날짜</label>
                 <MultiDatePicker selected={selectedDates} onSelect={setSelectedDates} />
               </div>
 
               <div className="flex items-start gap-3">
-                <label className="text-sm text-muted-foreground w-12 shrink-0 pt-1.5">출결</label>
+                <label className="text-base font-medium text-slate-700 w-16 shrink-0 pt-1.5">출결</label>
                 {loadingStatus ? (
-                  <div className="flex gap-2 flex-wrap">
-                    {ATTENDANCE_STATUSES.map((key) => (
-                      <div key={key} className="h-8 w-16 rounded-md bg-muted animate-pulse" />
-                    ))}
-                  </div>
+                  <LoadingState label="출결 상태 불러오는 중" className="py-4" />
                 ) : (
                   <div className="space-y-2">
                     {/* 현재 저장된 상태 배지 */}
                     {currentStatus ? (
-                      <div className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full ${ATTENDANCE_STATUS_CONFIG[currentStatus as AttendanceStatus]?.activeClass ?? ""}`}>
+                      <div className={`inline-flex items-center gap-1.5 text-sm font-medium px-2.5 py-1 rounded-full ${ATTENDANCE_STATUS_CONFIG[currentStatus as AttendanceStatus]?.activeClass ?? ""}`}>
                         <span className="w-1.5 h-1.5 rounded-full bg-current opacity-70" />
                         저장됨: {ATTENDANCE_STATUS_CONFIG[currentStatus as AttendanceStatus]?.label}
                         {isDirty && <span className="opacity-60">→ 변경 중</span>}
                       </div>
                     ) : (
-                      <div className="inline-flex items-center gap-1.5 text-xs text-muted-foreground px-2.5 py-1 rounded-full bg-muted/60">
+                      <div className="inline-flex items-center gap-1.5 text-sm text-muted-foreground px-2.5 py-1 rounded-full bg-muted/60">
                         <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/40" />
                         기록 없음
                       </div>
@@ -338,13 +340,15 @@ export function StudentSearchPanel({
                     <div className="flex gap-2 flex-wrap">
                       {ATTENDANCE_STATUSES.map((key) => {
                         const cfg = ATTENDANCE_STATUS_CONFIG[key];
+                        const Icon = cfg.icon;
                         return (
                           <button
                             key={key}
                             onClick={() => handleToggleStatus(key)}
-                            className={`text-sm px-3 py-1.5 rounded-md font-medium transition-all ${activeStatus === key ? cfg.activeClass : cfg.inactiveClass}`}
+                            className={`inline-flex items-center gap-2 text-base px-4 py-2 rounded-lg font-medium transition-all ${activeStatus === key ? cfg.activeClass : cfg.inactiveClass}`}
                           >
-                            {cfg.label}
+                            <Icon className="h-5 w-5 shrink-0" aria-hidden="true" />
+                            <span>{cfg.label}</span>
                           </button>
                         );
                       })}
@@ -354,24 +358,29 @@ export function StudentSearchPanel({
               </div>
 
               {showNote && (
-                <div className="flex items-center gap-3">
-                  <label className="text-sm text-muted-foreground w-12 shrink-0">메모</label>
-                  <input
-                    type="text"
-                    value={activeNote}
-                    placeholder="메모 (선택)"
-                    onChange={(e) => setPendingNote(e.target.value)}
-                    className="flex-1 text-sm border border-input rounded-md px-2 py-1.5 bg-background focus:outline-none focus:ring-1 focus:ring-primary"
-                  />
+                <div className="flex items-start gap-3">
+                  <label className="text-base font-medium text-slate-700 w-16 shrink-0 pt-2">메모</label>
+                  <div className="flex-1 space-y-1">
+                    <p className="text-sm text-slate-500">
+                      지각·조퇴·결석일 때 메모를 입력할 수 있습니다.
+                    </p>
+                    <input
+                      type="text"
+                      value={activeNote}
+                      placeholder="메모 (선택)"
+                      onChange={(e) => setPendingNote(e.target.value)}
+                      className="w-full h-11 text-base border border-input rounded-lg px-3 py-2 bg-background focus:outline-none focus:ring-1 focus:ring-primary"
+                    />
+                  </div>
                 </div>
               )}
 
               <div className="flex items-center gap-3 pt-2">
-                <div className="w-12 shrink-0" />
+                <div className="w-16 shrink-0" />
                 <button
                   onClick={handleSave}
                   disabled={saving || !activeStatus || selectedDates.length === 0 || (selectedDates.length === 1 && !isDirty && !!currentStatus && activeStatus === currentStatus)}
-                  className="text-sm px-5 py-2 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40 transition-colors font-medium"
+                  className="h-11 text-base px-6 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40 transition-colors font-medium"
                 >
                   {saving ? "저장 중..." : isDirty ? "저장" : "재저장"}
                 </button>

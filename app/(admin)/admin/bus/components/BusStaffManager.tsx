@@ -101,7 +101,7 @@ export function BusStaffManager({
 
   return (
     <div className="space-y-4">
-      <h3 className="text-sm font-semibold text-slate-700">버스 담당자</h3>
+      <h3 className="text-lg font-semibold text-slate-800">버스 담당자</h3>
 
       {error && (
         <p className="text-xs text-red-500 bg-red-50 px-3 py-2 rounded">
@@ -246,8 +246,14 @@ export function BusStaffManager({
 
       <ConfirmDialog
         open={deleteConfirm.open}
-        title="삭제 확인"
-        description={`"${deleteConfirm.name}" 담당자를 삭제하시겠습니까?`}
+        title={`"${deleteConfirm.name ?? ""}" 담당자를 삭제하시겠습니까?`}
+        description="담당자 계정이 삭제되고 배정 기록에서도 제거됩니다."
+        impactList={[
+          "로그인 계정이 비활성화됩니다.",
+          "담당 호차 배정이 미배정 상태가 됩니다.",
+        ]}
+        danger
+        confirmLabel="삭제"
         onConfirm={handleDeleteConfirm}
         onCancel={() => setDeleteConfirm({ open: false })}
       />

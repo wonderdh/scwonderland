@@ -132,7 +132,7 @@ export function StudentLearningTab({ studentProfileId }: { studentProfileId: str
       : records.filter((r) => r.category === filterCategory);
 
   if (loading) {
-    return <LoadingState />;
+    return <LoadingState label="학습 기록 불러오는 중..." />;
   }
 
   return (
@@ -260,7 +260,7 @@ export function StudentLearningTab({ studentProfileId }: { studentProfileId: str
               <div className="flex items-start justify-between gap-2">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${CATEGORY_COLORS[rec.category] ?? "bg-slate-100 text-slate-700"}`}>
+                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${CATEGORY_COLORS[rec.category] ?? "bg-slate-100 text-slate-700"}`}>
                       {categoryLabel(rec.category)}
                     </span>
                     <span className="text-xs text-muted-foreground">{rec.record_date}</span>

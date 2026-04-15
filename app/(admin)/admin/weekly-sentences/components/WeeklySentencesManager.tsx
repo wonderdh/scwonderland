@@ -3,9 +3,13 @@
 import { useState, useTransition, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { Pencil, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Spinner } from "@/components/Spinner";
+import { LoadingState } from "@/components/LoadingState";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { FormGroup } from "@/components/FormGroup";
+import { PageHeader } from "@/components/PageHeader";
 import {
   upsertWeeklySentence,
   deleteWeeklySentence,
@@ -44,6 +48,7 @@ export function WeeklySentencesManager({
 
   // 검색/필터
   const [searchWeek, setSearchWeek] = useState("");
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
 
   // 주차 그룹핑
   const weekMap = useMemo(() => {
@@ -105,7 +110,6 @@ export function WeeklySentencesManager({
   }
 
   async function handleDelete(id: string) {
-    if (!window.confirm("이 문장을 삭제하시겠습니까?")) return;
     const result = await deleteWeeklySentence(id);
     if (result.error) {
       toast.error(result.error);
@@ -113,6 +117,8 @@ export function WeeklySentencesManager({
     }
     toast.success("삭제되었습니다.");
     setSentences((prev) => prev.filter((s) => s.id !== id));
+    setDeleteTargetId(null);
+    setEditTarget(null);
     startTransition(() => router.refresh());
   }
 
@@ -165,13 +171,12 @@ export function WeeklySentencesManager({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-lg font-semibold text-slate-800">주간 문장 관리</h1>
-        <div className="flex items-center gap-2">
-          <label className="inline-flex min-h-[36px] cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50">
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
-            </svg>
+      <PageHeader
+        title="주간 문장 관리"
+        description="48주 × 4레벨 주간 문장을 등록하고 현재 주차를 조정하세요."
+        actions={
+          <label className="inline-flex h-11 cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-base text-slate-700 hover:bg-slate-50">
+            <Upload className="h-5 w-5" aria-hidden="true" />
             Excel 업로드
             <input
               type="file"
@@ -181,35 +186,35 @@ export function WeeklySentencesManager({
               disabled={saving}
             />
           </label>
-        </div>
-      </div>
+        }
+      />
 
       {/* 현재 주차 설정 패널 */}
-      <div className="rounded-xl border border-slate-200 bg-white p-4">
-        <h2 className="mb-3 text-sm font-medium text-slate-600">주차 설정</h2>
+      <div className="rounded-xl border border-slate-200 bg-white p-5">
+        <h2 className="mb-3 text-base font-semibold text-slate-700">주차 설정</h2>
         <div className="flex flex-wrap items-center gap-4">
-          <div className="flex items-center gap-2 text-sm">
+          <div className="flex items-center gap-2 text-base">
             <span className="text-slate-500">현재 주차:</span>
-            <span className="rounded-full bg-orange-50 px-2.5 py-0.5 text-xs font-semibold text-orange-700">
+            <span className="rounded-full bg-orange-50 px-3 py-1 text-sm font-semibold text-orange-700">
               Week {activeWeek}
             </span>
             {config?.mode === "manual" && (
-              <span className="text-xs text-amber-600">(수동 고정)</span>
+              <span className="text-sm text-amber-600">(수동 고정)</span>
             )}
             {config?.mode !== "manual" && (
-              <span className="text-xs text-blue-500">(자동 +1/주)</span>
+              <span className="text-sm text-blue-500">(자동 +1/주)</span>
             )}
           </div>
           <div className="ml-auto flex flex-wrap items-center gap-2">
             {/* 현재 주차 직접 설정 */}
-            <div className="flex items-center gap-1">
-              <span className="text-xs text-slate-500">현재 주차:</span>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-slate-600">현재 주차:</span>
               <input
                 type="number"
                 min={1}
                 max={48}
                 defaultValue={autoWeek}
-                className="h-8 w-16 rounded-lg border border-slate-200 px-2 text-center text-xs"
+                className="h-11 w-20 rounded-lg border border-slate-200 px-2 text-center text-base"
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     const v = Number((e.target as HTMLInputElement).value);
@@ -219,9 +224,7 @@ export function WeeklySentencesManager({
                 id="week-base-input"
               />
               <Button
-                size="sm"
                 variant="outline"
-                className="h-8 text-xs"
                 onClick={() => {
                   const el = document.getElementById("week-base-input") as HTMLInputElement;
                   const v = Number(el?.value);
@@ -235,9 +238,7 @@ export function WeeklySentencesManager({
             {/* 수동 고정 / 자동 전환 */}
             {config?.mode === "manual" ? (
               <Button
-                size="sm"
                 variant="outline"
-                className="h-8 text-xs"
                 onClick={() => handleConfigChange("auto")}
               >
                 자동으로 전환
@@ -249,7 +250,7 @@ export function WeeklySentencesManager({
                   const v = Number(e.target.value);
                   if (v) handleConfigChange("manual", v);
                 }}
-                className="h-8 rounded-lg border border-slate-200 px-2 text-xs text-slate-700"
+                className="h-11 rounded-lg border border-slate-200 px-3 text-base text-slate-700"
               >
                 <option value="">수동 고정...</option>
                 {Array.from({ length: 48 }, (_, i) => i + 1).map((w) => (
@@ -272,14 +273,14 @@ export function WeeklySentencesManager({
           max={52}
           value={searchWeek}
           onChange={(e) => setSearchWeek(e.target.value)}
-          className="w-40"
+          className="w-44 h-11 text-base"
         />
         {searchWeek && (
-          <Button size="sm" variant="ghost" onClick={() => setSearchWeek("")}>
+          <Button variant="ghost" onClick={() => setSearchWeek("")}>
             초기화
           </Button>
         )}
-        <span className="text-xs text-slate-400">
+        <span className="text-sm text-slate-500">
           총 {sentences.length}개 문장
         </span>
       </div>
@@ -289,15 +290,15 @@ export function WeeklySentencesManager({
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b bg-slate-50">
-              <th className="px-3 py-2.5 text-left text-xs font-medium text-slate-500 w-20">
+              <th className="px-3 py-3 text-left text-lg font-semibold text-slate-700 w-24">
                 Week
               </th>
               {WEEKLY_SENTENCE_LEVELS.map((lv) => (
                 <th
                   key={lv.level}
-                  className="px-3 py-2.5 text-left text-xs font-medium text-slate-500"
+                  className="px-3 py-3 text-left text-lg font-semibold text-slate-700 min-w-[220px]"
                 >
-                  <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${lv.color}`}>
+                  <span className={`inline-flex rounded-full px-2.5 py-0.5 text-sm font-semibold ${lv.color}`}>
                     {lv.label} ({lv.subLabel})
                   </span>
                 </th>
@@ -316,16 +317,16 @@ export function WeeklySentencesManager({
                       : "hover:bg-slate-50/50"
                   }`}
                 >
-                  <td className="px-3 py-2.5">
+                  <td className="px-3 py-3">
                     <span
-                      className={`text-xs font-semibold ${
+                      className={`text-base font-semibold ${
                         isActive ? "text-orange-700" : "text-slate-600"
                       }`}
                     >
                       {w}
                     </span>
                     {isActive && (
-                      <span className="ml-1 text-[10px] text-orange-500">
+                      <span className="ml-1 text-sm text-orange-500">
                         *
                       </span>
                     )}
@@ -333,25 +334,31 @@ export function WeeklySentencesManager({
                   {WEEKLY_SENTENCE_LEVELS.map((lv) => {
                     const item = weekMap.get(w)?.get(lv.level);
                     return (
-                      <td key={lv.level} className="px-3 py-2.5">
+                      <td key={lv.level} className="px-3 py-2 min-w-[220px]">
                         {item ? (
                           <button
                             type="button"
                             onClick={() => openEdit(w, lv.level)}
-                            className="group w-full text-left"
+                            className="group flex w-full items-start justify-between gap-2 rounded-md px-2 py-1.5 text-left hover:bg-slate-50"
                           >
-                            <p className="truncate text-xs font-medium text-slate-800 group-hover:text-blue-600">
-                              {item.english}
-                            </p>
-                            <p className="truncate text-[10px] text-slate-400">
-                              {item.answer || item.korean}
-                            </p>
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm font-medium text-slate-800 group-hover:text-blue-600">
+                                {item.english}
+                              </p>
+                              <p className="truncate text-sm text-slate-500">
+                                {item.answer || item.korean}
+                              </p>
+                            </div>
+                            <Pencil
+                              className="h-4 w-4 shrink-0 text-slate-300 opacity-0 group-hover:opacity-100"
+                              aria-hidden="true"
+                            />
                           </button>
                         ) : (
                           <button
                             type="button"
                             onClick={() => openEdit(w, lv.level)}
-                            className="text-xs text-slate-300 hover:text-blue-500"
+                            className="text-sm text-slate-400 hover:text-blue-500"
                           >
                             + 추가
                           </button>
@@ -373,71 +380,59 @@ export function WeeklySentencesManager({
           onClick={() => setEditTarget(null)}
         >
           <div
-            className="w-full max-w-md rounded-xl bg-white p-5 shadow-xl"
+            className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="mb-4 text-sm font-semibold text-slate-800">
+            <h3 className="mb-4 text-lg font-semibold text-slate-800">
               Week {editTarget.weekNumber} ·{" "}
               {WEEKLY_SENTENCE_LEVELS.find((l) => l.level === editTarget.level)
                 ?.label ?? `Level ${editTarget.level}`}
             </h3>
-            <div className="space-y-3">
-              <div>
-                <label className="mb-1 block text-xs font-medium text-slate-500">
-                  {editTarget.level === 1 ? "질문 (Q)" : "영어 문장"}
-                </label>
+            <div className="space-y-4">
+              <FormGroup label={editTarget.level === 1 ? "질문 (Q)" : "영어 문장"} required>
                 <Input
                   value={editEnglish}
                   onChange={(e) => setEditEnglish(e.target.value)}
                   placeholder={editTarget.level === 1 ? "What season is it?" : "Hello!"}
+                  className="h-11 text-base"
                 />
-              </div>
+              </FormGroup>
               {editTarget.level === 1 && (
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-slate-500">
-                    대답 (A)
-                  </label>
+                <FormGroup label="대답 (A)">
                   <Input
                     value={editAnswer}
                     onChange={(e) => setEditAnswer(e.target.value)}
                     placeholder="It's winter in January."
+                    className="h-11 text-base"
                   />
-                </div>
+                </FormGroup>
               )}
               {editTarget.level !== 1 && (
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-slate-500">
-                    한글 뜻
-                  </label>
+                <FormGroup label="한글 뜻">
                   <Input
                     value={editKorean}
                     onChange={(e) => setEditKorean(e.target.value)}
                     placeholder="안녕!"
+                    className="h-11 text-base"
                   />
-                </div>
+                </FormGroup>
               )}
-              <div>
-                <label className="mb-1 block text-xs font-medium text-slate-500">
-                  활용 예시 (선택)
-                </label>
+              <FormGroup label="활용 예시" help="선택 입력 — 학생에게 보여줄 추가 예문">
                 <textarea
                   value={editExample}
                   onChange={(e) => setEditExample(e.target.value)}
                   placeholder="Hello! I'm happy to see you."
                   rows={2}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-base focus:outline-none focus:ring-2 focus:ring-slate-400"
                 />
-              </div>
+              </FormGroup>
             </div>
-            <div className="mt-4 flex items-center justify-between">
+            <div className="mt-5 flex items-center justify-between">
               {editTarget.existing ? (
                 <button
                   type="button"
-                  onClick={() => {
-                    handleDelete(editTarget.existing!.id);
-                    setEditTarget(null);
-                  }}
-                  className="text-xs text-red-500 hover:text-red-700"
+                  onClick={() => setDeleteTargetId(editTarget.existing!.id)}
+                  className="text-sm font-medium text-red-600 hover:text-red-700"
                 >
                   삭제
                 </button>
@@ -446,15 +441,13 @@ export function WeeklySentencesManager({
               )}
               <div className="flex gap-2">
                 <Button
-                  size="sm"
                   variant="outline"
                   onClick={() => setEditTarget(null)}
                 >
                   취소
                 </Button>
-                <Button size="sm" onClick={handleSave} disabled={saving}>
-                  {saving && <Spinner size="sm" />}
-                  저장
+                <Button onClick={handleSave} disabled={saving}>
+                  {saving ? "저장 중…" : "저장"}
                 </Button>
               </div>
             </div>
@@ -462,9 +455,19 @@ export function WeeklySentencesManager({
         </div>
       )}
 
+      <ConfirmDialog
+        open={deleteTargetId !== null}
+        title="주간 문장 삭제"
+        description="이 문장을 삭제하시겠습니까?"
+        danger
+        impactList={["학생에게 더 이상 이 문장이 노출되지 않습니다."]}
+        onConfirm={() => deleteTargetId && handleDelete(deleteTargetId)}
+        onCancel={() => setDeleteTargetId(null)}
+      />
+
       {(pending || saving) && (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-white/60">
-          <Spinner size="lg" />
+          <LoadingState label={saving ? "저장 중" : "갱신 중"} />
         </div>
       )}
     </div>

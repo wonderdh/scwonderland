@@ -6,6 +6,7 @@ import type { ClassWithDetails, AcademyPeriod } from "@/lib/types";
 import { ClassesManager } from "./ClassesManager";
 import { ClassesOverview } from "./ClassesOverview";
 import { ClassScheduleManager } from "./ClassScheduleManager";
+import { PageHeader } from "@/components/PageHeader";
 
 type TabId = "overview" | "manage" | "schedule";
 
@@ -71,7 +72,7 @@ export function ClassesPageClient({
 
   return (
     <>
-      <h1 className="text-xl font-bold text-slate-800 mb-4">반 관리</h1>
+      <PageHeader title="반 관리" description="반을 관리하고 담당 선생님·학생·교재를 배정합니다." />
 
       {/* 탭 네비 */}
       <nav className="flex border-b bg-card rounded-t-xl overflow-x-auto mb-0">
@@ -83,10 +84,10 @@ export function ClassesPageClient({
                 ? "/admin/classes"
                 : `/admin/classes?tab=${t.id}`
             }
-            className={`px-5 py-3 text-sm font-medium transition-colors whitespace-nowrap ${
+            className={`h-12 px-5 inline-flex items-center text-base font-medium transition-colors whitespace-nowrap border-b-[3px] ${
               currentTab === t.id
-                ? "text-foreground border-b-2 border-primary bg-muted/50"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
+                ? "bg-orange-50 text-orange-700 border-orange-500"
+                : "text-slate-600 border-transparent hover:text-slate-900 hover:bg-slate-50"
             }`}
           >
             {t.label}

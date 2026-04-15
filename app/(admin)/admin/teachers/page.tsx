@@ -17,6 +17,7 @@ import { TeacherClassesTab } from "./components/TeacherClassesTab";
 import { TeacherTimetableTab } from "./components/TeacherTimetableTab";
 import { TrashView } from "../components/TrashView";
 import { BulkPasswordResetDialog } from "../students/components/BulkPasswordResetDialog";
+import { PageHeader } from "@/components/PageHeader";
 
 const VALID_TABS: TeacherTabId[] = ["info", "classes", "timetable"];
 
@@ -56,12 +57,15 @@ export default async function AdminTeachersPage({
       <AdminListSidebar users={users} variant="teachers" />
       <div className="flex-1 min-w-0 p-6 md:p-8 flex flex-col">
         {section === "trash" ? (
-          <TrashView
-            users={deletedUsers}
-            variant="teacher"
-            onRestore={restoreUser}
-            onPermanentDelete={permanentlyDeleteUser}
-          />
+          <>
+            <PageHeader title="선생 관리" description="휴지통 — 삭제된 선생님을 복구하거나 영구 삭제합니다." />
+            <TrashView
+              users={deletedUsers}
+              variant="teacher"
+              onRestore={restoreUser}
+              onPermanentDelete={permanentlyDeleteUser}
+            />
+          </>
         ) : selectedUser ? (
           <>
             <TeacherTabNav selectedId={selectedUser.id} currentTab={currentTab} />
@@ -82,15 +86,16 @@ export default async function AdminTeachersPage({
           </>
         ) : (
           <>
+            <PageHeader title="선생 관리" description="선생님을 추가하고 담당 반·시간표를 관리합니다." />
             <section className="mb-8">
-              <h2 className="text-base font-semibold text-slate-800 mb-3">교사 추가</h2>
+              <h2 className="text-xl font-semibold text-slate-800 mb-3">교사 추가</h2>
               <AddTeacherForm />
             </section>
             <section>
               <div className="flex items-center justify-between mb-3">
-                <h2 className="text-base font-semibold text-slate-800">
+                <h2 className="text-xl font-semibold text-slate-800">
                   교사 목록
-                  <span className="ml-2 text-sm font-normal text-slate-400">{users.length}명</span>
+                  <span className="ml-2 text-base font-normal text-slate-500">{users.length}명</span>
                 </h2>
                 <BulkPasswordResetDialog users={users} variant="teacher" />
               </div>

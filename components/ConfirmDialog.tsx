@@ -1,11 +1,26 @@
 "use client";
 
+import { AlertTriangle } from "lucide-react";
+
 interface ConfirmDialogProps {
   open: boolean;
   title: string;
   description?: string;
   confirmLabel?: string;
+  cancelLabel?: string;
   variant?: "danger" | "primary";
+  /**
+   * Convenience flag — when true, forces the danger styling (red confirm button
+   * + warning icon). Equivalent to `variant="danger"`. Kept optional so existing
+   * callers using `variant` still work.
+   */
+  danger?: boolean;
+  /**
+   * Optional list of impact bullet points shown in a slate-100 box below the
+   * description. Useful for destructive actions that cascade (e.g. "3명의 학생
+   * 배정이 해제됩니다").
+   */
+  impactList?: string[];
   disabled?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
@@ -16,17 +31,24 @@ export function ConfirmDialog({
   title,
   description,
   confirmLabel = "삭제",
+  cancelLabel = "취소",
   variant = "danger",
+  danger,
+  impactList,
   disabled = false,
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
   if (!open) return null;
 
-  const confirmClass =
-    variant === "danger"
-      ? "rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
-      : "rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50";
+  const isDanger = danger ?? variant === "danger";
+
+  const confirmClass = isDanger
+    ? "inline-flex items-center justify-center gap-2 rounded-lg bg-red-600 px-5 py-3 text-base font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+    : "inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-5 py-3 text-base font-semibold text-white hover:bg-blue-700 disabled:opacity-50";
+
+  const cancelClass =
+    "inline-flex items-center justify-center rounded-lg bg-slate-100 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-200 disabled:opacity-50";
 
   return (
     <div
@@ -34,21 +56,40 @@ export function ConfirmDialog({
       onClick={onCancel}
     >
       <div
-        className="w-full max-w-sm rounded-xl bg-white p-6 shadow-xl"
+        className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <h3 className="text-base font-semibold text-slate-900">{title}</h3>
-        {description && (
-          <p className="mt-1 text-sm text-slate-500">{description}</p>
+        <div className="flex items-start gap-3">
+          {isDanger ? (
+            <AlertTriangle className="mt-0.5 h-6 w-6 shrink-0 text-red-600" aria-hidden="true" />
+          ) : null}
+          <div className="min-w-0 flex-1">
+            <h3 className="text-xl font-semibold text-slate-900">{title}</h3>
+            {description && (
+              <p className="mt-2 text-base text-slate-600">{description}</p>
+            )}
+          </div>
+        </div>
+
+        {impactList && impactList.length > 0 && (
+          <div className="mt-4 rounded-lg bg-slate-100 p-4">
+            <p className="text-sm font-semibold text-slate-700">영향:</p>
+            <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-700">
+              {impactList.map((item, i) => (
+                <li key={i}>{item}</li>
+              ))}
+            </ul>
+          </div>
         )}
-        <div className="mt-4 flex justify-end gap-2">
+
+        <div className="mt-6 flex justify-end gap-2">
           <button
             type="button"
             onClick={onCancel}
             disabled={disabled}
-            className="rounded-lg bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-200 disabled:opacity-50"
+            className={cancelClass}
           >
-            취소
+            {cancelLabel}
           </button>
           <button
             type="button"

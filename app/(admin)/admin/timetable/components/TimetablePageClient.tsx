@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { AcademyPeriod, GroupTimetableData } from "@/lib/types";
 import { TimetableManager } from "./TimetableManager";
 import { GroupTimetableGrid } from "./GroupTimetableGrid";
+import { PageHeader } from "@/components/PageHeader";
 
 type TabId = "periods" | "kindergarten" | "afternoon";
 
@@ -25,7 +26,10 @@ export function TimetablePageClient({
 
   return (
     <div>
-      <h1 className="text-xl font-bold text-slate-800 mb-4">시간표 관리</h1>
+      <PageHeader
+        title="시간표 관리"
+        description="교시를 등록하고 유치부·오후반 시간표에 교사를 배정하세요."
+      />
 
       {/* 탭 네비 */}
       <nav className="flex border-b bg-card rounded-t-xl overflow-x-auto mb-0">
@@ -34,7 +38,7 @@ export function TimetablePageClient({
             key={t.id}
             type="button"
             onClick={() => setCurrentTab(t.id)}
-            className={`px-5 py-3 text-sm font-medium transition-colors whitespace-nowrap ${
+            className={`px-5 py-3 text-base font-medium transition-colors whitespace-nowrap ${
               currentTab === t.id
                 ? "text-foreground border-b-2 border-primary bg-muted/50"
                 : "text-muted-foreground hover:text-foreground hover:bg-muted/30"

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useMemo } from "react";
+import { useRef, useMemo, useState, useEffect } from "react";
 import { Calendar } from "@/components/ui/calendar";
 import { Badge } from "@/components/ui/badge";
 import { ko } from "date-fns/locale";
@@ -100,8 +100,42 @@ export function MultiDatePicker({
     [selected],
   );
 
+  const [showHelp, setShowHelp] = useState(true);
+  useEffect(() => {
+    try {
+      const dismissed = localStorage.getItem("wonderland.mdp-help-dismissed");
+      if (dismissed === "true") setShowHelp(false);
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  function dismissHelp() {
+    setShowHelp(false);
+    try {
+      localStorage.setItem("wonderland.mdp-help-dismissed", "true");
+    } catch {
+      // ignore
+    }
+  }
+
   return (
     <div className="space-y-2">
+      {showHelp && (
+        <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-700 flex items-start gap-2">
+          <span className="flex-1">
+            💡 시작일을 클릭하고 종료일을 클릭하면 기간 전체가 선택됩니다. (토·일은 자동 제외)
+          </span>
+          <button
+            type="button"
+            onClick={dismissHelp}
+            aria-label="안내 닫기"
+            className="shrink-0 text-blue-400 hover:text-blue-600 text-base leading-none"
+          >
+            ×
+          </button>
+        </div>
+      )}
       <Calendar
         mode="multiple"
         selected={selected}

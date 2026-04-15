@@ -152,7 +152,7 @@ function StudentRow({
     <li className="px-4 py-2.5 border-b last:border-b-0 border-slate-200 flex items-center gap-3 hover:bg-slate-50 transition-colors">
       {/* 나이 뱃지 */}
       <span
-        className={`shrink-0 inline-flex items-center justify-center rounded-full w-10 h-6 text-[11px] font-semibold border ${ageColor.bg} ${ageColor.text} ${ageColor.border}`}
+        className={`shrink-0 inline-flex items-center justify-center rounded-full w-10 h-6 text-xs font-semibold border ${ageColor.bg} ${ageColor.text} ${ageColor.border}`}
       >
         {user.age ? `${user.age}세` : "—"}
       </span>
@@ -185,8 +185,10 @@ function StudentRow({
       </Button>
       <ConfirmDialog
         open={deleteConfirm.open}
-        title="삭제 확인"
-        description={`${deleteConfirm.name} 학생을 삭제하시겠습니까?`}
+        danger
+        title="이 학생을 삭제하시겠습니까?"
+        description={`${deleteConfirm.name} 학생 계정이 휴지통으로 이동됩니다.`}
+        impactList={["관련 출결·승하차·리포트카드 데이터가 함께 삭제됩니다."]}
         onConfirm={handleDeleteConfirm}
         onCancel={() => setDeleteConfirm({ open: false })}
       />

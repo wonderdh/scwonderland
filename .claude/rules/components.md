@@ -23,7 +23,10 @@ paths:
 
 ## Admin Components
 
-**공유 (admin/components/):** `AdminLayoutClient`, `AdminSidebar`, `AdminListSidebar`, `UserRow`, `UserList`, `ScrollToSection`, `TrashView`
+**공유 (admin/components/):** `AdminLayoutClient`, `AdminSidebar`, `AdminMobileHeader`, `AdminListSidebar`, `UserRow`, `UserList`, `ScrollToSection`, `TrashView`
+
+- `AdminSidebar` — 5 그룹(대시보드/사람/수업/일일운영/공지)으로 그룹화
+- `AdminMobileHeader` — lg:hidden 햄버거 + Sheet 조합 (모바일 네비)
 
 **학생 전용 (admin/students/components/):** `AddStudentForm`, `StudentSelectedView`, `StudentTabNav`, `StudentReportTab`, `StudentLearningTab`, `StudentTextbookTab`, `ReportCardReadView` + 시간표/출결/승하차 탭 컴포넌트
 
@@ -56,6 +59,12 @@ paths:
 | `FileUpload` | 파일 업로드 컴포넌트 |
 | `FileList` | 파일 목록 표시 컴포넌트 |
 | `MultiDatePicker` | 다중 날짜 캘린더. 첫 클릭=앵커, 두 번째=범위 채움, 이후=개별 토글. 토·일 비활성. 출결/버스/예약에서 공유 |
+| `PageHeader` | 각 admin 섹션 상단 헤더 (제목 + 설명) |
+| `Breadcrumb` | admin 경로 표시 (Home > Section > Detail) |
+| `FormGroup` | 라벨·도움말·에러를 포함한 폼 필드 wrapper |
+| `StatusBadge` | 색·아이콘·라벨이 결합된 상태 뱃지 (StatusConfig 기반) |
+| `LoadingState` | 스피너 + 컨텍스트 라벨 (`label` prop 필수) |
+| `ConfirmDialog` | 삭제/민감 액션 확인 모달. `danger` 변형 + `impactList` 영향 범위 표시 지원 |
 | `ui/` | shadcn/ui 컴포넌트 (avatar, badge, button, calendar, card, input, label, popover, separator, tabs, textarea, tooltip) |
 
 ## Academy Components (app/(academy)/academy/)

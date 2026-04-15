@@ -2,16 +2,22 @@ import { cn } from "@/lib/utils";
 import { Spinner } from "./Spinner";
 
 export function LoadingState({
-  label = "불러오는 중…",
+  label,
   className,
 }: {
-  label?: string;
+  label: string;
   className?: string;
 }) {
   return (
-    <div className={cn("flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground", className)}>
-      <Spinner size="md" />
-      <span>{label}</span>
+    <div
+      className={cn(
+        "flex flex-col items-center justify-center gap-2 py-10",
+        className,
+      )}
+    >
+      <Spinner size="md" srLabel={label} />
+      <p className="text-base font-medium text-slate-700">{label}</p>
+      <p className="text-sm text-slate-500">잠시만 기다려 주세요</p>
     </div>
   );
 }

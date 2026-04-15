@@ -210,7 +210,7 @@ export function StudentBusTab({ studentProfileId }: { studentProfileId: string }
     (day) => !!getDefault(day)
   ).length;
 
-  if (loading) return <LoadingState className="py-4" />;
+  if (loading) return <LoadingState label="승하차 정보 불러오는 중..." className="py-4" />;
 
   if (busTimeSlots.length === 0) {
     return (
@@ -332,7 +332,7 @@ function DayCell({
       <div className="flex items-center gap-1.5 mb-1.5">
         <span className="text-xs font-semibold text-slate-500">{DAY_NAMES[day]}</span>
         {afterschool !== "none" && (
-          <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${asStyle.badge}`}>
+          <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${asStyle.badge}`}>
             {asStyle.label}
           </span>
         )}

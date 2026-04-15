@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import type { GroupTimetableData, CellEntry } from "@/lib/types";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import {
   getGroupTimetableGrid,
   setClassScheduleSlot,
@@ -118,6 +119,7 @@ export function GroupTimetableGrid({
   const [pendingChanges, setPendingChanges] = useState<Map<string, PendingCell>>(new Map());
   // Pending deletes: scheduleId set
   const [pendingDeletes, setPendingDeletes] = useState<Set<string>>(new Set());
+  const [conflictKeys, setConflictKeys] = useState<string[]>([]);
 
   const refreshData = useCallback(async () => {
     const newData = await getGroupTimetableGrid(groupLabel);
@@ -191,34 +193,44 @@ export function GroupTimetableGrid({
       }
     }
 
-    // 충돌이 있으면 한 번만 확인
+    // 충돌이 있으면 모달로 확인
     if (conflictKeys.length > 0) {
       setSaving(false);
-      const ok = window.confirm(
-        `선생님이 같은 시간에 이미 다른 반에 배정되어 있습니다.\n통합 수업으로 함께 배정하시겠습니까?`
-      );
-      if (!ok) {
-        await refreshData();
-        router.refresh();
-        return;
-      }
-      setSaving(true);
-      for (const key of conflictKeys) {
-        const [classId, periodId, dayStr] = key.split("|");
-        const pending = pendingChanges.get(key)!;
-        const result = await setClassScheduleSlot(
-          classId, periodId, parseInt(dayStr, 10),
-          buildAssignments(pending.teacherIds.map((id) => id ?? ""), pending.label, pending.textbookId),
-          true,
-        );
-        if (result.error) { setError(result.error); setSaving(false); return; }
-      }
+      setConflictKeys(conflictKeys);
+      return;
     }
 
     setPendingChanges(new Map());
     await refreshData();
     router.refresh();
     setSaving(false);
+  }
+
+  async function handleConfirmMerge() {
+    const keys = conflictKeys;
+    setConflictKeys([]);
+    setSaving(true);
+    for (const key of keys) {
+      const [classId, periodId, dayStr] = key.split("|");
+      const pending = pendingChanges.get(key);
+      if (!pending) continue;
+      const result = await setClassScheduleSlot(
+        classId, periodId, parseInt(dayStr, 10),
+        buildAssignments(pending.teacherIds.map((id) => id ?? ""), pending.label, pending.textbookId),
+        true,
+      );
+      if (result.error) { setError(result.error); setSaving(false); return; }
+    }
+    setPendingChanges(new Map());
+    await refreshData();
+    router.refresh();
+    setSaving(false);
+  }
+
+  async function handleCancelMerge() {
+    setConflictKeys([]);
+    await refreshData();
+    router.refresh();
   }
 
   function handleToggleDelete(scheduleIds: string[]) {
@@ -420,7 +432,7 @@ export function GroupTimetableGrid({
                 <td className="py-0 px-3 border-r align-top">
                   <div className="py-2">
                     <div className="font-medium text-foreground text-xs">{period.name}</div>
-                    <div className="text-[10px] text-muted-foreground">
+                    <div className="text-sm text-muted-foreground">
                       {period.start_time.slice(0, 5)}~{period.end_time.slice(0, 5)}
                     </div>
                   </div>
@@ -449,6 +461,17 @@ export function GroupTimetableGrid({
           </tbody>
         </table>
       </div>
+
+      <ConfirmDialog
+        open={conflictKeys.length > 0}
+        title="통합 수업으로 배정하시겠습니까?"
+        description={`선생님이 같은 시간에 이미 다른 반에 배정되어 있습니다.\n통합 수업으로 함께 배정하시겠습니까?`}
+        confirmLabel="통합 배정"
+        cancelLabel="취소"
+        variant="primary"
+        onConfirm={handleConfirmMerge}
+        onCancel={handleCancelMerge}
+      />
     </div>
   );
 }
@@ -496,7 +519,7 @@ function PeriodDayGrid({
             key={day}
             type="button"
             onClick={() => onCellToggle(classId, periodId, day)}
-            className={`w-full text-left px-2 py-1 text-[10px] border-b last:border-b-0 font-medium transition-colors ring-2 ring-amber-400 ring-inset ${bgText}`}
+            className={`w-full text-left px-2 py-1 text-sm border-b last:border-b-0 font-medium transition-colors ring-2 ring-amber-400 ring-inset ${bgText}`}
             style={{ height: "24px" }}
           >
             <span className="truncate block leading-4">{display}</span>
@@ -509,7 +532,7 @@ function PeriodDayGrid({
             type="button"
             onClick={() => onCellToggle(classId, periodId, day)}
             disabled={loading}
-            className={`w-full text-left px-2 py-1 text-[11px] border-b last:border-b-0 transition-colors cursor-pointer ${DAY_COLORS[day].bg} hover:brightness-95`}
+            className={`w-full text-left px-2 py-1 text-sm border-b last:border-b-0 transition-colors cursor-pointer ${DAY_COLORS[day].bg} hover:brightness-95`}
             style={{ height: "24px" }}
           >
             <span className={`${DAY_COLORS[day].text} opacity-40`}>{DAY_LABELS[day - 1]}</span>
@@ -528,7 +551,7 @@ function PeriodDayGrid({
               key={d}
               type="button"
               onClick={() => onDeleteToggle(cell.scheduleIds)}
-              className="w-full text-left px-2 py-1 text-[11px] border-b last:border-b-0 bg-red-50 transition-colors"
+              className="w-full text-left px-2 py-1 text-sm border-b last:border-b-0 bg-red-50 transition-colors"
               style={{ height: "24px" }}
               title="클릭하여 삭제 취소"
             >
@@ -572,7 +595,7 @@ function PeriodDayGrid({
             style={{ height: `${pendingHeight}px` }}
             onClick={() => onCellToggle(classId, periodId, cell.startDay)}
           >
-            <div className={`flex flex-col items-center justify-center h-full px-1 py-0.5 text-[10px] font-medium ${pendingBgClass} hover:brightness-95 transition-colors overflow-hidden`}>
+            <div className={`flex flex-col items-center justify-center h-full px-1 py-0.5 text-sm font-medium ${pendingBgClass} hover:brightness-95 transition-colors overflow-hidden`}>
               <span className="truncate block leading-4 text-center">
                 {[pendingNames, pending.label].filter(Boolean).join(" ") || "—"}
               </span>
@@ -607,7 +630,7 @@ function PeriodDayGrid({
             onClick={() => onCellToggle(classId, periodId, cell.startDay)}
           >
             <div
-              className={`flex flex-col items-center justify-center h-full px-1 py-0.5 text-[10px] font-medium ${existingBgClass} hover:brightness-95 transition-colors overflow-hidden`}
+              className={`flex flex-col items-center justify-center h-full px-1 py-0.5 text-sm font-medium ${existingBgClass} hover:brightness-95 transition-colors overflow-hidden`}
             >
               <span className="truncate block leading-4 text-center">
                 {[teacherNames, sharedLabel].filter(Boolean).join(" ") || <span className="opacity-50">—</span>}
@@ -649,7 +672,7 @@ function PeriodDayGrid({
           key={day}
           type="button"
           onClick={() => onCellToggle(classId, periodId, day)}
-          className={`w-full text-left px-2 py-1 text-[10px] border-b last:border-b-0 font-medium transition-colors ring-2 ring-amber-400 ring-inset ${bgText}`}
+          className={`w-full text-left px-2 py-1 text-sm border-b last:border-b-0 font-medium transition-colors ring-2 ring-amber-400 ring-inset ${bgText}`}
           style={{ height: "24px" }}
         >
           <span className="truncate block leading-4">{display}</span>
@@ -662,7 +685,7 @@ function PeriodDayGrid({
           type="button"
           onClick={() => onCellToggle(classId, periodId, day)}
           disabled={loading}
-          className={`w-full text-left px-2 py-1 text-[11px] border-b last:border-b-0 transition-colors cursor-pointer ${DAY_COLORS[day].bg} hover:brightness-95`}
+          className={`w-full text-left px-2 py-1 text-sm border-b last:border-b-0 transition-colors cursor-pointer ${DAY_COLORS[day].bg} hover:brightness-95`}
           style={{ height: "24px" }}
         >
           <span className={`${DAY_COLORS[day].text} opacity-40`}>{DAY_LABELS[day - 1]}</span>

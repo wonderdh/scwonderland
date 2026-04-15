@@ -2,12 +2,12 @@
 
 import { useActionState, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
+import { toastSuccess } from "@/lib/toast";
 import { createTeacher } from "../../actions";
 import { Spinner } from "@/components/Spinner";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { FormGroup } from "@/components/FormGroup";
 
 type FormState = { error?: string; success?: string } | null;
 
@@ -30,7 +30,7 @@ export function AddTeacherForm() {
       setPassword("");
       setEmailValue("");
       router.refresh();
-      toast.success("교사가 추가되었습니다.");
+      toastSuccess("교사가 추가되었습니다.");
       return { success: "교사가 추가되었습니다." };
     },
     null as FormState
@@ -40,12 +40,9 @@ export function AddTeacherForm() {
     <form
       ref={formRef}
       action={formAction}
-      className="flex flex-wrap items-end gap-3 p-4 rounded-xl border bg-card"
+      className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-5 rounded-xl border bg-card"
     >
-      <div className="min-w-[140px]">
-        <Label htmlFor="teacher-email">
-          아이디 <span className="text-destructive">*</span>
-        </Label>
+      <FormGroup label="아이디" htmlFor="teacher-email" required>
         <Input
           id="teacher-email"
           type="text"
@@ -56,14 +53,10 @@ export function AddTeacherForm() {
           disabled={isPending}
           value={emailValue}
           onChange={(e) => setEmailValue(e.target.value)}
-          className="mt-1"
         />
-      </div>
-      <div className="min-w-[160px]">
-        <Label htmlFor="teacher-password">
-          비밀번호 <span className="text-destructive">*</span>
-        </Label>
-        <div className="mt-1 flex gap-1">
+      </FormGroup>
+      <FormGroup label="비밀번호" htmlFor="teacher-password" required>
+        <div className="flex gap-1">
           <Input
             id="teacher-password"
             type="text"
@@ -79,19 +72,15 @@ export function AddTeacherForm() {
           <Button
             type="button"
             variant="outline"
-            size="sm"
-            className="shrink-0 text-xs"
+            className="shrink-0"
             disabled={isPending}
             onClick={() => setPassword(generatePassword(emailValue))}
           >
             자동생성
           </Button>
         </div>
-      </div>
-      <div className="min-w-[120px]">
-        <Label htmlFor="teacher-name">
-          이름 <span className="text-destructive">*</span>
-        </Label>
+      </FormGroup>
+      <FormGroup label="이름" htmlFor="teacher-name" required>
         <Input
           id="teacher-name"
           type="text"
@@ -99,33 +88,34 @@ export function AddTeacherForm() {
           required
           placeholder="김선생"
           disabled={isPending}
-          className="mt-1"
         />
-      </div>
-      <div className="min-w-[120px]">
-        <Label htmlFor="teacher-type">
-          유형 <span className="text-destructive">*</span>
-        </Label>
+      </FormGroup>
+      <FormGroup label="유형" htmlFor="teacher-type" required>
         <select
           id="teacher-type"
           name="teacher_type"
           required
           disabled={isPending}
-          className="mt-1 flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          className="flex h-11 w-full rounded-md border border-input bg-transparent px-3 text-base shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
         >
           <option value="korean">한국인</option>
           <option value="native">원어민</option>
         </select>
+      </FormGroup>
+
+      <div className="md:col-span-2 lg:col-span-3 flex items-center justify-between pt-2 border-t border-slate-200">
+        <p className="text-sm text-slate-500">* 필수 입력</p>
+        <Button type="submit" disabled={isPending}>
+          {isPending ? (<><Spinner size="sm" /> 추가 중...</>) : "추가"}
+        </Button>
       </div>
-      <Button type="submit" disabled={isPending}>{isPending ? <><Spinner size="sm" /> 추가 중...</> : "추가"}</Button>
-      <p className="w-full text-xs text-muted-foreground">* 필수 입력</p>
       {state?.error && (
-        <p className="w-full text-sm text-destructive" role="alert">
+        <p className="md:col-span-2 lg:col-span-3 text-sm text-destructive" role="alert">
           {state.error}
         </p>
       )}
       {state?.success && (
-        <p className="w-full text-sm text-green-600" role="status">
+        <p className="md:col-span-2 lg:col-span-3 text-sm text-green-600" role="status">
           {state.success}
         </p>
       )}

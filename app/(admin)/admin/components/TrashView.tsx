@@ -4,6 +4,7 @@ import type { UserWithProfile } from "@/lib/types";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { toast } from "sonner";
 
 type Variant = "student" | "teacher";
@@ -22,6 +23,7 @@ export function TrashView({
   const router = useRouter();
   const [pending, setPending] = useState<Record<string, "restore" | "delete" | null>>({});
   const [error, setError] = useState<string | null>(null);
+  const [confirmTarget, setConfirmTarget] = useState<{ id: string; name: string } | null>(null);
 
   const handleRestore = async (userId: string) => {
     setPending((p) => ({ ...p, [userId]: "restore" }));
@@ -36,8 +38,7 @@ export function TrashView({
     router.refresh();
   };
 
-  const handlePermanentDelete = async (userId: string, name: string) => {
-    if (!confirm(`"${name}"을(를) 영구 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없으며, 관련된 모든 데이터(리포트카드, 교재 진도 등)가 함께 삭제됩니다.`)) return;
+  const performPermanentDelete = async (userId: string) => {
     setPending((p) => ({ ...p, [userId]: "delete" }));
     setError(null);
     const result = await onPermanentDelete(userId);
@@ -110,7 +111,7 @@ export function TrashView({
                           variant="outline"
                           size="sm"
                           className="text-destructive border-destructive/30 hover:bg-destructive/10"
-                          onClick={() => handlePermanentDelete(user.id, name)}
+                          onClick={() => setConfirmTarget({ id: user.id, name })}
                           disabled={!!userPending}
                         >
                           {userPending === "delete" ? "삭제 중…" : "영구 삭제"}
@@ -124,6 +125,25 @@ export function TrashView({
           </table>
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!confirmTarget}
+        title={confirmTarget ? `"${confirmTarget.name}"을(를) 영구 삭제하시겠습니까?` : ""}
+        confirmLabel="영구 삭제"
+        danger
+        impactList={[
+          "관련된 모든 리포트카드, 교재 진도, 시간표 등이 함께 삭제됩니다.",
+          "이 작업은 되돌릴 수 없습니다.",
+        ]}
+        onConfirm={() => {
+          if (confirmTarget) {
+            const id = confirmTarget.id;
+            setConfirmTarget(null);
+            performPermanentDelete(id);
+          }
+        }}
+        onCancel={() => setConfirmTarget(null)}
+      />
     </div>
   );
 }

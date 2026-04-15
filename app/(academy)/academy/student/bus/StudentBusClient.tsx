@@ -107,7 +107,7 @@ export function StudentBusClient({ studentProfileId }: { studentProfileId: strin
     setSubmitting(false);
   }
 
-  if (loading) return <LoadingState />;
+  if (loading) return <LoadingState label="승하차 정보 불러오는 중..." />;
 
   // 오늘 날짜 & 요일 계산
   const now = new Date();

@@ -11,6 +11,8 @@ import {
   shouldShowNote,
   type AttendanceStatus,
 } from "@/lib/constants/attendance";
+import { LoadingState } from "@/components/LoadingState";
+import { StatusBadge } from "@/components/StatusBadge";
 
 type StudentItem = {
   id: string;
@@ -151,11 +153,9 @@ export function AdminAttendanceClient({
 
                   <div className="flex-1 overflow-y-auto px-6 py-4 pb-24">
                     {loading ? (
-                      <div className="flex items-center justify-center py-12">
-                        <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                      </div>
+                      <LoadingState label="반 출결 불러오는 중" />
                     ) : students.length === 0 ? (
-                      <p className="text-muted-foreground text-sm text-center py-12">등록된 학생이 없습니다.</p>
+                      <p className="text-muted-foreground text-base text-center py-12">등록된 학생이 없습니다.</p>
                     ) : (
                       <div className="space-y-2">
                         {students.map((student) => {
@@ -171,31 +171,37 @@ export function AdminAttendanceClient({
                             >
                               <div className="flex items-center gap-3">
                                 <div className="flex items-center gap-2 min-w-0 flex-1">
-                                  <span className={`text-xs px-1.5 py-0.5 rounded border font-medium shrink-0 ${ageColor.bg} ${ageColor.text} ${ageColor.border}`}>
+                                  <span className={`text-sm px-2 py-0.5 rounded border font-medium shrink-0 ${ageColor.bg} ${ageColor.text} ${ageColor.border}`}>
                                     {getAgeLabel(student.age)}
                                   </span>
-                                  <span className="text-sm font-medium text-foreground truncate">
+                                  <span className="text-base font-medium text-foreground truncate">
                                     {student.korean_name ?? student.english_name ?? "이름 없음"}
                                   </span>
                                   {/* 저장된 출결 상태 배지 (편집 중이 아닐 때) */}
-                                  {!isPending && mergedStatus && (
-                                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium shrink-0 ${ATTENDANCE_STATUS_CONFIG[mergedStatus as AttendanceStatus]?.activeClass ?? ""}`}>
-                                      {ATTENDANCE_STATUS_CONFIG[mergedStatus as AttendanceStatus]?.label}
-                                    </span>
+                                  {!isPending && mergedStatus && ATTENDANCE_STATUS_CONFIG[mergedStatus as AttendanceStatus] && (
+                                    <StatusBadge
+                                      size="sm"
+                                      config={ATTENDANCE_STATUS_CONFIG[mergedStatus as AttendanceStatus]}
+                                      className="shrink-0"
+                                    />
                                   )}
                                 </div>
                                 <div className="flex gap-1 shrink-0">
                                   {ATTENDANCE_STATUSES.map((key) => {
                                     const cfg = ATTENDANCE_STATUS_CONFIG[key];
+                                    const Icon = cfg.icon;
                                     return (
                                       <button
                                         key={key}
                                         onClick={() => setStudentStatus(student.student_profile_id, key)}
-                                        className={`text-xs px-2 py-1 rounded-md font-medium transition-all ${
+                                        aria-label={cfg.label}
+                                        title={cfg.label}
+                                        className={`inline-flex items-center gap-1 text-sm px-2.5 py-1.5 rounded-md font-medium transition-all ${
                                           mergedStatus === key ? cfg.activeClass : cfg.inactiveClass
                                         }`}
                                       >
-                                        {cfg.label}
+                                        <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+                                        <span>{cfg.label}</span>
                                       </button>
                                     );
                                   })}
@@ -207,7 +213,7 @@ export function AdminAttendanceClient({
                                   value={mergedNote ?? ""}
                                   placeholder="메모 (선택)"
                                   onChange={(e) => setStudentNote(student.student_profile_id, e.target.value)}
-                                  className="text-xs border border-input rounded px-2 py-1 bg-background w-full focus:outline-none focus:ring-1 focus:ring-primary"
+                                  className="text-sm border border-input rounded px-2 py-1.5 bg-background w-full focus:outline-none focus:ring-1 focus:ring-primary"
                                 />
                               )}
                             </div>

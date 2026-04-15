@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import type { BusNumber, BusTimeSlot, BusStop, BusDefaultAssignment } from "@/lib/types";
 import {
   getBulkBusDefaults,
@@ -61,18 +62,28 @@ export function BusAssignmentManager({
     setStops(data);
   }, []);
 
+  const [filterChangeConfirm, setFilterChangeConfirm] = useState<{ open: boolean; setter?: () => void }>({ open: false });
+
   // 필터 변경 시 미저장 경고
   const changingFilter = useRef(false);
   const guardedSetFilter = useCallback(
     (setter: () => void) => {
       if (hasChanges) {
-        if (!confirm("저장하지 않은 변경사항이 있습니다. 계속하시겠습니까?")) return;
+        setFilterChangeConfirm({ open: true, setter });
+        return;
       }
       changingFilter.current = true;
       setter();
     },
     [hasChanges]
   );
+
+  function confirmFilterChange() {
+    const setter = filterChangeConfirm.setter;
+    setFilterChangeConfirm({ open: false });
+    changingFilter.current = true;
+    setter?.();
+  }
 
   useEffect(() => {
     fetchAssignments();
@@ -421,6 +432,16 @@ export function BusAssignmentManager({
           </div>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={filterChangeConfirm.open}
+        variant="primary"
+        title="저장하지 않은 변경사항이 있습니다"
+        description="계속하면 지금까지의 변경이 사라집니다. 계속하시겠습니까?"
+        confirmLabel="계속"
+        onConfirm={confirmFilterChange}
+        onCancel={() => setFilterChangeConfirm({ open: false })}
+      />
     </div>
   );
 }

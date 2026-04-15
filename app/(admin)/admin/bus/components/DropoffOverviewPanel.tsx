@@ -123,7 +123,7 @@ export function FullOverviewPanel() {
     setDownloading(false);
   }, [slots, activeSlot]);
 
-  if (loading) return <LoadingState className="py-8" />;
+  if (loading) return <LoadingState label="하원표 불러오는 중..." className="py-8" />;
 
   const dirSlots = slots;
 

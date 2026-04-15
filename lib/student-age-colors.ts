@@ -16,10 +16,10 @@ export type AgeColorSet = {
 };
 
 // 완전한 클래스명 리터럴 (Tailwind purge 대응)
-const AGE_5: AgeColorSet = { bg: "bg-pink-100", text: "text-pink-700", border: "border-pink-200" };
-const AGE_6: AgeColorSet = { bg: "bg-sky-100", text: "text-sky-700", border: "border-sky-200" };
-const AGE_7: AgeColorSet = { bg: "bg-emerald-100", text: "text-emerald-700", border: "border-emerald-200" };
-const AGE_DEFAULT: AgeColorSet = { bg: "bg-slate-100", text: "text-slate-600", border: "border-slate-200" };
+const AGE_5: AgeColorSet = { bg: "bg-pink-200", text: "text-pink-900", border: "border-pink-300" };
+const AGE_6: AgeColorSet = { bg: "bg-sky-200", text: "text-sky-900", border: "border-sky-300" };
+const AGE_7: AgeColorSet = { bg: "bg-emerald-200", text: "text-emerald-900", border: "border-emerald-300" };
+const AGE_DEFAULT: AgeColorSet = { bg: "bg-slate-200", text: "text-slate-900", border: "border-slate-300" };
 
 export function getAgeColor(age: number | null | undefined): AgeColorSet {
   switch (age) {

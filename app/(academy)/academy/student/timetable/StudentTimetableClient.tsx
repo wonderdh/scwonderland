@@ -115,7 +115,7 @@ export function StudentTimetableClient({
   }, [classRows]);
 
   if (loading) {
-    return <LoadingState />;
+    return <LoadingState label="시간표 불러오는 중..." />;
   }
 
   return (

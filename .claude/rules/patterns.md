@@ -6,6 +6,13 @@ paths:
 
 # Important Patterns
 
+## 로딩 / 확인 / 토스트 패턴
+
+- **로딩**: `<Spinner />` 단독 사용 금지 (인라인 버튼 제외). 섹션 로딩은 `<LoadingState label="..." />` (label 필수).
+- **삭제 확인**: `window.confirm()` 금지. 모든 삭제·민감 액션은 `<ConfirmDialog>` 사용. 영향 범위가 있으면 `impactList` prop으로 명시.
+- **토스트**: `lib/toast.ts`의 `toastSuccess`/`toastError` 사용 권장 (sonner 직접 import도 허용). 에러 토스트는 `closeButton + duration 8s`.
+- **상태 표시**: 색만으로 의미 전달 금지. `<StatusBadge config={CONFIG.X} />` 사용 — config는 `lib/constants/attendance.ts` 또는 `lib/constants/bus.ts`에서 가져옴 (label·icon·badgeClass 포함).
+
 ## Routing (lib/menu-routes.ts)
 
 모든 (site) 라우트 매핑이 중앙 관리됨:

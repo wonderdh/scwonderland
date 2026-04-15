@@ -1,0 +1,23 @@
+import { Hourglass, Check, X } from "lucide-react";
+import type { ComponentType } from "react";
+
+export const BUS_REQUEST_STATUS_CONFIG: Record<"pending" | "approved" | "rejected", {
+  label: string;
+  icon: ComponentType<{ className?: string }>;
+  badgeClass: string;
+  ariaLabel: string;
+}> = {
+  pending:  { label: "대기",   icon: Hourglass, badgeClass: "bg-amber-100 text-amber-800 border border-amber-300",     ariaLabel: "대기 중" },
+  approved: { label: "승인",   icon: Check,     badgeClass: "bg-emerald-100 text-emerald-800 border border-emerald-300", ariaLabel: "승인됨" },
+  rejected: { label: "거부",   icon: X,         badgeClass: "bg-red-100 text-red-800 border border-red-300",           ariaLabel: "거부됨" },
+};
+
+export const BUS_CHANGE_TYPE_CONFIG: Record<"change" | "no_ride" | "absent", {
+  label: string;
+  icon: ComponentType<{ className?: string }>;
+  badgeClass: string;
+}> = {
+  change:  { label: "변경",   icon: Check,     badgeClass: "bg-blue-100 text-blue-800 border border-blue-300" },
+  no_ride: { label: "미탑승", icon: X,         badgeClass: "bg-orange-100 text-orange-800 border border-orange-300" },
+  absent:  { label: "결석",   icon: X,         badgeClass: "bg-red-100 text-red-800 border border-red-300" },
+};

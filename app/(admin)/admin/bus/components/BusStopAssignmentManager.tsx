@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import type { BusNumber, BusStop, BusTimeSlot } from "@/lib/types";
 import {
   listBusStopDayAssignments,
@@ -66,6 +67,15 @@ export function BusStopAssignmentManager({
   // UI
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
+  const [filterChangeConfirm, setFilterChangeConfirm] = useState<{ open: boolean; setter?: () => void }>({ open: false });
+  const [copyTimeConfirm, setCopyTimeConfirm] = useState<{
+    open: boolean;
+    stopId?: string;
+    day?: number;
+    time?: string;
+    slotId?: string;
+    dayLabel?: string;
+  }>({ open: false });
   const [saving, setSaving] = useState(false);
   const [dragOverTarget, setDragOverTarget] = useState<string | null>(null);
 
@@ -131,11 +141,18 @@ export function BusStopAssignmentManager({
 
   function guardFilterChange(setter: () => void) {
     if (hasChanges) {
-      if (!confirm("저장하지 않은 변경사항이 있습니다. 계속하시겠습니까?")) return;
-      setDayAssignments(new Map(serverAssignments.current.entries().map(([k, v]) => [k, { ...v }])));
-      setScheduleMap(new Map(serverSchedules.current));
+      setFilterChangeConfirm({ open: true, setter });
+      return;
     }
     setter();
+  }
+
+  function confirmFilterChange() {
+    const setter = filterChangeConfirm.setter;
+    setFilterChangeConfirm({ open: false });
+    setDayAssignments(new Map(serverAssignments.current.entries().map(([k, v]) => [k, { ...v }])));
+    setScheduleMap(new Map(serverSchedules.current));
+    setter?.();
   }
 
   // ── Derived: get ordered stops for a bus ──
@@ -319,10 +336,14 @@ export function BusStopAssignmentManager({
       return;
     }
     const dayLabel = DAYS.find((d) => d.value === day)?.label ?? "";
-    if (!confirm(`${dayLabel}요일 시간(${time})을 전체 요일에 동일하게 적용하시겠습니까?\n(현재 요일 시간이 미저장이면 먼저 저장해 주세요)`)) return;
+    setCopyTimeConfirm({ open: true, stopId, day, time, slotId: timeSlotId || undefined, dayLabel });
+  }
 
+  async function confirmCopyTime() {
+    const { stopId, day, time, slotId } = copyTimeConfirm;
+    setCopyTimeConfirm({ open: false });
+    if (!stopId || !day || !time) return;
     setLoading(true);
-    const slotId = timeSlotId || undefined;
     const errors: string[] = [];
     for (const d of DAYS) {
       if (d.value === day) continue;
@@ -657,12 +678,12 @@ export function BusStopAssignmentManager({
                           <p className="text-xs font-semibold text-amber-700">⚠ 충돌 발생 — 아래 정류장이 다른 호차로 이동됩니다</p>
                           {allConflicts.map(({ day: d, conflicts }) => (
                             <div key={d}>
-                              <p className="text-[11px] font-medium text-amber-600 mb-1">
+                              <p className="text-xs font-medium text-amber-600 mb-1">
                                 {DAYS.find((x) => x.value === d)?.label}요일
                               </p>
                               <div className="space-y-0.5">
                                 {conflicts.map((c) => (
-                                  <div key={c.stopId} className="flex items-center gap-1.5 text-[11px] text-amber-700">
+                                  <div key={c.stopId} className="flex items-center gap-1.5 text-xs text-amber-700">
                                     <span className="text-amber-400">📍</span>
                                     <span className="font-medium">{c.stopName}</span>
                                     <span className="text-amber-400">:</span>
@@ -716,6 +737,26 @@ export function BusStopAssignmentManager({
           </div>
         </>
       )}
+
+      <ConfirmDialog
+        open={copyTimeConfirm.open}
+        variant="primary"
+        title={`${copyTimeConfirm.dayLabel ?? ""}요일 시간(${copyTimeConfirm.time ?? ""})을 전체 요일에 적용할까요?`}
+        description="현재 요일 시간이 미저장이면 먼저 저장해 주세요."
+        confirmLabel="적용"
+        onConfirm={confirmCopyTime}
+        onCancel={() => setCopyTimeConfirm({ open: false })}
+      />
+
+      <ConfirmDialog
+        open={filterChangeConfirm.open}
+        variant="primary"
+        title="저장하지 않은 변경사항이 있습니다"
+        description="계속하면 지금까지의 변경이 사라집니다. 계속하시겠습니까?"
+        confirmLabel="계속"
+        onConfirm={confirmFilterChange}
+        onCancel={() => setFilterChangeConfirm({ open: false })}
+      />
     </div>
   );
 }
@@ -762,7 +803,7 @@ function StopRow({
       <button
         onClick={onCopyAllDays}
         title="이 시간을 월~금 전체 요일에 동일하게 적용합니다"
-        className="text-[10px] text-slate-400 hover:text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap"
+        className="text-xs text-slate-400 hover:text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap"
       >
         전체 요일 적용
       </button>

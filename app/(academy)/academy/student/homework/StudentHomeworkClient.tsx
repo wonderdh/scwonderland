@@ -96,7 +96,7 @@ export function StudentHomeworkClient({
   };
 
   if (loading) {
-    return <LoadingState />;
+    return <LoadingState label="숙제 불러오는 중..." />;
   }
 
   // Detail view

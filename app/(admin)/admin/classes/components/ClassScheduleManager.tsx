@@ -335,8 +335,8 @@ export function ClassScheduleManager({
                   <div key={group}>
                     <div className={`flex items-center gap-1.5 rounded px-2 py-1 mb-1 ${style.sectionBg}`}>
                       <span className="text-xs leading-none">{style.icon}</span>
-                      <span className={`text-[11px] font-semibold ${style.sectionText}`}>{label}</span>
-                      <span className={`ml-auto rounded-full px-1.5 py-0.5 text-[10px] font-medium ${style.countBg}`}>
+                      <span className={`text-xs font-semibold ${style.sectionText}`}>{label}</span>
+                      <span className={`ml-auto rounded-full px-1.5 py-0.5 text-xs font-medium ${style.countBg}`}>
                         {groupClasses.length}
                       </span>
                     </div>
@@ -362,7 +362,7 @@ export function ClassScheduleManager({
                               return (
                                 <span
                                   key={t.profile_id}
-                                  className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium ${
+                                  className={`inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium ${
                                     selectedClassId === c.id
                                       ? "bg-white/20 text-white"
                                       : `${color?.bg ?? "bg-slate-200"} ${color?.text ?? "text-slate-700"}`
@@ -512,7 +512,7 @@ export function ClassScheduleManager({
 
               {/* 시간표 그리드 */}
               {loading ? (
-                <LoadingState className="py-4" />
+                <LoadingState label="시간표 불러오는 중..." className="py-4" />
               ) : classPeriods.length === 0 ? (
                 <div className="rounded-xl border border-dashed bg-slate-50/50 p-8 text-center text-sm text-muted-foreground">
                   이 그룹에 등록된 교시가 없습니다.
@@ -540,7 +540,7 @@ export function ClassScheduleManager({
                         <tr key={period.id} className="border-b last:border-b-0">
                           <td className="py-2 px-3 border-r align-middle">
                             <div className="font-medium text-foreground text-xs">{period.name}</div>
-                            <div className="text-[10px] text-muted-foreground">
+                            <div className="text-xs text-muted-foreground">
                               {period.start_time.slice(0, 5)}~{period.end_time.slice(0, 5)}
                             </div>
                           </td>
@@ -582,7 +582,7 @@ export function ClassScheduleManager({
                                     onClick={() => handleCellToggle(period.id, day)}
                                   >
                                     {existing.label && (
-                                      <span className={`block text-[10px] text-muted-foreground mb-0.5 ${isPendingDelete ? "line-through opacity-50" : ""}`}>
+                                      <span className={`block text-xs text-muted-foreground mb-0.5 ${isPendingDelete ? "line-through opacity-50" : ""}`}>
                                         {existing.label}
                                       </span>
                                     )}
@@ -604,7 +604,7 @@ export function ClassScheduleManager({
                                     <button
                                       type="button"
                                       onClick={(e) => { e.stopPropagation(); handleDeleteCell(existing.scheduleId); }}
-                                      className={`absolute -top-1.5 -right-1.5 items-center justify-center w-5 h-5 rounded-full text-white text-[10px] shadow-sm ${
+                                      className={`absolute -top-1.5 -right-1.5 items-center justify-center w-5 h-5 rounded-full text-white text-xs shadow-sm ${
                                         isPendingDelete
                                           ? "flex bg-red-600 hover:bg-red-700"
                                           : "hidden group-hover:flex bg-red-500 hover:bg-red-600"

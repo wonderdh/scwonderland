@@ -10,6 +10,10 @@ import type { Notice, NoticeAttachment } from "@/lib/types";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { Check, Clock, ImagePlus, Paperclip, Pin } from "lucide-react";
+import { PageHeader } from "@/components/PageHeader";
+import { FormGroup } from "@/components/FormGroup";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 
 type NoticeWithCounts = Notice & {
   image_count: number;
@@ -58,16 +62,19 @@ export function NoticesManager({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-4">
-        <h1 className="text-2xl font-semibold text-slate-800">공지사항 관리</h1>
-        <button
-          type="button"
-          onClick={() => setCreateOpen(true)}
-          className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500 transition-colors"
-        >
-          + 공지 추가
-        </button>
-      </div>
+      <PageHeader
+        title="공지사항 관리"
+        description="홈페이지에 노출되는 공지사항을 작성·수정하고 이미지와 파일을 첨부하세요."
+        actions={
+          <button
+            type="button"
+            onClick={() => setCreateOpen(true)}
+            className="h-11 rounded-lg bg-emerald-600 px-5 text-base font-semibold text-white hover:bg-emerald-500 transition-colors"
+          >
+            + 공지 추가
+          </button>
+        }
+      />
 
       {/* 필터 */}
       <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white p-4">
@@ -129,33 +136,37 @@ export function NoticesManager({
                 {/* 고정 아이콘 */}
                 <div className="w-5 shrink-0">
                   {n.is_pinned && (
-                    <svg
-                      className="w-4 h-4 text-amber-500"
-                      fill="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z" />
-                    </svg>
+                    <Pin className="w-5 h-5 text-amber-500" aria-hidden="true" />
                   )}
                 </div>
 
                 {/* 내용 */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <h3 className="text-sm font-semibold text-slate-800 truncate">
+                    <h3 className="text-base font-semibold text-slate-800 truncate">
                       {n.title}
                     </h3>
                     <span
-                      className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                      className={`shrink-0 inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-sm font-medium ${
                         n.is_published
                           ? "bg-emerald-100 text-emerald-700"
                           : "bg-slate-100 text-slate-500"
                       }`}
                     >
-                      {n.is_published ? "게시" : "미게시"}
+                      {n.is_published ? (
+                        <>
+                          <Check className="h-3.5 w-3.5" aria-hidden="true" />
+                          게시
+                        </>
+                      ) : (
+                        <>
+                          <Clock className="h-3.5 w-3.5" aria-hidden="true" />
+                          미게시
+                        </>
+                      )}
                     </span>
                   </div>
-                  <div className="mt-1 flex items-center gap-3 text-xs text-slate-400">
+                  <div className="mt-1 flex items-center gap-3 text-sm text-slate-500">
                     <time>{n.published_at?.slice(0, 10)}</time>
                     {n.image_count > 0 && <span>이미지 {n.image_count}</span>}
                     {n.attachment_count > 0 && (
@@ -165,18 +176,18 @@ export function NoticesManager({
                 </div>
 
                 {/* 액션 */}
-                <div className="flex gap-1.5 shrink-0">
+                <div className="flex gap-2 shrink-0">
                   <button
                     type="button"
                     onClick={() => handleEdit(n)}
-                    className="rounded bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-200 transition-colors"
+                    className="h-10 rounded-lg bg-slate-100 px-4 text-sm font-medium text-slate-700 hover:bg-slate-200 transition-colors"
                   >
                     수정
                   </button>
                   <button
                     type="button"
                     onClick={() => setDeleteTarget(n)}
-                    className="rounded bg-red-50 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-100 transition-colors"
+                    className="h-10 rounded-lg bg-red-50 px-4 text-sm font-medium text-red-600 hover:bg-red-100 transition-colors"
                   >
                     삭제
                   </button>
@@ -220,22 +231,40 @@ export function NoticesManager({
           }}
         />
       )}
-      {deleteTarget && (
-        <ConfirmDeleteModal
-          notice={deleteTarget}
-          onClose={() => setDeleteTarget(null)}
-          onConfirm={async () => {
-            const result = await deleteNotice(deleteTarget.id);
-            if (result?.error) {
-              toast.error(result.error);
-              return;
-            }
-            setDeleteTarget(null);
-            toast.success("공지사항이 삭제되었습니다.");
-            router.refresh();
-          }}
-        />
-      )}
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        title="공지 삭제"
+        description={
+          deleteTarget ? `"${deleteTarget.title}" 공지를 삭제할까요?` : undefined
+        }
+        danger
+        confirmLabel="삭제"
+        impactList={
+          deleteTarget
+            ? [
+                ...(deleteTarget.image_count > 0
+                  ? [`첨부 이미지 ${deleteTarget.image_count}개가 함께 삭제됩니다.`]
+                  : []),
+                ...(deleteTarget.attachment_count > 0
+                  ? [`첨부 파일 ${deleteTarget.attachment_count}개가 함께 삭제됩니다.`]
+                  : []),
+                "이 작업은 되돌릴 수 없습니다.",
+              ]
+            : undefined
+        }
+        onConfirm={async () => {
+          if (!deleteTarget) return;
+          const result = await deleteNotice(deleteTarget.id);
+          if (result?.error) {
+            toast.error(result.error);
+            return;
+          }
+          setDeleteTarget(null);
+          toast.success("공지사항이 삭제되었습니다.");
+          router.refresh();
+        }}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   );
 }
@@ -411,59 +440,41 @@ function NoticeFormModal({
           )}
 
           {/* 제목 */}
-          <div>
-            <label
-              htmlFor="nf-title"
-              className="mb-1 block text-sm font-medium text-slate-700"
-            >
-              제목 *
-            </label>
+          <FormGroup label="제목" required htmlFor="nf-title">
             <input
               id="nf-title"
               type="text"
               value={form.title}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-slate-800"
+              className="w-full h-11 rounded-lg border border-slate-200 px-3 text-base text-slate-800"
               placeholder="공지사항 제목"
               required
             />
-          </div>
+          </FormGroup>
 
           {/* 내용 */}
-          <div>
-            <label
-              htmlFor="nf-content"
-              className="mb-1 block text-sm font-medium text-slate-700"
-            >
-              내용
-            </label>
+          <FormGroup label="내용" htmlFor="nf-content">
             <textarea
               id="nf-content"
               value={form.content}
               onChange={(e) => setForm({ ...form, content: e.target.value })}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-slate-800"
+              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-base text-slate-800"
               rows={8}
               placeholder="공지사항 내용을 입력하세요"
             />
-          </div>
+          </FormGroup>
 
           {/* 요약 */}
-          <div>
-            <label
-              htmlFor="nf-excerpt"
-              className="mb-1 block text-sm font-medium text-slate-700"
-            >
-              요약
-            </label>
+          <FormGroup label="요약" htmlFor="nf-excerpt" help="비워두면 내용 첫 100자가 사용됩니다.">
             <input
               id="nf-excerpt"
               type="text"
               value={form.excerpt}
               onChange={(e) => setForm({ ...form, excerpt: e.target.value })}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-slate-800"
-              placeholder="비워두면 내용 첫 100자가 사용됩니다"
+              className="w-full h-11 rounded-lg border border-slate-200 px-3 text-base text-slate-800"
+              placeholder="예: 이번 주 중요 공지"
             />
-          </div>
+          </FormGroup>
 
           {/* 옵션 */}
           <div className="flex items-center gap-6">
@@ -493,7 +504,7 @@ function NoticeFormModal({
 
           {/* 이미지 */}
           <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">
+            <label className="mb-2 block text-base font-medium text-slate-800">
               이미지
             </label>
 
@@ -580,22 +591,11 @@ function NoticeFormModal({
             <button
               type="button"
               onClick={() => imageInputRef.current?.click()}
-              className="flex items-center gap-2 rounded-lg border-2 border-dashed border-slate-300 px-4 py-2 text-sm text-slate-500 hover:border-slate-400 hover:text-slate-600 transition-colors"
+              className="flex w-full min-h-[120px] flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-slate-300 px-4 py-4 text-slate-500 hover:border-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-colors"
             >
-              <svg
-                className="h-4 w-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={1.5}
-                  d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0022.5 18.75V5.25A2.25 2.25 0 0020.25 3H3.75A2.25 2.25 0 001.5 5.25v13.5A2.25 2.25 0 003.75 21z"
-                />
-              </svg>
-              이미지 추가 (JPG, PNG, WebP / 10MB)
+              <ImagePlus className="h-7 w-7" aria-hidden="true" />
+              <span className="text-base font-medium">이미지 끌어놓기 또는 클릭하여 추가</span>
+              <span className="text-sm text-slate-500">JPG, PNG, WebP · 개당 최대 10MB</span>
             </button>
             <input
               ref={imageInputRef}
@@ -609,7 +609,7 @@ function NoticeFormModal({
 
           {/* 첨부파일 */}
           <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">
+            <label className="mb-2 block text-base font-medium text-slate-800">
               첨부파일
             </label>
 
@@ -666,22 +666,11 @@ function NoticeFormModal({
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="flex items-center gap-2 rounded-lg border-2 border-dashed border-slate-300 px-4 py-2 text-sm text-slate-500 hover:border-slate-400 hover:text-slate-600 transition-colors"
+              className="flex w-full min-h-[120px] flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-slate-300 px-4 py-4 text-slate-500 hover:border-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-colors"
             >
-              <svg
-                className="h-4 w-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={1.5}
-                  d="M18.375 12.739l-7.693 7.693a4.5 4.5 0 01-6.364-6.364l10.94-10.94A3 3 0 1119.5 7.372L8.552 18.32m.009-.01l-.01.01m5.699-9.941l-7.81 7.81a1.5 1.5 0 002.112 2.13"
-                />
-              </svg>
-              파일 추가 (PDF, ZIP, DOCX, XLSX / 20MB)
+              <Paperclip className="h-7 w-7" aria-hidden="true" />
+              <span className="text-base font-medium">파일 끌어놓기 또는 클릭하여 추가</span>
+              <span className="text-sm text-slate-500">PDF, ZIP, DOCX, XLSX · 개당 최대 20MB</span>
             </button>
             <input
               ref={fileInputRef}
@@ -697,14 +686,14 @@ function NoticeFormModal({
             <button
               type="button"
               onClick={onClose}
-              className="rounded-lg bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-200"
+              className="h-11 rounded-lg bg-slate-100 px-5 text-base font-medium text-slate-700 hover:bg-slate-200"
             >
               취소
             </button>
             <button
               type="submit"
               disabled={pending}
-              className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500 disabled:opacity-50"
+              className="h-11 rounded-lg bg-emerald-600 px-5 text-base font-semibold text-white hover:bg-emerald-500 disabled:opacity-50"
             >
               {pending ? "저장 중..." : "저장"}
             </button>
@@ -715,58 +704,3 @@ function NoticeFormModal({
   );
 }
 
-// ──────────────────────────────────────────────
-// ConfirmDeleteModal
-// ──────────────────────────────────────────────
-
-function ConfirmDeleteModal({
-  notice,
-  onClose,
-  onConfirm,
-}: {
-  notice: NoticeWithCounts;
-  onClose: () => void;
-  onConfirm: () => Promise<void>;
-}) {
-  const [pending, setPending] = useState(false);
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div
-        className="absolute inset-0 bg-black/40"
-        onClick={onClose}
-        aria-hidden
-      />
-      <div className="relative w-full max-w-sm rounded-xl border border-slate-200 bg-white p-5 shadow-xl">
-        <h3 className="text-lg font-semibold text-slate-800">공지 삭제</h3>
-        <p className="mt-2 text-sm text-slate-600">
-          &quot;{notice.title}&quot; 공지를 삭제할까요?
-          <br />
-          <span className="text-xs text-slate-400">
-            첨부된 이미지와 파일도 함께 삭제됩니다.
-          </span>
-        </p>
-        <div className="mt-4 flex justify-end gap-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-200"
-          >
-            취소
-          </button>
-          <button
-            type="button"
-            disabled={pending}
-            onClick={async () => {
-              setPending(true);
-              await onConfirm();
-              setPending(false);
-            }}
-            className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-500 disabled:opacity-50"
-          >
-            {pending ? "삭제 중..." : "삭제"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}

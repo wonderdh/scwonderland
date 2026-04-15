@@ -4,7 +4,8 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { toast } from "sonner";
+import { toastSuccess, toastError } from "@/lib/toast";
+import { Info } from "lucide-react";
 import { getAgeColor } from "@/lib/student-age-colors";
 import type { BusStop, BusTimeSlot, StudentBusDefault } from "@/lib/types";
 import { detectAfterschoolSlot } from "@/lib/bus/afterschool-sync";
@@ -227,10 +228,10 @@ export function AdminBusChangeDnD({
   }
 
   async function handleSave() {
-    if (!selectedStudentId) { toast.error("학생을 선택해 주세요."); return; }
-    if (selectedDates.length === 0) { toast.error("날짜를 선택해 주세요."); return; }
-    if (!stopId) { toast.error("정류장을 선택해 주세요."); return; }
-    if (!slotId) { toast.error("시간대를 선택해 주세요."); return; }
+    if (!selectedStudentId) { toastError("학생을 선택해 주세요."); return; }
+    if (selectedDates.length === 0) { toastError("날짜를 선택해 주세요."); return; }
+    if (!stopId) { toastError("정류장을 선택해 주세요."); return; }
+    if (!slotId) { toastError("시간대를 선택해 주세요."); return; }
 
     const changeType = stopMode === "pickup" ? "no_ride" : "change";
     const busNumberId = stopMode === "stop" ? (selectedStopInfo?.bus_number_id ?? undefined) : undefined;
@@ -250,9 +251,9 @@ export function AdminBusChangeDnD({
       );
       setSaving(false);
       if (result.error) {
-        toast.error(result.error);
+        toastError(result.error);
       } else {
-        toast.success(`${result.created}건 등록`);
+        toastSuccess(`${result.created}건 등록`);
         setSelectedDates([]);
         resetAll();
         onChangeCreated?.();
@@ -283,7 +284,7 @@ export function AdminBusChangeDnD({
     setSaving(false);
 
     if (result.error) {
-      toast.error(result.error);
+      toastError(result.error);
     } else {
       // 방과후 연동: 교시 변경 시 enrollment 업데이트
       if (isAfterschoolDay) {
@@ -296,7 +297,7 @@ export function AdminBusChangeDnD({
           await deleteAfterschoolEnrollmentDay(selectedStudentId, dow);
         }
       }
-      toast.success(existingId ? "변경이 수정되었습니다." : "당일 변경이 저장되었습니다.");
+      toastSuccess(existingId ? "변경이 수정되었습니다." : "당일 변경이 저장되었습니다.");
       setSelectedDates([]);
       resetAll();
       onChangeCreated?.();
@@ -310,49 +311,59 @@ export function AdminBusChangeDnD({
     const result = await deleteAdminBusChange(existingId);
     setSaving(false);
     if (result.error) {
-      toast.error(result.error);
+      toastError(result.error);
     } else {
-      toast.success("변경이 삭제되었습니다.");
+      toastSuccess("변경이 삭제되었습니다.");
       resetAll();
       router.refresh();
     }
   }
 
   return (
-    <div className="border rounded-xl bg-slate-50/40 p-4 space-y-4">
+    <div className="border border-slate-200 rounded-xl bg-slate-50/60 p-5 space-y-5">
+      <div className="flex items-start gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-base text-blue-900">
+        <Info className="h-5 w-5 mt-0.5 shrink-0" aria-hidden />
+        <div>
+          <p className="font-semibold">학생을 선택한 뒤 날짜와 정류장을 지정해 당일 하원 변경을 등록할 수 있습니다.</p>
+          <p className="mt-0.5 text-sm text-blue-800">
+            여러 날짜를 한 번에 선택하면 같은 변경 내용이 선택한 날짜에 모두 적용됩니다.
+          </p>
+        </div>
+      </div>
+
       {/* Header: date */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <span className="text-sm font-semibold text-slate-700">당일 변경</span>
+      <div className="flex items-center gap-3 flex-wrap">
+        <span className="text-lg font-semibold text-slate-800">당일 변경</span>
         <MultiDatePicker selected={selectedDates} onSelect={setSelectedDates} />
       </div>
 
       {/* Student search */}
       <div>
-        <label className="text-xs font-medium text-slate-600 block mb-1">학생</label>
+        <label className="text-base font-semibold text-slate-700 block mb-2">학생</label>
         {selectedStudentInfo ? (
           <div className="border rounded-lg bg-white divide-y divide-slate-100">
-            <div className="flex items-center gap-2 p-2.5">
-              <span className={`text-xs px-1.5 py-0.5 rounded font-medium shrink-0 ${getAgeColor(selectedStudentInfo.age).bg} ${getAgeColor(selectedStudentInfo.age).text}`}>
+            <div className="flex items-center gap-2 p-3">
+              <span className={`text-sm px-2 py-0.5 rounded font-medium shrink-0 ${getAgeColor(selectedStudentInfo.age).bg} ${getAgeColor(selectedStudentInfo.age).text}`}>
                 {selectedStudentInfo.age ? `${selectedStudentInfo.age}세` : "-"}
               </span>
-              <span className={`text-sm font-medium ${getAgeColor(selectedStudentInfo.age).text}`}>
+              <span className={`text-lg font-semibold ${getAgeColor(selectedStudentInfo.age).text}`}>
                 {selectedStudentInfo.korean_name || selectedStudentInfo.english_name}
               </span>
               {existingId && (
-                <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-medium">
+                <span className="text-sm bg-amber-100 text-amber-700 px-2 py-0.5 rounded font-medium">
                   수정 모드
                 </span>
               )}
-              {loadingStudent && <span className="text-xs text-slate-400">확인 중...</span>}
+              {loadingStudent && <span className="text-sm text-slate-500">확인 중...</span>}
               <button
                 onClick={resetAll}
-                className="ml-auto text-xs text-slate-400 hover:text-slate-600"
+                className="ml-auto h-9 px-3 text-sm text-slate-600 hover:text-slate-900 rounded-md hover:bg-slate-100"
               >
                 변경
               </button>
             </div>
             {!loadingStudent && (
-              <div className="px-3 py-1.5 text-xs text-slate-500">
+              <div className="px-4 py-2 text-sm text-slate-600">
                 {studentDefault ? (
                   <>
                     평소:{" "}
@@ -370,7 +381,7 @@ export function AdminBusChangeDnD({
                     )}
                   </>
                 ) : (
-                  <span className="text-slate-300">해당 요일 기본 배정 없음</span>
+                  <span className="text-slate-400">해당 요일 기본 배정 없음</span>
                 )}
               </div>
             )}
@@ -381,20 +392,20 @@ export function AdminBusChangeDnD({
               placeholder="학생 이름 검색..."
               value={studentSearch}
               onChange={(e) => setStudentSearch(e.target.value)}
-              className="text-sm"
+              className="text-base"
             />
             {filteredStudents.length > 0 && (
-              <div className="mt-1 border rounded-lg max-h-44 overflow-y-auto divide-y divide-slate-100 bg-white shadow-sm">
+              <div className="mt-1 border border-slate-200 rounded-lg max-h-56 overflow-y-auto divide-y divide-slate-100 bg-white shadow-sm">
                 {filteredStudents.map((s) => (
                   <button
                     key={s.profile_id}
                     onClick={() => handleStudentSelect(s.profile_id)}
-                    className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50 flex items-center gap-2"
+                    className="w-full text-left px-3 py-3 text-base hover:bg-slate-50 flex items-center gap-2"
                   >
-                    <span className={`text-xs px-1.5 py-0.5 rounded font-medium shrink-0 ${getAgeColor(s.age).bg} ${getAgeColor(s.age).text}`}>
+                    <span className={`text-sm px-2 py-0.5 rounded font-medium shrink-0 ${getAgeColor(s.age).bg} ${getAgeColor(s.age).text}`}>
                       {s.age ? `${s.age}세` : "-"}
                     </span>
-                    <span className={getAgeColor(s.age).text}>
+                    <span className={`text-base font-medium ${getAgeColor(s.age).text}`}>
                       {s.korean_name || s.english_name}
                     </span>
                   </button>
@@ -410,16 +421,16 @@ export function AdminBusChangeDnD({
         <>
           {/* Stop mode: 정류장 | 픽업 */}
           <div>
-            <label className="text-xs font-medium text-slate-600 block mb-1">구분</label>
+            <label className="text-base font-semibold text-slate-700 block mb-2">구분</label>
             <div className="flex gap-2">
               {(["stop", "pickup"] as StopMode[]).map((mode) => (
                 <button
                   key={mode}
                   onClick={() => handleStopModeChange(mode)}
-                  className={`px-4 py-1.5 text-sm rounded-lg border font-medium transition-colors ${
+                  className={`h-11 px-5 text-base rounded-lg border font-medium transition-colors ${
                     stopMode === mode
                       ? "bg-slate-700 text-white border-slate-700"
-                      : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                      : "bg-white text-slate-700 border-slate-300 hover:bg-slate-50"
                   }`}
                 >
                   {mode === "stop" ? "정류장" : "픽업"}
@@ -431,7 +442,7 @@ export function AdminBusChangeDnD({
           {/* 방과후 교시 선택 (방과후 등록된 날만 표시) */}
           {isAfterschoolDay && (
             <div>
-              <label className="text-xs font-medium text-slate-600 block mb-1">
+              <label className="text-base font-semibold text-slate-700 block mb-2">
                 방과후 교시
                 <span className="ml-1.5 text-slate-400 font-normal">
                   (기본: {afterschoolToday?.second_period ? "1,2교시" : "1교시"})
@@ -442,10 +453,10 @@ export function AdminBusChangeDnD({
                   <button
                     key={String(second)}
                     onClick={() => handleAfterschoolPeriodSelect(second)}
-                    className={`px-4 py-1.5 text-sm rounded-lg border font-medium transition-colors ${
+                    className={`h-11 px-5 text-base rounded-lg border font-medium transition-colors ${
                       isAfterschoolSlot && (slotId === slot2Id) === second
                         ? "bg-indigo-600 text-white border-indigo-600"
-                        : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                        : "bg-white text-slate-700 border-slate-300 hover:bg-slate-50"
                     }`}
                   >
                     {second ? "1,2교시" : "1교시"}
@@ -457,11 +468,11 @@ export function AdminBusChangeDnD({
 
           {/* Time slot */}
           <div>
-            <label className="text-xs font-medium text-slate-600 block mb-1">시간대</label>
+            <label className="text-base font-semibold text-slate-700 block mb-2">시간대</label>
               <select
                 value={slotId}
                 onChange={(e) => setSlotId(e.target.value)}
-                className="w-full h-9 px-2 border rounded text-sm bg-white"
+                className="w-full h-11 px-3 border border-slate-300 rounded-lg text-base bg-white"
               >
                 <option value="">시간대 선택</option>
                 {dirSlots.map((s) => (
@@ -474,16 +485,16 @@ export function AdminBusChangeDnD({
 
           {/* Stop selection */}
           <div>
-            <label className="text-xs font-medium text-slate-600 block mb-1">
+            <label className="text-base font-semibold text-slate-700 block mb-2">
               {stopMode === "pickup" ? "픽업 정류장" : "정류장"}
             </label>
             {stopId && stopMatchesMode && !stopListOpen ? (
-              <div className="flex items-center gap-2 p-2.5 border rounded-lg bg-slate-50">
-                <span className="text-slate-400">📍</span>
-                <span className="text-sm font-medium text-slate-700">{selectedStopInfo!.name}</span>
+              <div className="flex items-center gap-2 p-3 border border-slate-200 rounded-lg bg-slate-50">
+                <span className="text-slate-500" aria-hidden>📍</span>
+                <span className="text-base font-medium text-slate-800">{selectedStopInfo!.name}</span>
                 <button
                   onClick={() => { setStopId(""); setStopSearch(""); setStopListOpen(true); }}
-                  className="ml-auto text-xs text-slate-400 hover:text-slate-600"
+                  className="ml-auto h-9 px-3 text-sm text-slate-600 hover:text-slate-900 rounded-md hover:bg-slate-100"
                 >
                   변경
                 </button>
@@ -496,21 +507,21 @@ export function AdminBusChangeDnD({
                   onChange={(e) => setStopSearch(e.target.value)}
                   onFocus={() => setStopListOpen(true)}
                   onBlur={() => setTimeout(() => setStopListOpen(false), 150)}
-                  className="text-sm"
+                  className="text-base"
                 />
                 {stopListOpen && (
-                  <div className="mt-1 border rounded-lg max-h-36 overflow-y-auto divide-y divide-slate-100 bg-white shadow-sm absolute w-full z-10">
+                  <div className="mt-1 border border-slate-200 rounded-lg max-h-56 overflow-y-auto divide-y divide-slate-100 bg-white shadow-sm absolute w-full z-10">
                     {filteredStops.length === 0 ? (
-                      <p className="text-xs text-slate-400 py-3 text-center">정류장이 없습니다.</p>
+                      <p className="text-base text-slate-500 py-3 text-center">정류장이 없습니다.</p>
                     ) : (
                       filteredStops.map((s) => (
                         <button
                           key={s.id}
                           onMouseDown={(e) => e.preventDefault()}
                           onClick={() => { setStopId(s.id); setStopSearch(""); setStopListOpen(false); }}
-                          className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50 flex items-center gap-2"
+                          className="w-full text-left px-3 py-3 text-base hover:bg-slate-50 flex items-center gap-2"
                         >
-                          <span className="text-slate-400 shrink-0">📍</span>
+                          <span className="text-slate-500 shrink-0" aria-hidden>📍</span>
                           <span className="flex-1">{s.name}</span>
                         </button>
                       ))
@@ -523,19 +534,20 @@ export function AdminBusChangeDnD({
 
           {/* Memo */}
           <div>
-            <label className="text-xs font-medium text-slate-600 block mb-1">메모 (선택)</label>
+            <label className="text-base font-semibold text-slate-700 block mb-2">메모 (선택)</label>
             <Input
               placeholder="메모 입력..."
               value={reason}
               onChange={(e) => setReason(e.target.value)}
-              className="text-sm"
+              className="text-base"
             />
           </div>
 
           {/* Actions */}
-          <div className="flex gap-2">
+          <div className="flex gap-2 pt-2">
             <Button
-              size="sm"
+              size="default"
+              className="h-11 px-6 text-base"
               onClick={handleSave}
               disabled={
                 saving ||
@@ -551,11 +563,11 @@ export function AdminBusChangeDnD({
               {saving ? "저장 중..." : existingId ? "수정" : "저장"}
             </Button>
             {existingId && (
-              <Button size="sm" variant="destructive" onClick={handleDelete} disabled={saving}>
+              <Button size="default" variant="destructive" className="h-11 px-6 text-base" onClick={handleDelete} disabled={saving}>
                 삭제
               </Button>
             )}
-            <Button size="sm" variant="ghost" onClick={resetAll} disabled={saving}>
+            <Button size="default" variant="ghost" className="h-11 px-5 text-base" onClick={resetAll} disabled={saving}>
               취소
             </Button>
           </div>

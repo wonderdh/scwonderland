@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { UserWithProfile } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { toast } from "sonner";
 
 type UserRowProps = {
@@ -16,6 +17,7 @@ type UserRowProps = {
 export function UserRow({ user, variant, onUpdate, onDelete }: UserRowProps) {
   const [editing, setEditing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   async function handleUpdate(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -32,10 +34,9 @@ export function UserRow({ user, variant, onUpdate, onDelete }: UserRowProps) {
     setEditing(false);
   }
 
-  async function handleDelete(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    if (!confirm("정말 삭제할까요?")) return;
-    const formData = new FormData(e.currentTarget);
+  async function performDelete() {
+    const formData = new FormData();
+    formData.set("id", user.id);
     await onDelete(formData);
   }
 
@@ -137,20 +138,30 @@ export function UserRow({ user, variant, onUpdate, onDelete }: UserRowProps) {
             >
               수정
             </Button>
-            <form className="inline" onSubmit={handleDelete}>
-              <input type="hidden" name="id" value={user.id} />
-              <Button
-                type="submit"
-                variant="outline"
-                size="sm"
-                className="h-7 text-xs text-destructive border-destructive/30 hover:bg-destructive/10"
-              >
-                삭제
-              </Button>
-            </form>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-7 text-xs text-destructive border-destructive/30 hover:bg-destructive/10"
+              onClick={() => setConfirmDelete(true)}
+            >
+              삭제
+            </Button>
           </>
         )}
       </div>
+
+      <ConfirmDialog
+        open={confirmDelete}
+        title="이 사용자를 삭제하시겠습니까?"
+        description="휴지통으로 이동하며, 복원할 수 있습니다."
+        danger
+        onConfirm={() => {
+          setConfirmDelete(false);
+          void performDelete();
+        }}
+        onCancel={() => setConfirmDelete(false)}
+      />
     </li>
   );
 }
