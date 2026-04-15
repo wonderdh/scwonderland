@@ -11,7 +11,7 @@
 | 파일 | URL | 설명 |
 |------|-----|------|
 | [admin-dashboard.md](admin-dashboard.md) | `/admin` | 관리자 대시보드 (통계) |
-| [admin-students.md](admin-students.md) | `/admin/students` | 학생 관리 (프로필·반·시간표·출결·리포트·교재·승하차) |
+| [admin-students.md](admin-students.md) | `/admin/students` | 학생 관리 (4탭: 기본정보/학습&리포트/시간표&출결/승하차) |
 | [admin-teachers.md](admin-teachers.md) | `/admin/teachers` | 교사 관리 (프로필·반·시간표) |
 | [admin-classes.md](admin-classes.md) | `/admin/classes` | 반 관리 (반 CRUD·학생 배정·스케줄) |
 | [admin-textbooks.md](admin-textbooks.md) | `/admin/textbooks` | 교재 관리 (교재 CRUD·진도 관리) |
@@ -19,8 +19,8 @@
 | [admin-academy-notices.md](admin-academy-notices.md) | `/admin/academy-notices` | 학원 내부 공지 관리 |
 | [admin-timetable.md](admin-timetable.md) | `/admin/timetable` | 시간표·교시 관리 |
 | [admin-afterschool.md](admin-afterschool.md) | `/admin/afterschool` | 방과후 프로그램 관리 |
-| [admin-bus.md](admin-bus.md) | `/admin/bus` | 승하차 관리 (8탭: 대시보드·배정·호차·시간대·정류장·직원·변경요청·모니터링) |
-| admin-weekly-sentences | `/admin/weekly-sentences` | 주간 문장 관리 (52주×4레벨 CRUD, 자동/수동 주차, Excel 업로드) |
+| [admin-bus.md](admin-bus.md) | `/admin/bus` | 승하차 관리 (4탭: 오늘운행/변경요청/배정관리/마스터) |
+| admin-weekly-sentences | `/admin/weekly-sentences` | 주간 문장 관리 (48주×3레벨(기초/중급/상급) CRUD, 기초는 Q&A, 자동/수동 주차, Excel 업로드) |
 | admin-reservations | `/admin/reservations` | 예약 현황 (출결/버스 다중 날짜 일괄 예약, 캘린더 히트맵, 목록 CRUD) |
 
 ## Academy 라우트 (`/academy/*`)

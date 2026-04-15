@@ -151,8 +151,8 @@ paths:
 - `getCurrentStudentTextbooks()` — 학생 교재 진도 조회
 
 **weekly-sentence-actions.ts — 주간 문장 (7개):**
-- `getCurrentWeeklySentences()` — 공개 read (RLS), config 조회 → 모드 판정 → 해당 주차 4개 레벨 문장 반환
-- `listAllWeeklySentences()` — 관리자 전체 208행 조회
+- `getCurrentWeeklySentences()` — 공개 read (RLS), config 조회 → 모드 판정 → 해당 주차 3개 레벨(기초/중급/상급) 문장 반환
+- `listAllWeeklySentences()` — 관리자 전체 144행 조회 (48주×3레벨)
 - `upsertWeeklySentence(weekNumber, level, english, korean, example?)` — (week_number, level) 기준 upsert
 - `deleteWeeklySentence(id)` — 단건 삭제
 - `bulkImportWeeklySentences(formData)` — XLSX 업로드 → 시트명↔level 매핑 → 일괄 upsert

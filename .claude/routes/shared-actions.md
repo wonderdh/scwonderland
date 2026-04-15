@@ -329,8 +329,8 @@
 
 | 함수 | 권한 | 테이블 | 설명 |
 |------|------|--------|------|
-| `getCurrentWeeklySentences()` | public (RLS) | `weekly_sentence_config`, `weekly_sentences` | 현재 주차 4개 레벨 문장 조회 (자동/수동 모드 판정) |
-| `listAllWeeklySentences()` | admin | `weekly_sentences` | 전체 208행 조회 |
+| `getCurrentWeeklySentences()` | public (RLS) | `weekly_sentence_config`, `weekly_sentences` | 현재 주차 3개 레벨(기초/중급/상급) 문장 조회 (자동/수동 모드 판정) |
+| `listAllWeeklySentences()` | admin | `weekly_sentences` | 전체 144행 조회 (48주×3레벨) |
 | `upsertWeeklySentence(weekNumber, level, english, korean, example?)` | admin | `weekly_sentences` | 문장 upsert (week_number+level 기준) |
 | `deleteWeeklySentence(id)` | admin | `weekly_sentences` | 단건 삭제 |
 | `bulkImportWeeklySentences(formData)` | admin | `weekly_sentences` | XLSX 업로드 → 시트명↔level 매핑 → 일괄 upsert |

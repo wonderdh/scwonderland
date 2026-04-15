@@ -60,8 +60,8 @@ Supabase Auth Users
     └── afterschool_enrollments (class_id FK, student_profile_id FK, day_of_week, second_period BOOLEAN)
         └── UNIQUE (class_id, student_profile_id, day_of_week)
     │
-    ├── weekly_sentences (week_number 1~52, level 1~4, english, korean, example)
-    │   └── UNIQUE (week_number, level) — 52주×4레벨=208행. RLS: 공개 SELECT
+    ├── weekly_sentences (week_number 1~48, level 1~3 (1=기초/2=중급/3=상급), english, korean, example, answer (기초 Q&A))
+    │   └── UNIQUE (week_number, level) — 48주×3레벨=144행 (기초는 Q&A answer 컬럼). RLS: 공개 SELECT
     └── weekly_sentence_config (싱글톤 id=1, mode: auto|manual, manual_week)
         └── RLS: 공개 SELECT. 랜딩 팝업에서 현재 주차 결정용
 ```

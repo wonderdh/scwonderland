@@ -14,7 +14,7 @@
 |------|------|
 | `students/components/AddStudentForm.tsx` | 학생 추가 폼 (아이디, 비밀번호, 한글/영문 이름, 나이) |
 | `students/components/StudentSelectedView.tsx` | 선택된 학생 정보 카드 (`StudentInfoCard`) |
-| `students/components/StudentTabNav.tsx` | 학생 상세 탭 네비게이션 (info, learning, report, textbook, timetable, attendance, bus) |
+| `students/components/StudentTabNav.tsx` | 학생 상세 탭 네비게이션 (4탭: basic / learning / schedule / bus, URL `?tab=basic\|learning\|schedule\|bus`, legacy tab IDs backwards-compatible) |
 | `students/components/StudentClassesView.tsx` | 학생 소속 반 목록 표시 |
 | `students/components/StudentLearningTab.tsx` | 학습 기록 탭 |
 | `students/components/StudentReportTab.tsx` | 리포트카드 탭 |
@@ -87,7 +87,7 @@
 - `ReportCard`, `ReportCardListItem` from `lib/types`
 - `AttendanceRecord`, `AttendanceStats` from `lib/types`
 - `StudentTimetableRow`, `StudentTimetableCell` from `lib/types`
-- `StudentTabId` = "info" | "learning" | "report" | "textbook" | "timetable" | "attendance" | "bus"
+- `StudentTabId` = "basic" | "learning" | "schedule" | "bus" (legacy "info"/"report"/"textbook"/"timetable"/"attendance" IDs backwards-compatible → basic/learning/schedule)
 
 ## 데이터 흐름
 1. `page.tsx`: `listUsersByRole("student")` → 학생 목록 로드
@@ -106,4 +106,4 @@
 - 삭제 시 `class_teachers`, `class_schedules` 관련 데이터도 정리
 - 학생 이름 표시 시 `getAgeColor(age)` 나이별 색상 적용 필수
 - 서브라우트 `/admin/students/classes`는 "준비 중" 상태
-- 7개 탭으로 학생 상세 정보 관리 (info, learning, report, textbook, timetable, attendance, bus)
+- 4개 탭으로 학생 상세 정보 관리 (basic / learning / schedule / bus) — 내부에 학습·리포트·교재는 learning 탭에 통합, 시간표·출결은 schedule 탭에 통합. Legacy tab IDs(info/report/textbook/timetable/attendance) backwards-compatible

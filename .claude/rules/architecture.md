@@ -25,7 +25,7 @@ app/
 │   ├── teachers/components/    # 교사 전용 컴포넌트 (co-located)
 │   ├── notices/components/     # 공지사항 전용 컴포넌트 (co-located)
 │   ├── academy-notices/        # Academy 포털 공지 관리
-│   ├── weekly-sentences/       # 주간 문장 관리 (52주 × 4레벨, 자동/수동 주차 전환)
+│   ├── weekly-sentences/       # 주간 문장 관리 (48주 × 3레벨 기초·중급·상급, 자동/수동 주차 전환, 기초는 Q&A)
 │   ├── reservations/           # 예약 현황 대시보드 (출결/버스 다중 날짜 일괄 예약 + 캘린더 히트맵)
 │   ├── timetable/              # 시간표 관리
 │   └── bus/                    # 승하차 관리
@@ -88,16 +88,16 @@ CategoryLayout (menuId로 라우팅)
 | 경로 | 페이지 | 기능 |
 |------|--------|------|
 | `/admin` | 대시보드 | 통계 5종 + 네비 카드 |
-| `/admin/students` | 학생 관리 | CRUD, 검색, 7개 탭(정보/학습/리포트/교재/시간표/출결/승하차), 휴지통 |
+| `/admin/students` | 학생 관리 | CRUD, 검색, 4개 탭(기본정보/학습&리포트/시간표&출결/승하차, URL `?tab=basic\|learning\|schedule\|bus`, legacy tab IDs 호환), 휴지통 |
 | `/admin/teachers` | 교사 관리 | CRUD, 검색, 3개 탭(정보/반목록/시간표), 삭제 경고 모달, 휴지통 |
 | `/admin/classes` | 반 관리 | 반 CRUD, 담당 교사 배정(최대 2명), 학생 등록/제거, 교재 배정 |
 | `/admin/textbooks` | 교재 관리 | 교재 CRUD, 커버 이미지(Storage), 반/학생 배정, 진도 관리, 일괄 업데이트 |
 | `/admin/notices` | 공지사항 관리 | 공지 CRUD, 이미지/파일 다중 첨부(Storage), 고정/게시 관리 |
 | `/admin/academy-notices` | Academy 공지 | 포털 내부 공지 CRUD, 첨부파일(Storage) |
-| `/admin/weekly-sentences` | 주간 문장 | 52주×4레벨 문장 CRUD, 자동/수동 주차 전환, Excel 일괄 업로드 |
+| `/admin/weekly-sentences` | 주간 문장 | 48주×3레벨(기초/중급/상급) 문장 CRUD, 기초는 Q&A, 자동/수동 주차 전환, Excel 일괄 업로드 |
 | `/admin/reservations` | 예약 현황 | 출결/버스 다중 날짜 일괄 예약, 캘린더 히트맵, 예약 목록 CRUD |
 | `/admin/timetable` | 시간표 관리 | 그룹별 그리드(유치부/오후반/방과후), 교시 CRUD, 학생 개인 시간표 |
-| `/admin/bus` | 승하차 관리 | 호차 CRUD, 대시보드(일일 매니페스트), 변경요청 승인/거부 |
+| `/admin/bus` | 승하차 관리 | 4개 탭(오늘운행/변경요청/배정관리/마스터), 일일 매니페스트, 변경요청 승인/거부, 마스터(호차/시간대/직원 접힘 카드) |
 
 **보호:** proxy.ts 세션 갱신 → layout.tsx에서 2단계 검증 (인증 확인 + role="admin" 확인)
 

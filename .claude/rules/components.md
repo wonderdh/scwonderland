@@ -19,7 +19,7 @@ paths:
 | `Hero` | `_components/sections/` | 랜딩 히어로 (제목 + CTA + 이미지 그리드) |
 | `MainProgram` | `_components/sections/` | 랜딩 프로그램 카드 5개 (hover 슬라이드 애니메이션) |
 | `ImageWithFallback` | `_components/common/` | 이미지 에러 시 SVG fallback |
-| `WeeklySentencePopup` | `_components/sections/` | 주간 문장 팝업 (4레벨 카드, 1.2초 딜레이, 오늘 하루 보지 않기) |
+| `WeeklySentencePopup` | `_components/sections/` | 주간 문장 팝업 (3레벨 기초·중급·상급 카드, 1.2초 딜레이, 오늘 하루 보지 않기) |
 
 ## Admin Components
 
@@ -28,7 +28,7 @@ paths:
 - `AdminSidebar` — 5 그룹(대시보드/사람/수업/일일운영/공지)으로 그룹화
 - `AdminMobileHeader` — lg:hidden 햄버거 + Sheet 조합 (모바일 네비)
 
-**학생 전용 (admin/students/components/):** `AddStudentForm`, `StudentSelectedView`, `StudentTabNav`, `StudentReportTab`, `StudentLearningTab`, `StudentTextbookTab`, `ReportCardReadView` + 시간표/출결/승하차 탭 컴포넌트
+**학생 전용 (admin/students/components/):** `AddStudentForm`, `StudentSelectedView`, `StudentTabNav`, `StudentReportTab`, `StudentLearningTab`, `StudentTextbookTab`, `ReportCardReadView` + 시간표/출결/승하차 탭 컴포넌트. 탭 4개 체계(기본정보/학습&리포트/시간표&출결/승하차, URL `?tab=basic|learning|schedule|bus`, legacy tab IDs backwards-compatible) — learning 탭에 학습·리포트·교재 통합, schedule 탭에 시간표·출결 통합
 
 **교사 전용 (admin/teachers/components/):** `AddTeacherForm`, `TeacherInfoCard`, `TeacherTabNav`, `TeacherClassesTab`, `TeacherTimetableTab`
 
@@ -44,9 +44,9 @@ paths:
 
 **시간표 (admin/timetable/):** `GroupTimetableGrid`, `PeriodDayGrid`, 교시 관리
 
-**승하차 (admin/bus/):** 호차 관리, 대시보드, 변경요청 관리 (AdminBusChangeDnD: MultiDatePicker 적용)
+**승하차 (admin/bus/):** 4개 탭 구조(오늘운행/변경요청/배정관리/마스터) — today=overview+dashboard 통합, requests=AdminBusChangeDnD+BusChangeRequestsPanel 통합, assignment=학생+정류장 배정, master=호차·시간대·직원 접힘 카드. (AdminBusChangeDnD: MultiDatePicker 적용)
 
-**주간 문장 (admin/weekly-sentences/):** `WeeklySentencesManager` (52주 테이블, 셀 클릭 편집, 자동/수동 주차 전환, Excel 업로드)
+**주간 문장 (admin/weekly-sentences/):** `WeeklySentencesManager` (48주×3레벨 테이블, 셀 클릭 편집, 자동/수동 주차 전환, Excel 업로드, 기초 레벨은 Q&A answer 컬럼)
 
 **예약 현황 (admin/reservations/):** `ReservationDashboard` (통계 카드 3종 + 캘린더 히트맵 + 출결/버스 예약 폼 + 목록 CRUD). 출결 예약 폼·버스 변경 폼에 `MultiDatePicker` 사용
 

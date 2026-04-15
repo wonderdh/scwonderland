@@ -3,7 +3,7 @@
 ## 라우트 경로
 - URL: `/admin/bus`
 - 라우트 그룹: `(admin)`
-- 탭 기반: `?tab=overview|dashboard|requests|student-assign|stop-assign|bus-manage|timeslots|staff`
+- 탭 기반: `?tab=today|requests|assignment|master` (4개 탭, legacy tab IDs backwards-compatible)
 
 ## 핵심 파일
 - page.tsx: `app/(admin)/admin/bus/page.tsx`
@@ -11,7 +11,7 @@
 ## 컴포넌트
 | 파일 | 역할 |
 |------|------|
-| `bus/components/BusTabNav.tsx` | 8개 탭 네비게이션 (전체현황, 대시보드, 변경요청, 학생배정, 정류장배정, 호차관리, 시간대, 직원) |
+| `bus/components/BusTabNav.tsx` | 4개 탭 네비게이션 (오늘운행/변경요청/배정관리/마스터) — 내부적으로 오늘운행=overview+dashboard, 배정관리=학생+정류장, 마스터=호차+시간대+직원 접힘 카드 |
 | `bus/components/BusOverviewPanel.tsx` | 전체 현황 패널 (호차별 학생 배정 요약) |
 | `bus/components/BusDashboard.tsx` | 실시간 대시보드 (당일 승하차 매니페스트, 탑승/확인 체크) |
 | `bus/components/BusChangeRequestsPanel.tsx` | 학생/학부모 변경 요청 승인/거절 관리 |
@@ -126,7 +126,7 @@
 - Auth: page.tsx에서 자체 인증 체크
 
 ## 주의사항
-- 가장 복잡한 라우트 (8개 탭, 12개 컴포넌트, ~1800줄 액션 파일)
+- 가장 복잡한 라우트 (4개 탭, 12+ 컴포넌트, ~2500줄 액션 파일) — 8→4탭 통합으로 시니어 친화 개편
 - 호차/시간대/정류장 삭제는 모두 soft delete (`is_active = false`)
 - 학생 버스 배정 구조: 학생 → 요일별(1~5) → 시간대 + 정류장 (하원)
 - 정류장 → 호차 매핑: `bus_stop_day_assignments` (요일+시간대별로 다를 수 있음)
