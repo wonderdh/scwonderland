@@ -116,7 +116,7 @@ paths:
 **reservation-actions.ts — 예약 현황 (1개):**
 - `getUpcomingReservations(daysAhead?)` — 향후 N일 출결+버스 변경 통합 조회 (관리자)
 
-**bus-actions.ts — 승하차 관리 (~48개):**
+**bus-actions.ts — 승하차 관리 (~50개):**
 - `bulkCreateBusChanges(studentProfileId, dates[], changeType, ...)` — 다중 날짜 버스 변경 일괄 등록 (관리자, UNIQUE 충돌 skip)
 - `listBusNumbers()` / `createBusNumber(...)` / `updateBusNumber(...)` / `deleteBusNumber(...)` — 호차 CRUD
 - `listBusTimeSlots()` / `createBusTimeSlot(...)` / `updateBusTimeSlot(...)` / `deleteBusTimeSlot(...)` — 시간대 CRUD
@@ -125,6 +125,10 @@ paths:
 - `getDailyBusManifest(date)` — 일일 매니페스트 (groups + noRides + afterschoolStudents 반환)
 - `boardBusStudent(...)` / `unboardBusStudent(...)` / `checkBusStudent(...)` / `uncheckBusStudent(...)` — 탑승/하차 체크
 - `listBusStops(busNumberId)` / `createBusStop(...)` / `updateBusStop(...)` / `deleteBusStop(...)` — 정류장 CRUD
+- `listBusStopDayAssignments(day, slotId?)` / `saveBusStopDayAssignments(day, assignments[], slotId?)` — 요일·시간대별 호차↔정류장 배정 (덮어쓰기 저장)
+- `listBusStopSchedulesBulk(day, slotId?)` / `upsertBusStopSchedule(stopId, day, time, slotId?)` / `deleteBusStopSchedule(stopId, day, slotId?)` — 정류장 도착예상시간 관리
+- `copyBusDayDataToOtherDays(sourceDay, targetDays[], slotId?)` — 한 (요일·시간대)의 호차별 정류장 배정 + 시간을 다른 요일들로 일괄 복사 (대상 기존 데이터 덮어쓰기). BusNumbersManager의 "다른 요일에 복사" 모달에서 사용
+- `getBusDayDataCounts(slotId?)` — 월~금 각 요일의 기존 배정/시간 행 수. 복사 모달의 충돌 미리보기용
 - `listPendingChangeRequests()` / `approveChangeRequest(...)` / `rejectChangeRequest(...)` — 변경요청 관리
 - `getStudentChangeRequests(studentProfileId)` / `submitBusChangeRequest(...)` / `cancelBusChangeRequest(...)` — 학생 변경요청
 - `createAdminBusChange(...)` / `updateAdminBusChange(...)` / `deleteAdminBusChange(...)` / `getExistingBusChange(...)` — 관리자 당일 변경

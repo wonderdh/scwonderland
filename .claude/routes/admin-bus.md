@@ -20,7 +20,7 @@
 | `bus/components/BusManagePanel.tsx` | 호차 CRUD + 정류장 CRUD |
 | `bus/components/BusTimeSlotsManager.tsx` | 버스 시간대 CRUD (하원) |
 | `bus/components/BusStaffManager.tsx` | 버스 직원 관리 (기사, 보조교사 계정 생성/관리) |
-| `bus/components/BusNumbersManager.tsx` | 호차 번호 CRUD (BusManagePanel 하위) |
+| `bus/components/BusNumbersManager.tsx` | 마스터 탭 호차/정류장 관리 — 요일·시간대별 호차↔정류장 드래그 배정, 정류장별 도착시간 입력, **다른 요일에 복사** 모달(요일×시간대 단위 일괄 덮어쓰기, `copyBusDayDataToOtherDays` 사용) |
 | `bus/components/BusAssignmentManager.tsx` | (레거시 또는 하위 컴포넌트) |
 | `bus/components/BusMonitoringDashboard.tsx` | (실시간 모니터링 대시보드, 하위 컴포넌트) |
 
@@ -91,6 +91,8 @@
 | `listBusStopSchedules` | busStopId | `bus_stop_schedules` |
 | `upsertBusStopSchedule` | busStopId, time | `bus_stop_schedules` |
 | `deleteBusStopSchedule` | id | `bus_stop_schedules` |
+| `copyBusDayDataToOtherDays` | sourceDay, targetDays[], slotId? | `bus_stop_day_assignments` + `bus_stop_schedules` (대상 요일 기존 데이터 삭제 후 원본 복사) |
+| `getBusDayDataCounts` | slotId? | (read) 월~금 요일별 기존 행 수 — 복사 모달 충돌 미리보기 |
 
 #### 직원 관리
 | 함수 | 파라미터 | DB 테이블 |

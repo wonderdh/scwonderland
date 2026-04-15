@@ -19,6 +19,8 @@ import {
   listBusStopSchedulesBulk,
   upsertBusStopSchedule,
   deleteBusStopSchedule,
+  copyBusDayDataToOtherDays,
+  getBusDayDataCounts,
 } from "../../actions";
 
 const DAYS = [
@@ -71,15 +73,14 @@ export function BusNumbersManager({
   const [dragOverTarget, setDragOverTarget] = useState<string | null>(null);
   const [deleteBusConfirm, setDeleteBusConfirm] = useState<{ open: boolean; id?: string; label?: string }>({ open: false });
   const [deleteStopConfirm, setDeleteStopConfirm] = useState<{ open: boolean; id?: string; name?: string }>({ open: false });
-  const [copyTimeConfirm, setCopyTimeConfirm] = useState<{
-    open: boolean;
-    stopId?: string;
-    day?: number;
-    time?: string;
-    slotId?: string;
-    dayLabel?: string;
-  }>({ open: false });
   const [filterChangeConfirm, setFilterChangeConfirm] = useState<{ open: boolean; setter?: () => void }>({ open: false });
+
+  // 다른 요일에 복사 모달
+  const [copyModalOpen, setCopyModalOpen] = useState(false);
+  const [copyTargets, setCopyTargets] = useState<Set<number>>(new Set());
+  const [copyCounts, setCopyCounts] = useState<Record<number, { assignments: number; schedules: number }> | null>(null);
+  const [copyLoading, setCopyLoading] = useState(false);
+  const [copyExecuting, setCopyExecuting] = useState(false);
 
   const filteredSlots = busTimeSlots;
 
@@ -312,32 +313,57 @@ export function BusNumbersManager({
     setSaving(false);
   }
 
-  // ── Copy to all days ──
+  // ── 다른 요일에 복사 (요일×시간대 단위 일괄) ──
 
-  async function handleCopyToAllDays(stopId: string) {
-    const time = scheduleMap.get(stopId);
-    if (!time) {
-      toast.error("복사할 시간을 먼저 입력해 주세요.");
+  async function openCopyModal() {
+    if (hasChanges) {
+      toast.error("저장하지 않은 변경사항이 있습니다. 먼저 저장해 주세요.");
       return;
     }
-    const dayLabel = DAYS.find((d) => d.value === day)?.label ?? "";
-    setCopyTimeConfirm({ open: true, stopId, day, time, slotId: timeSlotId || undefined, dayLabel });
+    setCopyTargets(new Set());
+    setCopyCounts(null);
+    setCopyModalOpen(true);
+    setCopyLoading(true);
+    const counts = await getBusDayDataCounts(timeSlotId || undefined);
+    setCopyCounts(counts);
+    setCopyLoading(false);
   }
 
-  async function confirmCopyTime() {
-    const { stopId, day, time, slotId } = copyTimeConfirm;
-    setCopyTimeConfirm({ open: false });
-    if (!stopId || !day || !time) return;
-    setLoading(true);
-    const errors: string[] = [];
-    for (const d of DAYS) {
-      if (d.value === day) continue;
-      const r = await upsertBusStopSchedule(stopId, d.value, time, slotId);
-      if (r.error) errors.push(`${d.label}: ${r.error}`);
+  function toggleCopyTarget(d: number) {
+    setCopyTargets((prev) => {
+      const next = new Set(prev);
+      if (next.has(d)) next.delete(d);
+      else next.add(d);
+      return next;
+    });
+  }
+
+  async function executeCopy() {
+    if (copyTargets.size === 0) {
+      toast.error("복사할 요일을 선택해 주세요.");
+      return;
     }
-    if (errors.length) toast.error(errors.join(", "));
-    else toast.success("전체 요일에 적용되었습니다.");
-    setLoading(false);
+    setCopyExecuting(true);
+    const result = await copyBusDayDataToOtherDays(
+      day,
+      [...copyTargets],
+      timeSlotId || undefined
+    );
+    setCopyExecuting(false);
+    if (result.error) {
+      toast.error(result.error);
+      return;
+    }
+    const labels = [...copyTargets]
+      .sort()
+      .map((d) => DAYS.find((x) => x.value === d)?.label)
+      .join(", ");
+    toast.success(`${labels}요일에 복사되었습니다.`);
+    setCopyModalOpen(false);
+    // 데이터 재조회
+    await fetchDayAssignments();
+    await fetchSchedules();
+    router.refresh();
   }
 
   // ── Bus CRUD (immediate) ──
@@ -477,7 +503,18 @@ export function BusNumbersManager({
 
         <Button
           size="sm"
-          className={`h-8 ml-auto ${hasChanges ? "bg-blue-600 hover:bg-blue-700" : ""}`}
+          variant="outline"
+          className="h-8 ml-auto"
+          onClick={openCopyModal}
+          disabled={loading || saving || hasChanges}
+          title={hasChanges ? "저장하지 않은 변경사항이 있습니다" : "이 요일·시간대의 호차별 정류장 배정과 시간을 다른 요일에 복사"}
+        >
+          다른 요일에 복사
+        </Button>
+
+        <Button
+          size="sm"
+          className={`h-8 ${hasChanges ? "bg-blue-600 hover:bg-blue-700" : ""}`}
           onClick={handleSaveAll}
           disabled={saving || !hasChanges}
         >
@@ -571,7 +608,6 @@ export function BusNumbersManager({
                         isDropTarget={dragOverTarget === `stop-${stop.id}`}
                         onDragStart={(e) => handleDragStart(e, stop.id)}
                         onTimeChange={(time) => handleTimeChange(stop.id, time)}
-                        onCopyAllDays={() => handleCopyToAllDays(stop.id)}
                       />
                     </div>
                   ))}
@@ -682,15 +718,87 @@ export function BusNumbersManager({
         onCancel={() => setDeleteStopConfirm({ open: false })}
       />
 
-      <ConfirmDialog
-        open={copyTimeConfirm.open}
-        variant="primary"
-        title={`${copyTimeConfirm.dayLabel ?? ""}요일 시간(${copyTimeConfirm.time ?? ""})을 전체 요일에 적용할까요?`}
-        description="현재 요일 시간이 미저장이면 먼저 저장해 주세요."
-        confirmLabel="적용"
-        onConfirm={confirmCopyTime}
-        onCancel={() => setCopyTimeConfirm({ open: false })}
-      />
+      {/* 다른 요일에 복사 모달 */}
+      {copyModalOpen && (
+        <>
+          <div
+            className="fixed inset-0 bg-black/40 z-40"
+            onClick={() => !copyExecuting && setCopyModalOpen(false)}
+          />
+          <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md bg-white rounded-xl shadow-xl border border-slate-200">
+            <div className="p-5 border-b border-slate-100">
+              <h3 className="text-base font-semibold text-slate-800">다른 요일에 복사</h3>
+              <p className="text-xs text-slate-500 mt-1">
+                <span className="font-medium text-slate-700">{DAYS.find((d) => d.value === day)?.label}요일</span>
+                {timeSlotId
+                  ? ` · ${busTimeSlots.find((s) => s.id === timeSlotId)?.label ?? ""}`
+                  : " · 전체 시간대 (기본)"}
+                의 호차별 정류장 배정과 시간을 선택한 요일에 <span className="font-semibold text-red-600">덮어쓰기</span>합니다.
+              </p>
+            </div>
+
+            <div className="p-5 space-y-3">
+              <p className="text-xs font-medium text-slate-600">복사할 요일 선택</p>
+              <div className="space-y-2">
+                {DAYS.filter((d) => d.value !== day).map((d) => {
+                  const cnt = copyCounts?.[d.value];
+                  const willOverwrite = (cnt?.assignments ?? 0) + (cnt?.schedules ?? 0) > 0;
+                  const checked = copyTargets.has(d.value);
+                  return (
+                    <label
+                      key={d.value}
+                      className={`flex items-center gap-3 px-3 py-2.5 rounded-lg border cursor-pointer transition-colors ${
+                        checked
+                          ? "border-blue-400 bg-blue-50"
+                          : "border-slate-200 bg-white hover:border-slate-300"
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => toggleCopyTarget(d.value)}
+                        className="w-4 h-4"
+                      />
+                      <span className="text-sm font-medium text-slate-800 w-12">{d.label}요일</span>
+                      <span className="text-xs text-slate-500 flex-1">
+                        {copyLoading
+                          ? "확인 중..."
+                          : willOverwrite
+                            ? `기존 ${cnt?.assignments ?? 0}개 배정·${cnt?.schedules ?? 0}개 시간 → 덮어쓰기`
+                            : "기존 데이터 없음"}
+                      </span>
+                      {willOverwrite && checked && (
+                        <span className="text-[10px] font-medium text-red-600 bg-red-50 px-1.5 py-0.5 rounded">
+                          덮어쓰기
+                        </span>
+                      )}
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="p-4 border-t border-slate-100 flex justify-end gap-2 bg-slate-50 rounded-b-xl">
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setCopyModalOpen(false)}
+                disabled={copyExecuting}
+              >
+                취소
+              </Button>
+              <Button
+                size="sm"
+                onClick={executeCopy}
+                disabled={copyExecuting || copyLoading || copyTargets.size === 0}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                {copyExecuting ? "복사 중..." : `복사 (${copyTargets.size}개 요일)`}
+              </Button>
+            </div>
+          </div>
+        </>
+      )}
 
       <ConfirmDialog
         open={filterChangeConfirm.open}
@@ -714,7 +822,6 @@ function StopRow({
   isDropTarget,
   onDragStart,
   onTimeChange,
-  onCopyAllDays,
 }: {
   stop: BusStop;
   time: string;
@@ -722,13 +829,12 @@ function StopRow({
   isDropTarget: boolean;
   onDragStart: (e: React.DragEvent) => void;
   onTimeChange: (time: string) => void;
-  onCopyAllDays: () => void;
 }) {
   return (
     <div
       draggable
       onDragStart={onDragStart}
-      className={`flex items-center gap-2 px-2 py-1.5 rounded border cursor-grab active:cursor-grabbing transition-colors group ${
+      className={`flex items-center gap-2 px-2 py-1.5 rounded border cursor-grab active:cursor-grabbing transition-colors ${
         isDropTarget
           ? "border-blue-400 bg-blue-50 border-dashed"
           : isDirty
@@ -744,13 +850,6 @@ function StopRow({
         onChange={(e) => onTimeChange(e.target.value)}
         className="h-6 text-xs border border-slate-200 rounded px-1.5 bg-white w-[90px]"
       />
-      <button
-        onClick={onCopyAllDays}
-        title="이 시간을 월~금 전체 요일에 동일하게 적용합니다"
-        className="text-xs text-slate-400 hover:text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap"
-      >
-        전체 요일 적용
-      </button>
     </div>
   );
 }

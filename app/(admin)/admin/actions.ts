@@ -175,6 +175,8 @@ export {
   listBusStopSchedules,
   upsertBusStopSchedule,
   deleteBusStopSchedule,
+  copyBusDayDataToOtherDays,
+  getBusDayDataCounts,
   createAdminBusChange,
   updateAdminBusChange,
   getExistingBusChange,

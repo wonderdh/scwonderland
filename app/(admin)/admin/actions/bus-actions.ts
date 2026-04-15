@@ -2269,6 +2269,164 @@ export async function deleteBusStopSchedule(
   return {};
 }
 
+// 요일·시간대 단위 일괄 복사 — 모든 호차의 정류장 배정 + 스케줄 시간을 다른 요일들로 덮어쓰기
+export async function copyBusDayDataToOtherDays(
+  sourceDay: number,
+  targetDays: number[],
+  busTimeSlotId?: string
+): Promise<{ error?: string; copied?: number }> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return { error: auth.error };
+  const supabase = createAdminClient();
+
+  const cleanTargets = targetDays.filter((d) => d !== sourceDay && d >= 1 && d <= 5);
+  if (cleanTargets.length === 0) return { error: "복사 대상 요일이 없습니다." };
+
+  // 1. 원본 데이터 로드
+  let assignQuery = supabase
+    .from("bus_stop_day_assignments")
+    .select("bus_stop_id, bus_number_id, sort_order")
+    .eq("day_of_week", sourceDay);
+  assignQuery = busTimeSlotId
+    ? assignQuery.eq("bus_time_slot_id", busTimeSlotId)
+    : assignQuery.is("bus_time_slot_id", null);
+  const { data: srcAssignments, error: srcAErr } = await assignQuery;
+  if (srcAErr) {
+    logger.error("[copyBusDayDataToOtherDays] load assignments", srcAErr.message);
+    return { error: srcAErr.message };
+  }
+
+  let schedQuery = supabase
+    .from("bus_stop_schedules")
+    .select("bus_stop_id, estimated_time")
+    .eq("day_of_week", sourceDay);
+  schedQuery = busTimeSlotId
+    ? schedQuery.eq("bus_time_slot_id", busTimeSlotId)
+    : schedQuery.is("bus_time_slot_id", null);
+  const { data: srcSchedules, error: srcSErr } = await schedQuery;
+  if (srcSErr) {
+    logger.error("[copyBusDayDataToOtherDays] load schedules", srcSErr.message);
+    return { error: srcSErr.message };
+  }
+
+  const slotValue = busTimeSlotId ?? null;
+  const now = new Date().toISOString();
+
+  // 2. 대상 요일 각각: 기존 데이터 삭제 후 새로 삽입
+  for (const targetDay of cleanTargets) {
+    let delAssignQ = supabase
+      .from("bus_stop_day_assignments")
+      .delete()
+      .eq("day_of_week", targetDay);
+    delAssignQ = busTimeSlotId
+      ? delAssignQ.eq("bus_time_slot_id", busTimeSlotId)
+      : delAssignQ.is("bus_time_slot_id", null);
+    const { error: delAErr } = await delAssignQ;
+    if (delAErr) {
+      logger.error("[copyBusDayDataToOtherDays] delete assignments", delAErr.message);
+      return { error: `${targetDay}요일 기존 배정 삭제 실패: ${delAErr.message}` };
+    }
+
+    let delSchedQ = supabase
+      .from("bus_stop_schedules")
+      .delete()
+      .eq("day_of_week", targetDay);
+    delSchedQ = busTimeSlotId
+      ? delSchedQ.eq("bus_time_slot_id", busTimeSlotId)
+      : delSchedQ.is("bus_time_slot_id", null);
+    const { error: delSErr } = await delSchedQ;
+    if (delSErr) {
+      logger.error("[copyBusDayDataToOtherDays] delete schedules", delSErr.message);
+      return { error: `${targetDay}요일 기존 시간 삭제 실패: ${delSErr.message}` };
+    }
+
+    if (srcAssignments && srcAssignments.length) {
+      const rows = srcAssignments.map((a) => ({
+        bus_stop_id: a.bus_stop_id,
+        bus_number_id: a.bus_number_id,
+        day_of_week: targetDay,
+        bus_time_slot_id: slotValue,
+        sort_order: a.sort_order,
+        updated_at: now,
+      }));
+      const { error: insAErr } = await supabase
+        .from("bus_stop_day_assignments")
+        .insert(rows);
+      if (insAErr) {
+        logger.error("[copyBusDayDataToOtherDays] insert assignments", insAErr.message);
+        return { error: `${targetDay}요일 배정 삽입 실패: ${insAErr.message}` };
+      }
+    }
+
+    if (srcSchedules && srcSchedules.length) {
+      const rows = srcSchedules.map((s) => ({
+        bus_stop_id: s.bus_stop_id,
+        day_of_week: targetDay,
+        bus_time_slot_id: slotValue,
+        estimated_time: s.estimated_time,
+        updated_at: now,
+      }));
+      const { error: insSErr } = await supabase
+        .from("bus_stop_schedules")
+        .insert(rows);
+      if (insSErr) {
+        logger.error("[copyBusDayDataToOtherDays] insert schedules", insSErr.message);
+        return { error: `${targetDay}요일 시간 삽입 실패: ${insSErr.message}` };
+      }
+    }
+  }
+
+  return { copied: cleanTargets.length };
+}
+
+// 요일·시간대별 기존 배정/시간 행 수 (월~금) — 복사 모달의 충돌 미리보기용
+export async function getBusDayDataCounts(
+  busTimeSlotId?: string
+): Promise<Record<number, { assignments: number; schedules: number }>> {
+  const supabase = createAdminClient();
+  const result: Record<number, { assignments: number; schedules: number }> = {
+    1: { assignments: 0, schedules: 0 },
+    2: { assignments: 0, schedules: 0 },
+    3: { assignments: 0, schedules: 0 },
+    4: { assignments: 0, schedules: 0 },
+    5: { assignments: 0, schedules: 0 },
+  };
+
+  let aQuery = supabase
+    .from("bus_stop_day_assignments")
+    .select("day_of_week");
+  aQuery = busTimeSlotId
+    ? aQuery.eq("bus_time_slot_id", busTimeSlotId)
+    : aQuery.is("bus_time_slot_id", null);
+  const { data: aData, error: aErr } = await aQuery;
+  if (aErr) {
+    logger.error("[getBusDayDataCounts] assignments", aErr.message);
+  } else if (aData) {
+    for (const row of aData) {
+      const d = row.day_of_week;
+      if (d >= 1 && d <= 5) result[d].assignments += 1;
+    }
+  }
+
+  let sQuery = supabase
+    .from("bus_stop_schedules")
+    .select("day_of_week");
+  sQuery = busTimeSlotId
+    ? sQuery.eq("bus_time_slot_id", busTimeSlotId)
+    : sQuery.is("bus_time_slot_id", null);
+  const { data: sData, error: sErr } = await sQuery;
+  if (sErr) {
+    logger.error("[getBusDayDataCounts] schedules", sErr.message);
+  } else if (sData) {
+    for (const row of sData) {
+      const d = row.day_of_week;
+      if (d >= 1 && d <= 5) result[d].schedules += 1;
+    }
+  }
+
+  return result;
+}
+
 
 export async function getWeeklyDropoffExportData(): Promise<
   DropoffExportData | { error: string }
