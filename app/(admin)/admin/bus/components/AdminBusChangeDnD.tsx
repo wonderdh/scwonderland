@@ -193,7 +193,7 @@ export function AdminBusChangeDnD({
 
   function handleStudentSelect(profileId: string) {
     setSelectedStudentId(profileId);
-    setSelectedDates([]);
+    setSelectedDates([new Date(today)]);
     setStudentSearch("");
   }
 
