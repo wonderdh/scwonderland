@@ -3,7 +3,7 @@
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
     "CLAUDE_CODE_SPAWN_BACKEND": "tmux"
   },
-    "permissions": {
-    "defaultMode": "bypassPermissions"
+  "permissions": {
+    "defaultMode": "auto"
   }
 }
