@@ -12,6 +12,7 @@ import type { ReportCard } from "@/lib/types";
 import { reportLabels, ENGLISH_MONTHS } from "@/lib/ui/teacher-labels";
 import { useTeacherType } from "./TeacherTypeContext";
 import { getAgeColor } from "@/lib/ui/student-age-colors";
+import { formatStudentName } from "@/lib/utils/student-name";
 import { LoadingState } from "@/components/feedback/LoadingState";
 import { Spinner } from "@/components/feedback/Spinner";
 
@@ -182,25 +183,15 @@ export function TeacherReportClient({
     (s) => s.student_profile_id === selectedStudentId
   );
 
-  const formatStudentName = (s: { korean_name: string | null; english_name: string | null }) => {
-    if (isNative) {
-      return (
-        <>
-          {s.english_name ?? s.korean_name ?? "—"}
-          {s.korean_name && (
-            <span className="text-slate-400 font-normal ml-1">
-              ({s.korean_name})
-            </span>
-          )}
-        </>
-      );
-    }
+  const renderStudentName = (s: { korean_name: string | null; english_name: string | null }) => {
+    const primary = formatStudentName(s, { preferEnglish: isNative, fallback: "—" });
+    const secondary = isNative ? s.korean_name : s.english_name;
     return (
       <>
-        {s.korean_name ?? "—"}
-        {s.english_name && (
+        {primary}
+        {secondary && (
           <span className="text-slate-400 font-normal ml-1">
-            ({s.english_name})
+            ({secondary})
           </span>
         )}
       </>
@@ -289,7 +280,7 @@ export function TeacherReportClient({
                     >
                       <div className="flex-1 min-w-0">
                         <p className={`text-sm font-medium truncate ${getAgeColor(studentAgeMap.get(s.student_profile_id) ?? null).text}`}>
-                          {formatStudentName(s)}
+                          {renderStudentName(s)}
                         </p>
                         {s.student_number && (
                           <p className="text-xs text-slate-400 font-mono">{s.student_number}</p>
@@ -352,11 +343,9 @@ export function TeacherReportClient({
             <div className="space-y-4">
               <div className="flex items-center gap-3">
                 <h3 className={`text-base font-semibold ${getAgeColor(studentAgeMap.get(selectedStudentId ?? "") ?? null).text}`}>
-                  {selectedStudent ? (
-                    isNative
-                      ? (selectedStudent.english_name ?? selectedStudent.korean_name ?? "—")
-                      : (selectedStudent.korean_name ?? "—")
-                  ) : "—"}
+                  {selectedStudent
+                    ? formatStudentName(selectedStudent, { preferEnglish: isNative, fallback: "—" })
+                    : "—"}
                 </h3>
                 {selectedStudent && isNative && selectedStudent.korean_name && (
                   <span className="text-sm text-slate-400">

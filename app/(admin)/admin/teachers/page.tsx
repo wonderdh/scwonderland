@@ -33,13 +33,15 @@ export default async function AdminTeachersPage({
 }) {
   const { section, selected, tab } = await searchParams;
   const currentTab = parseTab(tab);
+  const isTrash = section === "trash";
 
-  const [users, classes] = await Promise.all([
+  // 사이드바용 사용자 목록은 항상 필요. 나머지는 현재 뷰에 따라서만 조회.
+  const [users, classes, deletedUsers] = await Promise.all([
     listUsersByRole("teacher"),
-    listClassesWithDetails(),
+    selected && currentTab === "classes" ? listClassesWithDetails() : Promise.resolve([] as Awaited<ReturnType<typeof listClassesWithDetails>>),
+    isTrash ? listDeletedUsers("teacher") : Promise.resolve([] as Awaited<ReturnType<typeof listDeletedUsers>>),
   ]);
   const selectedUser = selected ? users.find((u) => u.id === selected) : null;
-  const deletedUsers = section === "trash" ? await listDeletedUsers("teacher") : [];
 
   // 시간표 탭이면 3개 그룹 데이터 로드
   let allGroupData: Record<string, Awaited<ReturnType<typeof getGroupTimetableGrid>>> = {};

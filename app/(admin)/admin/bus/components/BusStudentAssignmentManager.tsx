@@ -14,6 +14,7 @@ import {
   listAfterschoolStudentIdsByDay,
 } from "../../actions";
 import { getAgeColor } from "@/lib/ui/student-age-colors";
+import { formatStudentName } from "@/lib/utils/student-name";
 
 const DAYS = [
   { value: 1, label: "월" },
@@ -354,7 +355,7 @@ export function BusStudentAssignmentManager({
   };
 
   const studentName = (s: { korean_name: string | null; english_name: string | null }) =>
-    s.korean_name || s.english_name || "이름 없음";
+    formatStudentName(s);
 
   // ── 렌더: 학생 뱃지 ─────────────────────────────────────────────────────────
 
@@ -396,7 +397,7 @@ export function BusStudentAssignmentManager({
       const ageA = a.age ?? 99;
       const ageB = b.age ?? 99;
       if (ageA !== ageB) return ageA - ageB;
-      return (a.korean_name ?? a.english_name ?? "").localeCompare(b.korean_name ?? b.english_name ?? "");
+      return formatStudentName(a, { fallback: "" }).localeCompare(formatStudentName(b, { fallback: "" }));
     });
     return (
       <div
@@ -622,7 +623,7 @@ export function BusStudentAssignmentManager({
                         const ageA = a.age ?? 99;
                         const ageB = b.age ?? 99;
                         if (ageA !== ageB) return ageA - ageB;
-                        return (a.korean_name ?? a.english_name ?? "").localeCompare(b.korean_name ?? b.english_name ?? "");
+                        return formatStudentName(a, { fallback: "" }).localeCompare(formatStudentName(b, { fallback: "" }));
                       })
                       .map((a) => {
                       const slot = slotById.get(a.bus_time_slot_id);
@@ -648,7 +649,7 @@ export function BusStudentAssignmentManager({
                             className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md cursor-default opacity-70 ${ac.bg} ${ac.text} border ${ac.border}`}
                           >
                             {isAfterschool && <span className="text-violet-500 text-xs leading-none">●</span>}
-                            {a.korean_name || a.english_name || "이름 없음"}
+                            {formatStudentName(a)}
                           </span>
                         </span>
                       );
@@ -692,7 +693,7 @@ export function BusStudentAssignmentManager({
               <span className="text-xs font-semibold text-slate-700">
                 {(() => {
                   const a = localAssignments.find((a) => a.student_profile_id === editingNoteId);
-                  return a ? (a.korean_name || a.english_name || "") : "";
+                  return a ? formatStudentName(a, { fallback: "" }) : "";
                 })()} 메모
               </span>
               <button onClick={cancelNote} className="text-slate-400 hover:text-slate-600 text-sm leading-none">&times;</button>

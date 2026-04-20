@@ -10,6 +10,7 @@ import { formatTime } from "@/lib/bus/utils";
 import { MonitorBusCard } from "@/components/bus/MonitorBusCard";
 import { useBusRealtime } from "@/lib/hooks/use-bus-realtime";
 import { applyCheckRecord, applyChangeRequest } from "@/lib/bus/realtime-utils";
+import { formatStudentName } from "@/lib/utils/student-name";
 
 const DAY_NAMES = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -181,7 +182,7 @@ export function BusMonitoringDashboard({
                     key={student.student_profile_id}
                     className={`inline-block px-2 py-1 rounded text-xs font-medium ${ageColor.bg} ${ageColor.text}`}
                   >
-                    {student.korean_name || student.english_name}
+                    {formatStudentName(student, { fallback: "" })}
                   </span>
                 );
               })}

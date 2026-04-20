@@ -5,6 +5,7 @@ import type { ClassWithDetails, TeacherOption } from "@/lib/types";
 import { TeacherBadges } from "@/components/badges/TeacherBadges";
 import { GROUP_ORDER, type GroupKey } from "@/lib/constants/class";
 import { ClassesExcelDownload } from "./ClassesExcelDownload";
+import { formatStudentName } from "@/lib/utils/student-name";
 
 type FlatClassStudent = {
   class_id: string;
@@ -209,7 +210,7 @@ export function ClassesOverview({
                                 {s.student_number ?? "—"}
                               </span>
                               <span className="truncate">
-                                {s.korean_name ?? s.english_name ?? "—"}
+                                {formatStudentName(s, { fallback: "—" })}
                               </span>
                             </div>
                           ))}

@@ -1,6 +1,4 @@
-function Bone({ className }: { className?: string }) {
-  return <div className={`animate-pulse rounded bg-muted ${className ?? ""}`} />;
-}
+import { SkeletonBone as Bone } from "./SkeletonBone";
 
 export function AdminListPageSkeleton() {
   return (
@@ -18,10 +16,23 @@ export function AdminListPageSkeleton() {
       {/* 콘텐츠 */}
       <div className="flex-1 p-6 space-y-4">
         <Bone className="h-7 w-40" />
-        <div className="space-y-3">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <Bone key={i} className="h-12 w-full" />
+        {/* 탭 영역 (4탭: 기본/학습/시간표/승하차) */}
+        <div className="flex gap-1 border-b bg-card rounded-t-xl overflow-hidden">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="flex items-center gap-2 px-5 h-12 border-b-[3px] border-transparent">
+              <Bone className="h-6 w-6 rounded-full" />
+              <Bone className="h-4 w-20" />
+            </div>
           ))}
+        </div>
+        {/* 탭 콘텐츠 플레이스홀더 */}
+        <div className="rounded-lg border p-6 space-y-4">
+          <Bone className="h-6 w-48" />
+          <div className="space-y-3">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Bone key={i} className="h-12 w-full" />
+            ))}
+          </div>
         </div>
       </div>
     </div>

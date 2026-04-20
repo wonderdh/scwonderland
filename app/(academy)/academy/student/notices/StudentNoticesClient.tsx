@@ -9,6 +9,7 @@ import {
 } from "@/app/(admin)/admin/actions";
 import { FileList } from "@/components/forms/FileList";
 import { LoadingState } from "@/components/feedback/LoadingState";
+import { EmptyState } from "@/components/feedback/EmptyState";
 import type { ClassNotice, ClassNoticeAttachment, AcademyNotice, AcademyNoticeAttachment } from "@/lib/types";
 
 type NoticeItem = {
@@ -184,9 +185,7 @@ export function StudentNoticesClient({
       </div>
 
       {filtered.length === 0 ? (
-        <div className="rounded-xl border border-dashed bg-muted/30 p-12 text-center">
-          <p className="text-sm text-muted-foreground">공지사항이 없습니다.</p>
-        </div>
+        <EmptyState title="공지사항이 없습니다." />
       ) : (
         <ul className="space-y-2">
           {filtered.map((n) => (

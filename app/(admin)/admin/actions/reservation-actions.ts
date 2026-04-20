@@ -4,27 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { verifyAdmin } from "./auth-helpers";
 import { logger } from "@/lib/server/logger";
 import { todayKst, formatDateYmdKst } from "@/lib/utils/date-kst";
-
-export type ReservationAttendance = {
-  id: string;
-  student_profile_id: string;
-  student_name: string;
-  attendance_date: string;
-  status: string;
-  note: string | null;
-};
-
-export type ReservationBusChange = {
-  id: string;
-  student_profile_id: string;
-  student_name: string;
-  request_date: string;
-  change_type: string;
-  status: string;
-  reason: string | null;
-  new_bus_number_label?: string | null;
-  new_bus_time_slot_label?: string | null;
-};
+import type { ReservationAttendance, ReservationBusChange } from "@/lib/types";
 
 /** 향후 예약된 출결 + 버스 변경 통합 조회 (관리자 전용) */
 export async function getUpcomingReservations(

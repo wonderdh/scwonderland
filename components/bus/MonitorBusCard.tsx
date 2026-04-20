@@ -1,6 +1,7 @@
 import type { BusManifestGroup, BusManifestEntry, BusManifestExtraStop } from "@/lib/types";
 import { getAgeColor } from "@/lib/ui/student-age-colors";
 import { groupStudentsByStop, formatTime, formatCheckedTime, type StopGroup } from "@/lib/bus/utils";
+import { formatStudentName } from "@/lib/utils/student-name";
 
 // 학생 있는 정류장 + 학생 없는 정류장(show_empty_stops) 을 한 리스트로 병합.
 // sort_order → estimated_time → stopName 순으로 정렬.
@@ -238,11 +239,11 @@ function AdminBusCard({ card, boardedCount, checkedCount, totalCount, allDone, s
                   <div className="flex-1 min-w-0">
                     {isChecked ? (
                       <span className="block truncate text-slate-400 line-through">
-                        {student.korean_name || student.english_name}
+                        {formatStudentName(student, { fallback: "" })}
                       </span>
                     ) : (
                       <span className={`inline-block truncate px-1.5 py-0.5 rounded text-xs font-medium ${getAgeColor(student.age).bg} ${getAgeColor(student.age).text}`}>
-                        {student.korean_name || student.english_name}
+                        {formatStudentName(student, { fallback: "" })}
                       </span>
                     )}
                     {student.is_changed && student.original_bus_label && (
@@ -311,7 +312,7 @@ function renderMonitorStudent(student: BusManifestEntry, card: BusManifestGroup)
                 : `font-bold ${getAgeColor(student.age).text}`
           }`}
         >
-          {student.korean_name || student.english_name}
+          {formatStudentName(student, { fallback: "" })}
         </span>
         {student.is_absent && (
           <span className="block truncate text-xs text-orange-500 font-medium -mt-0.5">

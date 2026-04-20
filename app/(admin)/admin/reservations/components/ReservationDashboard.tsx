@@ -23,8 +23,9 @@ import {
 import type {
   ReservationAttendance,
   ReservationBusChange,
-} from "@/app/(admin)/admin/actions";
-import type { BusNumber, BusTimeSlot } from "@/lib/types";
+  BusNumber,
+  BusTimeSlot,
+} from "@/lib/types";
 import { formatDateYmdKst, todayWeekdayArray } from "@/lib/utils/date-kst";
 import {
   ATTENDANCE_STATUS_CONFIG,

@@ -12,6 +12,7 @@ import {
 import type { AfterschoolStudentEnrollment, DayEnrollment } from "@/lib/types";
 import { Spinner } from "@/components/feedback/Spinner";
 import { ConfirmDialog } from "@/components/overlays/ConfirmDialog";
+import { formatStudentName } from "@/lib/utils/student-name";
 
 const DAY_LABELS = ["월", "화", "수", "목", "금"];
 const AGE_GROUPS: { label: string; test: (age: number | null) => boolean }[] = [
@@ -224,7 +225,7 @@ export function AfterschoolPageClient({
                     {(() => {
                       const q = searchQuery.trim().toLowerCase();
                       const filtered = available.filter((s) => {
-                        const name = (s.korean_name ?? s.english_name ?? "").toLowerCase();
+                        const name = formatStudentName(s, { fallback: "" }).toLowerCase();
                         return !q || name.includes(q);
                       });
                       if (!filtered.length) return (
@@ -240,7 +241,7 @@ export function AfterschoolPageClient({
                             <div className="px-3 py-1 text-xs font-semibold text-muted-foreground bg-muted/50 sticky top-0">{label}</div>
                             {group.map((s) => {
                               const ageColor = getAgeColor(s.age);
-                              const name = s.korean_name ?? s.english_name ?? "—";
+                              const name = formatStudentName(s, { fallback: "—" });
                               return (
                                 <button
                                   key={s.id}
@@ -401,7 +402,7 @@ export function AfterschoolPageClient({
                         <tr key={s.student_profile_id} className="border-b last:border-b-0 hover:bg-muted/30">
                           <td className="px-4 py-2">
                             <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${ageColor.bg} ${ageColor.text}`}>
-                              {s.korean_name ?? s.english_name ?? "—"}
+                              {formatStudentName(s, { fallback: "—" })}
                             </span>
                           </td>
                           {DAY_LABELS.map((_, idx) => {
@@ -501,9 +502,9 @@ export function AfterschoolPageClient({
                           <td key={`${day}-${ageIdx}`} className={`px-2 py-2 align-top min-w-[76px] ${ageIdx === 0 && dayIdx > 0 ? "border-l-2 border-border" : ageIdx > 0 ? "border-l border-border/40" : ""}`}>
                             {cell.length === 0 ? <span className="text-muted-foreground/20">—</span> : (
                               <div className="flex flex-col">
-                                {firstOnly.length > 0 && <div className="flex flex-col gap-1"><span className="text-[9px] font-semibold text-violet-400 uppercase tracking-wide">1교시</span>{firstOnly.map((s) => { const c = getAgeColor(s.age); return <span key={s.student_profile_id} className={`rounded px-1.5 py-0.5 font-medium whitespace-nowrap w-fit ${c.bg} ${c.text}`}>{s.korean_name ?? s.english_name ?? "—"}</span>; })}</div>}
+                                {firstOnly.length > 0 && <div className="flex flex-col gap-1"><span className="text-[9px] font-semibold text-violet-400 uppercase tracking-wide">1교시</span>{firstOnly.map((s) => { const c = getAgeColor(s.age); return <span key={s.student_profile_id} className={`rounded px-1.5 py-0.5 font-medium whitespace-nowrap w-fit ${c.bg} ${c.text}`}>{formatStudentName(s, { fallback: "—" })}</span>; })}</div>}
                                 {firstOnly.length > 0 && both.length > 0 && <div className="border-t border-dashed border-border my-2" />}
-                                {both.length > 0 && <div className="flex flex-col gap-1"><span className="text-[9px] font-semibold text-violet-600 uppercase tracking-wide">1·2교시</span>{both.map((s) => { const c = getAgeColor(s.age); return <span key={s.student_profile_id} className={`rounded px-1.5 py-0.5 font-medium whitespace-nowrap w-fit ${c.bg} ${c.text}`}>{s.korean_name ?? s.english_name ?? "—"}</span>; })}</div>}
+                                {both.length > 0 && <div className="flex flex-col gap-1"><span className="text-[9px] font-semibold text-violet-600 uppercase tracking-wide">1·2교시</span>{both.map((s) => { const c = getAgeColor(s.age); return <span key={s.student_profile_id} className={`rounded px-1.5 py-0.5 font-medium whitespace-nowrap w-fit ${c.bg} ${c.text}`}>{formatStudentName(s, { fallback: "—" })}</span>; })}</div>}
                               </div>
                             )}
                           </td>
@@ -607,14 +608,14 @@ table { width: 100% !important; }
                             {firstOnly.length > 0 && (
                               <div className="flex flex-col gap-1">
                                 <span className="text-[9px] font-semibold text-violet-400 uppercase tracking-wide">1교시</span>
-                                {firstOnly.map((s) => { const c = getAgeColor(s.age); return <span key={s.student_profile_id} className={`rounded px-1.5 py-0.5 font-medium whitespace-nowrap w-fit ${c.bg} ${c.text}`}>{s.korean_name ?? s.english_name ?? "—"}</span>; })}
+                                {firstOnly.map((s) => { const c = getAgeColor(s.age); return <span key={s.student_profile_id} className={`rounded px-1.5 py-0.5 font-medium whitespace-nowrap w-fit ${c.bg} ${c.text}`}>{formatStudentName(s, { fallback: "—" })}</span>; })}
                               </div>
                             )}
                             {firstOnly.length > 0 && both.length > 0 && <div className="border-t border-dashed border-border my-2" />}
                             {both.length > 0 && (
                               <div className="flex flex-col gap-1">
                                 <span className="text-[9px] font-semibold text-violet-600 uppercase tracking-wide">1·2교시</span>
-                                {both.map((s) => { const c = getAgeColor(s.age); return <span key={s.student_profile_id} className={`rounded px-1.5 py-0.5 font-medium whitespace-nowrap w-fit ${c.bg} ${c.text}`}>{s.korean_name ?? s.english_name ?? "—"}</span>; })}
+                                {both.map((s) => { const c = getAgeColor(s.age); return <span key={s.student_profile_id} className={`rounded px-1.5 py-0.5 font-medium whitespace-nowrap w-fit ${c.bg} ${c.text}`}>{formatStudentName(s, { fallback: "—" })}</span>; })}
                               </div>
                             )}
                           </div>

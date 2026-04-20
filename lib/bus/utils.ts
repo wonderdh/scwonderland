@@ -1,4 +1,5 @@
 import type { BusManifestEntry } from "@/lib/types";
+import { formatStudentName } from "@/lib/utils/student-name";
 
 export type StopGroup = {
   stopName: string;
@@ -46,8 +47,8 @@ export function groupStudentsByStop(students: BusManifestEntry[]): StopGroup[] {
       const ageA = a.age ?? 99;
       const ageB = b.age ?? 99;
       if (ageA !== ageB) return ageA - ageB;
-      return (a.korean_name ?? a.english_name ?? "").localeCompare(
-        b.korean_name ?? b.english_name ?? ""
+      return formatStudentName(a, { fallback: "" }).localeCompare(
+        formatStudentName(b, { fallback: "" })
       );
     });
   }

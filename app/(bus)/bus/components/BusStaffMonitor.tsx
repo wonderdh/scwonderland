@@ -12,6 +12,7 @@ import { formatTime as fmt, formatCheckedTime as fmtISO } from "@/lib/bus/utils"
 import { useBusRealtime } from "@/lib/hooks/use-bus-realtime";
 import { applyCheckRecord, applyChangeRequest } from "@/lib/bus/realtime-utils";
 import { WEEKDAY_NAMES_7 } from "@/lib/constants/date";
+import { formatStudentName } from "@/lib/utils/student-name";
 
 function getToday() {
   const now = new Date();
@@ -61,7 +62,7 @@ function groupStudentsByStop(students: BusManifestEntry[]): StopGroup[] {
       const ageA = a.age ?? 99;
       const ageB = b.age ?? 99;
       if (ageA !== ageB) return ageA - ageB;
-      return (a.korean_name ?? a.english_name ?? "").localeCompare(b.korean_name ?? b.english_name ?? "");
+      return formatStudentName(a, { fallback: "" }).localeCompare(formatStudentName(b, { fallback: "" }));
     });
   }
 
@@ -99,7 +100,7 @@ function StudentRow({
         </span>
         <div className="flex-1 min-w-0">
           <span className="block truncate text-[15px] text-orange-600 font-semibold">
-            {student.korean_name || student.english_name}
+            {formatStudentName(student, { fallback: "" })}
           </span>
           <span className="text-[11px] text-orange-400 font-medium">결석</span>
         </div>
@@ -165,7 +166,7 @@ function StudentRow({
                     : ageColor.text
             }`}
           >
-            {student.korean_name || student.english_name}
+            {formatStudentName(student, { fallback: "" })}
           </span>
           {student.is_changed && student.original_bus_label && !isSelected && (
             <span className="block text-[11px] text-amber-500 font-medium leading-tight">
@@ -674,7 +675,7 @@ export function BusStaffMonitor({
                   </span>
                   <div className="flex-1 min-w-0">
                     <span className={`block truncate text-[15px] font-semibold ${isAbsent ? "text-orange-600" : "text-slate-500"}`}>
-                      {r.korean_name || r.english_name}
+                      {formatStudentName(r, { fallback: "" })}
                     </span>
                     <span className={`text-[11px] font-medium ${isAbsent ? "text-orange-400" : "text-slate-400"}`}>
                       {isAbsent ? "결석" : "미탑승"}

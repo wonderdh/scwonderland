@@ -14,6 +14,7 @@ import {
 } from "../../actions";
 import { useBusRealtime } from "@/lib/hooks/use-bus-realtime";
 import { formatTime } from "@/lib/bus/utils";
+import { formatStudentName } from "@/lib/utils/student-name";
 
 const DAY_NAMES = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -318,7 +319,7 @@ export function BusDashboard({ busTimeSlots, busNumbers }: { busTimeSlots: BusTi
                   const ageA = a.age ?? 99;
                   const ageB = b.age ?? 99;
                   if (ageA !== ageB) return ageA - ageB;
-                  return (a.korean_name ?? a.english_name ?? "").localeCompare(b.korean_name ?? b.english_name ?? "");
+                  return formatStudentName(a, { fallback: "" }).localeCompare(formatStudentName(b, { fallback: "" }));
                 })
                 .map((student) => {
                 const ageColor = getAgeColor(student.age);
@@ -327,7 +328,7 @@ export function BusDashboard({ busTimeSlots, busNumbers }: { busTimeSlots: BusTi
                     key={student.student_profile_id}
                     className={`inline-block px-1.5 py-0.5 rounded text-xs font-medium ${ageColor.bg} ${ageColor.text}`}
                   >
-                    {student.korean_name || student.english_name}
+                    {formatStudentName(student, { fallback: "" })}
                   </span>
                 );
               })}
@@ -352,7 +353,7 @@ export function BusDashboard({ busTimeSlots, busNumbers }: { busTimeSlots: BusTi
                 className="px-4 py-2.5 flex items-center gap-3 text-sm"
               >
                 <span className="font-medium text-slate-700">
-                  {student.korean_name || student.english_name}
+                  {formatStudentName(student, { fallback: "" })}
                 </span>
                 {student.original_bus_label && (
                   <span className="text-xs text-slate-400">
@@ -394,7 +395,7 @@ export function BusDashboard({ busTimeSlots, busNumbers }: { busTimeSlots: BusTi
                   결석
                 </span>
                 <span className="font-medium text-red-700">
-                  {student.korean_name || student.english_name}
+                  {formatStudentName(student, { fallback: "" })}
                 </span>
                 {student.original_bus_label && (
                   <span className="text-xs text-red-400">
@@ -521,7 +522,7 @@ function BusCard({
           <input type="checkbox" checked={false} disabled className="h-4 w-4 rounded border-slate-300 opacity-30" />
           <div className="flex-1 min-w-0 flex items-center gap-2">
             <span className="text-sm font-medium truncate text-orange-600">
-              {student.korean_name || student.english_name}
+              {formatStudentName(student, { fallback: "" })}
             </span>
             <span className="shrink-0 text-xs bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded font-medium">
               결석
@@ -575,7 +576,7 @@ function BusCard({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <span className={`text-sm font-medium truncate ${getAgeColor(student.age).text}`}>
-              {student.korean_name || student.english_name}
+              {formatStudentName(student, { fallback: "" })}
             </span>
             {student.is_changed && (
               <>

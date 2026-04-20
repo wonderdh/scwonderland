@@ -6,6 +6,7 @@ import { Spinner } from "@/components/feedback/Spinner";
 import { Input } from "@/components/ui/input";
 import type { BusManifestGroup, NoRideEntry } from "@/lib/types";
 import { getDailyBusManifest } from "@/app/(admin)/admin/actions";
+import { formatStudentName } from "@/lib/utils/student-name";
 
 const DAY_NAMES = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -78,7 +79,7 @@ export function TeacherBusClient() {
                   }`}
                 >
                   <span className="font-medium">
-                    {student.korean_name || student.english_name}
+                    {formatStudentName(student, { fallback: "" })}
                   </span>
                   {student.english_name && student.korean_name && (
                     <span className="text-xs text-slate-400">{student.english_name}</span>
@@ -115,7 +116,7 @@ export function TeacherBusClient() {
           <div className="divide-y">
             {noRides.map((student) => (
               <div key={student.student_profile_id} className="px-4 py-2 flex items-center gap-3 text-sm">
-                <span className="font-medium">{student.korean_name || student.english_name}</span>
+                <span className="font-medium">{formatStudentName(student, { fallback: "" })}</span>
                 <span className="text-xs text-slate-400">#{student.student_number}</span>
                 {student.original_bus_label && (
                   <span className="text-xs text-slate-400">

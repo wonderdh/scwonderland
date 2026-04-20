@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { LoadingState } from "@/components/feedback/LoadingState";
+import { EmptyState } from "@/components/feedback/EmptyState";
 import { Spinner } from "@/components/feedback/Spinner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -126,7 +127,7 @@ export function StudentBusClient({ studentProfileId }: { studentProfileId: strin
       <div>
         <h2 className="text-lg font-semibold text-slate-800 mb-3">내 하원 스케줄</h2>
         {defaults.length === 0 ? (
-          <p className="text-sm text-slate-400 py-4">등록된 하원 스케줄이 없습니다.</p>
+          <EmptyState title="등록된 하원 스케줄이 없습니다." />
         ) : (
           <div className="grid gap-3">
             {[1, 2, 3, 4, 5].map((day) => {
@@ -307,7 +308,7 @@ export function StudentBusClient({ studentProfileId }: { studentProfileId: strin
 
         {/* 요청 목록 */}
         {requests.length === 0 ? (
-          <p className="text-sm text-slate-400 py-2">변경 요청 내역이 없습니다.</p>
+          <EmptyState title="변경 요청 내역이 없습니다." className="py-6" />
         ) : (
           <div className="space-y-2">
             {requests.map((req) => (

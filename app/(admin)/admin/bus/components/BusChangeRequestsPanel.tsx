@@ -18,6 +18,7 @@ import { ConfirmDialog } from "@/components/overlays/ConfirmDialog";
 import { BUS_REQUEST_STATUS_CONFIG, BUS_CHANGE_TYPE_CONFIG } from "@/lib/constants/bus";
 import { toastSuccess, toastError } from "@/lib/ui/toast";
 import { AdminBusChangeDnD } from "./AdminBusChangeDnD";
+import { formatStudentName } from "@/lib/utils/student-name";
 import { formatTime } from "@/lib/bus/utils";
 
 export function BusChangeRequestsPanel({ adminId }: { adminId: string }) {
@@ -318,7 +319,7 @@ function RequestCard({
       {/* 헤더 */}
       <div className="flex items-center gap-2 flex-wrap">
         <span className="text-lg font-semibold text-slate-900">
-          {req.korean_name || req.english_name}
+          {formatStudentName(req, { fallback: "" })}
         </span>
         <span className="text-base bg-slate-100 px-2.5 py-0.5 rounded text-slate-700">{req.request_date}</span>
         <StatusBadge config={BUS_CHANGE_TYPE_CONFIG[req.change_type]} />

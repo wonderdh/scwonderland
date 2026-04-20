@@ -12,6 +12,7 @@ import {
   listBusStops,
 } from "../../actions";
 import { getAgeColor } from "@/lib/ui/student-age-colors";
+import { formatStudentName } from "@/lib/utils/student-name";
 
 const DAYS = [
   { value: 1, label: "월" },
@@ -233,7 +234,7 @@ export function BusAssignmentManager({
   };
 
   const studentName = (s: { korean_name: string | null; english_name: string | null }) =>
-    s.korean_name || s.english_name || "이름 없음";
+    formatStudentName(s);
 
   return (
     <div className="space-y-4">

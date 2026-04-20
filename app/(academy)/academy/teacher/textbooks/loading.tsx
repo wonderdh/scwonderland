@@ -1,6 +1,4 @@
-function Bone({ className }: { className?: string }) {
-  return <div className={`animate-pulse rounded bg-muted ${className ?? ""}`} />;
-}
+import { SkeletonBone as Bone } from "@/components/skeletons/SkeletonBone";
 
 export default function Loading() {
   return (

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useAttendanceEditor, type GroupFilter } from "@/app/(admin)/admin/attendance/hooks/useAttendanceEditor";
 import { StudentSearchPanel } from "@/app/(admin)/admin/attendance/components/StudentSearchPanel";
 import type { ClassWithDetails } from "@/lib/types";
+import { formatStudentName } from "@/lib/utils/student-name";
 import {
   ATTENDANCE_STATUS_CONFIG,
   ATTENDANCE_STATUSES,
@@ -141,7 +142,7 @@ export function MobileAttendanceClient({
                 >
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium text-foreground flex-1 truncate">
-                      {student.korean_name ?? student.english_name ?? "이름 없음"}
+                      {formatStudentName(student)}
                     </span>
                     <div className="flex gap-1 shrink-0">
                       {ATTENDANCE_STATUSES.map((key) => {

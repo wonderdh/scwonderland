@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/overlays/ConfirmDialog";
+import { EmptyState } from "@/components/feedback/EmptyState";
 import { toast } from "sonner";
 
 type Variant = "student" | "teacher";
@@ -62,9 +63,7 @@ export function TrashView({
       )}
 
       {users.length === 0 ? (
-        <div className="rounded-xl border border-dashed bg-slate-50/50 p-8 text-center text-sm text-muted-foreground">
-          휴지통이 비어 있습니다.
-        </div>
+        <EmptyState title="휴지통이 비어 있습니다." />
       ) : (
         <div className="rounded-xl border shadow-sm overflow-hidden">
           <table className="w-full text-sm">

@@ -3,20 +3,15 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
-import type { ReportCard, ReportCardListItem } from "@/lib/types";
+import type {
+  ReportCard,
+  ReportCardListItem,
+  UntranslatedReport,
+  ClassReportSummary,
+} from "@/lib/types";
 import { verifyAdmin } from "./auth-helpers";
 import { translateText } from "@/lib/server/translate";
 import { logger } from "@/lib/server/logger";
-
-export type UntranslatedReport = {
-  id: string;
-  student_name: string;
-  class_name: string;
-  content: string | null;
-  content_ko: string | null;
-  reply: string | null;
-  reply_en: string | null;
-};
 
 /** 선택한 학생·년·월의 리포트카드 1건 조회 (없으면 null). admin/선생/해당 학생만 조회 가능(RLS). */
 export async function getReportCard(
@@ -279,13 +274,6 @@ export async function updateReportCardReply(
   revalidatePath("/academy/student/reports");
   return {};
 }
-
-export type ClassReportSummary = {
-  classId: string;
-  className: string;
-  written: number;
-  total: number;
-};
 
 type ClassReportStatusRow = {
   class_id: string;

@@ -15,6 +15,7 @@ import {
   ATTENDANCE_STATUSES,
   type AttendanceStatus,
 } from "@/lib/constants/attendance";
+import { formatStudentName } from "@/lib/utils/student-name";
 
 type TeacherClass = { id: string; name: string };
 type StudentInfo = {
@@ -174,9 +175,10 @@ export function TeacherAttendanceClient({
             const currentStatus = statusMap[s.profile_id];
             const isSaved = savedIds.has(s.profile_id);
             const isSaving = saving === s.profile_id;
-            const displayName = teacherType === "native"
-              ? s.english_name || s.korean_name || "—"
-              : s.korean_name || s.english_name || "—";
+            const displayName = formatStudentName(s, {
+              preferEnglish: teacherType === "native",
+              fallback: "—",
+            });
 
             return (
               <li key={s.profile_id} className="rounded-xl border bg-card p-4 shadow-sm space-y-3">

@@ -16,6 +16,7 @@ import {
   type AttendanceStatus,
 } from "@/lib/constants/attendance";
 import { LoadingState } from "@/components/feedback/LoadingState";
+import { formatStudentName } from "@/lib/utils/student-name";
 
 type StudentItem = {
   id: string;
@@ -137,7 +138,7 @@ export function StudentSearchPanel({
   function selectStudent(s: StudentItem) {
     setSelectedStudent(s);
     setSelectedDates(todayWeekdayArray());
-    setQuery(s.korean_name ?? s.english_name ?? "");
+    setQuery(formatStudentName(s, { fallback: "" }));
   }
 
   const activeStatus = pendingStatus ?? currentStatus;

@@ -10,6 +10,7 @@ import {
 import { toast } from "sonner";
 import { AudioRecorder } from "@/components/forms/AudioRecorder";
 import { LoadingState } from "@/components/feedback/LoadingState";
+import { EmptyState } from "@/components/feedback/EmptyState";
 import { Spinner } from "@/components/feedback/Spinner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -229,11 +230,7 @@ export function StudentHomeworkClient({
 
   // List view
   if (items.length === 0) {
-    return (
-      <div className="rounded-xl border border-dashed bg-muted/30 p-12 text-center">
-        <p className="text-sm text-muted-foreground">배정된 숙제가 없습니다.</p>
-      </div>
-    );
+    return <EmptyState title="배정된 숙제가 없습니다." />;
   }
 
   return (

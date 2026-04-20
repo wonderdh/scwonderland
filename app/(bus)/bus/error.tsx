@@ -1,32 +1,10 @@
 "use client";
 
-import { useEffect } from "react";
+import { ErrorScreen } from "@/components/feedback/ErrorScreen";
 
-export default function BusError({
-  error,
-  reset,
-}: {
+export default function BusError(props: {
   error: Error & { digest?: string };
   reset: () => void;
 }) {
-  useEffect(() => {
-    console.error("[BusError]", error);
-  }, [error]);
-
-  return (
-    <div className="flex min-h-[50vh] flex-col items-center justify-center gap-4 p-8">
-      <h2 className="text-xl font-semibold text-gray-900">
-        문제가 발생했습니다
-      </h2>
-      <p className="text-sm text-gray-600">
-        페이지를 불러오는 중 오류가 발생했습니다. 다시 시도해 주세요.
-      </p>
-      <button
-        onClick={reset}
-        className="rounded-md bg-slate-800 px-4 py-2 text-sm text-white hover:bg-slate-700"
-      >
-        다시 시도
-      </button>
-    </div>
-  );
+  return <ErrorScreen {...props} logTag="[BusError]" />;
 }

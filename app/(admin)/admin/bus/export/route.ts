@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import ExcelJS from "exceljs";
+// ExcelJS는 ~500KB 라이브러리. 사용 시점에 동적 로드해 관련 없는 route의 cold start 개선.
+import type ExcelJS from "exceljs";
 import { getWeeklyDropoffExportData } from "../../actions/bus-actions";
 import type { DropoffExportRow, DropoffExportData } from "@/lib/types";
 import { todayKst } from "@/lib/utils/date-kst";
@@ -299,6 +300,8 @@ export async function GET() {
 
   const { rows, unassigned, afterschoolEnrollments } = result;
 
+  const { default: ExcelJSRuntime } = await import("exceljs");
+
   // 전체 학생 목록 (배정 + 미배정 합산, 중복 제거)
   const seenProfileIds = new Set<string>();
   const assignedStudents = rows
@@ -314,7 +317,7 @@ export async function GET() {
   const extraStudents = assignedStudents.filter((s) => !unassignedIds.has(s.profile_id));
   const allStudents = [...unassigned, ...extraStudents];
 
-  const wb = new ExcelJS.Workbook();
+  const wb = new ExcelJSRuntime.Workbook();
   await buildStudentScheduleSheet(wb, rows, allStudents, afterschoolEnrollments);
   await buildUnassignedSheet(wb, unassigned);
 

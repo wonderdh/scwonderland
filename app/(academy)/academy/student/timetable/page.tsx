@@ -1,6 +1,7 @@
 import { getCurrentStudentProfile } from "../../actions";
 import { redirect } from "next/navigation";
 import { StudentTimetableClient } from "./StudentTimetableClient";
+import { formatStudentName } from "@/lib/utils/student-name";
 
 export default async function StudentTimetablePage() {
   const profile = await getCurrentStudentProfile();
@@ -11,7 +12,7 @@ export default async function StudentTimetablePage() {
       <h1 className="text-lg font-semibold text-slate-800">시간표</h1>
       <StudentTimetableClient
         studentProfileId={profile.id}
-        studentName={profile.korean_name || profile.english_name || ""}
+        studentName={formatStudentName(profile, { fallback: "" })}
       />
     </div>
   );

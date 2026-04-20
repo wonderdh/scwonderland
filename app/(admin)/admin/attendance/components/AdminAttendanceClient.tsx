@@ -5,6 +5,7 @@ import { getAgeColor, getAgeLabel } from "@/lib/ui/student-age-colors";
 import { useAttendanceEditor, type GroupFilter } from "../hooks/useAttendanceEditor";
 import { StudentSearchPanel } from "./StudentSearchPanel";
 import type { ClassWithDetails } from "@/lib/types";
+import { formatStudentName } from "@/lib/utils/student-name";
 import {
   ATTENDANCE_STATUS_CONFIG,
   ATTENDANCE_STATUSES,
@@ -175,7 +176,7 @@ export function AdminAttendanceClient({
                                     {getAgeLabel(student.age)}
                                   </span>
                                   <span className="text-base font-medium text-foreground truncate">
-                                    {student.korean_name ?? student.english_name ?? "이름 없음"}
+                                    {formatStudentName(student)}
                                   </span>
                                   {/* 저장된 출결 상태 배지 (편집 중이 아닐 때) */}
                                   {!isPending && mergedStatus && ATTENDANCE_STATUS_CONFIG[mergedStatus as AttendanceStatus] && (

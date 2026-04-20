@@ -1,5 +1,6 @@
 import { getCurrentTeacherProfile, getTeacherClasses, getClassReportStatus } from "../actions";
 import Link from "next/link";
+import { formatStudentName } from "@/lib/utils/student-name";
 import {
   Card,
   CardContent,
@@ -122,7 +123,7 @@ export default async function TeacherMainPage() {
                         <span className="font-medium">
                           {isNative ? (
                             <>
-                              {s.english_name ?? s.korean_name ?? "—"}
+                              {formatStudentName(s, { preferEnglish: true, fallback: "—" })}
                               {s.korean_name && (
                                 <span className="text-muted-foreground font-normal ml-1">
                                   ({s.korean_name})

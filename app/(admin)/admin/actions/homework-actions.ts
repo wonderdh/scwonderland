@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { verifyAuthenticated, verifyTeacherOrAdmin } from "./auth-helpers";
 import { logger } from "@/lib/server/logger";
+import { formatStudentName } from "@/lib/utils/student-name";
 import {
   STORAGE_BUCKETS,
   generateStoragePath,
@@ -220,7 +221,7 @@ export async function listSubmissions(
   const nameMap = new Map(
     (students ?? []).map((s) => [
       s.profile_id,
-      s.korean_name || s.english_name || "",
+      formatStudentName(s, { fallback: "" }),
     ])
   );
 

@@ -31,7 +31,6 @@ export {
   listUntranslatedReports,
   translateReportCard,
 } from "./actions/report-actions";
-export type { ClassReportSummary, UntranslatedReport } from "./actions/report-actions";
 
 export {
   listClassesWithDetails,
@@ -160,9 +159,6 @@ export {
   checkBusStudent,
   uncheckBusStudent,
   batchBusCheckRecord,
-  createBusStaff,
-  listBusStaff,
-  updateBusStaff,
   listBusStops,
   createBusStop,
   updateBusStop,
@@ -183,6 +179,12 @@ export {
   deleteAdminBusChange,
   getWeeklyDropoffExportData,
 } from "./actions/bus-actions";
+
+export {
+  createBusStaff,
+  listBusStaff,
+  updateBusStaff,
+} from "./actions/bus-staff";
 
 export type { DropoffExportRow, DropoffExportData } from "@/lib/types";
 
@@ -219,9 +221,4 @@ export {
 
 export {
   getUpcomingReservations,
-} from "./actions/reservation-actions";
-
-export type {
-  ReservationAttendance,
-  ReservationBusChange,
 } from "./actions/reservation-actions";

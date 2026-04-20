@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import type { BusChangeRequest } from "@/lib/types";
 import { listChangeRequestsByDate } from "@/app/(admin)/admin/actions";
 import { useBusRealtime } from "@/lib/hooks/use-bus-realtime";
+import { formatStudentName } from "@/lib/utils/student-name";
 
 const CHANGE_TYPE_CONFIG = {
   absent: { label: "결석", bg: "bg-red-100 text-red-700" },
@@ -67,7 +68,7 @@ export function DailyBusChanges() {
       </div>
       <div className="rounded-xl border border-border bg-card divide-y divide-border overflow-hidden">
         {changes.map((ch) => {
-          const name = ch.korean_name || ch.english_name || "이름 없음";
+          const name = formatStudentName(ch);
           const cfg = CHANGE_TYPE_CONFIG[ch.change_type] ?? CHANGE_TYPE_CONFIG.change;
 
           const newSlotTime = ch.new_time_slot_time ? ch.new_time_slot_time.slice(0, 5) : "";

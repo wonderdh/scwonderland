@@ -18,6 +18,7 @@ import { batchUpdateClassTextbooks } from "../../actions";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { formatStudentName } from "@/lib/utils/student-name";
 import { ConfirmDialog } from "@/components/overlays/ConfirmDialog";
 import { CLASS_COLOR_PALETTE } from "@/lib/constants/class";
 import { getAgeColor } from "@/lib/ui/student-age-colors";
@@ -409,7 +410,7 @@ export function ClassesManager({
     }
 
     const studentName = allStudents.find((s) => s.id === studentProfileId);
-    const name = studentName?.korean_name ?? studentName?.english_name ?? "학생";
+    const name = studentName ? formatStudentName(studentName, { fallback: "학생" }) : "학생";
     const targetClassName = initialClasses.find((c) => c.id === classId)?.name ?? "";
     setNotification({ type: "success", message: `${name} → ${targetClassName} (미저장)` });
   };

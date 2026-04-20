@@ -589,3 +589,45 @@ export type BusCheckBatchItem = {
   busTimeSlotId: string;
   busNumberId: string;
 };
+
+// ── 리포트카드 번역 / 작성 현황 타입 ──
+
+export type UntranslatedReport = {
+  id: string;
+  student_name: string;
+  class_name: string;
+  content: string | null;
+  content_ko: string | null;
+  reply: string | null;
+  reply_en: string | null;
+};
+
+export type ClassReportSummary = {
+  classId: string;
+  className: string;
+  written: number;
+  total: number;
+};
+
+// ── 예약 현황 타입 ──
+
+export type ReservationAttendance = {
+  id: string;
+  student_profile_id: string;
+  student_name: string;
+  attendance_date: string;
+  status: string;
+  note: string | null;
+};
+
+export type ReservationBusChange = {
+  id: string;
+  student_profile_id: string;
+  student_name: string;
+  request_date: string;
+  change_type: string;
+  status: string;
+  reason: string | null;
+  new_bus_number_label?: string | null;
+  new_bus_time_slot_label?: string | null;
+};

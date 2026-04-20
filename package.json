@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "db:types": "supabase gen types typescript --project-id $SB_PROJECT > lib/types/database.generated.ts",
+    "db:types:local": "supabase gen types typescript --local > lib/types/database.generated.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.8.0",

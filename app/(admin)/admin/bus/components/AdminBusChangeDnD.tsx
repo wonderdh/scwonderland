@@ -11,6 +11,7 @@ import type { BusStop, BusTimeSlot, StudentBusDefault } from "@/lib/types";
 import { detectAfterschoolSlot } from "@/lib/bus/afterschool-sync";
 import { MultiDatePicker } from "@/components/forms/MultiDatePicker";
 import { formatDateYmdKst } from "@/lib/utils/date-kst";
+import { formatStudentName } from "@/lib/utils/student-name";
 import {
   listBusStops,
   listBusTimeSlots,
@@ -347,7 +348,7 @@ export function AdminBusChangeDnD({
                 {selectedStudentInfo.age ? `${selectedStudentInfo.age}세` : "-"}
               </span>
               <span className={`text-lg font-semibold ${getAgeColor(selectedStudentInfo.age).text}`}>
-                {selectedStudentInfo.korean_name || selectedStudentInfo.english_name}
+                {formatStudentName(selectedStudentInfo, { fallback: "" })}
               </span>
               {existingId && (
                 <span className="text-sm bg-amber-100 text-amber-700 px-2 py-0.5 rounded font-medium">
@@ -406,7 +407,7 @@ export function AdminBusChangeDnD({
                       {s.age ? `${s.age}세` : "-"}
                     </span>
                     <span className={`text-base font-medium ${getAgeColor(s.age).text}`}>
-                      {s.korean_name || s.english_name}
+                      {formatStudentName(s, { fallback: "" })}
                     </span>
                   </button>
                 ))}

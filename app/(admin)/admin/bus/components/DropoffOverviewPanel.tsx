@@ -11,6 +11,7 @@ import { getAgeColor } from "@/lib/ui/student-age-colors";
 import { formatTime } from "@/lib/bus/utils";
 import type { DropoffExportRow, BusTimeSlot, BusNumber } from "@/lib/types";
 import { WEEKDAY_NAMES_5 } from "@/lib/constants/date";
+import { formatStudentName } from "@/lib/utils/student-name";
 
 // 요일별 배경 (무채색~중성톤, 호차 색과 겹치지 않게)
 const DAY_COLORS: Record<number, string> = {
@@ -91,11 +92,11 @@ export function FullOverviewPanel() {
     if (!q) return new Set<string>();
     const ids = new Set<string>();
     for (const r of rows) {
-      const name = r.korean_name || r.english_name || "";
+      const name = formatStudentName(r, { fallback: "" });
       if (name.includes(q)) ids.add(r.profile_id);
     }
     for (const u of unassigned) {
-      const name = u.korean_name || u.english_name || "";
+      const name = formatStudentName(u, { fallback: "" });
       if (name.includes(q)) ids.add(u.profile_id);
     }
     return ids;
@@ -166,7 +167,7 @@ export function FullOverviewPanel() {
         stopMap.set(key, group);
       }
       group.students.push({
-        name: r.korean_name || r.english_name || "이름 없음",
+        name: formatStudentName(r),
         age: r.age,
         profileId: r.profile_id,
         note: r.note,
@@ -332,7 +333,7 @@ export function FullOverviewPanel() {
                             key={`${s.profile_id}-${day}`}
                             className={`text-sm font-semibold px-2 py-0.5 rounded ${color.bg} ${color.text} ${isHighlighted ? "ring-2 ring-yellow-400 shadow-md" : ""} ${dimmed ? "opacity-30" : ""}`}
                           >
-                            {s.korean_name || s.english_name || "이름 없음"}
+                            {formatStudentName(s)}
                           </span>
                         );
                       })}

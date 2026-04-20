@@ -1,7 +1,7 @@
 import type {
   ReservationAttendance,
   ReservationBusChange,
-} from "@/app/(admin)/admin/actions/reservation-actions";
+} from "@/lib/types";
 
 export type ReservationGroup<T> = {
   items: T[];

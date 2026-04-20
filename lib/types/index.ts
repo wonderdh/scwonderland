@@ -66,4 +66,11 @@ export type {
   CellEntry,
   GroupTimetableData,
   BusCheckBatchItem,
+  UntranslatedReport,
+  ClassReportSummary,
+  ReservationAttendance,
+  ReservationBusChange,
 } from "./api";
+
+export type { ActionResult } from "./server-action";
+export { ok, fail, okVoid } from "./server-action";

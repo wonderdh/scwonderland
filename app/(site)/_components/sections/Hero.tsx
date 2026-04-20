@@ -30,13 +30,13 @@ export function Hero() {
         <div className="mx-auto mb-16 max-w-4xl text-center">
           <p className="mb-4 text-sm text-gray-500">Since 1992</p>
           <h1 className="mb-6 text-5xl font-bold md:text-7xl">
-            "왜{" "}
-            <span className="text-red-500">원</span>
-            <span className="text-yellow-500">더</span>
-            <span className="text-green-500">랜</span>
-            <span className="text-blue-500">드</span>
+            &ldquo;왜{" "}
+            <span style={{ color: "var(--brand-red)" }}>원</span>
+            <span style={{ color: "var(--brand-yellow)" }}>더</span>
+            <span style={{ color: "var(--brand-green)" }}>랜</span>
+            <span style={{ color: "var(--brand-blue)" }}>드</span>
             <br />
-            일까요?"
+            일까요?&rdquo;
           </h1>
           <p className="mb-8 text-xl text-gray-600">
             유치원부터 초등학생까지, 아이들의 영어 실력과 자신감을 키워주는
