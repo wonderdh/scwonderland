@@ -5,5 +5,7 @@
   },
   "permissions": {
     "defaultMode": "auto"
-  }
+  },
+  "skipDangerousModePermissionPrompt": true,
+  "model": "opus[1m]"
 }
