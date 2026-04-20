@@ -42,7 +42,7 @@ import "@testing-library/jest-dom";
 
 ### 우선 작성 대상 3개
 
-#### a) `lib/utils/date-kst.test.ts`
+#### a) `src/lib/utils/date-kst.test.ts`
 ```ts
 import { todayKst, formatDateKst, nowKstParts } from "./date-kst";
 
@@ -66,7 +66,7 @@ describe("date-kst", () => {
 });
 ```
 
-#### b) `lib/utils/student-sort.test.ts`
+#### b) `src/lib/utils/student-sort.test.ts`
 ```ts
 import { sortStudentsByAgeAndName } from "./student-sort";
 
@@ -95,7 +95,7 @@ describe("sortStudentsByAgeAndName", () => {
 });
 ```
 
-#### c) `app/(admin)/admin/actions/schedule-actions.test.ts` — integration
+#### c) `src/app/(admin)/admin/actions/schedule-actions.test.ts` — integration
 Supabase 테스트 DB 필요. 프로젝트에 마련되면 작성.
 
 ## 2. Playwright E2E

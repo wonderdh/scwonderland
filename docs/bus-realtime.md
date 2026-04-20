@@ -7,9 +7,9 @@
 
 | 컴포넌트 | 경로 | 역할 |
 |---|---|---|
-| `BusStaffMonitor` | `app/(bus)/bus/components/` | 승하차 직원용 (탑승/하차 처리) |
-| `BusMonitoringDashboard` | `app/(admin)/admin/bus/components/` | 관리자 모니터링 (읽기 전용) |
-| `BusMonitorClient` | `app/(monitor)/bus-monitor/` | TV 모니터 전용 (읽기 전용) |
+| `BusStaffMonitor` | `src/app/(bus)/bus/components/` | 승하차 직원용 (탑승/하차 처리) |
+| `BusMonitoringDashboard` | `src/app/(admin)/admin/bus/components/` | 관리자 모니터링 (읽기 전용) |
+| `BusMonitorClient` | `src/app/(monitor)/bus-monitor/` | TV 모니터 전용 (읽기 전용) |
 
 ## Supabase Realtime 개요
 

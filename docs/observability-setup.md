@@ -22,9 +22,9 @@ npx @sentry/wizard@latest -i nextjs
 
 ### 트랜잭션 마킹 대상 (핵심 액션)
 Week 3 플랜 6.1 기준으로 다음 Server Action에 트랜잭션 스팬 추가 권장:
-- `upsertReportCard` (`app/(admin)/admin/actions/report-actions.ts`)
-- `bulkRecordAttendance` (`app/(admin)/admin/actions/attendance-actions.ts`)
-- `getDailyBusManifest` (`app/(admin)/admin/actions/bus-actions.ts`)
+- `upsertReportCard` (`src/app/(admin)/admin/actions/report-actions.ts`)
+- `bulkRecordAttendance` (`src/app/(admin)/admin/actions/attendance-actions.ts`)
+- `getDailyBusManifest` (`src/app/(admin)/admin/actions/bus-actions.ts`)
 
 예시:
 ```ts
@@ -44,7 +44,7 @@ export async function bulkRecordAttendance(records) {
 npm install --save @vercel/analytics @vercel/speed-insights
 ```
 
-### 적용 (`app/layout.tsx`)
+### 적용 (`src/app/layout.tsx`)
 ```tsx
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";

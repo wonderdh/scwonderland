@@ -48,7 +48,7 @@
 
 ### 도입 절차
 1. `npm install @vercel/analytics @vercel/speed-insights`
-2. `app/layout.tsx`에 `<Analytics />`, `<SpeedInsights />` 추가
+2. `src/app/layout.tsx`에 `<Analytics />`, `<SpeedInsights />` 추가
 3. Vercel dashboard → 프로젝트 → Analytics 탭 활성화
 
 **외부 계정 불필요 (이미 Vercel 사용 중이면 즉시 가능)**
