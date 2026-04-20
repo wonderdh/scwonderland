@@ -15,6 +15,7 @@ import { Spinner } from "@/components/feedback/Spinner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import type { HomeworkAssignment, HomeworkSubmission, HomeworkSubmissionFile } from "@/lib/types";
+import { formatDateKst } from "@/lib/utils/date-kst";
 
 type AssignmentWithSub = HomeworkAssignment & { submission: HomeworkSubmission | null };
 
@@ -134,7 +135,7 @@ export function StudentHomeworkClient({
             <h2 className="text-lg font-semibold text-foreground">{selectedItem.title}</h2>
             {selectedItem.due_date && (
               <p className="mt-1 text-xs text-muted-foreground">
-                마감: {new Date(selectedItem.due_date).toLocaleDateString("ko-KR")}
+                마감: {formatDateKst(selectedItem.due_date)}
               </p>
             )}
           </div>
@@ -265,12 +266,12 @@ export function StudentHomeworkClient({
                     <h3 className="text-sm font-medium text-foreground truncate">{item.title}</h3>
                   </div>
                   <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
-                    <span>{new Date(item.created_at).toLocaleDateString("ko-KR")}</span>
+                    <span>{formatDateKst(item.created_at)}</span>
                     {item.due_date && (
                       <>
                         <span>·</span>
                         <span className={isOverdue ? "text-red-500 font-medium" : ""}>
-                          마감: {new Date(item.due_date).toLocaleDateString("ko-KR")}
+                          마감: {formatDateKst(item.due_date)}
                         </span>
                       </>
                     )}

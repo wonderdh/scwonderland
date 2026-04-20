@@ -6,9 +6,11 @@ import { toast } from "sonner";
 import { LoadingState } from "@/components/feedback/LoadingState";
 import { EmptyState } from "@/components/feedback/EmptyState";
 import { Spinner } from "@/components/feedback/Spinner";
+import { ConfirmDialog } from "@/components/overlays/ConfirmDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { StudentBusDefault, BusChangeRequest, BusNumber, BusTimeSlot } from "@/lib/types";
+import { todayKst, nowKstParts } from "@/lib/utils/date-kst";
 import {
   getStudentBusDefaults,
   getStudentChangeRequests,
@@ -49,6 +51,7 @@ export function StudentBusClient({ studentProfileId }: { studentProfileId: strin
   const [formSlotId, setFormSlotId] = useState("");
   const [formBusId, setFormBusId] = useState("");
   const [formReason, setFormReason] = useState("");
+  const [confirmCancelId, setConfirmCancelId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -95,8 +98,7 @@ export function StudentBusClient({ studentProfileId }: { studentProfileId: strin
     setSubmitting(false);
   }
 
-  async function handleCancel(id: string) {
-    if (!confirm("이 변경 요청을 취소하시겠습니까?")) return;
+  async function performCancel(id: string) {
     setSubmitting(true);
     const result = await cancelBusChangeRequest(id, studentProfileId);
     if (result.error) setError(result.error);
@@ -106,14 +108,15 @@ export function StudentBusClient({ studentProfileId }: { studentProfileId: strin
       router.refresh();
     }
     setSubmitting(false);
+    setConfirmCancelId(null);
   }
 
   if (loading) return <LoadingState label="승하차 정보 불러오는 중..." />;
 
-  // 오늘 날짜 & 요일 계산
-  const now = new Date();
-  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-  const todayDow = now.getDay(); // 0=Sun, 1=Mon...6=Sat
+  // 오늘 날짜 & 요일 계산 (KST)
+  const todayStr = todayKst();
+  const { year, month, day } = nowKstParts();
+  const todayDow = new Date(year, month - 1, day).getDay(); // 0=Sun, 1=Mon...6=Sat
   const todayDayOfWeek = todayDow === 0 ? 7 : todayDow; // 1=Mon...7=Sun
 
   // 오늘 날짜의 변경 요청 (대기중 또는 승인됨)
@@ -333,7 +336,7 @@ export function StudentBusClient({ studentProfileId }: { studentProfileId: strin
                     size="sm"
                     variant="ghost"
                     className="h-6 text-xs text-red-500 ml-auto gap-1"
-                    onClick={() => handleCancel(req.id)}
+                    onClick={() => setConfirmCancelId(req.id)}
                     disabled={submitting}
                   >
                     {submitting && <Spinner size="sm" />}
@@ -345,6 +348,17 @@ export function StudentBusClient({ studentProfileId }: { studentProfileId: strin
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        open={!!confirmCancelId}
+        title="변경 요청 취소"
+        description="이 변경 요청을 취소하시겠습니까?"
+        confirmLabel="취소하기"
+        cancelLabel="닫기"
+        disabled={submitting}
+        onConfirm={() => confirmCancelId && performCancel(confirmCancelId)}
+        onCancel={() => setConfirmCancelId(null)}
+      />
     </div>
   );
 }

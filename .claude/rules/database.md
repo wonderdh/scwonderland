@@ -82,6 +82,68 @@ Supabase Auth Users
 
 **인증 검증 패턴:** Server Action에서 `createClient()` → `getUser()` → 인증 확인 후 `createAdminClient()` 사용
 
+## Row Level Security (RLS)
+
+2026-04-20 기준 36개 테이블 전부 RLS 활성 + 정책 세트 적용됨 (Phase 1~5 완료). 대부분의 Server Action은 `createAdminClient()`(service role)로 RLS 우회하므로 정책은 **방어 계층 + JWT 직접 접근(`createClient()`) 경로용**. 새 정책 작성 시 아래 규칙 준수.
+
+### SECURITY DEFINER 헬퍼 함수 (재귀 회피)
+
+자기참조·순환 서브쿼리로 인한 `42P17 infinite recursion` 방지를 위해 role·권한 체크는 **반드시 헬퍼 함수**를 통해 수행. `EXISTS (SELECT ... FROM profiles/class_teachers/class_students ...)` 형태의 서브쿼리를 정책 qual에 직접 쓰지 말 것.
+
+| 함수 | 반환 | 용도 |
+|------|------|------|
+| `public.is_current_user_admin()` | BOOL | admin role 체크 |
+| `public.is_current_user_teacher()` | BOOL | teacher role 체크 |
+| `public.is_current_user_native_teacher()` | BOOL | 원어민 교사 체크 (리포트카드 write용) |
+| `public.is_current_user_bus_staff()` | BOOL | 버스 담당자 체크 |
+| `public.current_user_teaching_class_ids()` | SETOF UUID | 현재 교사가 담당하는 class_id 목록 |
+| `public.current_user_enrolled_class_ids()` | SETOF UUID | 현재 학생이 소속된 class_id 목록 |
+| `public.current_user_student_ids_for_teacher()` | SETOF UUID | 현재 교사 담당 반의 학생 profile_id 목록 |
+| `public.current_user_bus_number_ids()` | SETOF UUID | 현재 버스 담당자가 맡은 bus_number_id 목록 |
+
+모두 `LANGUAGE sql SECURITY DEFINER SET search_path = public, pg_catalog STABLE` + `GRANT EXECUTE ... TO authenticated`.
+
+### 정책 네이밍 컨벤션
+
+`{table_short}_{role}_{action}` 형식:
+- `profiles_admin_all`, `profiles_self_select`, `profiles_self_update`
+- `students_teacher_select`, `bcr_bus_staff_all`, `rc_teacher_insert`
+- 접두어(`bn_`, `bts_`, `bcr_`, `sbd_`, `bcreq_`, `ae_`, `bss_`, `bsda_`, `bstaff_`, `bstops_`, `rc_`, `ha_`, `hs_`, `hsf_`, `lr_`, `att_`)는 테이블별 단축형 사용.
+
+### 정책 작성 패턴
+
+```sql
+-- ✅ 권장: 헬퍼로 role 체크 + IN (helper()) 로 소속 확인
+CREATE POLICY "students_teacher_select" ON public.students
+  FOR SELECT TO authenticated
+  USING (
+    public.is_current_user_teacher()
+    AND profile_id IN (SELECT public.current_user_student_ids_for_teacher())
+  );
+
+-- ❌ 금지: profiles/class_teachers 자기참조 서브쿼리 → 42P17
+CREATE POLICY "..." ON public.profiles ...
+  USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'));
+```
+
+### 컬럼 불변 트리거
+
+RLS 정책은 컬럼 단위 제어가 불가능 (row 단위). 특정 컬럼 변경 차단이 필요하면 `BEFORE UPDATE` 트리거 사용:
+- `enforce_profile_immutable_columns_trigger` — `profiles.role`, `deleted_at` JWT 변경 차단
+- `enforce_report_card_student_columns_trigger` — `report_cards`의 학생 자가 수정 컬럼 제한 (reply/reply_en만 허용)
+
+트리거 내부에서 `IF current_user IN ('authenticated', 'anon') THEN ... RAISE EXCEPTION` 패턴. service_role·postgres·supabase_admin은 bypass.
+
+### Phase 구성
+
+| Phase | 도메인 | 테이블 | 마이그레이션 |
+|-------|--------|--------|--------------|
+| 1 | users | profiles, students, teachers, class_teachers | `20260420000000_*`, `20260420050000_*` |
+| 2 | classes | classes, class_students, class_schedules | `20260420080000_*` |
+| 3 | academy | report_cards, homework_*, learning_records, attendance | `20260420090000_*`, `20260420100000_*` |
+| 4 | bus | bus_*, student_bus_defaults, afterschool_enrollments | `20260420110000_*` |
+| 5 | notices + textbooks | notices, class_notices, academy_notices, textbooks, weekly_sentences | `20260420120000_*` |
+
 ## Supabase Storage (5개 버킷)
 
 | 버킷 | 공개여부 | 용도 |

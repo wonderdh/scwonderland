@@ -11,6 +11,7 @@ import { FileList } from "@/components/forms/FileList";
 import { LoadingState } from "@/components/feedback/LoadingState";
 import { EmptyState } from "@/components/feedback/EmptyState";
 import type { ClassNotice, ClassNoticeAttachment, AcademyNotice, AcademyNoticeAttachment } from "@/lib/types";
+import { formatDateKst } from "@/lib/utils/date-kst";
 
 type NoticeItem = {
   id: string;
@@ -145,7 +146,7 @@ export function StudentNoticesClient({
             <h2 className="text-lg font-semibold text-foreground">{selectedNotice.title}</h2>
             <p className="mt-1 text-xs text-muted-foreground">
               {selectedNotice.author_name ? `${selectedNotice.author_name} · ` : ""}
-              {new Date(selectedNotice.created_at).toLocaleDateString("ko-KR")}
+              {formatDateKst(selectedNotice.created_at)}
             </p>
           </div>
           {selectedNotice.content && (
@@ -215,7 +216,7 @@ export function StudentNoticesClient({
                     <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
                       {n.author_name && <span>{n.author_name}</span>}
                       {n.author_name && <span>·</span>}
-                      <span>{new Date(n.created_at).toLocaleDateString("ko-KR")}</span>
+                      <span>{formatDateKst(n.created_at)}</span>
                       {(n.attachment_count ?? 0) > 0 && (
                         <>
                           <span>·</span>
