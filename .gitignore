@@ -55,6 +55,9 @@ PLUGINS.md
 .claude/state/
 .claude/worktrees/
 .claude/agents/
+.claude/settings.local.json
 
-# playwright 스크린샷 (루트 레벨)
-*.png
+# playwright 스크린샷 (루트 레벨 — 실수로 떨궜을 때 방어)
+/*.png
+/*.jpg
+/*.jpeg
