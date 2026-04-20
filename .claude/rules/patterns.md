@@ -1,7 +1,7 @@
 ---
 paths:
-  - "app/**/*"
-  - "lib/**/*"
+  - "src/app/**/*"
+  - "src/lib/**/*"
 ---
 
 # Important Patterns
@@ -10,12 +10,12 @@ paths:
 
 - **로딩**: `<Spinner />` 단독 사용 금지 (인라인 버튼 제외). 섹션 로딩은 `<LoadingState label="..." />` (label 필수).
 - **삭제 확인**: `window.confirm()` 금지. 모든 삭제·민감 액션은 `<ConfirmDialog>` 사용. 영향 범위가 있으면 `impactList` prop으로 명시.
-- **토스트**: `lib/ui/toast.ts`의 `toastSuccess`/`toastError` 사용 권장 (sonner 직접 import도 허용). 에러 토스트는 `closeButton + duration 8s`.
-- **상태 표시**: 색만으로 의미 전달 금지. `<StatusBadge config={CONFIG.X} />` 사용 — config는 `lib/constants/attendance.ts` 또는 `lib/constants/bus.ts`에서 가져옴 (label·icon·badgeClass 포함).
+- **토스트**: `src/lib/ui/toast.ts`의 `toastSuccess`/`toastError` 사용 권장 (sonner 직접 import도 허용). 에러 토스트는 `closeButton + duration 8s`.
+- **상태 표시**: 색만으로 의미 전달 금지. `<StatusBadge config={CONFIG.X} />` 사용 — config는 `src/lib/constants/attendance.ts` 또는 `src/lib/constants/bus.ts`에서 가져옴 (label·icon·badgeClass 포함).
 
-## Routing (lib/navigation/menu-routes.ts)
+## Routing (src/lib/navigation/menu-routes.ts)
 
-모든 (site) 라우트 매핑이 중앙 관리됨:
+모든 (site) 라우트 매핑이 `src/lib/navigation/menu-routes.ts`에서 중앙 관리됨:
 
 ```typescript
 getMenuItemHref("about", "인사말")    // → "/about-wonderland/greeting"
@@ -26,20 +26,20 @@ getMenuIdFromPathname("/program/map") // → "programs"
 
 **새 페이지 추가 시:** 폴더 생성 → `itemSlugs` 업데이트 → 카테고리 layout 확인
 
-## Email Normalization (lib/auth/auth-utils.ts)
+## Email Normalization (src/lib/auth/auth-utils.ts)
 
 `@`가 없으면 자동으로 `@{NEXT_PUBLIC_EMAIL_DOMAIN}` 추가:
 ```typescript
 normalizeEmail("student123")      // → "student123@scwonderland.com"
 normalizeEmail("user@gmail.com")  // → "user@gmail.com"
 ```
-`lib/auth/auth-utils.ts`에 중앙화됨. `getAuthErrorMessage()`도 동일 파일에 위치.
+`src/lib/auth/auth-utils.ts`에 중앙화됨. `getAuthErrorMessage()`도 동일 파일에 위치.
 
 ## Authentication Flow
 
 ```
 1. 로그인: LoginForm → supabase.auth.signInWithPassword()
-2. 세션 유지: proxy.ts → 모든 요청에서 supabase.auth.getUser()로 세션 갱신
+2. 세션 유지: src/proxy.ts → 모든 요청에서 supabase.auth.getUser()로 세션 갱신
 3. Admin 보호: admin/layout.tsx → 인증 확인 + profiles.role === "admin" 확인
 4. Academy 보호: student/layout.tsx → 인증 확인 + profiles.role === "student" 확인
 5. Dashboard 라우팅: 역할에 따라 자동 리다이렉트
@@ -50,7 +50,7 @@ normalizeEmail("user@gmail.com")  // → "user@gmail.com"
 모든 mutating Server Action은 진입점에서 `auth-helpers.ts`의 헬퍼 중 하나로 권한을 검증해야 한다:
 
 ```typescript
-// 역할별 헬퍼 (app/(admin)/admin/actions/auth-helpers.ts)
+// 역할별 헬퍼 (src/app/(admin)/admin/actions/auth-helpers.ts)
 verifyAdmin()           // admin 전용
 verifyAuthenticated()   // 로그인 여부만 확인 (read-only 공유 액션)
 verifyTeacherOrAdmin()  // 교사·관리자 공용 (숙제/출결/학습기록 write 액션)
@@ -82,7 +82,7 @@ function safeRedirect(next: string | null): string {
 
 ## HTML Escaping (XSS 방지)
 
-React 밖으로 나가는 HTML 문자열(`document.write`, `innerHTML = ...` 등)에 사용자 입력을 삽입할 때는 **반드시** `lib/utils/escape-html.ts`의 `escapeHtml()`을 거친다. 프린트용 새 창 생성이 대표 사례.
+React 밖으로 나가는 HTML 문자열(`document.write`, `innerHTML = ...` 등)에 사용자 입력을 삽입할 때는 **반드시** `src/lib/utils/escape-html.ts`의 `escapeHtml()`을 거친다. 프린트용 새 창 생성이 대표 사례.
 
 ```typescript
 import { escapeHtml } from "@/lib/utils/escape-html";
@@ -95,7 +95,7 @@ win.document.write(`<h2>${escapeHtml(studentName)}</h2>`);
 
 한국 학원 서비스이므로 모든 날짜는 KST 기준. **직접 `new Date()` 연산 금지** (서버 타임존에 따라 자정 경계 버그 발생).
 
-`lib/utils/date-kst.ts` 헬퍼 사용:
+`src/lib/utils/date-kst.ts` 헬퍼 사용:
 
 ```typescript
 import { todayKst, formatDateKst, formatDateTimeKst, nowKstParts } from "@/lib/utils/date-kst";
@@ -110,7 +110,7 @@ nowKstParts()              // { year: 2026, month: 4, day: 9 }
 
 ## 다중 날짜 선택 (MultiDatePicker)
 
-날짜 선택이 필요한 곳에서는 `<input type="date">` 대신 `components/forms/MultiDatePicker.tsx`를 사용한다:
+날짜 선택이 필요한 곳에서는 `<input type="date">` 대신 `src/components/forms/MultiDatePicker.tsx`를 사용한다:
 
 ```tsx
 import { MultiDatePicker } from "@/components/forms/MultiDatePicker";
@@ -148,14 +148,14 @@ if (dates.length === 1) {
 
 ## Type Import Convention
 
-`"use server"` 파일에서는 `export type`이 불가능 (런타임에 제거됨). 공유 타입은 `lib/types/`에 정의하고, 컴포넌트에서 직접 `import type { ... } from "@/lib/types"` 사용.
+`"use server"` 파일에서는 `export type`이 불가능 (런타임에 제거됨). 공유 타입은 `src/lib/types/`에 정의하고, 컴포넌트에서 직접 `import type { ... } from "@/lib/types"` 사용.
 
-## Teacher Type Differentiation (lib/ui/teacher-labels.ts)
+## Teacher Type Differentiation (src/lib/ui/teacher-labels.ts)
 
 교사 포털은 `teacher_type`에 따라 UI/라벨/탭이 다름:
 
 ```
-teacher/layout.tsx → teachers 테이블에서 teacher_type 조회 (Admin Client)
+src/app/(academy)/academy/teacher/layout.tsx → teachers 테이블에서 teacher_type 조회 (Admin Client)
                    → TeacherNav에 teacherType prop 전달
 각 page.tsx → getCurrentTeacherProfile()로 teacher_type 조회
             → 라우트 보호 (redirect) + Client Component에 teacherType 전달

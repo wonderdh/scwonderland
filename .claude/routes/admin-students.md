@@ -6,8 +6,8 @@
 - 라우트 그룹: `(admin)`
 
 ## 핵심 파일
-- page.tsx: `app/(admin)/admin/students/page.tsx`
-- 서브라우트: `app/(admin)/admin/students/classes/page.tsx`
+- page.tsx: `src/app/(admin)/admin/students/page.tsx`
+- 서브라우트: `src/app/(admin)/admin/students/classes/page.tsx`
 
 ## 컴포넌트
 | 파일 | 역할 |
@@ -24,11 +24,11 @@
 | `students/components/StudentBusTab.tsx` | 승하차 배정 탭 |
 | `students/components/StudentComingTab.tsx` | (미사용 또는 예비) |
 | `students/components/ReportCardReadView.tsx` | 리포트카드 읽기 뷰 |
-| `components/AdminListSidebar.tsx` | 학생/교사 목록 좌측 사이드바 (검색, 추가, 휴지통 링크) |
-| `components/UserList.tsx` | 사용자 목록 테이블 |
-| `components/UserRow.tsx` | 사용자 행 컴포넌트 |
-| `components/TrashView.tsx` | 소프트 삭제된 사용자 복구/영구삭제 뷰 |
-| `components/ScrollToSection.tsx` | 섹션 스크롤 유틸리티 |
+| `src/components/AdminListSidebar.tsx` | 학생/교사 목록 좌측 사이드바 (검색, 추가, 휴지통 링크) |
+| `src/components/UserList.tsx` | 사용자 목록 테이블 |
+| `src/components/UserRow.tsx` | 사용자 행 컴포넌트 |
+| `src/components/TrashView.tsx` | 소프트 삭제된 사용자 복구/영구삭제 뷰 |
+| `src/components/ScrollToSection.tsx` | 섹션 스크롤 유틸리티 |
 
 ## Server Actions
 
@@ -82,11 +82,11 @@
 | `getStudentClasses` | studentProfileId | `class_students`, `classes`, `class_teachers`, `teachers` |
 
 ## 타입
-- `UserWithProfile` from `lib/types`
-- `LearningRecord` from `lib/types`
-- `ReportCard`, `ReportCardListItem` from `lib/types`
-- `AttendanceRecord`, `AttendanceStats` from `lib/types`
-- `StudentTimetableRow`, `StudentTimetableCell` from `lib/types`
+- `UserWithProfile` from `src/lib/types`
+- `LearningRecord` from `src/lib/types`
+- `ReportCard`, `ReportCardListItem` from `src/lib/types`
+- `AttendanceRecord`, `AttendanceStats` from `src/lib/types`
+- `StudentTimetableRow`, `StudentTimetableCell` from `src/lib/types`
 - `StudentTabId` = "basic" | "learning" | "schedule" | "bus" (legacy "info"/"report"/"textbook"/"timetable"/"attendance" IDs backwards-compatible → basic/learning/schedule)
 
 ## 데이터 흐름

@@ -28,10 +28,10 @@ const ROUTE_MAP = [
   // Shared actions
   ['admin/actions',            'shared-actions.md'],
   ['academy/actions',          'shared-actions.md'],
-  // Shared lib/components
-  ['lib/types',                'shared-lib.md'],
-  ['lib/supabase',             'shared-lib.md'],
-  ['components/',              'shared-components.md'],
+  // Shared src/lib/ and src/components/
+  ['src/lib/types',            'shared-lib.md'],
+  ['src/lib/supabase',         'shared-lib.md'],
+  ['src/components/',          'shared-components.md'],
   // Bus / Monitor
   ['(bus)',                    'bus-staff.md'],
   ['(monitor)',                'bus-monitor.md'],

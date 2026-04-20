@@ -1,6 +1,6 @@
 # Server Actions 전체 인덱스
 
-모든 Server Action은 `app/(admin)/admin/actions/`에 위치하며 `{ error?: string }` 패턴 반환.
+모든 Server Action은 `src/app/(admin)/admin/actions/`에 위치하며 `{ error?: string }` 패턴 반환.
 
 ## 인증 헬퍼 (`auth-helpers.ts`)
 

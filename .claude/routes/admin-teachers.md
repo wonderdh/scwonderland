@@ -5,7 +5,7 @@
 - 라우트 그룹: `(admin)`
 
 ## 핵심 파일
-- page.tsx: `app/(admin)/admin/teachers/page.tsx`
+- page.tsx: `src/app/(admin)/admin/teachers/page.tsx`
 
 ## 컴포넌트
 | 파일 | 역할 |
@@ -15,9 +15,9 @@
 | `teachers/components/TeacherTabNav.tsx` | 교사 상세 탭 네비게이션 (info, classes, timetable) |
 | `teachers/components/TeacherClassesTab.tsx` | 교사 담당 반 목록 |
 | `teachers/components/TeacherTimetableTab.tsx` | 교사 시간표 (3개 그룹별 하이라이트) |
-| `components/AdminListSidebar.tsx` | 교사 목록 좌측 사이드바 |
-| `components/UserList.tsx` | 사용자 목록 테이블 |
-| `components/TrashView.tsx` | 소프트 삭제된 교사 복구/영구삭제 뷰 |
+| `src/components/AdminListSidebar.tsx` | 교사 목록 좌측 사이드바 |
+| `src/components/UserList.tsx` | 사용자 목록 테이블 |
+| `src/components/TrashView.tsx` | 소프트 삭제된 교사 복구/영구삭제 뷰 |
 
 ## Server Actions
 
@@ -44,8 +44,8 @@
 | `getGroupTimetableGrid` | groupLabel: string | `academy_periods`, `classes`, `class_schedules`, `teachers`, `profiles`, `textbooks` |
 
 ## 타입
-- `UserWithProfile` from `lib/types`
-- `ClassWithDetails` from `lib/types`
+- `UserWithProfile` from `src/lib/types`
+- `ClassWithDetails` from `src/lib/types`
 - `TeacherTabId` = "info" | "classes" | "timetable"
 - `GroupTimetableData` from `schedule-actions.ts`
 

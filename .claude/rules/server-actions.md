@@ -1,8 +1,8 @@
 ---
 paths:
-  - "app/(admin)/admin/actions/**/*"
-  - "app/(admin)/admin/actions.ts"
-  - "app/(academy)/academy/actions.ts"
+  - "src/app/(admin)/admin/actions/**/*"
+  - "src/app/(admin)/admin/actions.ts"
+  - "src/app/(academy)/academy/actions.ts"
 ---
 
 # Server Actions

@@ -5,7 +5,7 @@
 - 라우트 그룹: `(admin)`
 
 ## 핵심 파일
-- page.tsx: `app/(admin)/admin/afterschool/page.tsx`
+- page.tsx: `src/app/(admin)/admin/afterschool/page.tsx`
 
 ## 컴포넌트
 | 파일 | 역할 |

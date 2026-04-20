@@ -5,7 +5,7 @@
 - 라우트 그룹: `(admin)`
 
 ## 핵심 파일
-- page.tsx: `app/(admin)/admin/textbooks/page.tsx`
+- page.tsx: `src/app/(admin)/admin/textbooks/page.tsx`
 
 ## 컴포넌트
 | 파일 | 역할 |
@@ -61,4 +61,4 @@
 - 반에서 교재 해제 시 `source_type='class'`인 progress도 함께 삭제
 - 진도 상태: `not_started` → `in_progress` → `completed` (completed_units 기준 자동 결정)
 - `batchUpdateProgress`로 반 전체 학생 일괄 진도 업데이트 가능 (제외 학생 지정)
-- 타입이 `textbook-actions.ts`에서 직접 export됨 (`lib/types`가 아닌 action 파일 자체)
+- 타입이 `textbook-actions.ts`에서 직접 export됨 (`src/lib/types`가 아닌 action 파일 자체)

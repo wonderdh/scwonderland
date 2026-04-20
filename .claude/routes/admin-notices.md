@@ -5,7 +5,7 @@
 - 라우트 그룹: `(admin)`
 
 ## 핵심 파일
-- page.tsx: `app/(admin)/admin/notices/page.tsx`
+- page.tsx: `src/app/(admin)/admin/notices/page.tsx`
 
 ## 컴포넌트
 | 파일 | 역할 |
@@ -24,8 +24,8 @@
 | `deleteNotice` | noticeId | `notices`, `notice_attachments` (CASCADE), Storage: `notice-files` |
 
 ## 타입
-- `Notice` from `lib/types`
-- `NoticeAttachment` from `lib/types`
+- `Notice` from `src/lib/types`
+- `NoticeAttachment` from `src/lib/types`
 
 ## 데이터 흐름
 1. `page.tsx`: `listNotices(true)` → 미게시 포함 전체 공지 목록 로드

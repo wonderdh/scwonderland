@@ -1,12 +1,12 @@
 ---
 paths:
-  - "app/**/*.tsx"
-  - "components/**/*"
+  - "src/app/**/*.tsx"
+  - "src/components/**/*"
 ---
 
 # Components
 
-## Site Components (app/(site)/_components/)
+## Site Components (src/app/(site)/_components/)
 
 | 컴포넌트 | 위치 | 역할 |
 |---------|------|------|
@@ -50,9 +50,9 @@ paths:
 
 **예약 현황 (admin/reservations/):** `ReservationDashboard` (통계 카드 3종 + 캘린더 히트맵 + 출결/버스 예약 폼 + 목록 CRUD). 출결 예약 폼·버스 변경 폼에 `MultiDatePicker` 사용
 
-## Shared Components (components/)
+## Shared Components (src/components/)
 
-루트 `components/` 아래 8개 서브폴더로 용도별 분류. 공통 import 경로: `@/components/<folder>/<Name>`.
+루트 `src/components/` 아래 8개 서브폴더로 용도별 분류. 공통 import 경로: `@/components/<folder>/<Name>`.
 
 ### forms/ — 폼 입력
 | 컴포넌트 | 역할 |
@@ -106,7 +106,7 @@ paths:
 ### ui/ — shadcn/ui primitives
 avatar, badge, button, calendar, card, input, label, popover, separator, tabs, textarea, tooltip
 
-## Academy Components (app/(academy)/academy/)
+## Academy Components (src/app/(academy)/academy/)
 
 | 컴포넌트 | 위치 | 역할 |
 |---------|------|------|

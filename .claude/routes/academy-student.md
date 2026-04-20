@@ -5,24 +5,24 @@
 - 라우트 그룹: (academy)
 
 ## 핵심 파일
-- layout.tsx: `app/(academy)/academy/student/layout.tsx`
-- loading.tsx: `app/(academy)/academy/student/loading.tsx`
-- page.tsx (대시보드): `app/(academy)/academy/student/page.tsx`
+- layout.tsx: `src/app/(academy)/academy/student/layout.tsx`
+- loading.tsx: `src/app/(academy)/academy/student/loading.tsx`
+- page.tsx (대시보드): `src/app/(academy)/academy/student/page.tsx`
 
 ## 컴포넌트
 | 파일 | 역할 |
 |------|------|
-| `app/(academy)/academy/student/components/StudentNav.tsx` | 학생 포털 네비게이션 바 (7개 탭: 내 정보, 리포트카드, 교재, 공지, 숙제, 시간표, 승하차) |
-| `app/(academy)/academy/student/components/ReportCardReplyForm.tsx` | 리포트카드 답글 작성/수정 폼 |
-| `app/(academy)/academy/student/bus/StudentBusClient.tsx` | 승하차 스케줄 조회 및 변경 요청 |
-| `app/(academy)/academy/student/homework/StudentHomeworkClient.tsx` | 숙제 목록/상세/제출 (음성 녹음 + 텍스트) |
-| `app/(academy)/academy/student/notices/StudentNoticesClient.tsx` | 공지사항 조회 (반 공지 + 학원 공지 통합) |
-| `app/(academy)/academy/student/textbooks/StudentTextbooksClient.tsx` | 교재 진도 현황 조회 (읽기 전용) |
-| `app/(academy)/academy/student/timetable/StudentTimetableClient.tsx` | 개인 시간표 조회 및 출력, 방과후 등록 현황 |
-| `app/(admin)/admin/students/components/ReportCardReadView.tsx` | 리포트카드 읽기 전용 뷰 (공유 컴포넌트) |
-| `components/forms/AudioRecorder.tsx` | 음성 녹음 컴포넌트 (숙제 제출용) |
-| `components/forms/FileList.tsx` | 첨부파일 목록 표시 |
-| `components/feedback/LoadingState.tsx` | 로딩 상태 표시 |
+| `src/app/(academy)/academy/student/components/StudentNav.tsx` | 학생 포털 네비게이션 바 (7개 탭: 내 정보, 리포트카드, 교재, 공지, 숙제, 시간표, 승하차) |
+| `src/app/(academy)/academy/student/components/ReportCardReplyForm.tsx` | 리포트카드 답글 작성/수정 폼 |
+| `src/app/(academy)/academy/student/bus/StudentBusClient.tsx` | 승하차 스케줄 조회 및 변경 요청 |
+| `src/app/(academy)/academy/student/homework/StudentHomeworkClient.tsx` | 숙제 목록/상세/제출 (음성 녹음 + 텍스트) |
+| `src/app/(academy)/academy/student/notices/StudentNoticesClient.tsx` | 공지사항 조회 (반 공지 + 학원 공지 통합) |
+| `src/app/(academy)/academy/student/textbooks/StudentTextbooksClient.tsx` | 교재 진도 현황 조회 (읽기 전용) |
+| `src/app/(academy)/academy/student/timetable/StudentTimetableClient.tsx` | 개인 시간표 조회 및 출력, 방과후 등록 현황 |
+| `src/app/(admin)/admin/students/components/ReportCardReadView.tsx` | 리포트카드 읽기 전용 뷰 (공유 컴포넌트) |
+| `src/components/forms/AudioRecorder.tsx` | 음성 녹음 컴포넌트 (숙제 제출용) |
+| `src/components/forms/FileList.tsx` | 첨부파일 목록 표시 |
+| `src/components/feedback/LoadingState.tsx` | 로딩 상태 표시 |
 
 ## Server Actions
 
@@ -82,7 +82,7 @@
    - `listLearningRecords(profile.id)` — 최근 3건
 2. 위젯 3종 (미제출 숙제 / 이번 달 출석률 / 최근 학습 기록) + 프로필 카드 + 소속 반 카드
 3. 미제출 숙제 카드는 `/academy/student/homework`로 링크, 건수 0이면 emerald, 1건 이상이면 amber
-4. KST 계산은 `lib/utils/date-kst.ts`의 `nowKstParts()`, `formatDateKst()` 사용
+4. KST 계산은 `src/lib/utils/date-kst.ts`의 `nowKstParts()`, `formatDateKst()` 사용
 
 ### /academy/student/reports (리포트카드)
 1. `listReportCardsByStudent()` → 연/월 목록 표시
@@ -116,11 +116,11 @@
 4. `submitBusChangeRequest()` / `cancelBusChangeRequest()` 호출
 
 ## 의존성
-- `app/(academy)/academy/actions.ts` — 학생/교사 포털 공유 Server Actions
-- `app/(admin)/admin/actions.ts` — barrel export (모든 admin action)
-- `app/(admin)/admin/actions/schedule-actions.ts` — `getStudentTimetable` 직접 import
-- `app/(admin)/admin/actions/afterschool-actions.ts` — `getStudentAfterschoolDays` 직접 import
-- `lib/ui/teacher-labels.ts` — (리포트카드 읽기 뷰에서 간접 사용)
+- `src/app/(academy)/academy/actions.ts` — 학생/교사 포털 공유 Server Actions
+- `src/app/(admin)/admin/actions.ts` — barrel export (모든 admin action)
+- `src/app/(admin)/admin/actions/schedule-actions.ts` — `getStudentTimetable` 직접 import
+- `src/app/(admin)/admin/actions/afterschool-actions.ts` — `getStudentAfterschoolDays` 직접 import
+- `src/lib/ui/teacher-labels.ts` — (리포트카드 읽기 뷰에서 간접 사용)
 
 ## 주의사항
 - 학생 포털은 읽기 전용이 대부분 (교재 진도 변경 불가, 공지 작성 불가)

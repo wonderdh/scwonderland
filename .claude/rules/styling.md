@@ -2,8 +2,8 @@
 paths:
   - "**/*.css"
   - "**/*.module.css"
-  - "app/(site)/**/*"
-  - "app/globals.css"
+  - "src/app/(site)/**/*"
+  - "src/app/globals.css"
 ---
 
 # Styling
@@ -28,7 +28,7 @@ paths:
 - **Blue** (`#3a75ff`): 타임라인 아이콘, 보조 컬러
 - **Slate** 계열: Admin/Academy 전체 UI
 
-## 학생 나이별 색상 팔레트 (lib/ui/student-age-colors.ts)
+## 학생 나이별 색상 팔레트 (src/lib/ui/student-age-colors.ts)
 
 학생 이름을 표시할 때 나이별 색상으로 구분. **반드시 이 규칙을 따를 것.**
 
@@ -73,7 +73,7 @@ students.sort((a, b) => {
 
 ## Senior-Friendly UI Tokens (admin)
 
-- admin-root wrapper: 17px base font, 1.6 line-height (defined in app/globals.css)
+- admin-root wrapper: 17px base font, 1.6 line-height (defined in src/app/globals.css)
 - 본문 최소 글씨: text-sm (15px). text-[10px]·text-[11px] 본문 사용 금지
 - Button 기본: h-11 text-base (sm: h-10, lg: h-12)
 - Input/Select 기본: h-11 text-base

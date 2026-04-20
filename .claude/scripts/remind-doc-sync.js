@@ -28,7 +28,7 @@ process.stdin.on('end', () => {
     reminders.push(`⚠️ [DOC SYNC 필수] Server Action 변경: ${fileName}`);
     reminders.push(`  → .claude/rules/server-actions.md — 함수 추가/수정/삭제 반영`);
     reminders.push(`  → .claude/routes/shared-actions.md — 상세 파라미터/권한/테이블 매핑`);
-    reminders.push(`  → app/(admin)/admin/actions.ts — barrel re-export 확인`);
+    reminders.push(`  → src/app/(admin)/admin/actions.ts — barrel re-export 확인`);
   }
   // Barrel re-export
   else if (filePath.endsWith('admin/actions.ts') || filePath.endsWith('academy/actions.ts')) {
@@ -51,19 +51,19 @@ process.stdin.on('end', () => {
     reminders.push(`  → .claude/rules/architecture.md — 레이아웃 구성 확인`);
   }
   // DB 타입
-  else if (filePath.includes('lib/types/') && filePath.endsWith('.ts')) {
+  else if (filePath.includes('src/lib/types/') && filePath.endsWith('.ts')) {
     reminders.push(`⚠️ [DOC SYNC] 타입 변경: ${fileName}`);
     reminders.push(`  → .claude/rules/database.md — 스키마 다이어그램`);
     reminders.push(`  → .claude/routes/shared-lib.md — 타입 목록`);
   }
-  // 공유 컴포넌트 (components/ 루트)
-  else if (filePath.match(/^[^(]*components\//) && filePath.endsWith('.tsx')) {
+  // 공유 컴포넌트 (src/components/ 루트)
+  else if (filePath.match(/src\/components\//) && filePath.endsWith('.tsx')) {
     reminders.push(`⚠️ [DOC SYNC] 공유 컴포넌트 변경: ${fileName}`);
     reminders.push(`  → .claude/rules/components.md — Shared Components 테이블`);
     reminders.push(`  → .claude/CLAUDE.md — 공통 유틸 섹션 (새 공유 컴포넌트면)`);
   }
-  // lib/ 유틸
-  else if (filePath.includes('lib/') && filePath.endsWith('.ts') && !filePath.includes('types/')) {
+  // src/lib/ 유틸
+  else if (filePath.includes('src/lib/') && filePath.endsWith('.ts') && !filePath.includes('types/')) {
     reminders.push(`⚠️ [DOC SYNC] 유틸 변경: ${fileName}`);
     reminders.push(`  → .claude/routes/shared-lib.md — 유틸 목록`);
     reminders.push(`  → .claude/rules/core.md — 핵심 원칙 (새 유틸이면)`);

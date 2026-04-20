@@ -19,29 +19,29 @@
 ### 커버리지 검증
 
 **page.tsx 매핑 완료:**
-- `app/(admin)/admin/page.tsx` → admin-dashboard.md
-- `app/(admin)/admin/students/page.tsx` → admin-students.md
-- `app/(admin)/admin/students/classes/page.tsx` → admin-students.md (서브라우트)
-- `app/(admin)/admin/teachers/page.tsx` → admin-teachers.md
-- `app/(admin)/admin/classes/page.tsx` → admin-classes.md
-- `app/(admin)/admin/textbooks/page.tsx` → admin-textbooks.md
-- `app/(admin)/admin/notices/page.tsx` → admin-notices.md
-- `app/(admin)/admin/academy-notices/page.tsx` → admin-academy-notices.md
-- `app/(admin)/admin/timetable/page.tsx` → admin-timetable.md
-- `app/(admin)/admin/afterschool/page.tsx` → admin-afterschool.md
-- `app/(admin)/admin/bus/page.tsx` → admin-bus.md
-- `app/(academy)/academy/login/page.tsx` → academy-login.md
-- `app/(academy)/academy/dashboard/page.tsx` → academy-login.md
-- `app/(academy)/academy/student/page.tsx` + 6 서브페이지 → academy-student.md
-- `app/(academy)/academy/teacher/page.tsx` + 8 서브페이지 → academy-teacher.md
-- `app/(bus)/bus/page.tsx` → bus-staff.md
-- `app/(monitor)/bus-monitor/page.tsx` → bus-monitor.md
-- `app/(site)/page.tsx` → site-home.md
-- `app/(site)/about-wonderland/*/page.tsx` (4개) → site-about.md
-- `app/(site)/program/*/page.tsx` (5개) → site-program.md
-- `app/(site)/notice/news/page.tsx` + `[id]/page.tsx` → site-notice.md
-- `app/(site)/community/*/page.tsx` (3개) → site-community.md
-- `app/(site)/experience/*/page.tsx` (3개) → site-experience.md
+- `src/app/(admin)/admin/page.tsx` → admin-dashboard.md
+- `src/app/(admin)/admin/students/page.tsx` → admin-students.md
+- `src/app/(admin)/admin/students/classes/page.tsx` → admin-students.md (서브라우트)
+- `src/app/(admin)/admin/teachers/page.tsx` → admin-teachers.md
+- `src/app/(admin)/admin/classes/page.tsx` → admin-classes.md
+- `src/app/(admin)/admin/textbooks/page.tsx` → admin-textbooks.md
+- `src/app/(admin)/admin/notices/page.tsx` → admin-notices.md
+- `src/app/(admin)/admin/academy-notices/page.tsx` → admin-academy-notices.md
+- `src/app/(admin)/admin/timetable/page.tsx` → admin-timetable.md
+- `src/app/(admin)/admin/afterschool/page.tsx` → admin-afterschool.md
+- `src/app/(admin)/admin/bus/page.tsx` → admin-bus.md
+- `src/app/(academy)/academy/login/page.tsx` → academy-login.md
+- `src/app/(academy)/academy/dashboard/page.tsx` → academy-login.md
+- `src/app/(academy)/academy/student/page.tsx` + 6 서브페이지 → academy-student.md
+- `src/app/(academy)/academy/teacher/page.tsx` + 8 서브페이지 → academy-teacher.md
+- `src/app/(bus)/bus/page.tsx` → bus-staff.md
+- `src/app/(monitor)/bus-monitor/page.tsx` → bus-monitor.md
+- `src/app/(site)/page.tsx` → site-home.md
+- `src/app/(site)/about-wonderland/*/page.tsx` (4개) → site-about.md
+- `src/app/(site)/program/*/page.tsx` (5개) → site-program.md
+- `src/app/(site)/notice/news/page.tsx` + `[id]/page.tsx` → site-notice.md
+- `src/app/(site)/community/*/page.tsx` (3개) → site-community.md
+- `src/app/(site)/experience/*/page.tsx` (3개) → site-experience.md
 
 **모든 page.tsx가 최소 하나의 MD 파일에 매핑됨** ✓
 

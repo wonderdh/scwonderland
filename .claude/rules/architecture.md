@@ -1,7 +1,7 @@
 ---
 paths:
-  - "app/**/*"
-  - "proxy.ts"
+  - "src/app/**/*"
+  - "src/proxy.ts"
 ---
 
 # Architecture
@@ -9,7 +9,7 @@ paths:
 ## Route Groups
 
 ```
-app/
+src/app/
 ├── layout.tsx                  # 최소: 폰트, 메타데이터, html/body
 ├── (site)/                     # 학원 소개 사이트 (공개)
 │   ├── layout.tsx              # Navigation + SideBar + Footer
@@ -38,8 +38,8 @@ app/
 ## Layout Composition
 
 ```
-RootLayout (app/layout.tsx) — Geist 폰트, HTML lang="ko"
-├── proxy.ts — Supabase 세션 갱신 (Next.js 16 proxy, 토큰 자동 리프레시)
+RootLayout (src/app/layout.tsx) — Geist 폰트, HTML lang="ko"
+├── src/proxy.ts — Supabase 세션 갱신 (Next.js 16 proxy, 토큰 자동 리프레시)
 ├── (site)/layout.tsx — 소개 사이트 전용 레이아웃
 │   ├── Navigation (fixed top, mega menu)
 │   ├── SideBar (desktop: fixed right, mobile: FAB)
@@ -99,7 +99,7 @@ CategoryLayout (menuId로 라우팅)
 | `/admin/timetable` | 시간표 관리 | 그룹별 그리드(유치부/오후반/방과후), 교시 CRUD, 학생 개인 시간표 |
 | `/admin/bus` | 승하차 관리 | 4개 탭(오늘운행/변경요청/배정관리/마스터), 일일 매니페스트, 변경요청 승인/거부, 마스터(호차/시간대/직원 접힘 카드) |
 
-**보호:** proxy.ts 세션 갱신 → layout.tsx에서 2단계 검증 (인증 확인 + role="admin" 확인)
+**보호:** src/proxy.ts 세션 갱신 → layout.tsx에서 2단계 검증 (인증 확인 + role="admin" 확인)
 
 ### (academy) — 학생·교사 포털
 
@@ -142,14 +142,14 @@ public/
 
 | 파일 | 역할 |
 |------|------|
-| `proxy.ts` | Supabase 세션 갱신 (Next.js 16 proxy, 모든 요청에서 토큰 리프레시) |
-| `lib/navigation/menu-routes.ts` | (site) 라우트 중앙 설정 |
-| `lib/auth/auth-utils.ts` | 이메일 정규화 + 인증 에러 메시지 (공유) |
-| `lib/types/` | 공유 타입 정의 (database.ts: DB row / api.ts: 조인·UI 타입 / index.ts: barrel re-export) |
-| `lib/supabase/storage.ts` | Storage 버킷 정의, 파일 검증/경로 생성 헬퍼 |
-| `app/(admin)/admin/actions.ts` | Admin Server Actions barrel re-export (~101개 함수) |
-| `app/(admin)/admin/actions/` | 도메인별 분할 (15개 파일) |
-| `app/(academy)/academy/actions.ts` | Academy Server Actions (7개 함수) |
-| `lib/supabase/admin.ts` | Admin Supabase 클라이언트 (service role) |
-| `lib/ui/teacher-labels.ts` | 교사 포털 한국어/영어 라벨 맵 (9개 라벨 세트) |
+| `src/proxy.ts` | Supabase 세션 갱신 (Next.js 16 proxy, 모든 요청에서 토큰 리프레시) |
+| `src/lib/navigation/menu-routes.ts` | (site) 라우트 중앙 설정 |
+| `src/lib/auth/auth-utils.ts` | 이메일 정규화 + 인증 에러 메시지 (공유) |
+| `src/lib/types/` | 공유 타입 정의 (database.ts: DB row / api.ts: 조인·UI 타입 / index.ts: barrel re-export) |
+| `src/lib/supabase/storage.ts` | Storage 버킷 정의, 파일 검증/경로 생성 헬퍼 |
+| `src/app/(admin)/admin/actions.ts` | Admin Server Actions barrel re-export (~101개 함수) |
+| `src/app/(admin)/admin/actions/` | 도메인별 분할 (15개 파일) |
+| `src/app/(academy)/academy/actions.ts` | Academy Server Actions (7개 함수) |
+| `src/lib/supabase/admin.ts` | Admin Supabase 클라이언트 (service role) |
+| `src/lib/ui/teacher-labels.ts` | 교사 포털 한국어/영어 라벨 맵 (9개 라벨 세트) |
 | `docs/*.sql` | DB 스키마 및 마이그레이션 |

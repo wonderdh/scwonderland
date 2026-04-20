@@ -6,16 +6,16 @@
 - 메뉴 ID: `contact`
 
 ## 핵심 파일
-- `app/(site)/experience/layout.tsx` — CategoryPageWrapper + CategoryLayout(menuId="contact") 래핑
+- `src/app/(site)/experience/layout.tsx` — CategoryPageWrapper + CategoryLayout(menuId="contact") 래핑
 
 ## 컴포넌트
 
 | 파일 | 역할 |
 |------|------|
-| `app/(site)/experience/special-day/page.tsx` | Special Day 페이지. `PageContent` 래퍼 사용, 콘텐츠 미완성 (플레이스홀더) |
-| `app/(site)/experience/e-school/page.tsx` | Wonderland E-School 페이지. `PageContent` 래퍼 사용, 콘텐츠 미완성 (플레이스홀더) |
-| `app/(site)/experience/library/page.tsx` | Library 페이지. `PageContent` 래퍼 사용, 콘텐츠 미완성 (플레이스홀더) |
-| `app/(site)/experience/links/page.tsx` | Links 페이지. 외부 링크 카드 모음 (Children's Music, Miss Jolie Music, Creativity, Circle Time, CMS Kids) |
+| `src/app/(site)/experience/special-day/page.tsx` | Special Day 페이지. `PageContent` 래퍼 사용, 콘텐츠 미완성 (플레이스홀더) |
+| `src/app/(site)/experience/e-school/page.tsx` | Wonderland E-School 페이지. `PageContent` 래퍼 사용, 콘텐츠 미완성 (플레이스홀더) |
+| `src/app/(site)/experience/library/page.tsx` | Library 페이지. `PageContent` 래퍼 사용, 콘텐츠 미완성 (플레이스홀더) |
+| `src/app/(site)/experience/links/page.tsx` | Links 페이지. 외부 링크 카드 모음 (Children's Music, Miss Jolie Music, Creativity, Circle Time, CMS Kids) |
 
 ## Server Actions
 - 없음

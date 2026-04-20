@@ -5,14 +5,14 @@
 - 라우트 그룹: `(admin)`
 
 ## 핵심 파일
-- page.tsx: `app/(admin)/admin/page.tsx`
-- layout.tsx: `app/(admin)/admin/layout.tsx`
+- page.tsx: `src/app/(admin)/admin/page.tsx`
+- layout.tsx: `src/app/(admin)/admin/layout.tsx`
 
 ## 컴포넌트
 | 파일 | 역할 |
 |------|------|
-| `app/(admin)/admin/components/AdminLayoutClient.tsx` | 관리자 레이아웃 클라이언트 래퍼 (사이드바 + 메인 영역) |
-| `app/(admin)/admin/components/AdminSidebar.tsx` | 좌측 네비게이션 사이드바 (10개 메뉴, 로그아웃, 사이트 이동 링크) |
+| `src/app/(admin)/admin/components/AdminLayoutClient.tsx` | 관리자 레이아웃 클라이언트 래퍼 (사이드바 + 메인 영역) |
+| `src/app/(admin)/admin/components/AdminSidebar.tsx` | 좌측 네비게이션 사이드바 (10개 메뉴, 로그아웃, 사이트 이동 링크) |
 
 ## Server Actions
 | 함수 | 파라미터 | DB 테이블 |
@@ -20,7 +20,7 @@
 | `getDashboardStats` | (없음) | `profiles`, `classes`, `report_cards`, `notices` |
 
 ## 타입
-- `DashboardStats` from `lib/types`
+- `DashboardStats` from `src/lib/types`
 
 ## 데이터 흐름
 1. `layout.tsx`: `createClient()` → `getUser()` 인증 검증 → `profiles` 테이블에서 role 확인 (admin 아니면 리다이렉트)

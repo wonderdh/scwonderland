@@ -1,15 +1,15 @@
-# lib/ 유틸리티
+# src/lib/ 유틸리티
 
 ## 타입 정의
 
 ### 파일 구조
-- `lib/types/database.ts` — 순수 DB Row 타입 (테이블 1:1)
-- `lib/types/api.ts` — 조인/통합/UI 타입 (Server Action 반환값, Client Component용)
-- `lib/types/index.ts` — 두 파일의 모든 타입을 re-export (단일 진입점: `import type { ... } from "@/lib/types"`)
+- `src/lib/types/database.ts` — 순수 DB Row 타입 (테이블 1:1)
+- `src/lib/types/api.ts` — 조인/통합/UI 타입 (Server Action 반환값, Client Component용)
+- `src/lib/types/index.ts` — 두 파일의 모든 타입을 re-export (단일 진입점: `import type { ... } from "@/lib/types"`)
 
-> `"use server"` 파일에서는 `export type` 불가 → 공유 타입은 반드시 `lib/types/`에 정의
+> `"use server"` 파일에서는 `export type` 불가 → 공유 타입은 반드시 `src/lib/types/`에 정의
 
-### `lib/types/database.ts` — 순수 DB Row 타입 (테이블 1:1)
+### `src/lib/types/database.ts` — 순수 DB Row 타입 (테이블 1:1)
 
 | 타입명 | 설명 |
 |--------|------|
@@ -27,7 +27,7 @@
 | `ClassSchedule` | 수업 시간표 (class_id 또는 student_profile_id) |
 | `Textbook` | 교재 DB Row (title, series, level, category, total_units, is_active) |
 
-### `lib/types/api.ts` — 조인/통합/UI 타입
+### `src/lib/types/api.ts` — 조인/통합/UI 타입
 
 | 타입명 | 설명 |
 |--------|------|
@@ -84,10 +84,10 @@
 
 | 파일 | 역할 | 사용 환경 |
 |------|------|-----------|
-| `lib/supabase/client.ts` | 브라우저용 Supabase 클라이언트. `createBrowserClient` 사용 | Client Component |
-| `lib/supabase/server.ts` | 서버용 Supabase 클라이언트. `createServerClient` + cookies 사용. setAll catch로 Server Component 호환 | Server Component, Server Action |
-| `lib/supabase/admin.ts` | Admin 클라이언트. `SUPABASE_SERVICE_ROLE_KEY` 사용, RLS 무시. Auth CRUD 가능. persistSession/autoRefreshToken 비활성 | Server Action 전용 |
-| `lib/supabase/storage.ts` | Storage 유틸리티. 버킷 상수(5개), 파일 검증(image/document/audio), 경로 생성, URL 추출, 파일 크기 포맷 |
+| `src/lib/supabase/client.ts` | 브라우저용 Supabase 클라이언트. `createBrowserClient` 사용 | Client Component |
+| `src/lib/supabase/server.ts` | 서버용 Supabase 클라이언트. `createServerClient` + cookies 사용. setAll catch로 Server Component 호환 | Server Component, Server Action |
+| `src/lib/supabase/admin.ts` | Admin 클라이언트. `SUPABASE_SERVICE_ROLE_KEY` 사용, RLS 무시. Auth CRUD 가능. persistSession/autoRefreshToken 비활성 | Server Action 전용 |
+| `src/lib/supabase/storage.ts` | Storage 유틸리티. 버킷 상수(5개), 파일 검증(image/document/audio), 경로 생성, URL 추출, 파일 크기 포맷 |
 
 ### Storage 버킷 상수
 - `notice-files` — 사이트 공지 파일
@@ -101,79 +101,79 @@
 - 문서: PDF/ZIP/DOCX/XLSX, 20MB
 - 오디오: WebM/OGG/MP4/MP3/WAV, 50MB
 
-## 인증 유틸리티 (`lib/auth/`)
+## 인증 유틸리티 (`src/lib/auth/`)
 
 | 파일 | 역할 |
 |------|------|
-| `lib/auth/auth-utils.ts` | 이메일 정규화(`normalizeEmail`: 한글 입력 자동 변환 + 도메인 자동 추가) + Auth 에러 메시지 한국어 변환(`getAuthErrorMessage`) |
-| `lib/auth/korean-to-english.ts` | 한타→영타 변환 (두벌식 키보드 매핑). `containsKorean(str)` 감지 + `koreanToEnglish(str)` 변환. 로그인 시 한글 입력 자동 변환에 사용 |
+| `src/lib/auth/auth-utils.ts` | 이메일 정규화(`normalizeEmail`: 한글 입력 자동 변환 + 도메인 자동 추가) + Auth 에러 메시지 한국어 변환(`getAuthErrorMessage`) |
+| `src/lib/auth/korean-to-english.ts` | 한타→영타 변환 (두벌식 키보드 매핑). `containsKorean(str)` 감지 + `koreanToEnglish(str)` 변환. 로그인 시 한글 입력 자동 변환에 사용 |
 
-## UI 자산 (`lib/ui/`)
+## UI 자산 (`src/lib/ui/`)
 
 클라이언트 렌더링 계층에서만 사용되는 라벨·색상·피드백 자산.
 
 | 파일 | 역할 |
 |------|------|
-| `lib/ui/teacher-labels.ts` | 원어민/한국인 교사 UI 라벨 세트. 9개 라벨 객체(dashboardLabels, reportLabels, textbookLabels, batchUpdateLabels, noticeLabels, homeworkLabels, attendanceLabels, timetableLabels, busLabels). 각각 korean/native 키 |
-| `lib/ui/student-age-colors.ts` | 학생 나이별 색상 팔레트. `getAgeColor(age)` -> `{bg, text, border}`. 5세=pink, 6세=sky, 7세=emerald, 기타=slate. `getAgeLabel(age)` -> "N세" |
-| `lib/ui/toast.ts` | Sonner 토스트 래퍼. `toastSuccess/toastError/toastInfo`. 에러 토스트는 `closeButton + duration 8s` 기본값 |
+| `src/lib/ui/teacher-labels.ts` | 원어민/한국인 교사 UI 라벨 세트. 9개 라벨 객체(dashboardLabels, reportLabels, textbookLabels, batchUpdateLabels, noticeLabels, homeworkLabels, attendanceLabels, timetableLabels, busLabels). 각각 korean/native 키 |
+| `src/lib/ui/student-age-colors.ts` | 학생 나이별 색상 팔레트. `getAgeColor(age)` -> `{bg, text, border}`. 5세=pink, 6세=sky, 7세=emerald, 기타=slate. `getAgeLabel(age)` -> "N세" |
+| `src/lib/ui/toast.ts` | Sonner 토스트 래퍼. `toastSuccess/toastError/toastInfo`. 에러 토스트는 `closeButton + duration 8s` 기본값 |
 
-## Navigation 구조 (`lib/navigation/`)
+## Navigation 구조 (`src/lib/navigation/`)
 
 라우팅·메뉴 구조 선언 + pathname 기반 헬퍼.
 
 | 파일 | 역할 |
 |------|------|
-| `lib/navigation/admin-nav.ts` | 관리자 메뉴 구조 + 브레드크럼 생성. `ADMIN_NAV_GROUPS`, `getBreadcrumbFromPathname()`. AdminSidebar/AdminMobileHeader 공유 |
-| `lib/navigation/menu-routes.ts` | 사이트 메뉴 경로 매핑. menuId↔URL 변환, 아이템 slug 관리. `getMenuItemHref()`, `getDefaultMenuItemHref()`, `getCategoryItemLabels()`, `getMenuIdFromPathname()` |
+| `src/lib/navigation/admin-nav.ts` | 관리자 메뉴 구조 + 브레드크럼 생성. `ADMIN_NAV_GROUPS`, `getBreadcrumbFromPathname()`. AdminSidebar/AdminMobileHeader 공유 |
+| `src/lib/navigation/menu-routes.ts` | 사이트 메뉴 경로 매핑. menuId↔URL 변환, 아이템 slug 관리. `getMenuItemHref()`, `getDefaultMenuItemHref()`, `getCategoryItemLabels()`, `getMenuIdFromPathname()` |
 
-## Server 전용 유틸 (`lib/server/`)
+## Server 전용 유틸 (`src/lib/server/`)
 
 서버 컴포넌트·Server Action에서만 import 가능. 경로로 경계를 명시.
 
 | 파일 | 역할 |
 |------|------|
-| `lib/server/logger.ts` | 서버 구조화 로거. `logger.info(tag, msg, ctx?)` / `logger.warn(...)` / `logger.error(...)`. 서버 코드에서 `console.log/error` 직접 사용 금지. PII(이메일/전화)는 context에서 제외, `user_id`만 기록 |
-| `lib/server/translate.ts` | DeepL 번역 서버 전용. `DEEPL_API_KEY` 참조. 리포트카드 자동 번역에 사용 |
+| `src/lib/server/logger.ts` | 서버 구조화 로거. `logger.info(tag, msg, ctx?)` / `logger.warn(...)` / `logger.error(...)`. 서버 코드에서 `console.log/error` 직접 사용 금지. PII(이메일/전화)는 context에서 제외, `user_id`만 기록 |
+| `src/lib/server/translate.ts` | DeepL 번역 서버 전용. `DEEPL_API_KEY` 참조. 리포트카드 자동 번역에 사용 |
 
-## 일반 유틸리티 (`lib/utils/`)
-
-| 파일 | 역할 |
-|------|------|
-| `lib/utils/cn.ts` | Tailwind CSS 클래스 병합 유틸리티. `cn()` = `twMerge(clsx(...))`. shadcn/ui 컴포넌트 전역 사용 (components.json `aliases.utils` = `@/lib/utils/cn`) |
-| `lib/utils/student-sort.ts` | 학생 정렬 공통 유틸. `sortStudentsByAgeAndName<T>(students, ageFirst?)` — 나이순 → 한글 이름순. `age`, `korean_name`, `first_name` 필드를 가진 모든 타입에 적용 가능. 모든 학생 명단 정렬은 이 단일 소스를 통과해야 한다 |
-| `lib/utils/student-name.ts` | 학생 이름 포맷. `formatStudentName(student, { preferEnglish? })` — korean_name/english_name 조합을 컨텍스트에 맞게 표시. 원어민 UI에서는 `{ preferEnglish: true }` |
-| `lib/utils/date-kst.ts` | KST 날짜/시간 유틸. `todayKst()` → `"YYYY-MM-DD"` (DB `DATE` 컬럼용), `formatDateYmdKst(input)`, `formatDateKst(input)` → `"2026년 4월 9일"`, `formatDateTimeKst(input)` → `"2026. 04. 09. 15:30"`, `formatTimeKst(input)` → `"15:30"`, `nowKstParts()` → `{ year, month, day }`. `new Date().toLocaleDateString(...)` 분산 사용 금지 |
-| `lib/utils/escape-html.ts` | HTML 특수문자 이스케이프. `escapeHtml(input)` — React 밖 HTML 생성(`document.write`, `innerHTML = ...`) 시 XSS 방지 필수. 프린트용 새 창 생성에서 사용 |
-| `lib/utils/weekly-sentence-week.ts` | 주간 문장 주차 계산. `WEEK1_START_KST = "2026-04-05"`, `computeAutoWeekNumber(today?)` → 1~48 (48주 순환). 랜딩 팝업 + 관리자 페이지에서 사용 |
-| `lib/utils/group-consecutive-reservations.ts` | 연속 예약 날짜 그룹핑 유틸 |
-
-## 도메인 상수 (`lib/constants/`)
+## 일반 유틸리티 (`src/lib/utils/`)
 
 | 파일 | 역할 |
 |------|------|
-| `lib/constants/attendance.ts` | **출결 상태 단일 소스**. `ATTENDANCE_STATUSES` (4종 배열), `AttendanceStatus` 타입, `ATTENDANCE_STATUS_CONFIG` (label/labelEn/activeClass/inactiveClass/badgeClass), `getStatusLabel(status, teacherType)`, `shouldShowNote(status)`. 모든 출결 UI에서 import |
-| `lib/constants/timetable.ts` | **시간표 색상 단일 소스**. `TEACHER_COLOR_PALETTE` (12색), `buildTeacherColorMap(rows)`. StudentTimetableClient/Tab에서 공유 |
-| `lib/constants/date.ts` | **요일 상수**. `WEEKDAY_NAMES_5` (월~금), `WEEKDAY_NAMES_7` (일~토). 시간표·출결·버스 등에서 공유 |
-| `lib/constants/bus.ts` | 버스 상태 상수 (버스 타입·변경 요청 상태 등) |
-| `lib/constants/class.ts` | 반 도메인 통합 상수. `GROUP_ORDER = ["유치부", "오후반", ""]`, `GroupKey` 타입, `CLASS_COLOR_PALETTE` (8색 팔레트), `getClassColor(colorIndex, fallbackIndex)` 순환 함수 |
-| `lib/constants/weekly-sentence.ts` | 주간 문장 레벨 상수 3개 (기초/중급/상급, 기초는 Q&A answer 컬럼) + XLSX 시트명↔level 매핑 (`SHEET_LEVEL_MAP`) |
+| `src/lib/utils/cn.ts` | Tailwind CSS 클래스 병합 유틸리티. `cn()` = `twMerge(clsx(...))`. shadcn/ui 컴포넌트 전역 사용 (components.json `aliases.utils` = `@/lib/utils/cn`) |
+| `src/lib/utils/student-sort.ts` | 학생 정렬 공통 유틸. `sortStudentsByAgeAndName<T>(students, ageFirst?)` — 나이순 → 한글 이름순. `age`, `korean_name`, `first_name` 필드를 가진 모든 타입에 적용 가능. 모든 학생 명단 정렬은 이 단일 소스를 통과해야 한다 |
+| `src/lib/utils/student-name.ts` | 학생 이름 포맷. `formatStudentName(student, { preferEnglish? })` — korean_name/english_name 조합을 컨텍스트에 맞게 표시. 원어민 UI에서는 `{ preferEnglish: true }` |
+| `src/lib/utils/date-kst.ts` | KST 날짜/시간 유틸. `todayKst()` → `"YYYY-MM-DD"` (DB `DATE` 컬럼용), `formatDateYmdKst(input)`, `formatDateKst(input)` → `"2026년 4월 9일"`, `formatDateTimeKst(input)` → `"2026. 04. 09. 15:30"`, `formatTimeKst(input)` → `"15:30"`, `nowKstParts()` → `{ year, month, day }`. `new Date().toLocaleDateString(...)` 분산 사용 금지 |
+| `src/lib/utils/escape-html.ts` | HTML 특수문자 이스케이프. `escapeHtml(input)` — React 밖 HTML 생성(`document.write`, `innerHTML = ...`) 시 XSS 방지 필수. 프린트용 새 창 생성에서 사용 |
+| `src/lib/utils/weekly-sentence-week.ts` | 주간 문장 주차 계산. `WEEK1_START_KST = "2026-04-05"`, `computeAutoWeekNumber(today?)` → 1~48 (48주 순환). 랜딩 팝업 + 관리자 페이지에서 사용 |
+| `src/lib/utils/group-consecutive-reservations.ts` | 연속 예약 날짜 그룹핑 유틸 |
 
-## 버스 유틸리티 (`lib/bus/`)
+## 도메인 상수 (`src/lib/constants/`)
 
 | 파일 | 역할 |
 |------|------|
-| `lib/bus/afterschool-sync.ts` | 방과후 슬롯 감지 유틸. `AFTERSCHOOL_SLOT_LABEL_1 = "방과후1차"`, `AFTERSCHOOL_SLOT_LABEL_2 = "오후반 1차/방과후2차"` 상수 + `detectAfterschoolSlot(slot)` → `{ isAfterschoolSlot, secondPeriod }`. StudentBusTab·AdminBusChangeDnD 공유 |
-| `lib/bus/utils.ts` | 버스 표시 유틸. `StopGroup` 타입, `groupStudentsByStop(students)` (정류장 sort_order → 나이순 그룹핑), `formatTime(t)` (HH:MM:SS→HH:MM), `formatCheckedTime(iso)` (ISO→H:MM) |
-| `lib/bus/realtime-utils.ts` | Realtime 이벤트 패치 유틸. `CheckRecordRow`, `ChangeRequestRow` 타입. `applyCheckRecord(groups, event, row)` — 탑승/하차 체크 즉시 반영. `applyChangeRequest(groups, noRides, event, row)` — 변경 요청 이벤트 반영. 낙관적 UI 업데이트용 |
+| `src/lib/constants/attendance.ts` | **출결 상태 단일 소스**. `ATTENDANCE_STATUSES` (4종 배열), `AttendanceStatus` 타입, `ATTENDANCE_STATUS_CONFIG` (label/labelEn/activeClass/inactiveClass/badgeClass), `getStatusLabel(status, teacherType)`, `shouldShowNote(status)`. 모든 출결 UI에서 import |
+| `src/lib/constants/timetable.ts` | **시간표 색상 단일 소스**. `TEACHER_COLOR_PALETTE` (12색), `buildTeacherColorMap(rows)`. StudentTimetableClient/Tab에서 공유 |
+| `src/lib/constants/date.ts` | **요일 상수**. `WEEKDAY_NAMES_5` (월~금), `WEEKDAY_NAMES_7` (일~토). 시간표·출결·버스 등에서 공유 |
+| `src/lib/constants/bus.ts` | 버스 상태 상수 (버스 타입·변경 요청 상태 등) |
+| `src/lib/constants/class.ts` | 반 도메인 통합 상수. `GROUP_ORDER = ["유치부", "오후반", ""]`, `GroupKey` 타입, `CLASS_COLOR_PALETTE` (8색 팔레트), `getClassColor(colorIndex, fallbackIndex)` 순환 함수 |
+| `src/lib/constants/weekly-sentence.ts` | 주간 문장 레벨 상수 3개 (기초/중급/상급, 기초는 Q&A answer 컬럼) + XLSX 시트명↔level 매핑 (`SHEET_LEVEL_MAP`) |
+
+## 버스 유틸리티 (`src/lib/bus/`)
+
+| 파일 | 역할 |
+|------|------|
+| `src/lib/bus/afterschool-sync.ts` | 방과후 슬롯 감지 유틸. `AFTERSCHOOL_SLOT_LABEL_1 = "방과후1차"`, `AFTERSCHOOL_SLOT_LABEL_2 = "오후반 1차/방과후2차"` 상수 + `detectAfterschoolSlot(slot)` → `{ isAfterschoolSlot, secondPeriod }`. StudentBusTab·AdminBusChangeDnD 공유 |
+| `src/lib/bus/utils.ts` | 버스 표시 유틸. `StopGroup` 타입, `groupStudentsByStop(students)` (정류장 sort_order → 나이순 그룹핑), `formatTime(t)` (HH:MM:SS→HH:MM), `formatCheckedTime(iso)` (ISO→H:MM) |
+| `src/lib/bus/realtime-utils.ts` | Realtime 이벤트 패치 유틸. `CheckRecordRow`, `ChangeRequestRow` 타입. `applyCheckRecord(groups, event, row)` — 탑승/하차 체크 즉시 반영. `applyChangeRequest(groups, noRides, event, row)` — 변경 요청 이벤트 반영. 낙관적 UI 업데이트용 |
 
 ## Hooks
 
 | 파일 | 역할 |
 |------|------|
-| `lib/hooks/use-bus-realtime.ts` | 버스 실시간 업데이트 hook. Supabase Realtime으로 `bus_check_records` 테이블 변경 감지. 500ms 디바운스 후 onUpdate 콜백. 날짜 필터링 |
+| `src/lib/hooks/use-bus-realtime.ts` | 버스 실시간 업데이트 hook. Supabase Realtime으로 `bus_check_records` 테이블 변경 감지. 500ms 디바운스 후 onUpdate 콜백. 날짜 필터링 |
 
-## Admin Client Hooks (`app/(admin)/admin/hooks/`)
+## Admin Client Hooks (`src/app/(admin)/admin/hooks/`)
 
 | 파일 | 역할 |
 |------|------|

@@ -6,7 +6,7 @@
 - 탭 기반: `?tab=today|requests|assignment|master` (4개 탭, legacy tab IDs backwards-compatible)
 
 ## 핵심 파일
-- page.tsx: `app/(admin)/admin/bus/page.tsx`
+- page.tsx: `src/app/(admin)/admin/bus/page.tsx`
 
 ## 컴포넌트
 | 파일 | 역할 |
@@ -107,12 +107,12 @@
 | `listAllActiveStudentNames` | (없음) | `students`, `profiles`, `class_students`, `classes` |
 
 ## 타입
-- `BusNumber`, `BusTimeSlot`, `BusStaffProfile`, `BusStop` from `lib/types`
-- `BusStopDayAssignment`, `BusStopSchedule` from `lib/types`
-- `BusDefaultAssignment`, `StudentBusDefault` from `lib/types`
-- `BusChangeRequest` from `lib/types`
-- `BusManifestGroup`, `BusManifestEntry`, `BusManifestExtraStop` from `lib/types`
-- `NoRideEntry`, `AfterSchoolBusEntry` from `lib/types`
+- `BusNumber`, `BusTimeSlot`, `BusStaffProfile`, `BusStop` from `src/lib/types`
+- `BusStopDayAssignment`, `BusStopSchedule` from `src/lib/types`
+- `BusDefaultAssignment`, `StudentBusDefault` from `src/lib/types`
+- `BusChangeRequest` from `src/lib/types`
+- `BusManifestGroup`, `BusManifestEntry`, `BusManifestExtraStop` from `src/lib/types`
+- `NoRideEntry`, `AfterSchoolBusEntry` from `src/lib/types`
 - `BusTabId` = "overview" | "dashboard" | "requests" | "student-assign" | "stop-assign" | "bus-manage" | "timeslots" | "staff"
 
 ## 데이터 흐름

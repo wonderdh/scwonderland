@@ -5,7 +5,7 @@
 - 라우트 그룹: `(admin)`
 
 ## 핵심 파일
-- page.tsx: `app/(admin)/admin/timetable/page.tsx`
+- page.tsx: `src/app/(admin)/admin/timetable/page.tsx`
 
 ## 컴포넌트
 | 파일 | 역할 |
@@ -32,7 +32,7 @@
 | `deleteClassSchedule` | scheduleId | `class_schedules` |
 
 ## 타입
-- `AcademyPeriod` from `lib/types`
+- `AcademyPeriod` from `src/lib/types`
 - `GroupTimetableData` from `schedule-actions.ts` (periods, classes, cells, teachers, textbooks)
 
 ## 데이터 흐름

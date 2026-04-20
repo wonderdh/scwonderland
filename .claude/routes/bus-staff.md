@@ -5,16 +5,16 @@
 - 라우트 그룹: (bus)
 
 ## 핵심 파일
-- page.tsx: `app/(bus)/bus/page.tsx`
-- layout.tsx: `app/(bus)/bus/layout.tsx`
-- error.tsx: `app/(bus)/bus/error.tsx`
-- actions.ts: `app/(bus)/bus/actions.ts`
+- page.tsx: `src/app/(bus)/bus/page.tsx`
+- layout.tsx: `src/app/(bus)/bus/layout.tsx`
+- error.tsx: `src/app/(bus)/bus/error.tsx`
+- actions.ts: `src/app/(bus)/bus/actions.ts`
 
 ## 컴포넌트
 | 파일 | 역할 |
 |------|------|
-| `app/(bus)/bus/components/BusStaffMonitor.tsx` | 버스 직원용 탑승/하차 체크 메인 컴포넌트 (일괄 저장 방식) |
-| `components/navigation/LogoutButton.tsx` | 로그아웃 버튼 |
+| `src/app/(bus)/bus/components/BusStaffMonitor.tsx` | 버스 직원용 탑승/하차 체크 메인 컴포넌트 (일괄 저장 방식) |
+| `src/components/navigation/LogoutButton.tsx` | 로그아웃 버튼 |
 
 ## Server Actions
 
@@ -73,9 +73,9 @@
 - 에러 바운더리: "문제가 발생했습니다" + "다시 시도" 버튼
 
 ## 의존성
-- `lib/supabase/server.ts` — 서버 클라이언트 (layout, page, actions)
-- `lib/supabase/admin.ts` — Admin 클라이언트 (actions)
-- `app/(admin)/admin/actions.ts` — bus 관련 actions barrel export
+- `src/lib/supabase/server.ts` — 서버 클라이언트 (layout, page, actions)
+- `src/lib/supabase/admin.ts` — Admin 클라이언트 (actions)
+- `src/app/(admin)/admin/actions.ts` — bus 관련 actions barrel export
 - `sonner` — toast 알림
 
 ## 주의사항

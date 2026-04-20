@@ -5,7 +5,7 @@
 - 라우트 그룹: `(admin)`
 
 ## 핵심 파일
-- page.tsx: `app/(admin)/admin/classes/page.tsx`
+- page.tsx: `src/app/(admin)/admin/classes/page.tsx`
 
 ## 컴포넌트
 | 파일 | 역할 |
@@ -55,11 +55,11 @@
 | `listAllStudents` | (없음) | `profiles`, `students` |
 
 ## 타입
-- `ClassWithDetails` from `lib/types`
-- `ClassStudentRow` from `lib/types`
-- `ClassTeacherInfo` from `lib/types`
-- `AcademyPeriod` from `lib/types`
-- `ClassScheduleWithDetails` from `lib/types`
+- `ClassWithDetails` from `src/lib/types`
+- `ClassStudentRow` from `src/lib/types`
+- `ClassTeacherInfo` from `src/lib/types`
+- `AcademyPeriod` from `src/lib/types`
+- `ClassScheduleWithDetails` from `src/lib/types`
 
 ## 데이터 흐름
 1. `page.tsx`: 6개 데이터 병렬 로드 (`listClassesWithDetails`, `listTeachersForSelect`, `getAllClassStudentsFlat`, `listAllStudents`, `listAcademyPeriods`, `listTextbooks`)

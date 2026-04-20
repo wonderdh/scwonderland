@@ -6,15 +6,15 @@
 - 메뉴 ID: `gallery`
 
 ## 핵심 파일
-- `app/(site)/community/layout.tsx` — CategoryPageWrapper + CategoryLayout(menuId="gallery") 래핑
+- `src/app/(site)/community/layout.tsx` — CategoryPageWrapper + CategoryLayout(menuId="gallery") 래핑
 
 ## 컴포넌트
 
 | 파일 | 역할 |
 |------|------|
-| `app/(site)/community/parent-consultation/page.tsx` | 학부모상담 페이지. `PageContent` 래퍼 사용, 콘텐츠 미완성 (플레이스홀더) |
-| `app/(site)/community/franchise-inquiry/page.tsx` | 가맹문의 페이지. `PageContent` 래퍼 사용, 콘텐츠 미완성 (플레이스홀더) |
-| `app/(site)/community/campus/page.tsx` | 캠퍼스 페이지. `PageContent` 래퍼 사용, 콘텐츠 미완성 (플레이스홀더) |
+| `src/app/(site)/community/parent-consultation/page.tsx` | 학부모상담 페이지. `PageContent` 래퍼 사용, 콘텐츠 미완성 (플레이스홀더) |
+| `src/app/(site)/community/franchise-inquiry/page.tsx` | 가맹문의 페이지. `PageContent` 래퍼 사용, 콘텐츠 미완성 (플레이스홀더) |
+| `src/app/(site)/community/campus/page.tsx` | 캠퍼스 페이지. `PageContent` 래퍼 사용, 콘텐츠 미완성 (플레이스홀더) |
 
 ## Server Actions
 - 없음

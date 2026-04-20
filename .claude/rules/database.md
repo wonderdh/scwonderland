@@ -1,8 +1,8 @@
 ---
 paths:
-  - "lib/types/**/*"
-  - "lib/supabase/**/*"
-  - "app/(admin)/admin/actions/**/*"
+  - "src/lib/types/**/*"
+  - "src/lib/supabase/**/*"
+  - "src/app/(admin)/admin/actions/**/*"
   - "docs/**/*.sql"
 ---
 
@@ -76,9 +76,9 @@ Supabase Auth Users
 
 | 클라이언트 | 파일 | 용도 |
 |-----------|------|------|
-| **Browser** | `lib/supabase/client.ts` | Client Components (로그인 등) |
-| **Server** | `lib/supabase/server.ts` | Server Components, Server Actions (RLS 적용, 인증 검증용) |
-| **Admin** | `lib/supabase/admin.ts` | 사용자 생성/삭제 등 관리 작업 (RLS 우회, service role key) |
+| **Browser** | `src/lib/supabase/client.ts` | Client Components (로그인 등) |
+| **Server** | `src/lib/supabase/server.ts` | Server Components, Server Actions (RLS 적용, 인증 검증용) |
+| **Admin** | `src/lib/supabase/admin.ts` | 사용자 생성/삭제 등 관리 작업 (RLS 우회, service role key) |
 
 **인증 검증 패턴:** Server Action에서 `createClient()` → `getUser()` → 인증 확인 후 `createAdminClient()` 사용
 
@@ -157,7 +157,7 @@ RLS 정책은 컬럼 단위 제어가 불가능 (row 단위). 특정 컬럼 변�
 - 서버에서 Admin Client(service role)로 업로드/삭제 → RLS 우회
 - `next.config.ts`에 Supabase Storage 도메인이 `remotePatterns`에 등록됨 (next/image 최적화)
 - 파일명 규칙: `{timestamp}_{random6자}{확장자}` (충돌 방지)
-- Storage 헬퍼: `lib/supabase/storage.ts` (STORAGE_BUCKETS, generateStoragePath, extractStoragePath, validateFile)
+- Storage 헬퍼: `src/lib/supabase/storage.ts` (STORAGE_BUCKETS, generateStoragePath, extractStoragePath, validateFile)
 
 ## 환경 변수
 

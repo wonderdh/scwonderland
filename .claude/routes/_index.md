@@ -53,8 +53,8 @@
 
 | 파일 | 범위 | 설명 |
 |------|------|------|
-| [shared-components.md](shared-components.md) | `components/` | 공용 컴포넌트 목록 (Admin·Site 레이아웃) |
-| [shared-lib.md](shared-lib.md) | `lib/` | 유틸리티·타입·Supabase 클라이언트·훅 |
+| [shared-components.md](shared-components.md) | `src/components/` | 공용 컴포넌트 목록 (Admin·Site 레이아웃) |
+| [shared-lib.md](shared-lib.md) | `src/lib/` | 유틸리티·타입·Supabase 클라이언트·훅 |
 | [shared-actions.md](shared-actions.md) | `actions/` | Server Actions 전체 인덱스 (함수↔테이블 매핑) |
 
 ## 작업별 참조 가이드

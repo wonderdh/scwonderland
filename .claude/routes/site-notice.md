@@ -6,16 +6,16 @@
 - 메뉴 ID: `features`
 
 ## 핵심 파일
-- `app/(site)/notice/layout.tsx` — CategoryPageWrapper + CategoryLayout(menuId="features") 래핑
-- `app/(site)/notice/news/page.tsx` — 공지사항 목록 (Server Component)
-- `app/(site)/notice/news/[id]/page.tsx` — 공지사항 상세 (Server Component, 동적 라우트)
+- `src/app/(site)/notice/layout.tsx` — CategoryPageWrapper + CategoryLayout(menuId="features") 래핑
+- `src/app/(site)/notice/news/page.tsx` — 공지사항 목록 (Server Component)
+- `src/app/(site)/notice/news/[id]/page.tsx` — 공지사항 상세 (Server Component, 동적 라우트)
 
 ## 컴포넌트
 
 | 파일 | 역할 |
 |------|------|
-| `app/(site)/notice/news/page.tsx` | 공지사항 목록. `listNotices(false)` 호출하여 게시된 공지만 표시. 고정 공지 배지, 이미지/첨부파일 개수 표시 |
-| `app/(site)/notice/news/[id]/page.tsx` | 공지사항 상세. `getNoticeWithAttachments(id)` 호출. 이미지 갤러리 + 내용(whitespace-pre-wrap) + 첨부파일 다운로드 링크 + 목록 돌아가기. 비게시 공지 접근 시 `notFound()` |
+| `src/app/(site)/notice/news/page.tsx` | 공지사항 목록. `listNotices(false)` 호출하여 게시된 공지만 표시. 고정 공지 배지, 이미지/첨부파일 개수 표시 |
+| `src/app/(site)/notice/news/[id]/page.tsx` | 공지사항 상세. `getNoticeWithAttachments(id)` 호출. 이미지 갤러리 + 내용(whitespace-pre-wrap) + 첨부파일 다운로드 링크 + 목록 돌아가기. 비게시 공지 접근 시 `notFound()` |
 
 ## Server Actions
 - `listNotices(includeUnpublished: boolean)` — `notice-actions.ts`, 테이블: `notices`, `notice_attachments`
@@ -28,7 +28,7 @@
 4. `generateMetadata`로 동적 메타데이터 생성
 
 ## 의존성
-- `app/(admin)/admin/actions/notice-actions.ts` — 공지사항 조회 액션 (공개 사이트에서 admin 액션 직접 import)
+- `src/app/(admin)/admin/actions/notice-actions.ts` — 공지사항 조회 액션 (공개 사이트에서 admin 액션 직접 import)
 - `PageContent` — 목록/상세 공통 래퍼
 
 ## 주의사항

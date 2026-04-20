@@ -5,13 +5,13 @@
 - 라우트 그룹: (monitor)
 
 ## 핵심 파일
-- page.tsx: `app/(monitor)/bus-monitor/page.tsx`
-- layout.tsx: `app/(monitor)/bus-monitor/layout.tsx`
+- page.tsx: `src/app/(monitor)/bus-monitor/page.tsx`
+- layout.tsx: `src/app/(monitor)/bus-monitor/layout.tsx`
 
 ## 컴포넌트
 | 파일 | 역할 |
 |------|------|
-| `app/(monitor)/bus-monitor/BusMonitorClient.tsx` | 전체 버스 모니터링 대시보드 (읽기 전용, 대형 화면 최적화) |
+| `src/app/(monitor)/bus-monitor/BusMonitorClient.tsx` | 전체 버스 모니터링 대시보드 (읽기 전용, 대형 화면 최적화) |
 
 ## Server Actions
 | 함수 | 파라미터 | DB 테이블 |
@@ -62,7 +62,7 @@
 ### 관련 훅
 | 파일 | 역할 |
 |------|------|
-| `lib/hooks/use-bus-realtime.ts` | Supabase Realtime 구독 (bus_check_records 테이블 변경 감지) |
+| `src/lib/hooks/use-bus-realtime.ts` | Supabase Realtime 구독 (bus_check_records 테이블 변경 감지) |
 
 #### use-bus-realtime.ts 상세
 - `useBusRealtime(date, onUpdate)`: `bus_check_records` 테이블의 `check_date` 필터로 Realtime 구독
@@ -71,10 +71,10 @@
 - **현재 BusMonitorClient에서는 미사용** (폴링 방식 사용 가능)
 
 ## 의존성
-- `app/(admin)/admin/actions.ts` — barrel export (getDailyBusManifest, listBusTimeSlots, listAllActiveStudentNames)
-- `lib/ui/student-age-colors.ts` — `getAgeColor()` 함수
-- `lib/hooks/use-bus-realtime.ts` — Realtime 구독 훅 (선택적 사용)
-- `components/ui/button.tsx` — 필터 버튼
+- `src/app/(admin)/admin/actions.ts` — barrel export (getDailyBusManifest, listBusTimeSlots, listAllActiveStudentNames)
+- `src/lib/ui/student-age-colors.ts` — `getAgeColor()` 함수
+- `src/lib/hooks/use-bus-realtime.ts` — Realtime 구독 훅 (선택적 사용)
+- `src/components/ui/button.tsx` — 필터 버튼
 
 ## 주의사항
 - **인증 불필요**: layout에 인증 체크 없음 — 관리자 사무실 모니터/TV용
@@ -85,4 +85,4 @@
 - **호차 색상 일관성**: 호차 라벨 알파벳순 정렬 후 팔레트 인덱스 매핑 → 호차 색상 일관 유지
 - `UnassignedCard`: 어느 호차에도 배정되지 않은 학생 카드 (하단)
 - `AfterSchoolBusEntry`: 방과후 학생 별도 섹션 (보라색 테마)
-- **빈 정류장 표시**: `bus_time_slots.show_empty_stops=true` 시간대는 `getDailyBusManifest`가 `extra_stops`로 학생 0명 호차/정류장도 내려줌 → `MonitorBusCard`(`components/bus/MonitorBusCard.tsx`)가 `mergeStopGroups()`로 병합해 "배정 학생 없음" 플레이스홀더로 렌더 (오후반 16:20/17:45 등)
+- **빈 정류장 표시**: `bus_time_slots.show_empty_stops=true` 시간대는 `getDailyBusManifest`가 `extra_stops`로 학생 0명 호차/정류장도 내려줌 → `MonitorBusCard`(`src/components/bus/MonitorBusCard.tsx`)가 `mergeStopGroups()`로 병합해 "배정 학생 없음" 플레이스홀더로 렌더 (오후반 16:20/17:45 등)

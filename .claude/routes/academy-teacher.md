@@ -5,9 +5,9 @@
 - 라우트 그룹: (academy)
 
 ## 핵심 파일
-- layout.tsx: `app/(academy)/academy/teacher/layout.tsx`
-- loading.tsx: `app/(academy)/academy/teacher/loading.tsx`
-- page.tsx (대시보드): `app/(academy)/academy/teacher/page.tsx`
+- layout.tsx: `src/app/(academy)/academy/teacher/layout.tsx`
+- loading.tsx: `src/app/(academy)/academy/teacher/loading.tsx`
+- page.tsx (대시보드): `src/app/(academy)/academy/teacher/page.tsx`
 
 ## 컴포넌트
 | 파일 | 역할 |
@@ -137,13 +137,13 @@
 2. 호차별 학생 목록, 변경 표시 (is_changed), 미탑승 학생
 
 ## 의존성
-- `app/(academy)/academy/actions.ts` — 교사 포털 Server Actions
-- `app/(admin)/admin/actions.ts` — barrel export
-- `app/(admin)/admin/actions/schedule-actions.ts` — `getGroupTimetableGrid`, `GroupTimetableData` 직접 import
-- `lib/ui/teacher-labels.ts` — 9개 라벨 세트 (dashboard, report, textbook, attendance, homework, notice, bus, batchUpdate + ENGLISH_MONTHS)
+- `src/app/(academy)/academy/actions.ts` — 교사 포털 Server Actions
+- `src/app/(admin)/admin/actions.ts` — barrel export
+- `src/app/(admin)/admin/actions/schedule-actions.ts` — `getGroupTimetableGrid`, `GroupTimetableData` 직접 import
+- `src/lib/ui/teacher-labels.ts` — 9개 라벨 세트 (dashboard, report, textbook, attendance, homework, notice, bus, batchUpdate + ENGLISH_MONTHS)
 
 ## 주의사항
-- **원어민 교사 영어 UI**: `lib/ui/teacher-labels.ts`에 정의된 라벨 세트 사용. 각 Client 컴포넌트가 `teacherType` prop으로 라벨 결정
+- **원어민 교사 영어 UI**: `src/lib/ui/teacher-labels.ts`에 정의된 라벨 세트 사용. 각 Client 컴포넌트가 `teacherType` prop으로 라벨 결정
 - **접근 제한**: notices/classes/bus(한국인만) — 각 page.tsx에서 `redirect()` 처리. reports는 역할 무관 접근하지만 UI는 `isReadOnly` prop으로 분기 (한국인은 읽기 전용)
 - `TeacherAcademyTimetable`은 `GroupTimetableData` 타입을 `schedule-actions.ts`에서 직접 import (크로스 라우트 그룹 경로 사용)
 - loading.tsx 제공: 루트, reports, textbooks, timetable (timetable은 `SkeletonTable` 사용)
