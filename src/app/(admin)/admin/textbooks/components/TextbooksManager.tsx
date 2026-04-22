@@ -106,10 +106,11 @@ export function TextbooksManager({
         </div>
       ) : (
         <div className="flex flex-wrap gap-3">
-          {filtered.map((t) => (
+          {filtered.map((t, index) => (
             <TextbookCard
               key={t.id}
               textbook={t}
+              priority={index === 0}
               onEdit={() => setEditTarget(t)}
               onDelete={async () => {
                 setDeleteTarget(t);
@@ -193,10 +194,12 @@ export function TextbooksManager({
 
 function TextbookCard({
   textbook,
+  priority = false,
   onEdit,
   onDelete,
 }: {
   textbook: Textbook;
+  priority?: boolean;
   onEdit: () => void;
   onDelete: () => void;
 }) {
@@ -205,17 +208,16 @@ function TextbookCard({
 
   return (
     <div className="group rounded-lg border border-slate-200 bg-white flex flex-col hover:shadow-sm transition-shadow overflow-hidden" style={{ width: 150 }}>
-      {/* 커버 이미지 (150×170 고정) */}
+      {/* 커버 이미지 (150×170 고정, fill 방식으로 aspect ratio 경고 회피) */}
       {textbook.cover_image ? (
-        <div className="flex items-center justify-center bg-slate-50">
+        <div className="relative bg-slate-50" style={{ width: 150, height: 170 }}>
           <Image
             src={textbook.cover_image}
             alt={textbook.title}
-            width={150}
-            height={170}
+            fill
             className="object-cover"
-            style={{ width: 150, height: 170 }}
             sizes="150px"
+            priority={priority}
           />
         </div>
       ) : (

@@ -1,3 +1,5 @@
+import { logger } from "./logger";
+
 /**
  * 서버 전용 번역 유틸 — DeepL Free API.
  * DEEPL_API_KEY 환경 변수 필요 (api-free.deepl.com).
@@ -18,7 +20,7 @@ export async function translateText(
 
   const apiKey = process.env.DEEPL_API_KEY;
   if (!apiKey) {
-    console.warn("[translate] DEEPL_API_KEY not set — skipping translation");
+    logger.warn("[translate]", "DEEPL_API_KEY not set — skipping translation");
     return null;
   }
 
@@ -42,11 +44,13 @@ export async function translateText(
         : new RegExp(escaped, "g");
       processedText = processedText.replace(regex, `<keep>${xmlSafe}</keep>`);
     }
-    console.log(`[translate] preserving names: ${names.join(", ")}`);
   }
 
-  const preview = trimmed.length > 80 ? trimmed.slice(0, 80) + "…" : trimmed;
-  console.log(`[translate] → ${targetLang} | "${preview}"`);
+  logger.info("[translate]", "request", {
+    targetLang,
+    inputLength: trimmed.length,
+    preservedNameCount: names.length,
+  });
 
   try {
     const body: Record<string, unknown> = {
@@ -69,7 +73,10 @@ export async function translateText(
 
     if (!res.ok) {
       const resBody = await res.text();
-      console.error(`[translate] DeepL API error ${res.status}:`, resBody);
+      logger.error("[translate]", `DeepL API error ${res.status}`, {
+        status: res.status,
+        bodyPreview: resBody.slice(0, 200),
+      });
       return null;
     }
 
@@ -86,14 +93,17 @@ export async function translateText(
     }
 
     if (result) {
-      const resultPreview = result.length > 80 ? result.slice(0, 80) + "…" : result;
-      console.log(`[translate] ✓ "${resultPreview}"`);
+      logger.info("[translate]", "response received", {
+        outputLength: result.length,
+      });
     } else {
-      console.warn("[translate] DeepL returned empty result", data);
+      logger.warn("[translate]", "DeepL returned empty result");
     }
     return result ?? null;
   } catch (err) {
-    console.error("[translate] fetch error:", err);
+    logger.error("[translate]", "fetch error", {
+      error: err instanceof Error ? err.message : String(err),
+    });
     return null;
   }
 }

@@ -76,6 +76,7 @@ export function Navigation() {
             width={140}
             height={64}
             priority
+            style={{ width: "auto", height: "auto" }}
           />
         </Link>
 
