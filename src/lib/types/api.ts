@@ -1,3 +1,5 @@
+import type { BusChangeType, BusRequestStatus, NoRideChangeType } from "@/lib/bus/state";
+
 // ── Admin 타입 ──
 
 export type TeacherOption = {
@@ -328,12 +330,12 @@ export type BusChangeRequest = {
   id: string;
   student_profile_id: string;
   request_date: string;
-  change_type: "change" | "no_ride" | "absent";
+  change_type: BusChangeType;
   new_bus_time_slot_id: string | null;
   new_bus_number_id: string | null;
   new_bus_stop_id: string | null;
   reason: string | null;
-  status: "pending" | "approved" | "rejected";
+  status: BusRequestStatus;
   reviewed_by: string | null;
   reviewed_at: string | null;
   review_note: string | null;
@@ -398,7 +400,7 @@ export type NoRideEntry = {
   student_number: string | null;
   original_slot_time?: string;
   original_bus_label?: string;
-  change_type?: "no_ride" | "absent";
+  change_type?: NoRideChangeType;
   request_id?: string;
 };
 

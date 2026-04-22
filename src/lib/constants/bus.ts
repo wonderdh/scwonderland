@@ -1,7 +1,8 @@
 import { Hourglass, Check, X } from "lucide-react";
 import type { ComponentType } from "react";
+import type { BusChangeType, BusRequestStatus } from "@/lib/bus/state";
 
-export const BUS_REQUEST_STATUS_CONFIG: Record<"pending" | "approved" | "rejected", {
+export const BUS_REQUEST_STATUS_CONFIG: Record<BusRequestStatus, {
   label: string;
   icon: ComponentType<{ className?: string }>;
   badgeClass: string;
@@ -12,7 +13,7 @@ export const BUS_REQUEST_STATUS_CONFIG: Record<"pending" | "approved" | "rejecte
   rejected: { label: "거부",   icon: X,         badgeClass: "bg-red-100 text-red-800 border border-red-300",           ariaLabel: "거부됨" },
 };
 
-export const BUS_CHANGE_TYPE_CONFIG: Record<"change" | "no_ride" | "absent", {
+export const BUS_CHANGE_TYPE_CONFIG: Record<BusChangeType, {
   label: string;
   icon: ComponentType<{ className?: string }>;
   badgeClass: string;

@@ -1,4 +1,5 @@
 import type { BusManifestGroup, BusManifestEntry, NoRideEntry } from "@/lib/types";
+import type { BusChangeType } from "@/lib/bus/state";
 
 export type CheckRecordRow = {
   student_profile_id: string;
@@ -10,7 +11,7 @@ export type CheckRecordRow = {
 export type ChangeRequestRow = {
   id: string;
   student_profile_id: string;
-  change_type: "absent" | "no_ride" | "change";
+  change_type: BusChangeType;
   new_bus_number_id: string | null;
   new_bus_time_slot_id: string | null;
   new_bus_stop_id: string | null;
