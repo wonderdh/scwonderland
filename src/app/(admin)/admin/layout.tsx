@@ -23,6 +23,9 @@ export default async function AdminLayout({
     .single();
 
   if (profile?.role !== "admin") {
+    // 세션 유지 — 교사/학생은 로그아웃 강제하지 말고 역할 홈으로 안내.
+    if (profile?.role === "teacher") redirect("/academy/teacher");
+    if (profile?.role === "student") redirect("/academy/student");
     redirect("/academy/login?error=admin_only");
   }
 
