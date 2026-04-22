@@ -8,12 +8,13 @@ export function NavigationProgress() {
   const [visible, setVisible] = useState(false);
   const isFirstRender = useRef(true);
 
-  // 네비게이션 완료 시 숨김
+  // 네비게이션 완료 시 숨김 — pathname은 외부 router 상태, 변화 시 progress 표시 종료.
   useEffect(() => {
     if (isFirstRender.current) {
       isFirstRender.current = false;
       return;
     }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setVisible(false);
   }, [pathname]);
 

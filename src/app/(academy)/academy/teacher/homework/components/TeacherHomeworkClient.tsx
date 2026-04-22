@@ -319,7 +319,7 @@ export function TeacherHomeworkClient({
                           <div key={f.id} className="rounded-lg border p-3">
                             <p className="text-xs text-muted-foreground mb-1">{f.original_filename}</p>
                             {f.mime_type.startsWith("audio/") && f.signed_url && (
-                              /* eslint-disable-next-line jsx-a11y/media-has-caption */
+                               
                               <audio controls src={f.signed_url} className="w-full h-10" preload="metadata" />
                             )}
                           </div>

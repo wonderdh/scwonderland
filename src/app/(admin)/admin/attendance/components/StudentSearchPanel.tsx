@@ -80,7 +80,7 @@ export function StudentSearchPanel({
       setCurrentNote(note);
       setLoadingStatus(false);
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, [selectedStudent, primaryDate]);
 
   function handleToggleStatus(status: string) {

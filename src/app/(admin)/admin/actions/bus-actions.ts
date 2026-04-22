@@ -134,7 +134,7 @@ export async function listAllActiveStudentNames(): Promise<
 
   // group_label 조회: class_students → classes.group_label
   const profileIds = (data ?? []).map((s) => s.profile_id);
-  let groupMap = new Map<string, string>();
+  const groupMap = new Map<string, string>();
   if (profileIds.length) {
     const { data: classLinks } = await supabase
       .from("class_students")
@@ -1215,7 +1215,7 @@ export async function listAllChangeRequests(
 
   // new_bus_time_slot_id 없는 경우 학생 기본 배정에서 시간대 fallback
   const needsDefaultSlot = (data ?? []).filter((d) => !d.new_bus_time_slot_id);
-  let defaultSlotMap = new Map<string, { label: string; time: string }>();
+  const defaultSlotMap = new Map<string, { label: string; time: string }>();
   if (needsDefaultSlot.length > 0) {
     const defStudentIds = [...new Set(needsDefaultSlot.map((d) => d.student_profile_id))];
     const { data: defaults } = await supabase
@@ -1378,7 +1378,7 @@ export async function listChangeRequestsByDate(date: string): Promise<BusChangeR
 
   // new_bus_time_slot_id 없는 경우 학생 기본 배정에서 시간대 fallback
   const needsDefaultSlot = (data ?? []).filter((d) => !d.new_bus_time_slot_id);
-  let defaultSlotMap = new Map<string, { label: string; time: string }>();
+  const defaultSlotMap = new Map<string, { label: string; time: string }>();
   if (needsDefaultSlot.length > 0) {
     const defStudentIds = [...new Set(needsDefaultSlot.map((d) => d.student_profile_id))];
     const { data: defaults } = await supabase

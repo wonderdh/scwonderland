@@ -183,7 +183,7 @@ export function AudioRecorder({
               다시 녹음
             </Button>
           </div>
-          {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+          { }
           <audio controls src={audioUrl} className="w-full h-10" preload="metadata" />
         </div>
       )}

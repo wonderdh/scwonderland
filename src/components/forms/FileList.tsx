@@ -94,7 +94,7 @@ export function FileList({ files, onDelete, deleting, getUrl }: FileListProps) {
             {/* 오디오 플레이어 */}
             {isAudio && (
               <div className="mt-2">
-                {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+                { }
                 <audio controls src={url} className="w-full h-10" preload="metadata" />
               </div>
             )}

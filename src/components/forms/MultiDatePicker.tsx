@@ -101,9 +101,11 @@ export function MultiDatePicker({
   );
 
   const [showHelp, setShowHelp] = useState(true);
+  // localStorage는 외부 상태 — SSR에서는 접근 불가해서 mount 후 동기화 필요.
   useEffect(() => {
     try {
       const dismissed = localStorage.getItem("wonderland.mdp-help-dismissed");
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       if (dismissed === "true") setShowHelp(false);
     } catch {
       // ignore

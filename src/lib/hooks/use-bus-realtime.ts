@@ -15,7 +15,9 @@ export function useBusRealtime(
   options?: { enabled?: boolean }
 ) {
   const callbacksRef = useRef(callbacks);
-  callbacksRef.current = callbacks;
+  useEffect(() => {
+    callbacksRef.current = callbacks;
+  });
   const enabled = options?.enabled ?? true;
 
   useEffect(() => {
