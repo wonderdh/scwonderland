@@ -399,7 +399,7 @@ export function ReservationDashboard({
               <ul className="divide-y divide-slate-100 max-h-80 overflow-y-auto">
                 {busChangeGroups.map((g) => {
                   const head = g.items[0];
-                  const cfg = BUS_CHANGE_TYPE_CONFIG[head.change_type as "change" | "no_ride" | "absent"];
+                  const cfg = BUS_CHANGE_TYPE_CONFIG[head.change_type];
                   return (
                     <li
                       key={head.id}

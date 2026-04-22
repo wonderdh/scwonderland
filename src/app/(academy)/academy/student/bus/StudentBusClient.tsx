@@ -19,14 +19,10 @@ import {
   submitBusChangeRequest,
   cancelBusChangeRequest,
 } from "@/app/(admin)/admin/actions";
+import { BUS_REQUEST_STATUS_CONFIG } from "@/lib/constants/bus";
+import type { StudentSubmittableChangeType } from "@/lib/bus/state";
 
 const DAY_NAMES = ["", "월", "화", "수", "목", "금"];
-const STATUS_LABEL = { pending: "대기중", approved: "승인됨", rejected: "거절됨" } as const;
-const STATUS_COLOR = {
-  pending: "bg-yellow-100 text-yellow-700",
-  approved: "bg-green-100 text-green-700",
-  rejected: "bg-red-100 text-red-700",
-} as const;
 
 function formatTime(t: string | undefined) {
   if (!t) return "-";
@@ -47,7 +43,7 @@ export function StudentBusClient({ studentProfileId }: { studentProfileId: strin
   // 변경 요청 폼
   const [showForm, setShowForm] = useState(false);
   const [formDate, setFormDate] = useState("");
-  const [formType, setFormType] = useState<"change" | "no_ride">("change");
+  const [formType, setFormType] = useState<StudentSubmittableChangeType>("change");
   const [formSlotId, setFormSlotId] = useState("");
   const [formBusId, setFormBusId] = useState("");
   const [formReason, setFormReason] = useState("");
@@ -203,8 +199,8 @@ export function StudentBusClient({ studentProfileId }: { studentProfileId: strin
                                   }`}>
                                     {change.change_type === "no_ride" ? "미탑승" : "변경"}
                                   </span>
-                                  <span className={`text-xs px-1.5 py-0.5 rounded ${STATUS_COLOR[change.status]}`}>
-                                    {STATUS_LABEL[change.status]}
+                                  <span className={`text-xs px-1.5 py-0.5 rounded ${BUS_REQUEST_STATUS_CONFIG[change.status].badgeClass}`}>
+                                    {BUS_REQUEST_STATUS_CONFIG[change.status].label}
                                   </span>
                                 </div>
                                 {change.change_type !== "no_ride" && (
@@ -264,7 +260,7 @@ export function StudentBusClient({ studentProfileId }: { studentProfileId: strin
               </div>
               <div>
                 <label className="text-xs text-slate-500 block mb-1">유형</label>
-                <select value={formType} onChange={(e) => setFormType(e.target.value as "change" | "no_ride")} className="h-9 px-2 border rounded text-sm">
+                <select value={formType} onChange={(e) => setFormType(e.target.value as StudentSubmittableChangeType)} className="h-9 px-2 border rounded text-sm">
                   <option value="change">버스 변경</option>
                   <option value="no_ride">미탑승</option>
                 </select>
@@ -326,8 +322,8 @@ export function StudentBusClient({ studentProfileId }: { studentProfileId: strin
                 }`}>
                   {req.change_type === "no_ride" ? "미탑승" : `→ ${req.new_time_slot_label ? req.new_time_slot_label + " " : ""}${formatTime(req.new_time_slot_time)} ${req.new_bus_label}`}
                 </span>
-                <span className={`text-xs px-1.5 py-0.5 rounded ${STATUS_COLOR[req.status]}`}>
-                  {STATUS_LABEL[req.status]}
+                <span className={`text-xs px-1.5 py-0.5 rounded ${BUS_REQUEST_STATUS_CONFIG[req.status].badgeClass}`}>
+                  {BUS_REQUEST_STATUS_CONFIG[req.status].label}
                 </span>
                 {req.review_note && (
                   <span className="text-xs text-slate-500">({req.review_note})</span>

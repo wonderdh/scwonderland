@@ -626,8 +626,8 @@ export type ReservationBusChange = {
   student_profile_id: string;
   student_name: string;
   request_date: string;
-  change_type: string;
-  status: string;
+  change_type: BusChangeType;
+  status: BusRequestStatus;
   reason: string | null;
   new_bus_number_label?: string | null;
   new_bus_time_slot_label?: string | null;

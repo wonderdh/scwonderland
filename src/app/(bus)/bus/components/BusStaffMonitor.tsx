@@ -13,11 +13,7 @@ import { useBusRealtime } from "@/lib/hooks/use-bus-realtime";
 import { applyCheckRecord, applyChangeRequest } from "@/lib/bus/realtime-utils";
 import { WEEKDAY_NAMES_7 } from "@/lib/constants/date";
 import { formatStudentName } from "@/lib/utils/student-name";
-
-function getToday() {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-}
+import { todayKst } from "@/lib/utils/date-kst";
 
 function getNowHHMM() {
   const now = new Date();
@@ -346,7 +342,7 @@ export function BusStaffMonitor({
   busNumberId: string | null;
   staffProfileId: string;
 }) {
-  const [date, setDate] = useState(getToday);
+  const [date, setDate] = useState(todayKst);
   const [groups, setGroups] = useState<BusManifestGroup[]>([]);
   const [noRides, setNoRides] = useState<NoRideEntry[]>([]);
   const [loading, setLoading] = useState(false);
@@ -357,7 +353,7 @@ export function BusStaffMonitor({
 
   const load = useCallback(async () => {
     setLoading(true);
-    const currentDate = getToday();
+    const currentDate = todayKst();
     setDate(currentDate);
 
     const result = await getDailyBusManifest(currentDate);

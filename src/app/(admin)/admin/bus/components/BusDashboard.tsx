@@ -15,6 +15,7 @@ import {
 import { useBusRealtime } from "@/lib/hooks/use-bus-realtime";
 import { formatTime } from "@/lib/bus/utils";
 import { formatStudentName } from "@/lib/utils/student-name";
+import { todayKst } from "@/lib/utils/date-kst";
 
 const DAY_NAMES = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -58,9 +59,7 @@ function groupByTime(groups: BusManifestGroup[]): TimeGroup[] {
 }
 
 export function BusDashboard({ busTimeSlots, busNumbers }: { busTimeSlots: BusTimeSlot[]; busNumbers: BusNumber[] }) {
-  const now = new Date();
-  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-  const [date, setDate] = useState(today);
+  const [date, setDate] = useState(todayKst());
   const [groups, setGroups] = useState<BusManifestGroup[]>([]);
   const [noRides, setNoRides] = useState<NoRideEntry[]>([]);
   const [afterschoolStudents, setAfterSchoolStudents] = useState<AfterSchoolBusEntry[]>([]);

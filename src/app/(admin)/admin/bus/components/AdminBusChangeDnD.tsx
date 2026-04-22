@@ -10,7 +10,7 @@ import { getAgeColor } from "@/lib/ui/student-age-colors";
 import type { BusStop, BusTimeSlot, StudentBusDefault } from "@/lib/types";
 import { detectAfterschoolSlot } from "@/lib/bus/afterschool-sync";
 import { MultiDatePicker } from "@/components/forms/MultiDatePicker";
-import { formatDateYmdKst } from "@/lib/utils/date-kst";
+import { formatDateYmdKst, todayKst } from "@/lib/utils/date-kst";
 import { formatStudentName } from "@/lib/utils/student-name";
 import {
   listBusStops,
@@ -46,8 +46,7 @@ export function AdminBusChangeDnD({
 }: {
   onChangeCreated?: () => void;
 } = {}) {
-  const now = new Date();
-  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  const today = todayKst();
   const router = useRouter();
 
   // Reference data (loaded once)

@@ -5,12 +5,8 @@ import type { BusChangeRequest } from "@/lib/types";
 import { listChangeRequestsByDate } from "@/app/(admin)/admin/actions";
 import { useBusRealtime } from "@/lib/hooks/use-bus-realtime";
 import { formatStudentName } from "@/lib/utils/student-name";
-
-const CHANGE_TYPE_CONFIG = {
-  absent: { label: "결석", bg: "bg-red-100 text-red-700" },
-  no_ride: { label: "픽업", bg: "bg-orange-100 text-orange-700" },
-  change: { label: "호차변경", bg: "bg-blue-100 text-blue-700" },
-} as const;
+import { todayKst } from "@/lib/utils/date-kst";
+import { BUS_CHANGE_TYPE_CONFIG } from "@/lib/constants/bus";
 
 /** 결석은 등/하원 중복 제거 (1건만 표시) */
 function deduplicateAbsent(list: BusChangeRequest[]): BusChangeRequest[] {
@@ -23,18 +19,13 @@ function deduplicateAbsent(list: BusChangeRequest[]): BusChangeRequest[] {
   });
 }
 
-function getLocalToday() {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-}
-
 function formatDate(dateStr: string) {
   const d = new Date(dateStr + "T00:00:00");
   return `${d.getMonth() + 1}/${d.getDate()}`;
 }
 
 export function DailyBusChanges() {
-  const today = getLocalToday();
+  const today = todayKst();
   const [changes, setChanges] = useState<BusChangeRequest[]>([]);
 
   const loadChanges = useCallback(() => {
@@ -69,7 +60,7 @@ export function DailyBusChanges() {
       <div className="rounded-xl border border-border bg-card divide-y divide-border overflow-hidden">
         {changes.map((ch) => {
           const name = formatStudentName(ch);
-          const cfg = CHANGE_TYPE_CONFIG[ch.change_type] ?? CHANGE_TYPE_CONFIG.change;
+          const cfg = BUS_CHANGE_TYPE_CONFIG[ch.change_type] ?? BUS_CHANGE_TYPE_CONFIG.change;
 
           const newSlotTime = ch.new_time_slot_time ? ch.new_time_slot_time.slice(0, 5) : "";
           const newSlotLabel = ch.new_time_slot_label ?? "";
@@ -90,7 +81,7 @@ export function DailyBusChanges() {
 
           return (
             <div key={ch.id} className="px-4 py-2.5 flex items-center gap-2 text-sm">
-              <span className={`shrink-0 text-[11px] font-medium px-2 py-0.5 rounded-full ${cfg.bg}`}>
+              <span className={`shrink-0 text-[11px] font-medium px-2 py-0.5 rounded-full ${cfg.badgeClass}`}>
                 {cfg.label}
               </span>
               <span className="text-xs text-muted-foreground shrink-0">{dateLabel}</span>
