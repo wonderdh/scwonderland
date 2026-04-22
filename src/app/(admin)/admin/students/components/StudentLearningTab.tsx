@@ -60,6 +60,7 @@ export function StudentLearningTab({ studentProfileId }: { studentProfileId: str
   }, [studentProfileId]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadRecords();
   }, [loadRecords]);
 

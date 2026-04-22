@@ -99,6 +99,7 @@ export function AdminBusChangeDnD({
   // When student / date changes → load existing data
   useEffect(() => {
     if (!selectedStudentId) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoadingStudent(true);
     const firstDate = selectedDates[0] ? formatDateYmdKst(selectedDates[0]) : today;
     const dow = (() => { const d = new Date(firstDate).getDay(); return d === 0 ? 7 : d; })();

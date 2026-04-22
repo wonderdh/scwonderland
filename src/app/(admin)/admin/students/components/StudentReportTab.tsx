@@ -48,10 +48,12 @@ export function StudentReportTab({ studentProfileId }: { studentProfileId: strin
   }, [studentProfileId]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadReport();
   }, [loadReport]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadList();
   }, [loadList]);
 

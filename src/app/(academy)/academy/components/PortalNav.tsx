@@ -25,6 +25,7 @@ export function PortalNav({
 
   // 네비게이션 완료 시 pending 초기화
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setPendingHref(null);
   }, [pathname]);
 

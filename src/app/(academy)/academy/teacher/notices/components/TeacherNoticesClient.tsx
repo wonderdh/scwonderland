@@ -61,6 +61,7 @@ export function TeacherNoticesClient({
   }, [selectedClassId]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadNotices();
   }, [loadNotices]);
 

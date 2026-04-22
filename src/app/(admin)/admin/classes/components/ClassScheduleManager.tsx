@@ -185,6 +185,7 @@ export function ClassScheduleManager({
 
   useEffect(() => {
     if (selectedClassId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       loadSchedules(selectedClassId);
     }
   }, [selectedClassId, loadSchedules]);

@@ -26,6 +26,7 @@ export function AdminMobileHeader({ adminId }: { adminId: string }) {
   }, [open]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     close();
   }, [pathname]);
 

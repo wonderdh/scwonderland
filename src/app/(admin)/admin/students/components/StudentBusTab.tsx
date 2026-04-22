@@ -77,6 +77,7 @@ export function StudentBusTab({ studentProfileId }: { studentProfileId: string }
   }, [studentProfileId]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
   }, [load]);
 

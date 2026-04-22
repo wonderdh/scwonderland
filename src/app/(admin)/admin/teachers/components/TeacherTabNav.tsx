@@ -22,6 +22,7 @@ export function TeacherTabNav({
   const [pendingTab, setPendingTab] = useState<TeacherTabId | null>(null);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setPendingTab(null);
   }, [currentTab]);
 

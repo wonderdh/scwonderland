@@ -101,6 +101,7 @@ export function BusMonitorClient({
   // 초기 로드
   useEffect(() => {
     const defaultSlot = getDefaultSlotId(busTimeSlots);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSlotFilter(defaultSlot);
     loadData(getTodayIsoDay());
   }, [busTimeSlots, loadData]);

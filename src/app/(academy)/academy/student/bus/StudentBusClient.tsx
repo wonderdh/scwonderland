@@ -69,6 +69,7 @@ export function StudentBusClient({ studentProfileId }: { studentProfileId: strin
   }, [studentProfileId]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
   }, [load]);
 

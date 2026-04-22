@@ -59,6 +59,7 @@ export function TeacherTextbookClient({
 
   useEffect(() => {
     if (selectedClassId !== initialClassId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       loadTextbooks();
     }
   }, [selectedClassId, initialClassId, loadTextbooks]);

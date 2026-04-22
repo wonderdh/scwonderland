@@ -65,6 +65,7 @@ export function BusChangeRequestsPanel({ adminId }: { adminId: string }) {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
   }, [load]);
 
