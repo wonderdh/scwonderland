@@ -16,13 +16,10 @@
 | `bus/components/BusDashboard.tsx` | 실시간 대시보드 (당일 승하차 매니페스트, 탑승/확인 체크) |
 | `bus/components/BusChangeRequestsPanel.tsx` | 학생/학부모 변경 요청 승인/거절 관리 |
 | `bus/components/BusStudentAssignmentManager.tsx` | 학생별 버스 기본 배정 관리 (요일별 호차/정류장/시간대) |
-| `bus/components/BusStopAssignmentManager.tsx` | 정류장 → 호차 배정 관리 (요일/시간대별) |
-| `bus/components/BusManagePanel.tsx` | 호차 CRUD + 정류장 CRUD |
+| `bus/components/BusStopAssignmentManager.tsx` | 정류장 → 호차 배정 관리 (요일/시간대별). 호차·정류장 CRUD도 포함 |
 | `bus/components/BusTimeSlotsManager.tsx` | 버스 시간대 CRUD (하원). **학생 없어도 정류장 표시** 체크박스(`show_empty_stops`)로 해당 시간대에서 모니터가 배정 학생이 없는 정류장·호차 카드도 노출하도록 설정 — 오후반(16:20, 17:45 등)용 |
 | `bus/components/BusStaffManager.tsx` | 버스 직원 관리 (기사, 보조교사 계정 생성/관리) |
 | `bus/components/BusNumbersManager.tsx` | 마스터 탭 호차/정류장 관리 — 요일·시간대별 호차↔정류장 드래그 배정, 정류장별 도착시간 입력, **다른 요일에 복사** 모달(요일×시간대 단위 일괄 덮어쓰기, `copyBusDayDataToOtherDays` 사용) |
-| `bus/components/BusAssignmentManager.tsx` | (레거시 또는 하위 컴포넌트) |
-| `bus/components/BusMonitoringDashboard.tsx` | (실시간 모니터링 대시보드, 하위 컴포넌트) |
 
 ## Server Actions
 

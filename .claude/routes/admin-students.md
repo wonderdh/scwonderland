@@ -22,7 +22,6 @@
 | `students/components/StudentTimetableTab.tsx` | 시간표 탭 |
 | `students/components/StudentAttendanceTab.tsx` | 출결 기록 탭 |
 | `students/components/StudentBusTab.tsx` | 승하차 배정 탭 |
-| `students/components/StudentComingTab.tsx` | (미사용 또는 예비) |
 | `students/components/ReportCardReadView.tsx` | 리포트카드 읽기 뷰 |
 | `src/components/AdminListSidebar.tsx` | 학생/교사 목록 좌측 사이드바 (검색, 추가, 휴지통 링크) |
 | `src/components/UserList.tsx` | 사용자 목록 테이블 |

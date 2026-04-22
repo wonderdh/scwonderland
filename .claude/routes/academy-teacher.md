@@ -15,8 +15,6 @@
 | `teacher/components/TeacherNav.tsx` | 교사 포털 네비게이션 (한국인: 8탭, 원어민: 6탭) |
 | `teacher/components/TeacherReportClient.tsx` | 리포트카드 작성/조회 (반별, 년/월 선택, 학생별 작성) |
 | `teacher/components/TeacherTextbookClient.tsx` | 교재 관리 + 일괄 진도 업데이트 (배치 모달) |
-| `teacher/attendance/components/TeacherAttendanceClient.tsx` | 출결 기록 (반별, 당일, 학생별 상태 선택) |
-| `teacher/bus/components/TeacherBusClient.tsx` | 승하차 현황 조회 (날짜/방향별, 읽기 전용) |
 | `teacher/homework/components/TeacherHomeworkClient.tsx` | 숙제 출제/수정/삭제, 제출 확인/피드백 |
 | `teacher/notices/components/TeacherNoticesClient.tsx` | 반별 공지 CRUD (첨부파일 포함) |
 | `teacher/timetable/TeacherAcademyTimetable.tsx` | 그룹별 시간표 (유치부/오후반/방과후), 본인 배정만 하이라이트 |
@@ -28,11 +26,11 @@
 | `/academy/teacher/timetable` | `teacher/timetable/page.tsx` | 전체 시간표 (그룹 탭) | 모두 |
 | `/academy/teacher/reports` | `teacher/reports/page.tsx` | 리포트카드 작성(원어민)/조회(한국인) | 모두 (역할별 UI 분기) |
 | `/academy/teacher/textbooks` | `teacher/textbooks/page.tsx` | 교재 진도 관리 | 모두 |
-| `/academy/teacher/attendance` | `teacher/attendance/page.tsx` | 출결 기록 | 모두 |
+| `/academy/teacher/attendance` | `teacher/attendance/page.tsx` | 출결 기록 (준비 중 placeholder) | 모두 |
 | `/academy/teacher/homework` | `teacher/homework/page.tsx` | 숙제 관리 | 모두 |
 | `/academy/teacher/notices` | `teacher/notices/page.tsx` | 반별 공지 관리 | 한국인만 (원어민 → 리다이렉트) |
 | `/academy/teacher/classes` | `teacher/classes/page.tsx` | 반 관리 (학생 목록 조회) | 한국인만 (원어민 → 리다이렉트) |
-| `/academy/teacher/bus` | `teacher/bus/page.tsx` | 승하차 현황 조회 | 한국인만 (원어민 → 리다이렉트) |
+| `/academy/teacher/bus` | `teacher/bus/page.tsx` | `/academy/teacher`로 리다이렉트 (미구현) | 한국인만 |
 
 ## Server Actions
 
@@ -115,9 +113,7 @@
 3. `batchUpdateProgress()`: 선택한 학생들의 진도를 일괄 변경
 
 ### /academy/teacher/attendance
-1. `TeacherAttendanceClient`: 반/오늘 출결 기록
-2. 학생별 present/absent/late/early_leave 선택 → `recordAttendance()` 호출
-3. "전원 출석" 일괄 저장 기능
+1. 현재 "준비 중" placeholder (🚧). `recordAttendance()` 연동 UI는 미구현 — 출결은 관리자 포털(`/admin/students?tab=schedule`)에서 진행
 
 ### /academy/teacher/homework
 1. `TeacherHomeworkClient`: CRUD + 제출 확인/피드백
@@ -133,8 +129,7 @@
 1. `getTeacherClasses()` → 담당 반 + 학생 목록 표시 (읽기 전용)
 
 ### /academy/teacher/bus (한국인 전용)
-1. `TeacherBusClient`: 날짜/방향 선택 → `getDailyBusManifest()` 호출
-2. 호차별 학생 목록, 변경 표시 (is_changed), 미탑승 학생
+1. 현재 `/academy/teacher`로 리다이렉트 (미구현). 승하차 현황은 `/admin/bus` 또는 `/bus-monitor`에서 확인
 
 ## 의존성
 - `src/app/(academy)/academy/actions.ts` — 교사 포털 Server Actions
