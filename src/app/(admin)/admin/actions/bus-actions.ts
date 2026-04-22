@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { verifyAdmin, verifyAuthenticated } from "./auth-helpers";
 import { logger } from "@/lib/server/logger";
 import { todayKst } from "@/lib/utils/date-kst";
+import type { BusChangeType, StudentSubmittableChangeType } from "@/lib/bus/state";
 import type {
   BusNumber,
   BusTimeSlot,
@@ -286,7 +287,22 @@ export async function deleteBusTimeSlot(id: string): Promise<{ error?: string }>
 export async function getStudentBusDefaults(
   studentProfileId: string
 ): Promise<StudentBusDefault[]> {
+  // 본인/admin/teacher만 조회 허용 (IDOR 방지). 비인증은 빈 배열.
+  const auth = await verifyAuthenticated();
+  if ("error" in auth) return [];
   const supabase = createAdminClient();
+  if (studentProfileId !== auth.userId) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", auth.userId)
+      .single();
+    if (!profile || !["admin", "teacher"].includes(profile.role ?? "")) {
+      logger.warn("[getStudentBusDefaults]", "권한 없음", { requestedBy: auth.userId });
+      return [];
+    }
+  }
+
   const { data, error } = await supabase
     .from("student_bus_defaults")
     .select("*")
@@ -1499,7 +1515,7 @@ export async function approveChangeRequest(
   requestId: string,
   reviewerId: string,
   overrides?: {
-    changeType?: "change" | "no_ride" | "absent";
+    changeType?: BusChangeType;
     newBusTimeSlotId?: string;
     newBusNumberId?: string;
     newBusStopId?: string;
@@ -1572,7 +1588,21 @@ export async function rejectChangeRequest(
 export async function getStudentChangeRequests(
   studentProfileId: string
 ): Promise<BusChangeRequest[]> {
+  // 본인/admin/teacher만 조회 허용 (IDOR 방지).
+  const auth = await verifyAuthenticated();
+  if ("error" in auth) return [];
   const supabase = createAdminClient();
+  if (studentProfileId !== auth.userId) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", auth.userId)
+      .single();
+    if (!profile || !["admin", "teacher"].includes(profile.role ?? "")) {
+      logger.warn("[getStudentChangeRequests]", "권한 없음", { requestedBy: auth.userId });
+      return [];
+    }
+  }
   const today = todayKst();
   const { data, error } = await supabase
     .from("bus_change_requests")
@@ -1613,7 +1643,7 @@ export async function getStudentChangeRequests(
 export async function submitBusChangeRequest(
   studentProfileId: string,
   requestDate: string,
-  changeType: "change" | "no_ride",
+  changeType: StudentSubmittableChangeType,
   newBusTimeSlotId?: string,
   newBusNumberId?: string,
   reason?: string
@@ -1672,7 +1702,7 @@ export async function cancelBusChangeRequest(
 export async function createAdminBusChange(
   studentProfileId: string,
   requestDate: string,
-  changeType: "change" | "no_ride" | "absent",
+  changeType: BusChangeType,
   newBusTimeSlotId?: string,
   newBusNumberId?: string,
   newBusStopId?: string,
@@ -1732,7 +1762,7 @@ export async function createAdminBusChange(
 
 export async function updateAdminBusChange(
   requestId: string,
-  changeType: "change" | "no_ride" | "absent",
+  changeType: BusChangeType,
   newBusTimeSlotId?: string,
   newBusNumberId?: string,
   newBusStopId?: string,
@@ -1801,7 +1831,7 @@ export async function getExistingBusChange(
   requestDate: string
 ): Promise<{
   id: string;
-  change_type: "change" | "no_ride" | "absent";
+  change_type: BusChangeType;
   new_bus_time_slot_id: string | null;
   new_bus_number_id: string | null;
   new_bus_stop_id: string | null;
@@ -1817,7 +1847,7 @@ export async function getExistingBusChange(
     .eq("request_date", requestDate)
     .eq("status", "approved")
     .maybeSingle();
-  return data as typeof data & { change_type: "change" | "no_ride" | "absent" } | null;
+  return data as typeof data & { change_type: BusChangeType } | null;
 }
 
 export async function deleteAdminBusChange(
@@ -2625,7 +2655,7 @@ export async function getWeeklyDropoffExportData(): Promise<
 export async function bulkCreateBusChanges(
   studentProfileId: string,
   dates: string[],
-  changeType: "change" | "no_ride" | "absent",
+  changeType: BusChangeType,
   newBusTimeSlotId?: string,
   newBusNumberId?: string,
   newBusStopId?: string,
