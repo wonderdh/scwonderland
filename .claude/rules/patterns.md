@@ -134,7 +134,7 @@ if (dates.length === 1) {
 
 ## 출결 상태
 
-4종: `present`(출석) / `absent`(결석) / `late`(지각) / `early_leave`(조퇴). ~~excused(사유결석)은 UI에서 제거됨~~ (DB에는 기존 데이터 호환 위해 validation만 유지).
+4종: `present`(출석) / `absent`(결석) / `late`(지각) / `early_leave`(조퇴). 과거 `excused`는 마이그레이션 `20260421000000_attendance_drop_excused_add_early_leave.sql`에서 `absent`로 일괄 변환 후 완전 제거 (DB CHECK·앱 validation·타입 모두).
 
 ## Form Handling Patterns
 

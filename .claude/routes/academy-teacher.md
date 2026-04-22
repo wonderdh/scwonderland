@@ -116,7 +116,7 @@
 
 ### /academy/teacher/attendance
 1. `TeacherAttendanceClient`: 반/오늘 출결 기록
-2. 학생별 present/absent/late/excused 선택 → `recordAttendance()` 호출
+2. 학생별 present/absent/late/early_leave 선택 → `recordAttendance()` 호출
 3. "전원 출석" 일괄 저장 기능
 
 ### /academy/teacher/homework

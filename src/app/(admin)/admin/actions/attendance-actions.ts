@@ -52,7 +52,7 @@ export async function recordAttendance(
   if ("error" in auth) return { error: auth.error };
   const supabase = createAdminClient();
 
-  if (!["present", "absent", "late", "excused", "early_leave"].includes(status)) {
+  if (!["present", "absent", "late", "early_leave"].includes(status)) {
     return { error: "올바른 출결 상태를 선택해 주세요." };
   }
 
@@ -230,7 +230,7 @@ export async function bulkRecordAttendance(
 
   if (!records.length) return { error: "저장할 출결 데이터가 없습니다." };
 
-  const validStatuses = ["present", "absent", "late", "excused", "early_leave"];
+  const validStatuses = ["present", "absent", "late", "early_leave"];
   for (const r of records) {
     if (!validStatuses.includes(r.status)) {
       return { error: "올바른 출결 상태를 선택해 주세요." };
@@ -267,7 +267,7 @@ export async function getAttendanceStats(
   month: number
 ): Promise<AttendanceStats> {
   const auth = await verifyAuthenticated();
-  if ("error" in auth) return { total: 0, present: 0, absent: 0, late: 0, excused: 0, early_leave: 0 };
+  if ("error" in auth) return { total: 0, present: 0, absent: 0, late: 0, early_leave: 0 };
   const supabase = createAdminClient();
 
   const startDate = `${year}-${String(month).padStart(2, "0")}-01`;
@@ -289,7 +289,6 @@ export async function getAttendanceStats(
     present: records.filter((r) => r.status === "present").length,
     absent: records.filter((r) => r.status === "absent").length,
     late: records.filter((r) => r.status === "late").length,
-    excused: records.filter((r) => r.status === "excused").length,
     early_leave: records.filter((r) => r.status === "early_leave").length,
   };
 }
@@ -305,7 +304,7 @@ export async function bulkReserveAttendance(
   const auth = await verifyAdmin();
   if ("error" in auth) return { error: auth.error };
 
-  const validStatuses = ["present", "absent", "late", "excused", "early_leave"];
+  const validStatuses = ["present", "absent", "late", "early_leave"];
   if (!validStatuses.includes(status)) {
     return { error: "올바른 출결 상태를 선택해 주세요." };
   }

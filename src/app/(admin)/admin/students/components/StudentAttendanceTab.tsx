@@ -46,7 +46,7 @@ export function StudentAttendanceTab({ studentProfileId }: { studentProfileId: s
   );
 
   const records: AttendanceRecord[] = data?.records ?? [];
-  const stats: AttendanceStats = data?.stats ?? { total: 0, present: 0, absent: 0, late: 0, excused: 0, early_leave: 0 };
+  const stats: AttendanceStats = data?.stats ?? { total: 0, present: 0, absent: 0, late: 0, early_leave: 0 };
 
   // Action-level error (save/delete, distinct from load error)
   const [actionError, setActionError] = useState<string | null>(null);

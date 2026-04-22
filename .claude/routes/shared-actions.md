@@ -158,7 +158,7 @@
 | `getClassStudentsWithAttendance(classId, date)` | admin | `class_students`, `students`, `attendance` | 반 학생 목록 + 출결 통합 → `StudentWithAttendance[]` (나이순 정렬, 관리자 반별 출결용) |
 | `bulkRecordAttendance(records[{student_profile_id, date, status, note?}])` | admin | `attendance` | 반 출결 일괄 upsert (관리자 반별 출결 저장, revalidate: /admin/attendance + /m/attendance) |
 | `bulkReserveAttendance(studentProfileId, dates[], status, note?, autoBusNoRide?)` | admin | `attendance`, `bus_change_requests` | 다중 날짜 출결 일괄 예약. 결석+autoBusNoRide 시 양방향 버스 미탑승 자동 생성 |
-| `getAttendanceStats(studentProfileId, year, month)` | authenticated | `attendance` | 월별 출결 통계 (total, present, absent, late, excused) |
+| `getAttendanceStats(studentProfileId, year, month)` | authenticated | `attendance` | 월별 출결 통계 (total, present, absent, late, early_leave) |
 
 ---
 

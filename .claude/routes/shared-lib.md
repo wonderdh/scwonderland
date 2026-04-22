@@ -39,8 +39,8 @@
 | `ClassStudentRow` | 반 소속 학생 행 (korean_name, english_name, age, student_number) |
 | `ClassTextbookProgressRow` | 반별 교재 진도 행 (학생별 status, completed_units) |
 | `AdminStudentClassItem` | Admin 학생 소속 반 아이템 |
-| `AttendanceRecord` | 출결 기록 (status: present/absent/late/excused, attendance_date) |
-| `AttendanceStats` | 출결 통계 (total, present, absent, late, excused) |
+| `AttendanceRecord` | 출결 기록 (status: present/absent/late/early_leave, attendance_date) |
+| `AttendanceStats` | 출결 통계 (total, present, absent, late, early_leave) |
 | `StudentWithAttendance` | 반별 출결용 학생+상태 통합 타입 (student_profile_id, korean_name, age, status, note) |
 | `StudentProfile` | 학생 프로필 (Academy 포털용) |
 | `StudentClassItem` | 학생 소속 반 정보 (Academy 포털용) |

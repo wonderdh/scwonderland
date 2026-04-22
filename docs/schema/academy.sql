@@ -8,7 +8,7 @@ CREATE TABLE attendance (
   id                 uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   student_profile_id uuid NOT NULL REFERENCES profiles(id),
   attendance_date    date NOT NULL DEFAULT CURRENT_DATE,
-  status             text NOT NULL DEFAULT 'present',  -- 'present' | 'absent' | 'late' | 'excused'
+  status             text NOT NULL DEFAULT 'present',  -- 'present' | 'absent' | 'late' | 'early_leave' (CHECK constraint: attendance_status_check)
   note               text,
   recorded_by        uuid REFERENCES profiles(id),
   created_at         timestamptz DEFAULT now(),

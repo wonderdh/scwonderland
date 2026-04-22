@@ -40,7 +40,7 @@
 | `listReportCardsByStudent` | (studentProfileId) | report_cards |
 | `updateReportCardReply` | (reportCardId, reply) | report_cards |
 | `getStudentHomework` | (studentProfileId) | homework_assignments, homework_submissions, class_students |
-| `getAttendanceStats` | (studentProfileId, year, month) | attendance — 월별 present/absent/late/excused 카운트 |
+| `getAttendanceStats` | (studentProfileId, year, month) | attendance — 월별 present/absent/late/early_leave 카운트 |
 | `listLearningRecords` | (studentProfileId) | learning_records |
 | `submitHomework` | (submissionId, textContent?, audioFile?) | homework_submissions, homework_submission_files + Storage |
 | `getSubmissionFiles` | (submissionId) | homework_submission_files + Storage signed URL |
