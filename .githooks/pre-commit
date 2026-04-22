@@ -1,0 +1,4 @@
+#!/bin/sh
+# Server Action auth 검증 — mutation 함수에서 verify* 호출 누락 차단.
+# 재설치: npm run prepare
+node scripts/check-server-actions-auth.mjs || exit 1

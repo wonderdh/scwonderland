@@ -312,6 +312,7 @@ export async function getStudentHomework(
 }
 
 /** 학생 숙제 제출 (텍스트 + 오디오 파일) */
+// @auth-skip: getUser() + submission.student_profile_id === user.id 소유권 직접 검증
 export async function submitHomework(
   submissionId: string,
   textContent?: string,

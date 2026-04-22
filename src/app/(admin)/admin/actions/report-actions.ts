@@ -66,6 +66,7 @@ export async function listReportCardsByStudent(
 }
 
 /** 리포트카드 본문 작성/수정. 선생 또는 admin만 가능. author_id는 현재 로그인 사용자. */
+// @auth-skip: getUser + profiles.role + teachers.teacher_type(native) + 담당반 membership 수동 검증
 export async function upsertReportCard(
   studentProfileId: string,
   year: number,
@@ -168,6 +169,7 @@ export async function upsertReportCard(
 }
 
 /** 리포트카드 삭제. 작성한 선생(native) 또는 admin만 가능. */
+// @auth-skip: getUser + profiles.role + teacher_type(native) + author_id === user.id 수동 검증
 export async function deleteReportCard(
   reportCardId: string
 ): Promise<{ error?: string }> {
@@ -224,6 +226,7 @@ export async function deleteReportCard(
 
 /** 학생이 자신의 리포트카드에 답글만 작성/수정. 본문이 있을 때만 허용.
  *  translateToEnglish=true 시 한국어 답글을 영어로 번역하여 reply_en에 저장. */
+// @auth-skip: getUser + row.student_profile_id === user.id 소유권 수동 검증
 export async function updateReportCardReply(
   reportCardId: string,
   reply: string,
