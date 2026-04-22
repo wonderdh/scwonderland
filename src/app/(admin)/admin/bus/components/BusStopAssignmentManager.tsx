@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -58,11 +58,12 @@ export function BusStopAssignmentManager({
 
   // Per-day assignment: stopId → { busNumberId, sortOrder }
   const [dayAssignments, setDayAssignments] = useState<Map<string, StopAssignment>>(new Map());
-  const serverAssignments = useRef<Map<string, StopAssignment>>(new Map());
+  // serverAssignments: 서버와 동기화된 baseline — dirty check 용. 렌더 중 읽기 때문에 state.
+  const [serverAssignments, setServerAssignments] = useState<Map<string, StopAssignment>>(new Map());
 
   // Schedule times: stopId → time
   const [scheduleMap, setScheduleMap] = useState<Map<string, string>>(new Map());
-  const serverSchedules = useRef<Map<string, string>>(new Map());
+  const [serverSchedules, setServerSchedules] = useState<Map<string, string>>(new Map());
 
   // UI
   const [search, setSearch] = useState("");
@@ -101,9 +102,11 @@ export function BusStopAssignmentManager({
     for (const a of data) map.set(a.bus_stop_id, { busNumberId: a.bus_number_id, sortOrder: a.sort_order });
     setDayAssignments(map);
     // fallback 데이터는 서버에 없으므로 serverAssignments를 비워서 dirty 상태로 표시
-    serverAssignments.current = isSlotFallback
-      ? new Map()
-      : new Map(map.entries().map(([k, v]) => [k, { ...v }]));
+    setServerAssignments(
+      isSlotFallback
+        ? new Map()
+        : new Map(map.entries().map(([k, v]) => [k, { ...v }]))
+    );
   }, [day, timeSlotId]);
 
   const fetchSchedules = useCallback(async () => {
@@ -111,26 +114,29 @@ export function BusStopAssignmentManager({
     const map = new Map<string, string>();
     for (const s of data) map.set(s.bus_stop_id, s.estimated_time?.slice(0, 5) ?? "");
     setScheduleMap(map);
-    serverSchedules.current = new Map(map);
+    setServerSchedules(new Map(map));
   }, [day, timeSlotId]);
 
+  // async fetch 후 setState — 외부(서버) 데이터 동기화 패턴
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { fetchDayAssignments(); }, [fetchDayAssignments]);
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { fetchSchedules(); }, [fetchSchedules]);
 
   // ── Dirty detection ──
 
   function computeHasChanges(): boolean {
-    const allIds = new Set([...dayAssignments.keys(), ...serverAssignments.current.keys()]);
+    const allIds = new Set([...dayAssignments.keys(), ...serverAssignments.keys()]);
     for (const id of allIds) {
       const local = dayAssignments.get(id);
-      const server = serverAssignments.current.get(id);
+      const server = serverAssignments.get(id);
       if (!local && server) return true;
       if (local && !server) return true;
       if (local && server && (local.busNumberId !== server.busNumberId || local.sortOrder !== server.sortOrder)) return true;
     }
-    const allSchedIds = new Set([...scheduleMap.keys(), ...serverSchedules.current.keys()]);
+    const allSchedIds = new Set([...scheduleMap.keys(), ...serverSchedules.keys()]);
     for (const id of allSchedIds) {
-      if ((scheduleMap.get(id) ?? "") !== (serverSchedules.current.get(id) ?? "")) return true;
+      if ((scheduleMap.get(id) ?? "") !== (serverSchedules.get(id) ?? "")) return true;
     }
     return false;
   }
@@ -150,8 +156,8 @@ export function BusStopAssignmentManager({
   function confirmFilterChange() {
     const setter = filterChangeConfirm.setter;
     setFilterChangeConfirm({ open: false });
-    setDayAssignments(new Map(serverAssignments.current.entries().map(([k, v]) => [k, { ...v }])));
-    setScheduleMap(new Map(serverSchedules.current));
+    setDayAssignments(new Map(serverAssignments.entries().map(([k, v]) => [k, { ...v }])));
+    setScheduleMap(new Map(serverSchedules));
     setter?.();
   }
 
@@ -267,11 +273,11 @@ export function BusStopAssignmentManager({
 
   function isStopDirty(stopId: string): boolean {
     const local = dayAssignments.get(stopId);
-    const server = serverAssignments.current.get(stopId);
+    const server = serverAssignments.get(stopId);
     if (!local && !server) return false;
     if (!local || !server) return true;
     if (local.busNumberId !== server.busNumberId || local.sortOrder !== server.sortOrder) return true;
-    return (scheduleMap.get(stopId) ?? "") !== (serverSchedules.current.get(stopId) ?? "");
+    return (scheduleMap.get(stopId) ?? "") !== (serverSchedules.get(stopId) ?? "");
   }
 
   // ── Time editing (local) ──
@@ -302,10 +308,10 @@ export function BusStopAssignmentManager({
 
     // 2. 도착 예정 시간 저장
     const slotId = timeSlotId || undefined;
-    const allSchedIds = new Set([...scheduleMap.keys(), ...serverSchedules.current.keys()]);
+    const allSchedIds = new Set([...scheduleMap.keys(), ...serverSchedules.keys()]);
     for (const stopId of allSchedIds) {
       const local = scheduleMap.get(stopId) ?? "";
-      const server = serverSchedules.current.get(stopId) ?? "";
+      const server = serverSchedules.get(stopId) ?? "";
       if (local === server) continue;
       if (local) {
         const r = await upsertBusStopSchedule(stopId, day, local, slotId);
@@ -322,8 +328,8 @@ export function BusStopAssignmentManager({
       toast.success("저장되었습니다.");
     }
 
-    serverAssignments.current = new Map(dayAssignments.entries().map(([k, v]) => [k, { ...v }]));
-    serverSchedules.current = new Map(scheduleMap);
+    setServerAssignments(new Map(dayAssignments.entries().map(([k, v]) => [k, { ...v }])));
+    setServerSchedules(new Map(scheduleMap));
     setSaving(false);
   }
 

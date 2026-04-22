@@ -507,12 +507,15 @@ export function BusStaffMonitor({
     setPendingChanges(new Map());
   }, []);
 
+  // Latest value refs — realtime 콜백에서 최신 state 참조용. render 후 동기화.
   const pendingChangesRef = useRef(pendingChanges);
-  pendingChangesRef.current = pendingChanges;
   const groupsRef = useRef(groups);
-  groupsRef.current = groups;
   const noRidesRef = useRef(noRides);
-  noRidesRef.current = noRides;
+  useEffect(() => {
+    pendingChangesRef.current = pendingChanges;
+    groupsRef.current = groups;
+    noRidesRef.current = noRides;
+  });
 
   useBusRealtime(date, {
     onCheckRecord: (event, row) => {
