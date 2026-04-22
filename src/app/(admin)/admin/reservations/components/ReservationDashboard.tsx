@@ -50,6 +50,51 @@ type StudentOption = {
   age: number | null;
 };
 
+function StudentSelect({
+  value,
+  onChange,
+  searchValue,
+  onSearchChange,
+  students,
+}: {
+  value: string;
+  onChange: (id: string) => void;
+  searchValue: string;
+  onSearchChange: (v: string) => void;
+  students: StudentOption[];
+}) {
+  return (
+    <div className="space-y-2">
+      <Input
+        placeholder="학생 이름 검색"
+        value={searchValue}
+        onChange={(e) => onSearchChange(e.target.value)}
+        className="h-11 text-base"
+      />
+      <div className="max-h-40 overflow-y-auto rounded-lg border border-slate-200 divide-y divide-slate-100">
+        {students.map((s) => (
+          <button
+            key={s.id}
+            type="button"
+            onClick={() => {
+              onChange(s.id);
+              onSearchChange(s.korean_name ?? "");
+            }}
+            className={`w-full text-left px-3 py-2.5 text-base transition-colors ${
+              value === s.id ? "bg-blue-50 text-blue-700" : "hover:bg-slate-50"
+            }`}
+          >
+            {s.korean_name ?? "이름 없음"}
+            {s.age && (
+              <span className="ml-1 text-sm text-slate-400">{s.age}세</span>
+            )}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 type Props = {
   initialReservations: {
     attendance: ReservationAttendance[];
@@ -209,45 +254,6 @@ export function ReservationDashboard({
     toast.success(`${ids.length}건 삭제되었습니다.`);
     setDeleteBusTarget(null);
     router.refresh();
-  }
-
-  function StudentSelect({
-    value,
-    onChange,
-  }: {
-    value: string;
-    onChange: (id: string) => void;
-  }) {
-    return (
-      <div className="space-y-2">
-        <Input
-          placeholder="학생 이름 검색"
-          value={studentSearch}
-          onChange={(e) => setStudentSearch(e.target.value)}
-          className="h-11 text-base"
-        />
-        <div className="max-h-40 overflow-y-auto rounded-lg border border-slate-200 divide-y divide-slate-100">
-          {filteredStudents.map((s) => (
-            <button
-              key={s.id}
-              type="button"
-              onClick={() => {
-                onChange(s.id);
-                setStudentSearch(s.korean_name ?? "");
-              }}
-              className={`w-full text-left px-3 py-2.5 text-base transition-colors ${
-                value === s.id ? "bg-blue-50 text-blue-700" : "hover:bg-slate-50"
-              }`}
-            >
-              {s.korean_name ?? "이름 없음"}
-              {s.age && (
-                <span className="ml-1 text-sm text-slate-400">{s.age}세</span>
-              )}
-            </button>
-          ))}
-        </div>
-      </div>
-    );
   }
 
   return (
@@ -459,6 +465,9 @@ export function ReservationDashboard({
               <StudentSelect
                 value={attStudentId}
                 onChange={setAttStudentId}
+                searchValue={studentSearch}
+                onSearchChange={setStudentSearch}
+                students={filteredStudents}
               />
 
               <label className="text-base font-medium text-slate-700">상태</label>
@@ -544,6 +553,9 @@ export function ReservationDashboard({
               <StudentSelect
                 value={busStudentId}
                 onChange={setBusStudentId}
+                searchValue={studentSearch}
+                onSearchChange={setStudentSearch}
+                students={filteredStudents}
               />
 
               <label className="text-base font-medium text-slate-700">

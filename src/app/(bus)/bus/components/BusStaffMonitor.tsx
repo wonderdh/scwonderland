@@ -371,6 +371,8 @@ export function BusStaffMonitor({
     setLoading(false);
   }, [busNumberId]);
 
+  // async fetch 후 setState — 외부(서버) 데이터 동기화 패턴
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => {
     load();
   }, [load]);
