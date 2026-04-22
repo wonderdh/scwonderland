@@ -1620,6 +1620,10 @@ export async function submitBusChangeRequest(
 ): Promise<{ error?: string }> {
   const auth = await verifyAuthenticated();
   if ("error" in auth) return { error: auth.error };
+  // 본인 요청만 허용 (IDOR 방지: 다른 학생의 버스 노선을 바꾸지 못하도록)
+  if (studentProfileId !== auth.userId) {
+    return { error: "본인 요청만 제출할 수 있습니다." };
+  }
   const supabase = createAdminClient();
 
   const { error } = await supabase.from("bus_change_requests").insert({
@@ -1645,6 +1649,10 @@ export async function cancelBusChangeRequest(
 ): Promise<{ error?: string }> {
   const auth = await verifyAuthenticated();
   if ("error" in auth) return { error: auth.error };
+  // 본인 pending 요청만 취소 가능 (IDOR 방지: 다른 학생 요청 취소 차단)
+  if (studentProfileId !== auth.userId) {
+    return { error: "본인 요청만 취소할 수 있습니다." };
+  }
   const supabase = createAdminClient();
   const { error } = await supabase
     .from("bus_change_requests")

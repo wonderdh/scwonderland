@@ -372,17 +372,15 @@ export async function submitHomework(
   return {};
 }
 
-/** 교사 피드백 작성 */
+/** 교사 피드백 작성 (교사/관리자 전용) */
 export async function reviewSubmission(
   submissionId: string,
   feedback: string,
   reviewerId: string
 ): Promise<{ error?: string }> {
-  // 인증 검증: 로그인 사용자와 reviewerId 일치 확인
-  const supabaseAuth = await createClient();
-  const { data: { user } } = await supabaseAuth.auth.getUser();
-  if (!user) return { error: "인증이 필요합니다." };
-  if (reviewerId !== user.id) return { error: "권한이 없습니다." };
+  const auth = await verifyTeacherOrAdmin();
+  if ("error" in auth) return { error: auth.error };
+  if (reviewerId !== auth.userId) return { error: "권한이 없습니다." };
 
   const supabase = createAdminClient();
   const { error } = await supabase
@@ -401,13 +399,50 @@ export async function reviewSubmission(
   return {};
 }
 
-/** 제출물의 signed URL 가져오기 */
+/** 제출물의 signed URL 가져오기 (소유권/역할 검증) */
 export async function getSubmissionFiles(
   submissionId: string
 ): Promise<HomeworkSubmissionFile[]> {
   const auth = await verifyAuthenticated();
   if ("error" in auth) return [];
   const supabase = createAdminClient();
+
+  // 소유권/역할 검증: 본인 제출물이거나, 담당 반 교사이거나, 관리자여야 함
+  const { data: submission } = await supabase
+    .from("homework_submissions")
+    .select("student_profile_id, assignment_id")
+    .eq("id", submissionId)
+    .single();
+  if (!submission) return [];
+
+  if (submission.student_profile_id !== auth.userId) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", auth.userId)
+      .single();
+
+    if (profile?.role === "admin") {
+      // ok
+    } else if (profile?.role === "teacher") {
+      const { data: assignment } = await supabase
+        .from("homework_assignments")
+        .select("class_id")
+        .eq("id", submission.assignment_id)
+        .single();
+      if (!assignment) return [];
+      const { data: ct } = await supabase
+        .from("class_teachers")
+        .select("class_id")
+        .eq("teacher_profile_id", auth.userId)
+        .eq("class_id", assignment.class_id)
+        .maybeSingle();
+      if (!ct) return [];
+    } else {
+      return [];
+    }
+  }
+
   const { data: files } = await supabase
     .from("homework_submission_files")
     .select("*")

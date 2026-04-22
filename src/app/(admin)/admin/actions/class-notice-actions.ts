@@ -2,7 +2,6 @@
 
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
 import { STORAGE_BUCKETS } from "@/lib/supabase/storage";
 import { logger } from "@/lib/server/logger";
 import {
@@ -13,7 +12,7 @@ import {
   deleteNoticeCommon,
 } from "@/lib/supabase/notice-crud-helpers";
 import type { ClassNotice, ClassNoticeAttachment } from "@/lib/types";
-import { verifyAuthenticated } from "./auth-helpers";
+import { verifyAuthenticated, verifyTeacherOrAdmin } from "./auth-helpers";
 
 const CONFIG = {
   table: "class_notices",
@@ -112,13 +111,12 @@ export async function getClassNoticeWithAttachments(
 
 // ── 생성 ─────────────────────────────────────────────────────
 
-/** 반별 공지 생성 (교사 본인 글만 — user.id === author_id 검증) */
+/** 반별 공지 생성 (교사/관리자 전용, author_id === user.id 검증) */
 export async function createClassNotice(
   formData: FormData
 ): Promise<{ error?: string; id?: string }> {
-  const supabaseAuth = await createClient();
-  const { data: { user } } = await supabaseAuth.auth.getUser();
-  if (!user) return { error: "인증이 필요합니다." };
+  const auth = await verifyTeacherOrAdmin();
+  if ("error" in auth) return { error: auth.error };
 
   const classId = (formData.get("class_id") as string)?.trim();
   const authorId = (formData.get("author_id") as string)?.trim();
@@ -128,7 +126,7 @@ export async function createClassNotice(
 
   if (!classId || !authorId) return { error: "필수 정보가 누락되었습니다." };
   if (!title) return { error: "제목을 입력해 주세요." };
-  if (authorId !== user.id) return { error: "권한이 없습니다." };
+  if (authorId !== auth.userId) return { error: "권한이 없습니다." };
 
   const imageFiles = formData.getAll("images") as File[];
   const attachmentFiles = formData.getAll("attachments") as File[];
@@ -167,13 +165,12 @@ export async function createClassNotice(
 
 // ── 수정 ─────────────────────────────────────────────────────
 
-/** 반별 공지 수정 (교사 본인 글만) */
+/** 반별 공지 수정 (교사 본인 글만, 관리자는 전체) */
 export async function updateClassNotice(
   formData: FormData
 ): Promise<{ error?: string }> {
-  const supabaseAuth = await createClient();
-  const { data: { user } } = await supabaseAuth.auth.getUser();
-  if (!user) return { error: "인증이 필요합니다." };
+  const auth = await verifyTeacherOrAdmin();
+  if ("error" in auth) return { error: auth.error };
 
   const id = (formData.get("id") as string)?.trim();
   const title = (formData.get("title") as string)?.trim();
@@ -191,6 +188,21 @@ export async function updateClassNotice(
   if (!id) return { error: "id가 없습니다." };
   if (!title) return { error: "제목을 입력해 주세요." };
 
+  const supabase = createAdminClient();
+
+  // 교사는 본인이 작성한 공지만 수정 가능 (관리자는 전체)
+  if (auth.role === "teacher") {
+    const { data: existing } = await supabase
+      .from("class_notices")
+      .select("author_id")
+      .eq("id", id)
+      .single();
+    if (!existing) return { error: "공지를 찾을 수 없습니다." };
+    if (existing.author_id !== auth.userId) {
+      return { error: "본인이 작성한 공지만 수정할 수 있습니다." };
+    }
+  }
+
   const newImages = formData.getAll("new_images") as File[];
   const newAttachments = formData.getAll("new_attachments") as File[];
 
@@ -202,7 +214,6 @@ export async function updateClassNotice(
     }
     const { uploadedFiles, records } = uploadResult;
 
-    const supabase = createAdminClient();
     const { error } = await supabase
       .from("class_notices")
       .update({ title, content, is_pinned, updated_at: new Date().toISOString() })
@@ -228,15 +239,29 @@ export async function updateClassNotice(
 
 // ── 삭제 ─────────────────────────────────────────────────────
 
-/** 반별 공지 삭제 */
+/** 반별 공지 삭제 (교사 본인 글만, 관리자는 전체) */
 export async function deleteClassNotice(
   noticeId: string
 ): Promise<{ error?: string }> {
-  const supabaseAuth = await createClient();
-  const { data: { user } } = await supabaseAuth.auth.getUser();
-  if (!user) return { error: "인증이 필요합니다." };
+  const auth = await verifyTeacherOrAdmin();
+  if ("error" in auth) return { error: auth.error };
 
-  const result = await deleteNoticeCommon(CONFIG, createAdminClient(), noticeId);
+  const supabase = createAdminClient();
+
+  // 교사는 본인이 작성한 공지만 삭제 가능 (관리자는 전체)
+  if (auth.role === "teacher") {
+    const { data: existing } = await supabase
+      .from("class_notices")
+      .select("author_id")
+      .eq("id", noticeId)
+      .single();
+    if (!existing) return { error: "공지를 찾을 수 없습니다." };
+    if (existing.author_id !== auth.userId) {
+      return { error: "본인이 작성한 공지만 삭제할 수 있습니다." };
+    }
+  }
+
+  const result = await deleteNoticeCommon(CONFIG, supabase, noticeId);
   if (!result.error) revalidatePath(REVALIDATE_PATH);
   return result;
 }
