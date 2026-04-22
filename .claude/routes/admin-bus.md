@@ -23,9 +23,27 @@
 
 ## Server Actions
 
-### bus-actions.ts (가장 큰 액션 파일, ~1800줄)
+### bus-actions.ts → bus/ 6파일 분할 (M-09 Phase 1-B, 2026-04-22)
 
-#### 호차 CRUD
+`bus-actions.ts`(12 LoC)는 순수 barrel re-export. 실제 구현은 `src/app/(admin)/admin/actions/bus/`:
+
+| 파일 | LoC | 담당 | 함수 수 |
+|------|-----|------|---------|
+| `_helpers.ts` | 73 | `buildStopToBusMaps` + `StopBusMaps`/`StopBusInfo` 타입 (여러 액션에서 공유) | — |
+| `master-actions.ts` | 638 | 호차·시간대·정류장 CRUD + 요일 매핑 + 스케줄 + 복사 | 20 |
+| `assignment-actions.ts` | 336 | 학생 기본 배정 CRUD + 일괄 + 학생 조회 | 7 |
+| `manifest-actions.ts` | 494 | `getDailyBusManifest` (480 LoC 단일 함수) | 1 |
+| `board-actions.ts` | 269 | 탑승/하차/체크 (단일 + 배치) | 5 |
+| `change-actions.ts` | 760 | 변경요청 CRUD + admin 즉시변경 + bulk | 13 |
+| `staff-actions.ts` | 342 | 직원 관리 + 주간 Excel export | 4 |
+
+**공통 규칙:**
+- 모든 파일은 `"use server"` 선언. barrel(`bus-actions.ts`)은 제외.
+- mutating 함수는 전부 `verifyAdmin()` / `verifyTeacherOrAdmin()` / `verifyAuthenticated()` 중 하나로 진입점 권한 검증.
+- 학생 조회 엔드포인트(`getStudentBusDefaults`, `getStudentChangeRequests`)는 `verifyAuthenticated()` + 본인/admin/teacher 분기로 IDOR 차단.
+- `submitBusChangeRequest` 시그니처는 `StudentSubmittableChangeType`("change" | "no_ride")로 좁혀 "학생은 absent 제출 불가"를 타입 수준 강제.
+
+#### 호차 CRUD — bus/master-actions.ts
 | 함수 | 파라미터 | DB 테이블 |
 |------|---------|----------|
 | `listBusNumbers` | (없음) | `bus_numbers` |
@@ -33,7 +51,7 @@
 | `updateBusNumber` | id, label | `bus_numbers` |
 | `deleteBusNumber` | id | `bus_numbers` (soft delete: is_active=false) |
 
-#### 버스 시간대 CRUD
+#### 버스 시간대 CRUD — bus/master-actions.ts
 | 함수 | 파라미터 | DB 테이블 |
 |------|---------|----------|
 | `listBusTimeSlots` | (없음) | `bus_time_slots` |
@@ -41,7 +59,7 @@
 | `updateBusTimeSlot` | id, label, time, showEmptyStops? | `bus_time_slots` |
 | `deleteBusTimeSlot` | id | `bus_time_slots` (soft delete: is_active=false) |
 
-#### 학생 기본 배정
+#### 학생 기본 배정 — bus/assignment-actions.ts
 | 함수 | 파라미터 | DB 테이블 |
 |------|---------|----------|
 | `getStudentBusDefaults` | studentProfileId | `student_bus_defaults`, `bus_time_slots`, `bus_stops`, `bus_stop_day_assignments` |
@@ -51,7 +69,7 @@
 | `saveBulkBusDefaults` | updates[{studentProfileId, day, timeSlotId, stopId?}] | `student_bus_defaults`, `bus_stop_day_assignments` |
 | `getBulkBusDefaults` | (없음) | `student_bus_defaults`, `students`, `bus_time_slots`, `bus_stops`, `bus_stop_day_assignments` |
 
-#### 당일 매니페스트
+#### 당일 매니페스트 — bus/manifest-actions.ts + bus/board-actions.ts
 | 함수 | 파라미터 | DB 테이블 |
 |------|---------|----------|
 | `getDailyBusManifest` | date, busTimeSlotId? | `student_bus_defaults`, `bus_change_requests`, `students`, `bus_stops`, `bus_stop_day_assignments`, `bus_daily_records` |
@@ -60,7 +78,7 @@
 | `checkBusStudent` | studentProfileId, date, timeSlotId? | `bus_daily_records` |
 | `uncheckBusStudent` | studentProfileId, date, timeSlotId? | `bus_daily_records` |
 
-#### 변경 요청
+#### 변경 요청 — bus/change-actions.ts
 | 함수 | 파라미터 | DB 테이블 |
 |------|---------|----------|
 | `listAllChangeRequests` | (없음) | `bus_change_requests`, `students`, `bus_numbers`, `bus_time_slots`, `bus_stops` |
@@ -75,7 +93,7 @@
 | `getExistingBusChange` | studentProfileId, date, timeSlotId? | `bus_change_requests` |
 | `deleteAdminBusChange` | requestId | `bus_change_requests` |
 
-#### 정류장 관리
+#### 정류장 관리 — bus/master-actions.ts
 | 함수 | 파라미터 | DB 테이블 |
 |------|---------|----------|
 | `listBusStops` | (없음) | `bus_stops` |
@@ -91,14 +109,14 @@
 | `copyBusDayDataToOtherDays` | sourceDay, targetDays[], slotId? | `bus_stop_day_assignments` + `bus_stop_schedules` (대상 요일 기존 데이터 삭제 후 원본 복사) |
 | `getBusDayDataCounts` | slotId? | (read) 월~금 요일별 기존 행 수 — 복사 모달 충돌 미리보기 |
 
-#### 직원 관리
+#### 직원 관리 — bus/staff-actions.ts
 | 함수 | 파라미터 | DB 테이블 |
 |------|---------|----------|
 | `createBusStaff` | FormData(email, password, name, role, bus_number_id?) | `auth.users`, `profiles`, `bus_staff` |
 | `listBusStaff` | (없음) | `bus_staff`, `profiles`, `bus_numbers`, `auth.users` |
 | `updateBusStaff` | FormData(id, name, role, bus_number_id?) | `bus_staff` |
 
-#### 학생 조회
+#### 학생 조회 — bus/assignment-actions.ts
 | 함수 | 파라미터 | DB 테이블 |
 |------|---------|----------|
 | `listAllActiveStudentNames` | (없음) | `students`, `profiles`, `class_students`, `classes` |

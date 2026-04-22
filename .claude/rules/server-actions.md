@@ -15,7 +15,9 @@ paths:
 
 모든 mutating Server Action은 반드시 셋 중 하나로 진입점에서 권한을 검증하고, 그 뒤에 `createAdminClient()`로 RLS 우회 작업을 수행한다.
 
-## admin/actions/ (19개 파일, barrel re-export via actions.ts)
+## admin/actions/ (25개 파일, barrel re-export via actions.ts)
+
+`bus-actions.ts`·`bus-staff.ts`는 barrel re-export. 실제 구현은 `actions/bus/` 서브 디렉터리 6 파일 + `_helpers.ts`.
 
 **user-actions.ts — 사용자 관리 (12개):**
 - `createStudent(formData)` — 학생 계정 생성 (AdminClient, email_confirm: true)
@@ -116,23 +118,19 @@ paths:
 **reservation-actions.ts — 예약 현황 (1개):**
 - `getUpcomingReservations(daysAhead?)` — 향후 N일 출결+버스 변경 통합 조회 (관리자)
 
-**bus-actions.ts — 승하차 관리 (~50개):**
-- `bulkCreateBusChanges(studentProfileId, dates[], changeType, ...)` — 다중 날짜 버스 변경 일괄 등록 (관리자, UNIQUE 충돌 skip)
-- `listBusNumbers()` / `createBusNumber(...)` / `updateBusNumber(...)` / `deleteBusNumber(...)` — 호차 CRUD
-- `listBusTimeSlots()` / `createBusTimeSlot(label, time, showEmptyStops?)` / `updateBusTimeSlot(id, label, time, showEmptyStops?)` / `deleteBusTimeSlot(id)` — 시간대 CRUD. `showEmptyStops` 플래그가 true면 해당 시간대에서 모니터가 배정 학생 없는 정류장·호차 카드도 노출 (오후반용)
-- `listAllActiveStudentNames()` — 전체 활성 학생 목록 (배정용)
-- `getStudentBusDefaults(studentProfileId)` / `upsertStudentBusDefault(...)` / `deleteStudentBusDefault(...)` / `deleteStudentBusDefaults(ids[])` / `getBulkBusDefaults(...)` — 기본 배정
-- `getDailyBusManifest(date)` — 일일 매니페스트 (groups + noRides + afterschoolStudents 반환)
-- `boardBusStudent(...)` / `unboardBusStudent(...)` / `checkBusStudent(...)` / `uncheckBusStudent(...)` — 탑승/하차 체크
-- `listBusStops(busNumberId)` / `createBusStop(...)` / `updateBusStop(...)` / `deleteBusStop(...)` — 정류장 CRUD
-- `listBusStopDayAssignments(day, slotId?)` / `saveBusStopDayAssignments(day, assignments[], slotId?)` — 요일·시간대별 호차↔정류장 배정 (덮어쓰기 저장)
-- `listBusStopSchedulesBulk(day, slotId?)` / `upsertBusStopSchedule(stopId, day, time, slotId?)` / `deleteBusStopSchedule(stopId, day, slotId?)` — 정류장 도착예상시간 관리
-- `copyBusDayDataToOtherDays(sourceDay, targetDays[], slotId?)` — 한 (요일·시간대)의 호차별 정류장 배정 + 시간을 다른 요일들로 일괄 복사 (대상 기존 데이터 덮어쓰기). BusNumbersManager의 "다른 요일에 복사" 모달에서 사용
-- `getBusDayDataCounts(slotId?)` — 월~금 각 요일의 기존 배정/시간 행 수. 복사 모달의 충돌 미리보기용
-- `listPendingChangeRequests()` / `approveChangeRequest(...)` / `rejectChangeRequest(...)` — 변경요청 관리
-- `getStudentChangeRequests(studentProfileId)` / `submitBusChangeRequest(...)` / `cancelBusChangeRequest(...)` — 학생 변경요청
-- `createAdminBusChange(...)` / `updateAdminBusChange(...)` / `deleteAdminBusChange(...)` / `getExistingBusChange(...)` — 관리자 당일 변경
-- `listBusStaff()` / `upsertBusStaff(...)` / `deleteBusStaff(...)` — 버스 담당자 관리
+**bus-actions.ts (barrel) + bus/ 서브 6파일 — 승하차 관리 (~50개):**
+
+`bus-actions.ts`(12 LoC)는 barrel. 소비자 경로 유지 위해 기존 `from "./actions/bus-actions"` 그대로. `bus-staff.ts`도 동일한 barrel.
+
+- **bus/_helpers.ts (73 LoC)** — `buildStopToBusMaps` + `StopBusMaps`/`StopBusInfo` 타입 (일반 TS 모듈, `"use server"` 없음)
+- **bus/master-actions.ts (638 LoC, 20 함수)** — 호차·시간대·정류장 CRUD + 요일 매핑 + 도착시간 스케줄 + `copyBusDayDataToOtherDays` / `getBusDayDataCounts`
+- **bus/assignment-actions.ts (336 LoC, 7 함수)** — `getStudentBusDefaults`(본인/admin/teacher만, IDOR 차단) / `upsertStudentBusDefault` / 일괄 / `listAllActiveStudentNames`
+- **bus/manifest-actions.ts (494 LoC, 1 함수)** — `getDailyBusManifest(date)` (480 LoC 단일, groups + noRides + afterschoolStudents 반환)
+- **bus/board-actions.ts (269 LoC, 5 함수)** — `boardBusStudent` / `unboardBusStudent` / `checkBusStudent` / `uncheckBusStudent` / `batchBusCheckRecord`
+- **bus/change-actions.ts (760 LoC, 13 함수)** — 변경요청 관리 (`listAll`/`listPending`/`approve`/`reject`) + 학생 변경(`getStudentChangeRequests`는 본인/admin/teacher만) + `submitBusChangeRequest(StudentSubmittableChangeType: "change"|"no_ride")` / `cancelBusChangeRequest` + 관리자 당일 변경(`createAdminBusChange`/`updateAdminBusChange`/`deleteAdminBusChange`/`getExistingBusChange`) + `bulkCreateBusChanges`
+- **bus/staff-actions.ts (342 LoC, 4 함수)** — `createBusStaff` / `listBusStaff` / `updateBusStaff` / `getWeeklyDropoffExportData`
+
+**도메인 상태 머신:** `src/lib/bus/state.ts` — `BUS_CHANGE_TYPES` / `BUS_REQUEST_STATUSES` / `STUDENT_SUBMITTABLE_CHANGE_TYPES` as const. UI config는 `src/lib/constants/bus.ts`.
 
 **afterschool-actions.ts — 방과후 관리 (8개):**
 - `getOrCreateAfterschoolClass()` — 방과후 반 조회/생성 (group_label="방과후" 단일 반)
