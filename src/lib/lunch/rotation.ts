@@ -41,20 +41,29 @@ export type LunchDaySchedule = {
 };
 
 /**
+ * YYYY-MM-DD 문자열을 UTC 자정 Date 인스턴스로 파싱.
+ * 서버 타임존(Vercel=UTC)과 무관하게 "문자열이 가리키는 달력상 날짜"를 그대로 보존.
+ */
+function parseYmdUtc(ymd: string): Date {
+  const [y, m, d] = ymd.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d));
+}
+
+/**
  * 2개 날짜 사이의 영업일수(월~금)만 카운트.
  * epoch가 target보다 뒤면 음수.
  */
 export function businessDaysBetween(epoch: string, target: string): number {
-  const e = new Date(`${epoch}T00:00:00+09:00`);
-  const t = new Date(`${target}T00:00:00+09:00`);
+  const e = parseYmdUtc(epoch);
+  const t = parseYmdUtc(target);
   const direction = e <= t ? 1 : -1;
   const [a, b] = direction === 1 ? [e, t] : [t, e];
   let count = 0;
   const cursor = new Date(a);
   while (cursor < b) {
-    const dow = cursor.getDay(); // 0=일 ... 6=토
+    const dow = cursor.getUTCDay(); // 0=일 ... 6=토 (UTC 기준 = 문자열 달력 기준)
     if (dow >= 1 && dow <= 5) count += 1;
-    cursor.setDate(cursor.getDate() + 1);
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
   }
   return count * direction;
 }
@@ -155,8 +164,8 @@ export function computeLunchDaySchedule(args: {
   const age7Groups = age7Pair.map((cls) => buildClassSchedule(cls, offset));
   const age6Groups = age6Pair.map((cls) => buildClassSchedule(cls, offset));
 
-  const d = new Date(`${args.date}T00:00:00+09:00`);
-  const dow = d.getDay();
+  const d = parseYmdUtc(args.date);
+  const dow = d.getUTCDay();
   const isoDayOfWeek = dow === 0 ? 7 : dow;
 
   return {

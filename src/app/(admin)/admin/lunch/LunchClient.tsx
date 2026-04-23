@@ -55,9 +55,12 @@ export function LunchClient({ schedule }: { schedule: LunchDaySchedule }) {
 function DateNav({ currentDate }: { currentDate: string }) {
   const router = useRouter();
   const shift = (days: number) => {
-    const d = new Date(`${currentDate}T00:00:00+09:00`);
-    d.setDate(d.getDate() + days);
-    const next = d.toISOString().slice(0, 10);
+    // 날짜 산술은 UTC 기반으로 — 서버·클라이언트 타임존 차이로 하루 밀리지 않도록.
+    // currentDate "2026-04-23" → UTC 자정 Date → setUTCDate → toISOString 10자리.
+    const [y, m, d] = currentDate.split("-").map(Number);
+    const dt = new Date(Date.UTC(y, m - 1, d));
+    dt.setUTCDate(dt.getUTCDate() + days);
+    const next = dt.toISOString().slice(0, 10);
     router.push(`/admin/lunch?date=${next}`);
   };
   return (
