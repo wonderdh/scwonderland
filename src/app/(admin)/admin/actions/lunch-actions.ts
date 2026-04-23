@@ -85,14 +85,15 @@ export async function setClassLunchGroup(
  * - 각 반 학생 목록 + 오늘 attendance(결석·조퇴) + override 조회
  * - rotation.ts 로 결정론 계산 + override 적용
  *
- * 반 수가 부족(7세 또는 6세가 2반 미만)하면 해당 그룹은 빈 배열.
+ * 반 수가 부족(7세 또는 6세가 2반 미만)하면 needsSetup=true.
+ *
+ * @auth-skip: read-only 조회, /bus-monitor와 동일하게 /lunch-monitor(비인증 TV)와 공유.
+ * 민감도는 학생 한글·영문 이름 수준(이미 /bus-monitor가 공개 중인 동급 데이터).
+ * override 쓰기 action(setLunchLeaderOverride 등)은 여전히 verifyAdmin 유지.
  */
 export async function getLunchSchedule(
   date?: string,
 ): Promise<{ schedule: LunchDaySchedule | null; needsSetup: boolean }> {
-  const auth = await verifyAdmin();
-  if ("error" in auth) return { schedule: null, needsSetup: false };
-
   const targetDate = date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : todayKst();
 
   const admin = createAdminClient();
