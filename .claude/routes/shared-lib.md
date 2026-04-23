@@ -166,6 +166,7 @@
 | `src/lib/bus/afterschool-sync.ts` | 방과후 슬롯 감지 유틸. `AFTERSCHOOL_SLOT_LABEL_1 = "방과후1차"`, `AFTERSCHOOL_SLOT_LABEL_2 = "오후반 1차/방과후2차"` 상수 + `detectAfterschoolSlot(slot)` → `{ isAfterschoolSlot, secondPeriod }`. StudentBusTab·AdminBusChangeDnD 공유 |
 | `src/lib/bus/utils.ts` | 버스 표시 유틸. `StopGroup` 타입, `groupStudentsByStop(students)` (정류장 sort_order → 나이순 그룹핑), `formatTime(t)` (HH:MM:SS→HH:MM), `formatCheckedTime(iso)` (ISO→H:MM) |
 | `src/lib/bus/realtime-utils.ts` | Realtime 이벤트 패치 유틸. `CheckRecordRow`, `ChangeRequestRow` 타입. `applyCheckRecord(groups, event, row)` — 탑승/하차 체크 즉시 반영. `applyChangeRequest(groups, noRides, event, row)` — 변경 요청 이벤트 반영. 낙관적 UI 업데이트용 |
+| `src/lib/bus/monitor-date.ts` | bus-monitor 전용 KST 요일/날짜 유틸. `getTodayIsoDayKst()` → 1~5 (주말은 금=5로 매핑), `getDateForIsoDayKst(isoDay)` → 해당 요일의 `YYYY-MM-DD`. 서버(`page.tsx` SSR)·클라(`BusMonitorClient` 요일 전환) 공용. `new Date().getDay()` 직접 사용 금지 |
 
 ## Hooks
 

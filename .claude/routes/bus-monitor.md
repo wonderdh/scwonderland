@@ -7,82 +7,75 @@
 ## 핵심 파일
 - page.tsx: `src/app/(monitor)/bus-monitor/page.tsx`
 - layout.tsx: `src/app/(monitor)/bus-monitor/layout.tsx`
+- loading.tsx: `src/app/(monitor)/bus-monitor/loading.tsx` (SkeletonList 6)
 
 ## 컴포넌트
 | 파일 | 역할 |
 |------|------|
-| `src/app/(monitor)/bus-monitor/BusMonitorClient.tsx` | 전체 버스 모니터링 대시보드 (읽기 전용, 대형 화면 최적화) |
+| `src/app/(monitor)/bus-monitor/BusMonitorClient.tsx` | 요일/시간대 필터 + 호차별 카드 그리드 렌더 (읽기 전용) |
+| `src/components/bus/MonitorBusCard.tsx` | 호차 카드 (정류장별 학생 목록, `BUS_CARD_COLORS` 팔레트) |
 
 ## Server Actions
 | 함수 | 파라미터 | DB 테이블 |
 |------|---------|----------|
 | `listBusTimeSlots` | () | bus_time_slots |
 | `getDailyBusManifest` | (date) | bus_time_slots, student_bus_defaults, bus_change_requests, bus_check_records, students, bus_numbers, bus_stops |
-| `listAllActiveStudentNames` | () | students, profiles |
 
 ## 타입
-- `BusManifestGroup` — 호차별 학생 그룹. `extra_stops?`는 `show_empty_stops=true` 시간대에서 학생 0명인 정류장 메타를 포함
+- `BusTimeSlot` — 시간대 (id, time, label, `show_empty_stops`)
+- `BusManifestGroup` — 호차별 학생 그룹. `extra_stops?`는 `show_empty_stops=true` 시간대의 빈 정류장
 - `BusManifestEntry` — 개별 학생 승하차 정보
-- `BusManifestExtraStop` — 빈 정류장 (모니터에서 "배정 학생 없음"으로 렌더)
-- `BusTimeSlot` — 시간대 정보 (id, time, label, `show_empty_stops`)
-- `AfterSchoolBusEntry` — 방과후 학생 정보
+- `BusManifestExtraStop` — 빈 정류장 메타 ("배정 학생 없음" 렌더용)
 
 ## 데이터 흐름
 
 ### layout.tsx
 1. 인증 없음 — 누구나 접근 가능 (관리자용 모니터)
-2. PWA 메타데이터: `manifest-bus-monitor.json`, apple-touch-icon, 테마 컬러
+2. PWA 메타데이터: `manifest-bus-monitor.json`, apple-touch-icon, 테마 컬러 `#1e293b`
 3. `<head>` 태그에 manifest, apple-touch-icon 직접 삽입
-4. 별도의 헤더/네비게이션 없음 (전체 화면 모니터링용)
+4. 별도 헤더/네비게이션 없음 (전체 화면 모니터링용)
 
-### page.tsx
-1. `listBusTimeSlots()` 서버에서 호출 → `BusMonitorClient`에 전달
-2. 최소한의 래퍼 (min-h-screen bg-slate-100)
+### page.tsx — SSR 초기 데이터 페칭
+1. `getTodayIsoDayKst()`로 KST 기준 오늘 요일 계산 (주말은 5=금으로 매핑)
+2. `getDateForIsoDayKst(initialIsoDay)`로 해당 요일의 YYYY-MM-DD 산출
+3. `listBusTimeSlots()` + `getDailyBusManifest(initialDate)` **병렬 SSR fetch**
+4. `busTimeSlots`, `initialIsoDay`, `initialManifest.groups`를 `BusMonitorClient`에 props로 전달 → 초기 HTML에 실제 카드가 렌더링됨 (hydration 후 추가 fetch 없음)
+5. 상단에 `/m`(메뉴) 뒤로가기 링크, 나머지는 `BusMonitorClient`에 위임
 
-### BusMonitorClient (핵심 컴포넌트)
-1. **초기 로드**: `getDailyBusManifest()` + `listAllActiveStudentNames()` 병렬 호출
-2. **시간대별 그룹 병합**: 결과를 `TimeGroup`으로 병합, 시간순 정렬
-3. **미배정 학생 계산**: manifest에 없는 학생 목록 생성
-4. **방과후 학생**: 매니페스트의 `afterschoolStudents` 별도 표시
-5. **필터링**:
-   - 전체 보기 / 현재 시간 이후
-   - 그룹 필터: 유치부, 오후반, 방과후 (시간대 label 기반)
-   - 시간대 드롭다운: 개별 시간대 선택
-6. **호차별 색상**: `BUS_CARD_COLORS` 8색 팔레트 (호차 라벨 알파벳순 매핑)
-7. **학생 표시**:
-   - 나이별 색상: `getAgeColor(age)` 적용 (5세=pink, 6세=sky, 7세=emerald)
-   - 상태 이모지: 미탑승=⬜, 탑승=🚌, 하차=✅
-   - 변경된 학생: 노란 배경 + "원래 호차 → 변경 호차" 표시
-   - 탑승/하차 시간 표시
-8. **정류장별 그룹핑**: bus_stop_name + estimated_time 기준
-9. **프로그레스 바**: 호차별 탑승 진행률 (색상: 90%+ 파랑, 50%+ 노랑, 미만 빨강)
-10. **나이별 범례**: 상단 우측에 5세/6세/7세/기타 색상 범례
-11. **레이아웃**: grid 2열 (md 이상), 대형 폰트 (text-2xl 학생 이름)
+> ⚠️ mount 시점 Supabase 호출을 제거해서 LCP의 render delay와 CLS(0.28 → 0.00)를 해소한 구조. 클라이언트에서 초기 로드용 fetch를 다시 추가하지 말 것.
+
+### BusMonitorClient
+1. **초기 상태**: props로 받은 `initialGroups`를 `buildTimeGroups()`로 변환해 `allGroups` 초기값으로 사용. `initialIsoDay`를 `dayOfWeek`, `getDefaultSlotId(busTimeSlots)`를 `slotFilter`, `loadedKeyRef`를 `${initialIsoDay}`로 세팅 — 이 상태만으로 완전한 화면이 즉시 렌더
+2. **자정 경계 보정**: mount 후 `useEffect` 1회만 `getTodayIsoDayKst()`를 재확인해, SSR 시점과 isoDay가 달라졌고 사용자가 요일을 바꾸지 않은 경우에 한해 오늘로 재fetch (희귀 케이스)
+3. **요일 변경**: `handleDayChange(day)` → `allGroups=[]` + `loadData(day)`. `loadData`는 `getDateForIsoDayKst(day)`로 날짜 계산 후 `getDailyBusManifest` 재호출, Race condition 방지용 `loadIdRef` 사용
+4. **시간대 선택**: `handleSlotSelect(slotId)` — 필터만 바꾸고 추가 fetch 없음
+5. **새로고침 버튼**: `handleRefresh()` — `loadedKeyRef`를 지우고 현재 요일 재호출
+6. **Realtime 구독**: `useBusRealtime(todayDate, { onCheckRecord, onChangeRequest }, { enabled: isViewingToday })` — 오늘 탭일 때만 활성화. 이벤트 수신 시 `applyCheckRecord` / `applyChangeRequest` 유틸로 `allGroups`를 낙관적 패치 (학생 profile_id 없거나 change/DELETE면 `reloadToday()`로 full refresh)
+7. **호차 색상 매핑**: `allGroups` 변화를 감지해 `useMemo`로 호차 라벨 알파벳순 → `BUS_CARD_COLORS` 인덱스 할당
+8. **필터링 렌더**: `filteredGroups`는 선택된 `slotFilter`의 카드만 포함. 시간대 헤더(HH:MM + "하원" + slotLabel) → 호차 카드 그리드(md 이상 2열)
+9. **나이 범례**: 상단 우측 5세(pink)·6세(sky)·7세(emerald)·기타(slate) 고정 표시
 
 ### 관련 훅
 | 파일 | 역할 |
 |------|------|
-| `src/lib/hooks/use-bus-realtime.ts` | Supabase Realtime 구독 (bus_check_records 테이블 변경 감지) |
-
-#### use-bus-realtime.ts 상세
-- `useBusRealtime(date, onUpdate)`: `bus_check_records` 테이블의 `check_date` 필터로 Realtime 구독
-- `postgres_changes` 이벤트 감지 → 500ms 디바운스 → `onUpdate` 콜백 호출
-- cleanup 시 채널 제거
-- **현재 BusMonitorClient에서는 미사용** (폴링 방식 사용 가능)
+| `src/lib/hooks/use-bus-realtime.ts` | Supabase Realtime 구독 — `bus_check_records` + `bus_change_requests` 변경 감지, 500ms 디바운스, `enabled` 옵션으로 조건부 활성화 |
 
 ## 의존성
-- `src/app/(admin)/admin/actions.ts` — barrel export (getDailyBusManifest, listBusTimeSlots, listAllActiveStudentNames)
-- `src/lib/ui/student-age-colors.ts` — `getAgeColor()` 함수
-- `src/lib/hooks/use-bus-realtime.ts` — Realtime 구독 훅 (선택적 사용)
-- `src/components/ui/button.tsx` — 필터 버튼
+- `@/app/(admin)/admin/actions` — `listBusTimeSlots`, `getDailyBusManifest` (barrel export)
+- `@/lib/bus/monitor-date` — `getTodayIsoDayKst()`, `getDateForIsoDayKst(isoDay)` (서버/클라 공용 KST 요일·날짜 유틸)
+- `@/lib/bus/utils` — `formatTime(t)` (HH:MM 포맷)
+- `@/lib/bus/realtime-utils` — `applyCheckRecord`, `applyChangeRequest` (낙관적 패치)
+- `@/lib/hooks/use-bus-realtime` — Realtime 구독 훅
+- `@/components/bus/MonitorBusCard` — 호차 카드 + `BUS_CARD_COLORS`
+- `@/components/ui/button` — 요일/시간대/새로고침 버튼
 
 ## 주의사항
 - **인증 불필요**: layout에 인증 체크 없음 — 관리자 사무실 모니터/TV용
 - **읽기 전용**: 탑승/하차 체크 기능 없음 (BusStaffMonitor와 다름)
-- **대형 화면 최적화**: 학생 이름 text-2xl, 상태 이모지 text-xl, grid 2열
+- **SSR 초기 데이터 유지**: page.tsx에서 `getDailyBusManifest`를 SSR로 받아 `initialGroups`로 내려주는 구조를 깨지 말 것. 클라이언트 mount 시 초기 fetch 복귀 금지 (LCP·CLS 회귀 원인)
+- **스켈레톤 없음**: 초기 렌더 스켈레톤은 제거됨 (CLS 0 보장). 날짜 전환 중에는 `allGroups=[]` + 새로고침 버튼 "로딩..." 라벨로 피드백
+- **KST 요일/날짜 단일 소스**: `getTodayIsoDayKst()` / `getDateForIsoDayKst(isoDay)` 만 사용. `new Date().getDay()`·`toLocaleDateString` 직접 사용 금지
+- **대형 화면 최적화**: 호차 카드 md 이상 2열 그리드, `MonitorBusCard`에서 학생 이름 대형 폰트
 - **PWA 지원**: 별도 manifest (manifest-bus-monitor.json), 전체 화면 모니터링
-- **나이별 색상 필수**: `getAgeColor(age)` 적용 — 학생 이름에 나이 색상 반영
 - **호차 색상 일관성**: 호차 라벨 알파벳순 정렬 후 팔레트 인덱스 매핑 → 호차 색상 일관 유지
-- `UnassignedCard`: 어느 호차에도 배정되지 않은 학생 카드 (하단)
-- `AfterSchoolBusEntry`: 방과후 학생 별도 섹션 (보라색 테마)
-- **빈 정류장 표시**: `bus_time_slots.show_empty_stops=true` 시간대는 `getDailyBusManifest`가 `extra_stops`로 학생 0명 호차/정류장도 내려줌 → `MonitorBusCard`(`src/components/bus/MonitorBusCard.tsx`)가 `mergeStopGroups()`로 병합해 "배정 학생 없음" 플레이스홀더로 렌더 (오후반 16:20/17:45 등)
+- **빈 정류장 표시**: `bus_time_slots.show_empty_stops=true` 시간대는 `getDailyBusManifest`가 `extra_stops`로 학생 0명 호차/정류장도 내려줌 → `MonitorBusCard`가 `mergeStopGroups()`로 병합해 "배정 학생 없음" 플레이스홀더로 렌더 (오후반 16:20/17:45 등)

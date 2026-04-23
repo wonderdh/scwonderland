@@ -1,9 +1,16 @@
 import Link from "next/link";
-import { listBusTimeSlots } from "@/app/(admin)/admin/actions";
+import { listBusTimeSlots, getDailyBusManifest } from "@/app/(admin)/admin/actions";
+import { getDateForIsoDayKst, getTodayIsoDayKst } from "@/lib/bus/monitor-date";
 import { BusMonitorClient } from "./BusMonitorClient";
 
 export default async function BusMonitorPage() {
-  const busTimeSlots = await listBusTimeSlots();
+  const initialIsoDay = getTodayIsoDayKst();
+  const initialDate = getDateForIsoDayKst(initialIsoDay);
+
+  const [busTimeSlots, initialManifest] = await Promise.all([
+    listBusTimeSlots(),
+    getDailyBusManifest(initialDate),
+  ]);
 
   return (
     <div className="min-h-screen bg-slate-100">
@@ -19,7 +26,11 @@ export default async function BusMonitorPage() {
         </Link>
       </div>
       <div className="px-1 pb-2">
-        <BusMonitorClient busTimeSlots={busTimeSlots} />
+        <BusMonitorClient
+          busTimeSlots={busTimeSlots}
+          initialIsoDay={initialIsoDay}
+          initialGroups={initialManifest.groups}
+        />
       </div>
     </div>
   );

@@ -8,29 +8,9 @@ import { formatTime } from "@/lib/bus/utils";
 import { MonitorBusCard, BUS_CARD_COLORS } from "@/components/bus/MonitorBusCard";
 import { useBusRealtime } from "@/lib/hooks/use-bus-realtime";
 import { applyCheckRecord, applyChangeRequest } from "@/lib/bus/realtime-utils";
+import { getDateForIsoDayKst, getTodayIsoDayKst } from "@/lib/bus/monitor-date";
 
 const DAY_LABELS = ["월", "화", "수", "목", "금"] as const;
-
-/** ISO day (1=Mon ~ 5=Fri) → 금주 해당 요일의 YYYY-MM-DD */
-function getDateForIsoDay(isoDay: number): string {
-  const now = new Date();
-  const currentIso = now.getDay() === 0 ? 7 : now.getDay();
-  const diff = isoDay - currentIso;
-  const target = new Date(now);
-  target.setDate(now.getDate() + diff);
-  const y = target.getFullYear();
-  const m = String(target.getMonth() + 1).padStart(2, "0");
-  const d = String(target.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
-}
-
-/** 오늘의 ISO day (1~5, 주말이면 금요일=5) */
-function getTodayIsoDay(): number {
-  const jsDay = new Date().getDay();
-  if (jsDay === 0) return 5;
-  if (jsDay === 6) return 5;
-  return jsDay;
-}
 
 // 시간대별 그룹
 type TimeGroup = {
@@ -40,6 +20,25 @@ type TimeGroup = {
   cards: BusManifestGroup[];
 };
 
+function buildTimeGroups(rawGroups: BusManifestGroup[]): TimeGroup[] {
+  const timeMap = new Map<string, TimeGroup>();
+  for (const g of rawGroups) {
+    const mapKey = g.slot_time;
+    if (!timeMap.has(mapKey)) {
+      timeMap.set(mapKey, {
+        slotId: g.bus_time_slot_id,
+        slotTime: g.slot_time,
+        slotLabel: g.slot_label,
+        cards: [],
+      });
+    }
+    timeMap.get(mapKey)!.cards.push(g);
+  }
+  return [...timeMap.values()].sort((a, b) =>
+    a.slotTime.localeCompare(b.slotTime)
+  );
+}
+
 function getDefaultSlotId(slots: BusTimeSlot[]): string {
   const kindergarten = slots.find((s) => s.label.includes("유치부"));
   return kindergarten?.id ?? slots[0]?.id ?? "";
@@ -47,19 +46,26 @@ function getDefaultSlotId(slots: BusTimeSlot[]): string {
 
 export function BusMonitorClient({
   busTimeSlots,
+  initialIsoDay,
+  initialGroups,
 }: {
   busTimeSlots: BusTimeSlot[];
+  initialIsoDay: number;
+  initialGroups: BusManifestGroup[];
 }) {
-  const [dayOfWeek, setDayOfWeek] = useState<number>(getTodayIsoDay);
-  const [allGroups, setAllGroups] = useState<TimeGroup[]>([]);
+  const [dayOfWeek, setDayOfWeek] = useState<number>(initialIsoDay);
+  const [allGroups, setAllGroups] = useState<TimeGroup[]>(() =>
+    buildTimeGroups(initialGroups)
+  );
   const [loading, setLoading] = useState(false);
-  const [initialLoaded, setInitialLoaded] = useState(false);
-  const [slotFilter, setSlotFilter] = useState<string>("");
+  const [slotFilter, setSlotFilter] = useState<string>(() =>
+    getDefaultSlotId(busTimeSlots)
+  );
 
   // Race condition 방지
   const loadIdRef = useRef(0);
-  // 중복 로드 방지
-  const loadedKeyRef = useRef("");
+  // 중복 로드 방지 — 초기 데이터는 이미 채워져 있으므로 오늘 키로 초기화
+  const loadedKeyRef = useRef<string>(`${initialIsoDay}`);
 
   const loadData = useCallback(async (day: number) => {
     const key = `${day}`;
@@ -69,71 +75,42 @@ export function BusMonitorClient({
     const id = ++loadIdRef.current;
     setLoading(true);
 
-    const date = getDateForIsoDay(day);
+    const date = getDateForIsoDayKst(day);
     const result = await getDailyBusManifest(date);
 
     if (loadIdRef.current !== id) return;
 
-    const timeMap = new Map<string, TimeGroup>();
-    for (const g of result.groups) {
-      const mapKey = g.slot_time;
-      if (!timeMap.has(mapKey)) {
-        timeMap.set(mapKey, {
-          slotId: g.bus_time_slot_id,
-          slotTime: g.slot_time,
-          slotLabel: g.slot_label,
-          cards: [],
-        });
-      }
-      timeMap.get(mapKey)!.cards.push(g);
-    }
-
-    const groups = [...timeMap.values()].sort((a, b) =>
-      a.slotTime.localeCompare(b.slotTime)
-    );
-
     loadedKeyRef.current = key;
-    setAllGroups(groups);
+    setAllGroups(buildTimeGroups(result.groups));
     setLoading(false);
-    setInitialLoaded(true);
   }, []);
-
-  // 초기 로드
-  useEffect(() => {
-    const defaultSlot = getDefaultSlotId(busTimeSlots);
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setSlotFilter(defaultSlot);
-    loadData(getTodayIsoDay());
-  }, [busTimeSlots, loadData]);
 
   const handleDayChange = (newDay: number) => {
     if (newDay === dayOfWeek) return;
     setDayOfWeek(newDay);
-    setSlotFilter("");
     setAllGroups([]);
     loadedKeyRef.current = "";
+    loadData(newDay);
   };
 
-  const handleSlotSelect = useCallback(async (slotId: string, day: number) => {
+  const handleSlotSelect = useCallback((slotId: string) => {
     setSlotFilter(slotId);
-    await loadData(day);
-  }, [loadData]);
+  }, []);
 
   const handleRefresh = useCallback(() => {
     loadedKeyRef.current = "";
-    if (slotFilter) {
-      loadData(dayOfWeek);
-    }
-  }, [slotFilter, dayOfWeek, loadData]);
+    loadData(dayOfWeek);
+  }, [dayOfWeek, loadData]);
 
   // Realtime: 오늘 요일 탭에서만 활성화
-  const todayDate = getDateForIsoDay(getTodayIsoDay());
-  const isViewingToday = dayOfWeek === getTodayIsoDay();
+  const todayIsoDay = getTodayIsoDayKst();
+  const todayDate = getDateForIsoDayKst(todayIsoDay);
+  const isViewingToday = dayOfWeek === todayIsoDay;
 
   const reloadToday = useCallback(() => {
     loadedKeyRef.current = "";
-    if (slotFilter) loadData(dayOfWeek);
-  }, [slotFilter, dayOfWeek, loadData]);
+    loadData(dayOfWeek);
+  }, [dayOfWeek, loadData]);
 
   useBusRealtime(todayDate, {
     onCheckRecord: (event, row) => {
@@ -180,47 +157,21 @@ export function BusMonitorClient({
     return map;
   }, [allGroups]);
 
-  // 선택된 요일의 날짜 문자열
-  const selectedDate = getDateForIsoDay(dayOfWeek);
-  const selectedDateObj = new Date(selectedDate);
-  const dayNameFull = ["일", "월", "화", "수", "목", "금", "토"][selectedDateObj.getDay()];
+  // 선택된 요일의 날짜 문자열 (KST)
+  const selectedDate = getDateForIsoDayKst(dayOfWeek);
+  const dayNameFull = DAY_LABELS[dayOfWeek - 1] ?? "";
 
-  if (!initialLoaded) {
-    return (
-      <div className="w-full space-y-4 animate-pulse">
-        <div className="flex items-center gap-3">
-          <div className="h-7 w-40 bg-slate-200 rounded" />
-          <div className="h-8 w-20 bg-slate-200 rounded" />
-        </div>
-        <div className="flex gap-2">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="h-9 w-28 bg-slate-200 rounded" />
-          ))}
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {[1, 2].map((j) => (
-            <div key={j} className="rounded-xl border bg-white shadow-sm overflow-hidden">
-              <div className="px-4 py-3 bg-slate-50">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="h-7 w-20 bg-slate-200 rounded" />
-                  <div className="h-5 w-32 bg-slate-200 rounded" />
-                </div>
-                <div className="h-1.5 bg-slate-200 rounded-full" />
-              </div>
-              <div className="px-3 py-2 space-y-2">
-                {[1, 2, 3, 4].map((k) => (
-                  <div key={k} className="flex items-center gap-2">
-                    <div className="h-6 w-6 bg-slate-200 rounded" />
-                    <div className="h-6 flex-1 bg-slate-200 rounded" />
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
+  // Hydration 이후 실제 오늘 isoDay가 바뀌었다면(자정 경계) 최신화
+  useEffect(() => {
+    const currentToday = getTodayIsoDayKst();
+    if (currentToday !== initialIsoDay && dayOfWeek === initialIsoDay) {
+      setDayOfWeek(currentToday);
+      loadedKeyRef.current = "";
+      loadData(currentToday);
+    }
+    // deps 고의로 비움 — mount 시 1회만 체크
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="w-full space-y-4">
@@ -273,7 +224,7 @@ export function BusMonitorClient({
             key={slot.id}
             size="sm"
             variant={slotFilter === slot.id ? "default" : "outline"}
-            onClick={() => handleSlotSelect(slot.id, dayOfWeek)}
+            onClick={() => handleSlotSelect(slot.id)}
           >
             {formatTime(slot.time)} {slot.label}
           </Button>
