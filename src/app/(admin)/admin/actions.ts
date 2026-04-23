@@ -227,6 +227,8 @@ export {
   listLunchGroupClasses,
   setClassLunchGroup,
   getLunchSchedule,
-  setLunchLeaderOverride,
-  clearLunchLeaderOverride,
+  setLunchLeaderAnchor,
+  clearLunchLeaderAnchor,
+  setLunchClassOrderAnchor,
+  clearLunchClassOrderAnchor,
 } from "./actions/lunch-actions";

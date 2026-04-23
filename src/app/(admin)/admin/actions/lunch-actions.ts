@@ -8,6 +8,8 @@ import {
   computeLunchDaySchedule,
   type LunchDaySchedule,
   type LunchGroup,
+  type LeaderAnchor,
+  type ClassOrderAnchor,
 } from "@/lib/lunch/rotation";
 import { todayKst } from "@/lib/utils/date-kst";
 
@@ -18,10 +20,7 @@ export type LunchGroupClass = {
   student_count: number;
 };
 
-/**
- * 점심지도 페이지 settings 용 — 유치부 반 전체 + 현재 lunch_group 지정 상태.
- * lunch_group 설정 UI가 이걸로 렌더.
- */
+/** 유치부 반 전체 + 현재 lunch_group 지정 상태. settings 페이지용. */
 export async function listLunchGroupClasses(): Promise<LunchGroupClass[]> {
   const auth = await verifyAdmin();
   if ("error" in auth) return [];
@@ -80,16 +79,11 @@ export async function setClassLunchGroup(
 }
 
 /**
- * 특정 날짜의 점심지도 일정 계산.
- * - classes.lunch_group IN ('7세','6세') 4반 조회 (7세 2·6세 2 조합)
- * - 각 반 학생 목록 + 오늘 attendance(결석·조퇴) + override 조회
- * - rotation.ts 로 결정론 계산 + override 적용
+ * 특정 날짜의 점심지도 일정 계산 (anchor 방식).
  *
- * 반 수가 부족(7세 또는 6세가 2반 미만)하면 needsSetup=true.
- *
- * @auth-skip: read-only 조회, /bus-monitor와 동일하게 /lunch-monitor(비인증 TV)와 공유.
- * 민감도는 학생 한글·영문 이름 수준(이미 /bus-monitor가 공개 중인 동급 데이터).
- * override 쓰기 action(setLunchLeaderOverride 등)은 여전히 verifyAdmin 유지.
+ * @auth-skip: read-only 조회. /lunch-monitor (비인증 TV) 와 공유.
+ * 민감도: /bus-monitor 와 동일한 학생 이름 수준. Anchor 쓰기 action은
+ * 여전히 verifyAdmin 유지.
  */
 export async function getLunchSchedule(
   date?: string,
@@ -98,7 +92,6 @@ export async function getLunchSchedule(
 
   const admin = createAdminClient();
 
-  // 1) lunch_group 지정된 반 조회
   const { data: classesRaw, error: classesErr } = await admin
     .from("classes")
     .select("id, name, lunch_group")
@@ -113,45 +106,48 @@ export async function getLunchSchedule(
   const age7 = classes.filter((c) => c.lunch_group === "7세");
   const age6 = classes.filter((c) => c.lunch_group === "6세");
   if (age7.length !== 2 || age6.length !== 2) {
-    // settings 미완료 상태
     return { schedule: null, needsSetup: true };
   }
 
   const classIds = classes.map((c) => c.id);
 
-  // 2) 학생·attendance·override 병렬 조회
-  const [membershipsRes, attendanceRes, overridesRes] = await Promise.all([
-    admin
-      .from("class_students")
-      .select("class_id, student_profile_id")
-      .in("class_id", classIds),
-    admin
-      .from("attendance")
-      .select("student_profile_id, status")
-      .eq("attendance_date", targetDate)
-      .in("status", ["absent", "early_leave"]),
-    admin
-      .from("lunch_leader_overrides")
-      .select("id, class_id, leader_student_id")
-      .eq("override_date", targetDate),
-  ]);
+  const [membershipsRes, attendanceRes, leaderAnchorsRes, classOrderAnchorsRes] =
+    await Promise.all([
+      admin
+        .from("class_students")
+        .select("class_id, student_profile_id")
+        .in("class_id", classIds),
+      admin
+        .from("attendance")
+        .select("student_profile_id, status")
+        .eq("attendance_date", targetDate)
+        .in("status", ["absent", "early_leave"]),
+      admin
+        .from("lunch_leader_anchors")
+        .select("id, effective_from, class_id, leader_student_id")
+        .in("class_id", classIds)
+        .lte("effective_from", targetDate),
+      admin
+        .from("lunch_class_order_anchors")
+        .select("id, effective_from, lunch_group, first_class_id")
+        .in("lunch_group", ["7세", "6세"])
+        .lte("effective_from", targetDate),
+    ]);
 
   const memberships = membershipsRes.data ?? [];
   const absentIds = new Set(
     (attendanceRes.data ?? []).map((a) => a.student_profile_id),
   );
-  const overridesByClass = new Map<
-    string,
-    { id: string; leader_student_id: string }
-  >();
-  for (const ov of overridesRes.data ?? []) {
-    overridesByClass.set(ov.class_id, {
-      id: ov.id,
-      leader_student_id: ov.leader_student_id,
-    });
-  }
+  const leaderAnchors: LeaderAnchor[] = leaderAnchorsRes.data ?? [];
+  const classOrderAnchors: ClassOrderAnchor[] = (classOrderAnchorsRes.data ?? []).map(
+    (a) => ({
+      id: a.id,
+      effective_from: a.effective_from,
+      lunch_group: a.lunch_group as LunchGroup,
+      first_class_id: a.first_class_id,
+    }),
+  );
 
-  // 3) 학생 상세 조회
   const studentProfileIds = [
     ...new Set(memberships.map((m) => m.student_profile_id)),
   ];
@@ -172,19 +168,17 @@ export async function getLunchSchedule(
     studentsByClass.set(m.class_id, arr);
   }
 
-  // 4) rotation.ts BuildInput 포맷으로 변환
-  const toBuildInput = (cls: { id: string; name: string; lunch_group: string | null }) => {
-    const override = overridesByClass.get(cls.id);
-    return {
-      class_id: cls.id,
-      class_name: cls.name,
-      lunch_group: cls.lunch_group as LunchGroup,
-      students: studentsByClass.get(cls.id) ?? [],
-      overrideLeaderId: override?.leader_student_id ?? null,
-      overrideId: override?.id ?? null,
-      absentIds,
-    };
-  };
+  const toBuildInput = (cls: {
+    id: string;
+    name: string;
+    lunch_group: string | null;
+  }) => ({
+    class_id: cls.id,
+    class_name: cls.name,
+    lunch_group: cls.lunch_group as LunchGroup,
+    students: studentsByClass.get(cls.id) ?? [],
+    absentIds,
+  });
 
   const schedule = computeLunchDaySchedule({
     date: targetDate,
@@ -196,13 +190,18 @@ export async function getLunchSchedule(
       ReturnType<typeof toBuildInput>,
       ReturnType<typeof toBuildInput>,
     ],
+    leaderAnchors,
+    classOrderAnchors,
   });
 
   return { schedule, needsSetup: false };
 }
 
-/** 특정 날짜·반의 리더를 수동으로 지정 (override upsert). */
-export async function setLunchLeaderOverride(
+/**
+ * 리더 anchor 설정 (upsert by date + class).
+ * 이 날짜부터 영구 적용 — 이후 날짜는 anchor 기준으로 자동 회전.
+ */
+export async function setLunchLeaderAnchor(
   date: string,
   classId: string,
   leaderStudentId: string,
@@ -216,19 +215,19 @@ export async function setLunchLeaderOverride(
 
   const admin = createAdminClient();
   const { error } = await admin
-    .from("lunch_leader_overrides")
+    .from("lunch_leader_anchors")
     .upsert(
       {
-        override_date: date,
+        effective_from: date,
         class_id: classId,
         leader_student_id: leaderStudentId,
         created_by: auth.userId,
         updated_at: new Date().toISOString(),
       },
-      { onConflict: "override_date,class_id" },
+      { onConflict: "effective_from,class_id" },
     );
   if (error) {
-    logger.error("[setLunchLeaderOverride]", error.message, { date, classId });
+    logger.error("[setLunchLeaderAnchor]", error.message, { date, classId });
     return { error: error.message };
   }
   revalidatePath("/admin/lunch");
@@ -236,8 +235,8 @@ export async function setLunchLeaderOverride(
   return {};
 }
 
-/** 특정 날짜·반의 리더 override 해제 (자동 로테이션으로 복귀). */
-export async function clearLunchLeaderOverride(
+/** 해당 날짜의 리더 anchor 삭제 (그 anchor 효력 제거 — 이전 anchor 또는 EPOCH로 복귀). */
+export async function clearLunchLeaderAnchor(
   date: string,
   classId: string,
 ): Promise<{ error?: string }> {
@@ -246,12 +245,73 @@ export async function clearLunchLeaderOverride(
 
   const admin = createAdminClient();
   const { error } = await admin
-    .from("lunch_leader_overrides")
+    .from("lunch_leader_anchors")
     .delete()
-    .eq("override_date", date)
+    .eq("effective_from", date)
     .eq("class_id", classId);
   if (error) {
-    logger.error("[clearLunchLeaderOverride]", error.message, { date, classId });
+    logger.error("[clearLunchLeaderAnchor]", error.message, { date, classId });
+    return { error: error.message };
+  }
+  revalidatePath("/admin/lunch");
+  revalidatePath("/lunch-monitor");
+  return {};
+}
+
+/**
+ * 반 순서 anchor 설정 (upsert by date + lunch_group).
+ * 이 날짜부터 영구 적용 — 이후 날짜는 anchor 기준으로 자동 교대.
+ */
+export async function setLunchClassOrderAnchor(
+  date: string,
+  lunchGroup: LunchGroup,
+  firstClassId: string,
+): Promise<{ error?: string }> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return { error: auth.error };
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return { error: "날짜 형식이 올바르지 않습니다." };
+  }
+
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("lunch_class_order_anchors")
+    .upsert(
+      {
+        effective_from: date,
+        lunch_group: lunchGroup,
+        first_class_id: firstClassId,
+        created_by: auth.userId,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "effective_from,lunch_group" },
+    );
+  if (error) {
+    logger.error("[setLunchClassOrderAnchor]", error.message, { date, lunchGroup });
+    return { error: error.message };
+  }
+  revalidatePath("/admin/lunch");
+  revalidatePath("/lunch-monitor");
+  return {};
+}
+
+/** 해당 날짜의 반 순서 anchor 삭제. */
+export async function clearLunchClassOrderAnchor(
+  date: string,
+  lunchGroup: LunchGroup,
+): Promise<{ error?: string }> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return { error: auth.error };
+
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("lunch_class_order_anchors")
+    .delete()
+    .eq("effective_from", date)
+    .eq("lunch_group", lunchGroup);
+  if (error) {
+    logger.error("[clearLunchClassOrderAnchor]", error.message, { date, lunchGroup });
     return { error: error.message };
   }
   revalidatePath("/admin/lunch");
