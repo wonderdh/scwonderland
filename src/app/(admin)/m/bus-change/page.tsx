@@ -1,7 +1,18 @@
 import Link from "next/link";
 import { AdminBusChangeDnD } from "@/app/(admin)/admin/bus/components/AdminBusChangeDnD";
+import {
+  listAllActiveStudentNames,
+  listBusStops,
+  listBusTimeSlots,
+} from "@/app/(admin)/admin/actions";
 
-export default function MobileBusChangePage() {
+export default async function MobileBusChangePage() {
+  const [students, busStops, busTimeSlots] = await Promise.all([
+    listAllActiveStudentNames(),
+    listBusStops(),
+    listBusTimeSlots(),
+  ]);
+
   return (
     <div className="min-h-screen flex flex-col">
       <header className="sticky top-0 z-10 bg-background border-b border-border px-4 py-3 flex items-center gap-3">
@@ -16,7 +27,11 @@ export default function MobileBusChangePage() {
         <h1 className="text-base font-semibold text-foreground">버스 당일변경</h1>
       </header>
       <div className="flex-1 overflow-y-auto p-4">
-        <AdminBusChangeDnD />
+        <AdminBusChangeDnD
+          initialStudents={students}
+          initialBusStops={busStops}
+          initialBusTimeSlots={busTimeSlots}
+        />
       </div>
     </div>
   );

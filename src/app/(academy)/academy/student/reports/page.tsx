@@ -2,7 +2,7 @@ import {
   getReportCard,
   listReportCardsByStudent,
 } from "@/app/(admin)/admin/actions";
-import type { ReportCard, ReportCardListItem } from "@/lib/types";
+import type { ReportCard } from "@/lib/types";
 import { getCurrentStudentProfile } from "../../actions";
 import Link from "next/link";
 import { ReportCardReplyForm } from "../components/ReportCardReplyForm";

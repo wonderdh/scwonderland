@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/feedback/Spinner";
 import { Input } from "@/components/ui/input";
-import type { BusManifestGroup, BusManifestEntry, BusTimeSlot, BusNumber, NoRideEntry, AfterSchoolBusEntry } from "@/lib/types";
+import type { BusManifestGroup, BusManifestEntry, BusTimeSlot, NoRideEntry, AfterSchoolBusEntry } from "@/lib/types";
 import { getAgeColor } from "@/lib/ui/student-age-colors";
 import {
   getDailyBusManifest,
@@ -58,7 +58,7 @@ function groupByTime(groups: BusManifestGroup[]): TimeGroup[] {
   return [...map.values()].sort((a, b) => a.slotTime.localeCompare(b.slotTime));
 }
 
-export function BusDashboard({ busTimeSlots, busNumbers }: { busTimeSlots: BusTimeSlot[]; busNumbers: BusNumber[] }) {
+export function BusDashboard({ busTimeSlots }: { busTimeSlots: BusTimeSlot[] }) {
   const [date, setDate] = useState(todayKst());
   const [groups, setGroups] = useState<BusManifestGroup[]>([]);
   const [noRides, setNoRides] = useState<NoRideEntry[]>([]);

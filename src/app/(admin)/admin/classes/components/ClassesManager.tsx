@@ -9,7 +9,7 @@ import {
   listStudentsNotInClass,
   updateClass,
 } from "../../actions";
-import type { ClassWithDetails, ClassStudentRow, ClassTeacherInfo, ClassTextbook, Textbook, TeacherOption } from "@/lib/types";
+import type { ClassWithDetails, ClassStudentRow, ClassTextbook, Textbook, TeacherOption } from "@/lib/types";
 import {
   listClassTextbooks,
   listTextbooks,
@@ -36,12 +36,6 @@ const MANAGE_GROUP_STYLE: Record<string, {
   오후반: { icon: "☁️", sectionBg: "bg-sky-100", sectionText: "text-sky-800", countBg: "bg-sky-200 text-sky-800" },
   "": { icon: "📋", sectionBg: "bg-slate-100", sectionText: "text-slate-600", countBg: "bg-slate-200 text-slate-600" },
 };
-
-function formatTeachers(teachers: ClassTeacherInfo[]): string {
-  if (teachers.length === 0) return "미지정";
-  return teachers.map((t) => `${t.name ?? "—"}(${t.teacher_type === "native" ? "원어민" : "한국인"})`).join(", ");
-}
-
 
 type StudentInfo = {
   id: string;

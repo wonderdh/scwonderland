@@ -106,7 +106,7 @@ export function GroupTimetableGrid({
 }) {
   const router = useRouter();
   const [data, setData] = useState(initialData);
-  const [loading, setLoading] = useState(false);
+  const [loading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 

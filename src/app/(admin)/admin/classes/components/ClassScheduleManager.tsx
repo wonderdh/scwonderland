@@ -162,9 +162,6 @@ export function ClassScheduleManager({
     [sortedTeachers],
   );
 
-  const toolTeacherName = teachers.find((t) => t.id === toolTeacherId)?.name ?? null;
-  const toolTeacherColor = toolTeacherId ? teacherColorMap.get(toolTeacherId) : null;
-
   const loadSchedules = useCallback(async (classId: string) => {
     setLoading(true);
     const data = await listClassSchedules(classId);

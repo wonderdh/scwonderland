@@ -30,7 +30,6 @@ const megaMenuItems: Record<string, string[]> = {
 
 export function Navigation() {
   const pathname = usePathname();
-  const isHome = pathname === "/";
   const activeMenuId = getMenuIdFromPathname(pathname) ?? "about";
   const [isOpen, setIsOpen] = useState(false);
   const [hoveredId, setHoveredId] = useState<string | null>(null);

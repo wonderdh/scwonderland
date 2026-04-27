@@ -8,7 +8,7 @@ import type { StudentTimetableRow } from "@/lib/types";
 import { LoadingState } from "@/components/feedback/LoadingState";
 import { escapeHtml } from "@/lib/utils/escape-html";
 import { WEEKDAY_NAMES_5 } from "@/lib/constants/date";
-import { TEACHER_COLOR_PALETTE, buildTeacherColorMap } from "@/lib/constants/timetable";
+import { buildTeacherColorMap } from "@/lib/constants/timetable";
 import { formatTime } from "@/lib/bus/utils";
 
 export function StudentTimetableClient({

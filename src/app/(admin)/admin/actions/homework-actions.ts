@@ -9,7 +9,6 @@ import { formatStudentName } from "@/lib/utils/student-name";
 import {
   STORAGE_BUCKETS,
   generateStoragePath,
-  extractStoragePath,
   validateFile,
 } from "@/lib/supabase/storage";
 import type {

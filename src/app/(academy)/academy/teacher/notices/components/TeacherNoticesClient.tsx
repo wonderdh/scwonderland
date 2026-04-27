@@ -13,7 +13,6 @@ import { toast } from "sonner";
 import { noticeLabels } from "@/lib/ui/teacher-labels";
 import { LoadingState } from "@/components/feedback/LoadingState";
 import { Spinner } from "@/components/feedback/Spinner";
-import { formatFileSize } from "@/lib/supabase/storage";
 import { FileUpload } from "@/components/forms/FileUpload";
 import { FileList } from "@/components/forms/FileList";
 import { Button } from "@/components/ui/button";

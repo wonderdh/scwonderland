@@ -21,7 +21,24 @@ import { AdminBusChangeDnD } from "./AdminBusChangeDnD";
 import { formatStudentName } from "@/lib/utils/student-name";
 import { formatTime } from "@/lib/bus/utils";
 
-export function BusChangeRequestsPanel({ adminId }: { adminId: string }) {
+type ActiveStudent = {
+  profile_id: string;
+  korean_name: string | null;
+  english_name: string | null;
+  age: number | null;
+};
+
+export function BusChangeRequestsPanel({
+  adminId,
+  initialStudents,
+  initialBusStops,
+  initialBusTimeSlots,
+}: {
+  adminId: string;
+  initialStudents?: ActiveStudent[];
+  initialBusStops?: BusStop[];
+  initialBusTimeSlots?: BusTimeSlot[];
+}) {
   const router = useRouter();
   const [requests, setRequests] = useState<BusChangeRequest[]>([]);
   const [busNumbers, setBusNumbers] = useState<BusNumber[]>([]);
@@ -161,7 +178,12 @@ export function BusChangeRequestsPanel({ adminId }: { adminId: string }) {
   return (
     <div className="space-y-6">
       {/* 당일 변경 (변경 생성 시 대기 목록 갱신) */}
-      <AdminBusChangeDnD onChangeCreated={handleChangeCreated} />
+      <AdminBusChangeDnD
+        initialStudents={initialStudents}
+        initialBusStops={initialBusStops}
+        initialBusTimeSlots={initialBusTimeSlots}
+        onChangeCreated={handleChangeCreated}
+      />
 
       {/* 세그먼트 컨트롤 */}
       <div

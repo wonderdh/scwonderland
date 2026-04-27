@@ -34,8 +34,8 @@ export default async function AdminBusPage({
   const currentTab = parseTab(tab);
 
   const needStaff = currentTab === "master";
-  const needStops = currentTab === "assignment" || currentTab === "master";
-  const needStudentNames = currentTab === "assignment";
+  const needStops = currentTab === "assignment" || currentTab === "master" || currentTab === "requests";
+  const needStudentNames = currentTab === "assignment" || currentTab === "requests";
 
   const [busNumbers, busTimeSlots, busStaff, busStops, allStudentNames] = await Promise.all([
     listBusNumbers(),
@@ -62,13 +62,18 @@ export default async function AdminBusPage({
             </section>
             <section aria-labelledby="today-dashboard">
               <h2 id="today-dashboard" className="text-lg font-semibold text-slate-800 mb-3">오늘 운행</h2>
-              <BusDashboard busTimeSlots={busTimeSlots} busNumbers={busNumbers} />
+              <BusDashboard busTimeSlots={busTimeSlots} />
             </section>
           </div>
         )}
 
         {currentTab === "requests" && (
-          <BusChangeRequestsPanel adminId={user.id} />
+          <BusChangeRequestsPanel
+            adminId={user.id}
+            initialStudents={allStudentNames}
+            initialBusStops={busStops}
+            initialBusTimeSlots={busTimeSlots}
+          />
         )}
 
         {currentTab === "assignment" && (

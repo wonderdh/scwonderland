@@ -101,11 +101,6 @@ export async function getDailyBusManifest(
       ...changeRows.filter((c) => c.new_bus_time_slot_id).map((c) => c.new_bus_time_slot_id),
     ]),
   ];
-  const allBusIds: string[] = [
-    ...changeRows.filter((c) => c.new_bus_number_id).map((c) => c.new_bus_number_id),
-    ...stopBusMaps.allBusIds,
-  ];
-  const uniqueBusIds = [...new Set(allBusIds)];
   const changeStopIds = changeRows.filter((c) => c.new_bus_stop_id).map((c) => c.new_bus_stop_id);
   const allStopIds = [
     ...new Set([

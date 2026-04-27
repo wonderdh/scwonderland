@@ -9,7 +9,7 @@ import { LoadingState } from "@/components/feedback/LoadingState";
 import { useAsyncData } from "../../hooks/useAsyncData";
 import { escapeHtml } from "@/lib/utils/escape-html";
 import { WEEKDAY_NAMES_5 } from "@/lib/constants/date";
-import { TEACHER_COLOR_PALETTE, buildTeacherColorMap } from "@/lib/constants/timetable";
+import { buildTeacherColorMap } from "@/lib/constants/timetable";
 import { formatTime } from "@/lib/bus/utils";
 
 export function StudentTimetableTab({
@@ -32,8 +32,9 @@ export function StudentTimetableTab({
     [studentProfileId],
   );
 
-  const rows: StudentTimetableRow[] = data?.rows ?? [];
-  const afterschoolDays: number[] = data?.afterschoolDays ?? [];
+  // useMemo로 감싸 useMemo deps 안정화 (react-hooks/exhaustive-deps)
+  const rows = useMemo<StudentTimetableRow[]>(() => data?.rows ?? [], [data]);
+  const afterschoolDays = useMemo<number[]>(() => data?.afterschoolDays ?? [], [data]);
 
   function handlePrint() {
     const classRows = classRowsRef.current;

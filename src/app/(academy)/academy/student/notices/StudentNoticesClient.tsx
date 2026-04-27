@@ -10,7 +10,6 @@ import {
 import { FileList } from "@/components/forms/FileList";
 import { LoadingState } from "@/components/feedback/LoadingState";
 import { EmptyState } from "@/components/feedback/EmptyState";
-import type { ClassNotice, ClassNoticeAttachment, AcademyNotice, AcademyNoticeAttachment } from "@/lib/types";
 import { formatDateKst } from "@/lib/utils/date-kst";
 
 type NoticeItem = {

@@ -42,17 +42,23 @@ function formatTime(t: string | undefined | null) {
 }
 
 export function AdminBusChangeDnD({
+  initialStudents,
+  initialBusStops,
+  initialBusTimeSlots,
   onChangeCreated,
 }: {
+  initialStudents?: StudentItem[];
+  initialBusStops?: BusStop[];
+  initialBusTimeSlots?: BusTimeSlot[];
   onChangeCreated?: () => void;
 } = {}) {
   const today = todayKst();
   const router = useRouter();
 
-  // Reference data (loaded once)
-  const [students, setStudents] = useState<StudentItem[]>([]);
-  const [busStops, setBusStops] = useState<BusStop[]>([]);
-  const [busTimeSlots, setBusTimeSlots] = useState<BusTimeSlot[]>([]);
+  // Reference data — initial은 props(SSR), 미전달 시 mount fetch (하위호환)
+  const [students, setStudents] = useState<StudentItem[]>(initialStudents ?? []);
+  const [busStops, setBusStops] = useState<BusStop[]>(initialBusStops ?? []);
+  const [busTimeSlots, setBusTimeSlots] = useState<BusTimeSlot[]>(initialBusTimeSlots ?? []);
 
   // Date
   const [selectedDates, setSelectedDates] = useState<Date[]>([new Date(today)]);
@@ -82,8 +88,9 @@ export function AdminBusChangeDnD({
 
   const [saving, setSaving] = useState(false);
 
-  // Load reference data on mount
+  // Load reference data on mount — initial props 미전달 시에만 fetch
   useEffect(() => {
+    if (initialStudents !== undefined) return;
     Promise.all([
       listAllActiveStudentNames(),
       listBusStops(),
@@ -93,7 +100,7 @@ export function AdminBusChangeDnD({
       setBusStops(stops);
       setBusTimeSlots(slots);
     });
-  }, []);
+  }, [initialStudents]);
 
   // When student / date changes → load existing data
   useEffect(() => {
@@ -138,7 +145,7 @@ export function AdminBusChangeDnD({
       }
       setLoadingStudent(false);
     });
-  }, [selectedStudentId, selectedDates]);
+  }, [selectedStudentId, selectedDates, today]);
 
   // ── Derived ──
 

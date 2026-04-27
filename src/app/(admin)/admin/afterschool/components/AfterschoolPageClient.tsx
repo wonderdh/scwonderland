@@ -22,19 +22,6 @@ const AGE_GROUPS: { label: string; test: (age: number | null) => boolean }[] = [
   { label: "기타", test: (a) => a !== 5 && a !== 6 && a !== 7 },
 ];
 
-function ageOrder(age: number | null): number {
-  if (age === 5) return 0;
-  if (age === 6) return 1;
-  if (age === 7) return 2;
-  return 3;
-}
-
-function sortByAgeName(a: { age: number | null; korean_name: string | null }, b: { age: number | null; korean_name: string | null }) {
-  const ageDiff = ageOrder(a.age) - ageOrder(b.age);
-  if (ageDiff !== 0) return ageDiff;
-  return (a.korean_name ?? "").localeCompare(b.korean_name ?? "");
-}
-
 type StudentOption = { id: string; korean_name: string | null; english_name: string | null; age: number | null };
 type LocalEnrollment = AfterschoolStudentEnrollment & { _dirty?: boolean };
 

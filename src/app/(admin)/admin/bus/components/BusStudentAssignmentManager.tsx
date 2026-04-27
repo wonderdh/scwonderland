@@ -627,9 +627,6 @@ export function BusStudentAssignmentManager({
                         return formatStudentName(a, { fallback: "" }).localeCompare(formatStudentName(b, { fallback: "" }));
                       })
                       .map((a) => {
-                      const slot = slotById.get(a.bus_time_slot_id);
-                      const slotLabel = slot ? `${slot.label} (${slot.time?.slice(0, 5)})` : "";
-                      const stopLabel = a.bus_stop_name ?? "정류장 없음";
                       const ac = getAgeColor(a.age);
                       const isAfterschool = afterschoolIds.has(a.student_profile_id);
                       return (
