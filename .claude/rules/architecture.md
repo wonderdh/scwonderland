@@ -152,4 +152,4 @@ public/
 | `src/app/(academy)/academy/actions.ts` | Academy Server Actions (7개 함수) |
 | `src/lib/supabase/admin.ts` | Admin Supabase 클라이언트 (service role) |
 | `src/lib/ui/teacher-labels.ts` | 교사 포털 한국어/영어 라벨 맵 (9개 라벨 세트) |
-| `docs/*.sql` | DB 스키마 및 마이그레이션 |
+| `supabase/migrations/*.sql` | DB 마이그레이션 (single source of truth — 도메인 ER overview는 `rules/database.md` 참조) |
