@@ -65,3 +65,7 @@ PLUGINS.md
 /*.jpg
 /*.jpeg
 .gstack/
+
+# supabase CLI 로컬 캐시/메타 (config.toml과 migrations/는 커밋 유지)
+supabase/.temp/
+supabase/.branches/
