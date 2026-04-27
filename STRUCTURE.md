@@ -165,7 +165,9 @@ This file is generated from `HARNESS_MANIFEST.json`. Run `npm run harness -- man
 2. Work only in the created `claude/<task-slug>` worktree.
 3. Create an active plan in `.claude/plans/active/` before code edits.
 4. Use worker subagents for implementation, tester for checks, docs-auditor for docs drift.
-5. Finish with `npm run harness -- finish <plan-file>` and return to `C:\scwonderland`.
+5. Finish with `npm run harness -- finish <plan-file>`.
+6. Commit with `npm run harness -- commit "<message>"`.
+7. Merge into main with `npm run harness -- merge-main [branch]`, then return to `C:\scwonderland`.
 
 ## Required Checks
 - Base: `npm run check:auth`, `npm run lint`, `npm run type-check`.

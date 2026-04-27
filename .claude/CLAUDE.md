@@ -35,7 +35,8 @@
 5. 테스트/빌드/검증은 main agent가 직접 실행하지 않는다. `tester` subagent 결과만 완료 조건으로 인정한다.
 6. 문서 drift와 예외 승인은 `docs-auditor` subagent가 담당한다.
 7. 병렬 작업은 file ownership을 먼저 나누고, 같은 파일을 두 subagent가 동시에 수정하지 않는다.
-8. 완료는 `npm run harness -- finish <plan-file>`로만 처리한다.
+8. 완료는 `npm run harness -- finish <plan-file>`로 처리한 뒤, `npm run harness -- commit "<message>"`로 커밋한다.
+9. main 병합은 `npm run harness -- merge-main <branch>`로 수행한다. main worktree가 dirty면 병합하지 않는다.
 
 ## 항상 읽을 문서
 
@@ -56,3 +57,5 @@
 5. `docs-sync` skill과 `docs-auditor` subagent가 문서 최신화를 확인한다.
 6. `tester` subagent가 필수 검증을 실행한다.
 7. `finish-task` skill 또는 `npm run harness -- finish <plan-file>`로 completed 이동을 처리한다.
+8. `npm run harness -- commit "<message>"`로 작업 브랜치에 커밋한다.
+9. `npm run harness -- merge-main <branch>`로 main에 병합하고 `C:\scwonderland`로 돌아온다.

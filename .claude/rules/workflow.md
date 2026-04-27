@@ -9,6 +9,8 @@
 5. Run docs sync and docs audit.
 6. Delegate validation to `tester`.
 7. Finish with `npm run harness -- finish <plan-file>`.
+8. Commit with `npm run harness -- commit "<message>"`.
+9. Merge into main with `npm run harness -- merge-main <branch>`.
 
 ## Main Branch
 
@@ -25,3 +27,14 @@ Task artifacts live under `.claude/runs/<run-id>/`.
 Required agent result files:
 - `.claude/runs/<run-id>/agents/tester-result.json`
 - `.claude/runs/<run-id>/agents/docs-auditor-result.json`
+
+## Publish Flow
+
+`finish` only moves the plan to completed after tester/docs-auditor pass.
+
+After `finish`:
+1. Run `npm run harness -- commit "<message>"` in the task worktree.
+2. Run `npm run harness -- merge-main <branch>` from the task worktree or main worktree.
+3. Confirm `C:\scwonderland` is on `main` and clean.
+
+The merge command refuses to run if the main worktree is dirty.

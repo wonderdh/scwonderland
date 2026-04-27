@@ -15,6 +15,7 @@ const ROOT = process.env.CLAUDE_PROJECT_DIR
   ? resolve(process.env.CLAUDE_PROJECT_DIR)
   : resolve(process.cwd());
 const WORKTREE_ROOT = process.env.HARNESS_WORKTREE_ROOT || "C:\\scwonderland-worktrees";
+const MAIN_WORKTREE = process.env.HARNESS_MAIN_WORKTREE || "C:\\scwonderland";
 const MANIFEST_PATH = join(ROOT, "HARNESS_MANIFEST.json");
 const STRUCTURE_PATH = join(ROOT, "STRUCTURE.md");
 const ACTIVE_PLANS_DIR = join(ROOT, ".claude", "plans", "active");
@@ -41,6 +42,8 @@ function main() {
     if (cmd === "docs" && sub === "detect") return docsDetect();
     if (cmd === "validate") return validate();
     if (cmd === "finish") return finish(sub);
+    if (cmd === "commit") return commitTask(args.slice(1));
+    if (cmd === "merge-main") return mergeMain(sub);
     if (cmd === "worktree") return worktree(sub, rest);
     if (cmd === "hook") return hook(sub);
     fail(`Unknown command: ${args.join(" ")}`);
@@ -59,6 +62,8 @@ Commands:
   npm run harness -- docs detect
   npm run harness -- validate
   npm run harness -- finish <active-plan.md>
+  npm run harness -- commit "<message>"
+  npm run harness -- merge-main [branch]
   npm run harness -- worktree start <slug>
   npm run harness -- worktree status
   npm run harness -- worktree cleanup <slug>
@@ -196,7 +201,9 @@ function writeStructure() {
     "2. Work only in the created `claude/<task-slug>` worktree.",
     "3. Create an active plan in `.claude/plans/active/` before code edits.",
     "4. Use worker subagents for implementation, tester for checks, docs-auditor for docs drift.",
-    "5. Finish with `npm run harness -- finish <plan-file>` and return to `C:\\scwonderland`.",
+    "5. Finish with `npm run harness -- finish <plan-file>`.",
+    "6. Commit with `npm run harness -- commit \"<message>\"`.",
+    "7. Merge into main with `npm run harness -- merge-main [branch]`, then return to `C:\\scwonderland`.",
     "",
     "## Required Checks",
     "- Base: `npm run check:auth`, `npm run lint`, `npm run type-check`.",
@@ -263,12 +270,38 @@ function finish(planFile) {
   const auditorResult = JSON.parse(read(auditor));
   if (testerResult.status !== "pass") fail("Tester result is not pass.");
   if (auditorResult.status !== "pass") fail("Docs-auditor result is not pass.");
-  const date = new Date().toISOString().slice(0, 10);
-  const destDir = join(COMPLETED_PLANS_DIR, date);
+  const destDir = COMPLETED_PLANS_DIR;
   mkdirSync(destDir, { recursive: true });
   const dest = join(destDir, basename(planPath));
   renameSync(planPath, dest);
   console.log(`Moved plan to ${relative(ROOT, dest)}`);
+  console.log(`Next: npm run harness -- commit "<message>"`);
+  console.log(`Then: npm run harness -- merge-main ${gitBranch()}`);
+}
+
+function commitTask(args) {
+  const message = args.join(" ").trim();
+  if (!message) fail('Usage: npm run harness -- commit "<message>"');
+  if (gitBranch() === "main") fail("Do not create task commits on main.");
+  if (activePlans().length > 0) fail("Active plans remain. Run `npm run harness -- finish <plan-file>` first.");
+  run("git", ["add", "."], { stdio: "inherit" });
+  if (!gitDirty()) {
+    console.log("[harness] Nothing to commit.");
+    return;
+  }
+  run("git", ["commit", "-m", message], { stdio: "inherit" });
+}
+
+function mergeMain(branchArg) {
+  const branch = branchArg || gitBranch();
+  if (!branch || branch === "main") fail("Usage: npm run harness -- merge-main <task-branch>");
+  if (!existsSync(MAIN_WORKTREE)) fail(`Main worktree not found: ${MAIN_WORKTREE}`);
+  const mainBranch = runIn(MAIN_WORKTREE, "git", ["branch", "--show-current"]).trim();
+  if (mainBranch !== "main") fail(`Main worktree is not on main: ${MAIN_WORKTREE}`);
+  const mainDirty = runIn(MAIN_WORKTREE, "git", ["status", "--short"]).trim();
+  if (mainDirty) fail("Main worktree is dirty. Commit/stash before merge.");
+  runIn(MAIN_WORKTREE, "git", ["merge", "--no-ff", branch], { stdio: "inherit" });
+  console.log(`[harness] Merged ${branch} into main at ${MAIN_WORKTREE}`);
 }
 
 function buildManifest() {
@@ -482,6 +515,15 @@ function run(cmd, args, options = {}) {
     return "";
   }
   return execFileSync(cmd, args, { cwd: ROOT, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+}
+
+function runIn(cwd, cmd, args, options = {}) {
+  if (options.stdio === "inherit") {
+    const result = spawnSync(cmd, args, { cwd, stdio: "inherit", shell: false });
+    if (result.status !== 0) fail(`${cmd} ${args.join(" ")} failed in ${cwd}`);
+    return "";
+  }
+  return execFileSync(cmd, args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
 }
 
 function listFiles(dir, predicate, out = []) {

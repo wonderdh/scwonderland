@@ -11,4 +11,6 @@ Steps:
 2. Ensure docs-auditor wrote `.claude/runs/<run-id>/agents/docs-auditor-result.json`.
 3. Ensure the active plan checklist is complete.
 4. Run `npm run harness -- finish <active-plan-file>`.
-5. Return to the main worktree at `C:\scwonderland`.
+5. Run `npm run harness -- commit "<message>"` in the task worktree.
+6. Run `npm run harness -- merge-main <branch>`.
+7. Return to the main worktree at `C:\scwonderland`.
