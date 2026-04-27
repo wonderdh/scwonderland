@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import { PageContent } from "@/app/(site)/_components/sections/PageContent";
 import styles from "./WonderK.module.css";
 
@@ -28,9 +29,11 @@ export default function WonderKPage() {
                 </p>
               </div>
               <div className={styles.imgBox}>
-                <img
+                <Image
                   src="/images/program/wonder-k/wonderlandk_img.png"
                   alt="Wonder K 프로그램"
+                  width={603}
+                  height={360}
                 />
               </div>
             </div>

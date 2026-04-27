@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 
 export const metadata: Metadata = {
   title: "MAP | 원더랜드 영어학원",
@@ -33,10 +34,13 @@ export default function MapPage() {
                 좌우로 스크롤하여 전체 내용을 확인하실 수 있습니다.
               </p>
               <div className="overflow-x-auto overflow-y-hidden rounded-xl bg-gray-100">
-                <img
+                <Image
                   src="/images/program/map/map_img1.png"
                   alt="프로그램 MAP"
+                  width={783}
+                  height={1555}
                   className="h-auto w-full max-w-none object-contain"
+                  sizes="(max-width: 768px) 100vw, 64rem"
                 />
               </div>
             </div>

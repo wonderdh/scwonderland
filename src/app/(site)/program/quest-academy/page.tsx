@@ -27,6 +27,8 @@ export default function QuestAcademyPage() {
                 </p>
               </div>
               <div className={styles.imgBox}>
+                {/* SVG 벡터 — next/image 최적화 의미 없음. eslint-disable 의도적 */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src="/images/program/quest-academy/quest_img.svg"
                   alt="Quest Academy 프로그램"

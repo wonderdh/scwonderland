@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import styles from "./Wonderland.module.css";
 
 export const metadata: Metadata = {
@@ -52,13 +53,23 @@ export default function WonderlandPage() {
               </p>
             </div>
             <div className={styles.imgBox}>
-              <img src={IMG.wonderland1} alt="Whole Language Approach" />
+              <Image
+                src={IMG.wonderland1}
+                alt="Whole Language Approach"
+                width={450}
+                height={450}
+              />
             </div>
           </div>
 
           <div className={styles.box}>
             <div className={styles.imgBox}>
-              <img src={IMG.wonderland2} alt="Communicative Language Teaching" />
+              <Image
+                src={IMG.wonderland2}
+                alt="Communicative Language Teaching"
+                width={450}
+                height={439}
+              />
             </div>
             <div className={styles.txtBox}>
               <em>02</em>
@@ -94,7 +105,12 @@ export default function WonderlandPage() {
               </p>
             </div>
             <div className={styles.imgBox}>
-              <img src={IMG.wonderland3} alt="Content-based Instruction" />
+              <Image
+                src={IMG.wonderland3}
+                alt="Content-based Instruction"
+                width={480}
+                height={400}
+              />
             </div>
           </div>
         </div>

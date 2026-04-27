@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import styles from "./CurriculumProgram.module.css";
 
 export const metadata: Metadata = {
@@ -70,10 +71,13 @@ export default function ProgramWonderlandPage() {
               </div>
               <div className="min-w-0 flex-1">
                 <div className="overflow-hidden rounded-xl bg-gray-100">
-                  <img
+                  <Image
                     src="/images/program/wonderland/wonderland_img.png"
                     alt="Wonderland 프로그램"
+                    width={607}
+                    height={360}
                     className="h-auto w-full object-contain"
+                    sizes="(max-width: 768px) 100vw, 60vw"
                   />
                 </div>
               </div>
@@ -97,6 +101,8 @@ export default function ProgramWonderlandPage() {
                 >
                   <p className="mb-4 flex items-center gap-3 text-lg font-bold text-gray-900">
                     <span className="flex h-10 w-10 shrink-0 items-center justify-center">
+                      {/* SVG 아이콘 — next/image 최적화 의미 없음 */}
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={block.icon}
                         alt=""
@@ -133,6 +139,8 @@ export default function ProgramWonderlandPage() {
               ))}
               <div className={`${styles.node} ${styles.center}`}>
                 <span className={styles.centerLogoWrap}>
+                  {/* SVG 로고 — next/image 최적화 의미 없음 */}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src="/images/common/logo-b.svg" alt="원더랜드" />
                 </span>
               </div>

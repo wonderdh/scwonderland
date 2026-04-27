@@ -26,6 +26,8 @@ export default function PrimoSchoolPage() {
                 </p>
               </div>
               <div className={styles.imgBox}>
+                {/* SVG 벡터 — next/image 최적화 의미 없음. eslint-disable 의도적 */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src="/images/program/primo-school/primo_img.svg"
                   alt="Primo School 프로그램"
