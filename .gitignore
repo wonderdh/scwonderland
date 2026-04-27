@@ -54,7 +54,9 @@ PLUGINS.md
 .claude/sessions/
 .claude/state/
 .claude/worktrees/
-.claude/agents/
+.claude/runs/**
+!.claude/runs/
+!.claude/runs/.gitkeep
 .claude/settings.local.json
 
 # omc (oh-my-claudecode) 세션/상태

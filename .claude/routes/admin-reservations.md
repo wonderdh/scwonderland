@@ -9,6 +9,11 @@
 - `src/app/(admin)/admin/actions/reservation-actions.ts`
 - `src/components/forms/MultiDatePicker.tsx`
 
+## Related Actions / Types / Components
+- `reservation-actions.ts` reservation aggregation actions
+- `MultiDatePicker` for bulk date selection
+- Attendance and bus reservation domain types from `src/lib/types`
+
 ## Required Reading
 - `.claude/rules/domain.md`
 - `.claude/routes/admin-attendance.md`

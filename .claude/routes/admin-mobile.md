@@ -6,6 +6,10 @@
 ## Source Files
 - `src/app/(admin)/m/page.tsx`
 
+## Related Actions / Types / Components
+- Mobile admin route shortcuts under `/m/*`
+- Shared admin route group auth/layout behavior
+
 ## Required Reading
 - `.claude/routes/admin-mobile-attendance.md`
 - `.claude/routes/admin-mobile-bus-change.md`

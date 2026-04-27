@@ -1,6 +1,42 @@
 # Server Actions 전체 인덱스
 
-모든 Server Action은 `src/app/(admin)/admin/actions/`에 위치하며 `{ error?: string }` 패턴 반환.
+Server Action은 App Router route group 안에 위치하며 `{ error?: string }` 패턴 반환.
+
+## Harness Action Coverage
+
+`HARNESS_MANIFEST.json`은 다음 action entrypoint를 추적한다. action 파일 추가/삭제/이동 시 이 섹션과 manifest를 함께 최신화한다.
+
+- `src/app/(academy)/academy/actions.ts`
+- `src/app/(admin)/admin/actions.ts`
+- `src/app/(admin)/admin/actions/academy-notice-actions.ts`
+- `src/app/(admin)/admin/actions/afterschool-actions.ts`
+- `src/app/(admin)/admin/actions/attendance-actions.ts`
+- `src/app/(admin)/admin/actions/auth-helpers.ts`
+- `src/app/(admin)/admin/actions/bus-actions.ts`
+- `src/app/(admin)/admin/actions/bus-staff.ts`
+- `src/app/(admin)/admin/actions/bus/_helpers.ts`
+- `src/app/(admin)/admin/actions/bus/assignment-actions.ts`
+- `src/app/(admin)/admin/actions/bus/board-actions.ts`
+- `src/app/(admin)/admin/actions/bus/change-actions.ts`
+- `src/app/(admin)/admin/actions/bus/manifest-actions.ts`
+- `src/app/(admin)/admin/actions/bus/master-actions.ts`
+- `src/app/(admin)/admin/actions/bus/staff-actions.ts`
+- `src/app/(admin)/admin/actions/class-actions.ts`
+- `src/app/(admin)/admin/actions/class-notice-actions.ts`
+- `src/app/(admin)/admin/actions/dashboard-actions.ts`
+- `src/app/(admin)/admin/actions/homework-actions.ts`
+- `src/app/(admin)/admin/actions/learning-actions.ts`
+- `src/app/(admin)/admin/actions/lunch-actions.ts`
+- `src/app/(admin)/admin/actions/notice-actions.ts`
+- `src/app/(admin)/admin/actions/report-actions.ts`
+- `src/app/(admin)/admin/actions/reservation-actions.ts`
+- `src/app/(admin)/admin/actions/schedule-actions.ts`
+- `src/app/(admin)/admin/actions/textbook-actions.ts`
+- `src/app/(admin)/admin/actions/textbook-constants.ts`
+- `src/app/(admin)/admin/actions/timetable-actions.ts`
+- `src/app/(admin)/admin/actions/user-actions.ts`
+- `src/app/(admin)/admin/actions/weekly-sentence-actions.ts`
+- `src/app/(bus)/bus/actions.ts`
 
 ## 인증 헬퍼 (`auth-helpers.ts`)
 

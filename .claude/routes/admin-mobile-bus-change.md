@@ -7,6 +7,10 @@
 - `src/app/(admin)/m/bus-change/page.tsx`
 - `src/app/(admin)/admin/actions/bus/`
 
+## Related Actions / Types / Components
+- Bus change actions under `src/app/(admin)/admin/actions/bus/`
+- Shared bus defaults, stops, slots, and request types
+
 ## Required Reading
 - `.claude/routes/admin-bus.md`
 - `.claude/rules/domain.md`

@@ -10,3 +10,4 @@ Steps:
 2. Update all required docs listed in the output.
 3. If no docs update is needed, record the reason in `Docs Sync Exception`.
 4. Ask `docs-auditor` to approve the exception before finish.
+5. For harness, action, route, shared lib, component, Supabase, package, hook, skill, or agent changes, also run `npm run harness -- validate` to catch manifest/structure drift.

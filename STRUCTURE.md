@@ -78,6 +78,8 @@ This file is generated from `HARNESS_MANIFEST.json`. Run `npm run harness -- man
 - `/lunch-monitor` -> `src/app/(monitor)/lunch-monitor/page.tsx` (lunch-monitor.md)
 
 ## Server Actions
+- `src/app/(academy)/academy/actions.ts` (actions)
+- `src/app/(admin)/admin/actions.ts` (actions)
 - `src/app/(admin)/admin/actions/academy-notice-actions.ts` (academy-notice-actions)
 - `src/app/(admin)/admin/actions/afterschool-actions.ts` (afterschool-actions)
 - `src/app/(admin)/admin/actions/attendance-actions.ts` (attendance-actions)
@@ -106,6 +108,7 @@ This file is generated from `HARNESS_MANIFEST.json`. Run `npm run harness -- man
 - `src/app/(admin)/admin/actions/timetable-actions.ts` (timetable-actions)
 - `src/app/(admin)/admin/actions/user-actions.ts` (user-actions)
 - `src/app/(admin)/admin/actions/weekly-sentence-actions.ts` (weekly-sentence-actions)
+- `src/app/(bus)/bus/actions.ts` (actions)
 
 ## Shared Components
 ### badges
@@ -163,7 +166,7 @@ This file is generated from `HARNESS_MANIFEST.json`. Run `npm run harness -- man
 ## Harness Workflow
 1. Start on `main` and run `npm run harness -- worktree start <task-slug>`.
 2. Work only in the created `claude/<task-slug>` worktree.
-3. Create an active plan in `.claude/plans/active/` before code edits.
+3. Keep exactly one active plan in `.claude/plans/active/` before protected edits.
 4. Use worker subagents for implementation, tester for checks, docs-auditor for docs drift.
 5. Finish with `npm run harness -- finish <plan-file>`.
 6. Commit with `npm run harness -- commit "<message>"`.
@@ -171,4 +174,41 @@ This file is generated from `HARNESS_MANIFEST.json`. Run `npm run harness -- man
 
 ## Required Checks
 - Base: `npm run check:auth`, `npm run lint`, `npm run type-check`.
-- Add `npm run build` for route/page/layout/server action/supabase/package changes.
+- Harness: `npm run harness -- validate`, `npm run harness -- self-test`, `npm run harness -- docs detect`.
+- Add `npm run build` for route/page/layout/server action/supabase/package/harness changes.
+
+## Protected Paths
+- `src/**`
+- `supabase/**`
+- `scripts/**`
+- `.githooks/**`
+- `.claude/CLAUDE.md`
+- `.claude/rules/**`
+- `.claude/routes/**`
+- `.claude/skills/**`
+- `.claude/agents/**`
+- `.claude/hooks/**`
+- `.claude/settings.json`
+- `HARNESS_MANIFEST.json`
+- `STRUCTURE.md`
+- `package.json`
+- `package-lock.json`
+- `next.config.*`
+- `tsconfig*.json`
+- `eslint.config.*`
+- `postcss.config.*`
+- `tailwind.config.*`
+- `public/**`
+- `.env*`
+
+## Docs Sync Rules
+- `src/app/**/page.tsx`, `src/app/**/layout.tsx` -> `STRUCTURE.md`, `.claude/routes/_index.md`
+- `src/app/**/actions.ts`, `src/app/**/actions/**`, `src/app/**/*-actions.ts` -> `.claude/rules/domain.md`, `.claude/routes/shared-actions.md`
+- `src/lib/navigation/admin-nav.ts` -> `STRUCTURE.md`, `.claude/routes/_index.md`
+- `src/lib/navigation/menu-routes.ts` -> `STRUCTURE.md`, `.claude/routes/_index.md`
+- `src/lib/auth/**`, `src/lib/bus/**`, `src/lib/constants/**`, `src/lib/hooks/**`, `src/lib/lunch/**`, `src/lib/server/**`, `src/lib/supabase/**`, `src/lib/ui/**`, `src/lib/utils/**`, `src/lib/types/**` -> `.claude/rules/domain.md`, `.claude/routes/shared-lib.md`, `STRUCTURE.md`
+- `supabase/migrations/**`, `supabase/config.toml` -> `.claude/rules/domain.md`, `.claude/routes/shared-lib.md`, `STRUCTURE.md`
+- `src/components/**` -> `.claude/rules/domain.md`, `.claude/routes/shared-components.md`
+- `scripts/**`, `.githooks/**`, `.claude/settings.json`, `.claude/hooks/**`, `.claude/skills/**`, `.claude/agents/**`, `package.json`, `package-lock.json` -> `STRUCTURE.md`, `.claude/rules/workflow.md`, `.claude/rules/testing.md`
+- `HARNESS_MANIFEST.json`, `STRUCTURE.md` -> `STRUCTURE.md`, `.claude/rules/workflow.md`
+

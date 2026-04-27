@@ -9,6 +9,11 @@
 - `src/app/(admin)/admin/actions/lunch-actions.ts`
 - `src/lib/lunch/rotation.ts`
 
+## Related Actions / Types / Components
+- `lunch-actions.ts` monitor-facing schedule actions
+- Lunch rotation helpers from `src/lib/lunch/rotation.ts`
+- Monitor loading state from `loading.tsx`
+
 ## Required Reading
 - `docs/ssr-initial-fetch-pattern.md`
 - `.claude/routes/admin-lunch.md`
