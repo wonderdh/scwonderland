@@ -1,0 +1,11 @@
+{
+  "status": "pass",
+  "required_docs": [
+    ".claude/rules/testing.md",
+    ".claude/rules/workflow.md",
+    "STRUCTURE.md"
+  ],
+  "missing_docs": [],
+  "exceptions_approved": [],
+  "summary": "Commit and merge-main publish flow is reflected across scripts/harness.mjs, .claude/CLAUDE.md, .claude/rules/workflow.md, .claude/skills/finish-task/SKILL.md, STRUCTURE.md, and HARNESS_MANIFEST.json. Harness validate passed and docs detect reported no missing docs."
+}

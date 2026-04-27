@@ -1,58 +1,61 @@
-# CLAUDE.md
+# SC Wonderland Claude Harness
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+이 문서는 Claude Code가 이 저장소에서 작업할 때 따르는 최상위 규칙이다.
 
-## Project Overview
+## 기본 행동 원칙
 
-SC Wonderland — 원더랜드 영어학원 웹사이트. 5개 Route Group으로 구성:
-1. **(site)** — 학원 소개 공개 사이트
-2. **(admin)** — 관리자 대시보드 (`/admin`)
-3. **(academy)** — 학생·교사 포털 (`/academy`)
-4. **(bus)** — 승하차 기사용 인터페이스 (`/bus`)
-5. **(monitor)** — 버스 모니터링 화면 (`/bus-monitor`)
+### 1. 코딩 전 생각하기
+- 가정을 명시한다. 모호하면 질문하거나 plan에 가정으로 고정한다.
+- 여러 해석이 가능하면 조용히 하나를 고르지 말고 tradeoff를 드러낸다.
+- 더 단순한 접근이 있으면 먼저 제안한다.
 
-**기술 스택:** Next.js 16 (App Router) · React 19 · TypeScript · Tailwind CSS v4 · Supabase (Auth + PostgreSQL + Storage) · shadcn/ui (Radix UI + CVA + tailwind-merge) · react-day-picker v9 + date-fns v4 (캘린더)
+### 2. 단순함 우선
+- 요청 범위 밖 기능을 만들지 않는다.
+- 한 번만 쓰는 코드를 위해 추상화를 만들지 않는다.
+- 불필요한 설정화, 일반화, 방어 코드를 추가하지 않는다.
+- 200줄로 쓴 코드가 50줄로 가능하면 줄인다.
 
-**대상 사용자:** 학부모/일반 방문자(공개 사이트), 관리자(학생·교사·반·시간표·교재·공지·숙제·출결·승하차 관리), 학생(리포트카드·교재·공지·숙제·승하차), 교사(한국인: 반 관리·공지·교재·출결·숙제·승하차·리포트카드(읽기전용) / 원어민: 리포트카드(작성)·교재·출결·숙제, 영어 UI)
+### 3. 외과적 변경
+- 사용자 요청에 직접 연결되는 줄만 바꾼다.
+- 주변 코드 개선, 포맷 변경, 리팩터링은 별도 요청 없이는 하지 않는다.
+- 기존 스타일을 따른다.
+- 내 변경으로 생긴 unused import/변수/함수만 정리한다.
 
-## Development Commands
+### 4. 목표 기반 실행
+- 구현 전 성공 기준과 검증 방법을 plan에 적는다.
+- 버그 수정은 재현 조건과 통과 기준을 함께 둔다.
+- 완료 전 tester와 docs-auditor 결과를 확인한다.
 
-```bash
-npm run dev      # 개발 서버 (http://localhost:3000)
-npm run build    # 프로덕션 빌드
-npm start        # 프로덕션 서버
-npm run lint     # ESLint 실행
-```
+## 필수 하네스 규칙
 
-## Key Principles
+1. `main` branch는 오케스트레이션 전용이다. 코드, 설정, script, package 파일을 직접 수정하지 않는다.
+2. 작업은 `npm run harness -- worktree start <task-slug>`로 만든 `claude/<task-slug>` worktree에서 수행한다.
+3. 코드 수정 전 `.claude/plans/active/`에 active plan이 있어야 한다.
+4. 구조 변경이 있으면 관련 md를 반드시 최신화한다. 문서 최신화는 코드 변경의 일부다.
+5. 테스트/빌드/검증은 main agent가 직접 실행하지 않는다. `tester` subagent 결과만 완료 조건으로 인정한다.
+6. 문서 drift와 예외 승인은 `docs-auditor` subagent가 담당한다.
+7. 병렬 작업은 file ownership을 먼저 나누고, 같은 파일을 두 subagent가 동시에 수정하지 않는다.
+8. 완료는 `npm run harness -- finish <plan-file>`로 처리한 뒤, `npm run harness -- commit "<message>"`로 커밋한다.
+9. main 병합은 `npm run harness -- merge-main <branch>`로 수행한다. main worktree가 dirty면 병합하지 않는다.
 
-핵심 원칙은 `rules/core.md`에 정의 (항상 로드). 도메인별 상세 규칙은 `paths` 프론트매터로 조건부 로드:
-- `rules/architecture.md` — 라우트맵, 레이아웃 (`src/app/**/*` 작업 시)
-- `rules/components.md` — 컴포넌트 목록 (`*.tsx` 작업 시)
-- `rules/database.md` — DB 스키마, Storage (`src/lib/types/`, `src/lib/supabase/`, `actions/` 작업 시)
-- `rules/patterns.md` — 인증·폼·타입·safe redirect·HTML escape·KST 날짜 패턴 (`src/app/`, `src/lib/` 작업 시)
-- `rules/server-actions.md` — Server Action 함수 목록 + 인증 헬퍼 3종 (`actions/` 작업 시)
-- `rules/styling.md` — CSS, 색상 팔레트 (`*.css`, `(site)/` 작업 시)
+## 항상 읽을 문서
 
-### 라우트별 문서 (`routes/`)
-특정 페이지 작업 시 `routes/_index.md`에서 해당 라우트 MD 파일을 찾아 참조. 각 MD에는 핵심 파일, 컴포넌트, Server Actions, 타입, 데이터 흐름, 주의사항이 정리되어 있음.
+- `STRUCTURE.md`
+- `HARNESS_MANIFEST.json`
+- `.claude/rules/core.md`
+- `.claude/rules/workflow.md`
+- `.claude/rules/docs-sync.md`
+- `.claude/rules/testing.md`
+- `.claude/routes/_index.md`
 
-### 추가 참고사항
-- Tailwind 색상 팔레트: `TEACHER_COLOR_PALETTE` (`-200` 계열), `CLASS_COLOR_PALETTE` (`-100` 계열)
-- `GroupTimetableData`, `CellEntry` 타입: `@/lib/types`에서 import
-- 소프트 삭제: `TrashView` 공유 컴포넌트 (`?section=trash`), 삭제 전 관련 데이터 정리
-- 원어민 교사 영어 UI: `teacher-labels.ts` 9개 라벨 세트, `academy/layout.tsx`에서 감지
-- DB 초기 데이터: 유치부 6반, 오후반 19개, Native 교사 10명 (`{이름}@scwonderland.com`, Wonder0225!)
-- 공유 UI 컴포넌트 (`src/components/` 8개 서브폴더): `ui/` (shadcn/ui) · `forms/` (AudioRecorder, FileUpload, FileList, FormGroup, MultiDatePicker) · `feedback/` (LoadingState, Spinner, NavigationProgress) · `overlays/` (ConfirmDialog) · `navigation/` (Breadcrumb, PageHeader, QueryTabNav, LogoutButton) · `badges/` (StatusBadge, TeacherBadges) · `bus/` · `skeletons/`
+## 작업 흐름
 
-### 공통 유틸 (반드시 사용)
-- **정렬:** 학생 명단 정렬은 `src/lib/utils/student-sort.ts#sortStudentsByAgeAndName()` 단일 소스
-- **날짜/시간:** `src/lib/utils/date-kst.ts`의 `todayKst()`, `formatDateKst()`, `formatDateTimeKst()`, `nowKstParts()`. `new Date().toLocaleDateString(...)` 분산 사용 금지
-- **HTML escape:** `src/lib/utils/escape-html.ts#escapeHtml()` — 프린트용 새 창 등 React 밖 HTML 생성 시 XSS 방지 필수
-- **로거:** `src/lib/server/logger.ts#logger` — 서버 `console.log/error` 직접 사용 금지, PII 로깅 금지
-- **인증:** `src/app/(admin)/admin/actions/auth-helpers.ts` — `verifyAdmin()` / `verifyAuthenticated()` / `verifyTeacherOrAdmin()` 중 상황에 맞게 선택
-- **다중 날짜:** `src/components/forms/MultiDatePicker.tsx` — 출결/버스/예약 등 날짜 선택이 필요한 곳에서 공유. 1개=당일, 여러 개=일괄. 토·일 비활성. 범위 자동 채움
-- **출결 상태:** `src/lib/constants/attendance.ts` — `ATTENDANCE_STATUSES`, `ATTENDANCE_STATUS_CONFIG`, `getStatusLabel()`, `shouldShowNote()`. 출결 UI에서 로컬 STATUS_CONFIG 정의 금지, 이 상수를 import할 것
-- **시간표 색상:** `src/lib/constants/timetable.ts` — `TEACHER_COLOR_PALETTE`(12색), `buildTeacherColorMap()`. 시간표 컴포넌트에서 로컬 복붙 금지
-- **요일 이름:** `src/lib/constants/date.ts` — `WEEKDAY_NAMES_5`(월~금), `WEEKDAY_NAMES_7`(일~토). `["월","화","수","목","금"]` 하드코딩 금지
-- **학생 이름:** `src/lib/utils/student-name.ts` — `formatStudentName(student, { preferEnglish? })`. `korean_name ?? english_name ?? "이름 없음"` 인라인 패턴 금지
+1. `/start-task` skill 또는 `npm run harness -- worktree start <slug>`로 작업 worktree를 만든다.
+2. `.claude/plans/templates/PLAN_TEMPLATE.md`를 active plan으로 복사한다.
+3. `npm run harness -- context <prompt-or-path>`로 관련 route/rule/docs를 확인한다.
+4. `worker` subagent가 구현한다.
+5. `docs-sync` skill과 `docs-auditor` subagent가 문서 최신화를 확인한다.
+6. `tester` subagent가 필수 검증을 실행한다.
+7. `finish-task` skill 또는 `npm run harness -- finish <plan-file>`로 completed 이동을 처리한다.
+8. `npm run harness -- commit "<message>"`로 작업 브랜치에 커밋한다.
+9. `npm run harness -- merge-main <branch>`로 main에 병합하고 `C:\scwonderland`로 돌아온다.

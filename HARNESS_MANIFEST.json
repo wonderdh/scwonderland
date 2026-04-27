@@ -1,0 +1,718 @@
+{
+  "generatedAt": "2026-04-27T15:28:13.806Z",
+  "project": "scwonderland",
+  "routes": [
+    {
+      "url": "/",
+      "group": "site",
+      "file": "src/app/(site)/page.tsx",
+      "doc": "site-home.md"
+    },
+    {
+      "url": "/about-wonderland/certification",
+      "group": "site",
+      "file": "src/app/(site)/about-wonderland/certification/page.tsx",
+      "doc": "site-about.md"
+    },
+    {
+      "url": "/about-wonderland/company-history",
+      "group": "site",
+      "file": "src/app/(site)/about-wonderland/company-history/page.tsx",
+      "doc": "site-about.md"
+    },
+    {
+      "url": "/about-wonderland/greeting",
+      "group": "site",
+      "file": "src/app/(site)/about-wonderland/greeting/page.tsx",
+      "doc": "site-about.md"
+    },
+    {
+      "url": "/about-wonderland/wonderland",
+      "group": "site",
+      "file": "src/app/(site)/about-wonderland/wonderland/page.tsx",
+      "doc": "site-about.md"
+    },
+    {
+      "url": "/academy/dashboard",
+      "group": "academy",
+      "file": "src/app/(academy)/academy/dashboard/page.tsx",
+      "doc": "academy-login.md"
+    },
+    {
+      "url": "/academy/login",
+      "group": "academy",
+      "file": "src/app/(academy)/academy/login/page.tsx",
+      "doc": "academy-login.md"
+    },
+    {
+      "url": "/academy/student",
+      "group": "academy",
+      "file": "src/app/(academy)/academy/student/page.tsx",
+      "doc": "academy-student.md"
+    },
+    {
+      "url": "/academy/student/bus",
+      "group": "academy",
+      "file": "src/app/(academy)/academy/student/bus/page.tsx",
+      "doc": "academy-student.md"
+    },
+    {
+      "url": "/academy/student/homework",
+      "group": "academy",
+      "file": "src/app/(academy)/academy/student/homework/page.tsx",
+      "doc": "academy-student.md"
+    },
+    {
+      "url": "/academy/student/notices",
+      "group": "academy",
+      "file": "src/app/(academy)/academy/student/notices/page.tsx",
+      "doc": "academy-student.md"
+    },
+    {
+      "url": "/academy/student/reports",
+      "group": "academy",
+      "file": "src/app/(academy)/academy/student/reports/page.tsx",
+      "doc": "academy-student.md"
+    },
+    {
+      "url": "/academy/student/textbooks",
+      "group": "academy",
+      "file": "src/app/(academy)/academy/student/textbooks/page.tsx",
+      "doc": "academy-student.md"
+    },
+    {
+      "url": "/academy/student/timetable",
+      "group": "academy",
+      "file": "src/app/(academy)/academy/student/timetable/page.tsx",
+      "doc": "academy-student.md"
+    },
+    {
+      "url": "/academy/teacher",
+      "group": "academy",
+      "file": "src/app/(academy)/academy/teacher/page.tsx",
+      "doc": "academy-teacher.md"
+    },
+    {
+      "url": "/academy/teacher/attendance",
+      "group": "academy",
+      "file": "src/app/(academy)/academy/teacher/attendance/page.tsx",
+      "doc": "academy-teacher.md"
+    },
+    {
+      "url": "/academy/teacher/bus",
+      "group": "academy",
+      "file": "src/app/(academy)/academy/teacher/bus/page.tsx",
+      "doc": "academy-teacher.md"
+    },
+    {
+      "url": "/academy/teacher/classes",
+      "group": "academy",
+      "file": "src/app/(academy)/academy/teacher/classes/page.tsx",
+      "doc": "academy-teacher.md"
+    },
+    {
+      "url": "/academy/teacher/homework",
+      "group": "academy",
+      "file": "src/app/(academy)/academy/teacher/homework/page.tsx",
+      "doc": "academy-teacher.md"
+    },
+    {
+      "url": "/academy/teacher/notices",
+      "group": "academy",
+      "file": "src/app/(academy)/academy/teacher/notices/page.tsx",
+      "doc": "academy-teacher.md"
+    },
+    {
+      "url": "/academy/teacher/reports",
+      "group": "academy",
+      "file": "src/app/(academy)/academy/teacher/reports/page.tsx",
+      "doc": "academy-teacher.md"
+    },
+    {
+      "url": "/academy/teacher/textbooks",
+      "group": "academy",
+      "file": "src/app/(academy)/academy/teacher/textbooks/page.tsx",
+      "doc": "academy-teacher.md"
+    },
+    {
+      "url": "/academy/teacher/timetable",
+      "group": "academy",
+      "file": "src/app/(academy)/academy/teacher/timetable/page.tsx",
+      "doc": "academy-teacher.md"
+    },
+    {
+      "url": "/admin",
+      "group": "admin",
+      "file": "src/app/(admin)/admin/page.tsx",
+      "doc": "admin-dashboard.md"
+    },
+    {
+      "url": "/admin/academy-notices",
+      "group": "admin",
+      "file": "src/app/(admin)/admin/academy-notices/page.tsx",
+      "doc": "admin-academy-notices.md"
+    },
+    {
+      "url": "/admin/afterschool",
+      "group": "admin",
+      "file": "src/app/(admin)/admin/afterschool/page.tsx",
+      "doc": "admin-afterschool.md"
+    },
+    {
+      "url": "/admin/attendance",
+      "group": "admin",
+      "file": "src/app/(admin)/admin/attendance/page.tsx",
+      "doc": "admin-attendance.md"
+    },
+    {
+      "url": "/admin/bus",
+      "group": "admin",
+      "file": "src/app/(admin)/admin/bus/page.tsx",
+      "doc": "admin-bus.md"
+    },
+    {
+      "url": "/admin/classes",
+      "group": "admin",
+      "file": "src/app/(admin)/admin/classes/page.tsx",
+      "doc": "admin-classes.md"
+    },
+    {
+      "url": "/admin/lunch",
+      "group": "admin",
+      "file": "src/app/(admin)/admin/lunch/page.tsx",
+      "doc": "admin-lunch.md"
+    },
+    {
+      "url": "/admin/lunch/settings",
+      "group": "admin",
+      "file": "src/app/(admin)/admin/lunch/settings/page.tsx",
+      "doc": "admin-lunch-settings.md"
+    },
+    {
+      "url": "/admin/notices",
+      "group": "admin",
+      "file": "src/app/(admin)/admin/notices/page.tsx",
+      "doc": "admin-notices.md"
+    },
+    {
+      "url": "/admin/reports",
+      "group": "admin",
+      "file": "src/app/(admin)/admin/reports/page.tsx",
+      "doc": "admin-reports.md"
+    },
+    {
+      "url": "/admin/reservations",
+      "group": "admin",
+      "file": "src/app/(admin)/admin/reservations/page.tsx",
+      "doc": "admin-reservations.md"
+    },
+    {
+      "url": "/admin/students",
+      "group": "admin",
+      "file": "src/app/(admin)/admin/students/page.tsx",
+      "doc": "admin-students.md"
+    },
+    {
+      "url": "/admin/students/classes",
+      "group": "admin",
+      "file": "src/app/(admin)/admin/students/classes/page.tsx",
+      "doc": "admin-student-classes.md"
+    },
+    {
+      "url": "/admin/teachers",
+      "group": "admin",
+      "file": "src/app/(admin)/admin/teachers/page.tsx",
+      "doc": "admin-teachers.md"
+    },
+    {
+      "url": "/admin/textbooks",
+      "group": "admin",
+      "file": "src/app/(admin)/admin/textbooks/page.tsx",
+      "doc": "admin-textbooks.md"
+    },
+    {
+      "url": "/admin/timetable",
+      "group": "admin",
+      "file": "src/app/(admin)/admin/timetable/page.tsx",
+      "doc": "admin-timetable.md"
+    },
+    {
+      "url": "/admin/weekly-sentences",
+      "group": "admin",
+      "file": "src/app/(admin)/admin/weekly-sentences/page.tsx",
+      "doc": "admin-weekly-sentences.md"
+    },
+    {
+      "url": "/bus",
+      "group": "bus",
+      "file": "src/app/(bus)/bus/page.tsx",
+      "doc": "bus-staff.md"
+    },
+    {
+      "url": "/bus-monitor",
+      "group": "monitor",
+      "file": "src/app/(monitor)/bus-monitor/page.tsx",
+      "doc": "bus-monitor.md"
+    },
+    {
+      "url": "/community/campus",
+      "group": "site",
+      "file": "src/app/(site)/community/campus/page.tsx",
+      "doc": "site-community.md"
+    },
+    {
+      "url": "/community/franchise-inquiry",
+      "group": "site",
+      "file": "src/app/(site)/community/franchise-inquiry/page.tsx",
+      "doc": "site-community.md"
+    },
+    {
+      "url": "/community/parent-consultation",
+      "group": "site",
+      "file": "src/app/(site)/community/parent-consultation/page.tsx",
+      "doc": "site-community.md"
+    },
+    {
+      "url": "/experience/e-school",
+      "group": "site",
+      "file": "src/app/(site)/experience/e-school/page.tsx",
+      "doc": "site-experience.md"
+    },
+    {
+      "url": "/experience/library",
+      "group": "site",
+      "file": "src/app/(site)/experience/library/page.tsx",
+      "doc": "site-experience.md"
+    },
+    {
+      "url": "/experience/links",
+      "group": "site",
+      "file": "src/app/(site)/experience/links/page.tsx",
+      "doc": "site-experience.md"
+    },
+    {
+      "url": "/experience/special-day",
+      "group": "site",
+      "file": "src/app/(site)/experience/special-day/page.tsx",
+      "doc": "site-experience.md"
+    },
+    {
+      "url": "/lunch-monitor",
+      "group": "monitor",
+      "file": "src/app/(monitor)/lunch-monitor/page.tsx",
+      "doc": "lunch-monitor.md"
+    },
+    {
+      "url": "/m",
+      "group": "admin",
+      "file": "src/app/(admin)/m/page.tsx",
+      "doc": "admin-mobile.md"
+    },
+    {
+      "url": "/m/attendance",
+      "group": "admin",
+      "file": "src/app/(admin)/m/attendance/page.tsx",
+      "doc": "admin-mobile-attendance.md"
+    },
+    {
+      "url": "/m/bus-change",
+      "group": "admin",
+      "file": "src/app/(admin)/m/bus-change/page.tsx",
+      "doc": "admin-mobile-bus-change.md"
+    },
+    {
+      "url": "/m/bus-check",
+      "group": "admin",
+      "file": "src/app/(admin)/m/bus-check/page.tsx",
+      "doc": "admin-mobile-bus-check.md"
+    },
+    {
+      "url": "/notice/news",
+      "group": "site",
+      "file": "src/app/(site)/notice/news/page.tsx",
+      "doc": "site-notice.md"
+    },
+    {
+      "url": "/notice/news/[id]",
+      "group": "site",
+      "file": "src/app/(site)/notice/news/[id]/page.tsx",
+      "doc": "site-notice.md"
+    },
+    {
+      "url": "/program/map",
+      "group": "site",
+      "file": "src/app/(site)/program/map/page.tsx",
+      "doc": "site-program.md"
+    },
+    {
+      "url": "/program/primo-school",
+      "group": "site",
+      "file": "src/app/(site)/program/primo-school/page.tsx",
+      "doc": "site-program.md"
+    },
+    {
+      "url": "/program/quest-academy",
+      "group": "site",
+      "file": "src/app/(site)/program/quest-academy/page.tsx",
+      "doc": "site-program.md"
+    },
+    {
+      "url": "/program/wonder-k",
+      "group": "site",
+      "file": "src/app/(site)/program/wonder-k/page.tsx",
+      "doc": "site-program.md"
+    },
+    {
+      "url": "/program/wonderland",
+      "group": "site",
+      "file": "src/app/(site)/program/wonderland/page.tsx",
+      "doc": "site-program.md"
+    }
+  ],
+  "actions": [
+    {
+      "file": "src/app/(admin)/admin/actions/academy-notice-actions.ts",
+      "domain": "academy-notice-actions"
+    },
+    {
+      "file": "src/app/(admin)/admin/actions/afterschool-actions.ts",
+      "domain": "afterschool-actions"
+    },
+    {
+      "file": "src/app/(admin)/admin/actions/attendance-actions.ts",
+      "domain": "attendance-actions"
+    },
+    {
+      "file": "src/app/(admin)/admin/actions/auth-helpers.ts",
+      "domain": "auth-helpers"
+    },
+    {
+      "file": "src/app/(admin)/admin/actions/bus-actions.ts",
+      "domain": "bus-actions"
+    },
+    {
+      "file": "src/app/(admin)/admin/actions/bus-staff.ts",
+      "domain": "bus-staff"
+    },
+    {
+      "file": "src/app/(admin)/admin/actions/bus/_helpers.ts",
+      "domain": "_helpers"
+    },
+    {
+      "file": "src/app/(admin)/admin/actions/bus/assignment-actions.ts",
+      "domain": "assignment-actions"
+    },
+    {
+      "file": "src/app/(admin)/admin/actions/bus/board-actions.ts",
+      "domain": "board-actions"
+    },
+    {
+      "file": "src/app/(admin)/admin/actions/bus/change-actions.ts",
+      "domain": "change-actions"
+    },
+    {
+      "file": "src/app/(admin)/admin/actions/bus/manifest-actions.ts",
+      "domain": "manifest-actions"
+    },
+    {
+      "file": "src/app/(admin)/admin/actions/bus/master-actions.ts",
+      "domain": "master-actions"
+    },
+    {
+      "file": "src/app/(admin)/admin/actions/bus/staff-actions.ts",
+      "domain": "staff-actions"
+    },
+    {
+      "file": "src/app/(admin)/admin/actions/class-actions.ts",
+      "domain": "class-actions"
+    },
+    {
+      "file": "src/app/(admin)/admin/actions/class-notice-actions.ts",
+      "domain": "class-notice-actions"
+    },
+    {
+      "file": "src/app/(admin)/admin/actions/dashboard-actions.ts",
+      "domain": "dashboard-actions"
+    },
+    {
+      "file": "src/app/(admin)/admin/actions/homework-actions.ts",
+      "domain": "homework-actions"
+    },
+    {
+      "file": "src/app/(admin)/admin/actions/learning-actions.ts",
+      "domain": "learning-actions"
+    },
+    {
+      "file": "src/app/(admin)/admin/actions/lunch-actions.ts",
+      "domain": "lunch-actions"
+    },
+    {
+      "file": "src/app/(admin)/admin/actions/notice-actions.ts",
+      "domain": "notice-actions"
+    },
+    {
+      "file": "src/app/(admin)/admin/actions/report-actions.ts",
+      "domain": "report-actions"
+    },
+    {
+      "file": "src/app/(admin)/admin/actions/reservation-actions.ts",
+      "domain": "reservation-actions"
+    },
+    {
+      "file": "src/app/(admin)/admin/actions/schedule-actions.ts",
+      "domain": "schedule-actions"
+    },
+    {
+      "file": "src/app/(admin)/admin/actions/textbook-actions.ts",
+      "domain": "textbook-actions"
+    },
+    {
+      "file": "src/app/(admin)/admin/actions/textbook-constants.ts",
+      "domain": "textbook-constants"
+    },
+    {
+      "file": "src/app/(admin)/admin/actions/timetable-actions.ts",
+      "domain": "timetable-actions"
+    },
+    {
+      "file": "src/app/(admin)/admin/actions/user-actions.ts",
+      "domain": "user-actions"
+    },
+    {
+      "file": "src/app/(admin)/admin/actions/weekly-sentence-actions.ts",
+      "domain": "weekly-sentence-actions"
+    }
+  ],
+  "components": [
+    {
+      "file": "src/components/badges/StatusBadge.tsx",
+      "group": "badges"
+    },
+    {
+      "file": "src/components/badges/TeacherBadges.tsx",
+      "group": "badges"
+    },
+    {
+      "file": "src/components/bus/DailyBusChanges.tsx",
+      "group": "bus"
+    },
+    {
+      "file": "src/components/bus/MonitorBusCard.tsx",
+      "group": "bus"
+    },
+    {
+      "file": "src/components/feedback/EmptyState.tsx",
+      "group": "feedback"
+    },
+    {
+      "file": "src/components/feedback/ErrorScreen.tsx",
+      "group": "feedback"
+    },
+    {
+      "file": "src/components/feedback/LoadingState.tsx",
+      "group": "feedback"
+    },
+    {
+      "file": "src/components/feedback/NavigationProgress.tsx",
+      "group": "feedback"
+    },
+    {
+      "file": "src/components/feedback/Spinner.tsx",
+      "group": "feedback"
+    },
+    {
+      "file": "src/components/forms/AudioRecorder.tsx",
+      "group": "forms"
+    },
+    {
+      "file": "src/components/forms/FileList.tsx",
+      "group": "forms"
+    },
+    {
+      "file": "src/components/forms/FileUpload.tsx",
+      "group": "forms"
+    },
+    {
+      "file": "src/components/forms/FormGroup.tsx",
+      "group": "forms"
+    },
+    {
+      "file": "src/components/forms/MultiDatePicker.tsx",
+      "group": "forms"
+    },
+    {
+      "file": "src/components/navigation/Breadcrumb.tsx",
+      "group": "navigation"
+    },
+    {
+      "file": "src/components/navigation/LogoutButton.tsx",
+      "group": "navigation"
+    },
+    {
+      "file": "src/components/navigation/PageHeader.tsx",
+      "group": "navigation"
+    },
+    {
+      "file": "src/components/navigation/QueryTabNav.tsx",
+      "group": "navigation"
+    },
+    {
+      "file": "src/components/overlays/ConfirmDialog.tsx",
+      "group": "overlays"
+    },
+    {
+      "file": "src/components/skeletons/AdminDashboardSkeleton.tsx",
+      "group": "skeletons"
+    },
+    {
+      "file": "src/components/skeletons/AdminListPageSkeleton.tsx",
+      "group": "skeletons"
+    },
+    {
+      "file": "src/components/skeletons/SkeletonBone.tsx",
+      "group": "skeletons"
+    },
+    {
+      "file": "src/components/skeletons/SkeletonList.tsx",
+      "group": "skeletons"
+    },
+    {
+      "file": "src/components/skeletons/SkeletonTable.tsx",
+      "group": "skeletons"
+    },
+    {
+      "file": "src/components/ui/avatar.tsx",
+      "group": "ui"
+    },
+    {
+      "file": "src/components/ui/badge.tsx",
+      "group": "ui"
+    },
+    {
+      "file": "src/components/ui/button.tsx",
+      "group": "ui"
+    },
+    {
+      "file": "src/components/ui/calendar.tsx",
+      "group": "ui"
+    },
+    {
+      "file": "src/components/ui/card.tsx",
+      "group": "ui"
+    },
+    {
+      "file": "src/components/ui/input.tsx",
+      "group": "ui"
+    },
+    {
+      "file": "src/components/ui/label.tsx",
+      "group": "ui"
+    },
+    {
+      "file": "src/components/ui/popover.tsx",
+      "group": "ui"
+    },
+    {
+      "file": "src/components/ui/separator.tsx",
+      "group": "ui"
+    },
+    {
+      "file": "src/components/ui/tabs.tsx",
+      "group": "ui"
+    },
+    {
+      "file": "src/components/ui/textarea.tsx",
+      "group": "ui"
+    },
+    {
+      "file": "src/components/ui/tooltip.tsx",
+      "group": "ui"
+    }
+  ],
+  "docsSyncRules": [
+    {
+      "patterns": [
+        "src/app/**/page.tsx",
+        "src/app/**/layout.tsx"
+      ],
+      "docs": [
+        "STRUCTURE.md",
+        ".claude/routes/_index.md"
+      ]
+    },
+    {
+      "patterns": [
+        "src/lib/navigation/admin-nav.ts"
+      ],
+      "docs": [
+        "STRUCTURE.md",
+        ".claude/routes/_index.md"
+      ]
+    },
+    {
+      "patterns": [
+        "src/lib/navigation/menu-routes.ts"
+      ],
+      "docs": [
+        "STRUCTURE.md",
+        ".claude/routes/_index.md"
+      ]
+    },
+    {
+      "patterns": [
+        "src/app/(admin)/admin/actions/**"
+      ],
+      "docs": [
+        ".claude/rules/domain.md",
+        ".claude/routes/shared-actions.md"
+      ]
+    },
+    {
+      "patterns": [
+        "src/lib/types/**",
+        "supabase/migrations/**"
+      ],
+      "docs": [
+        ".claude/rules/domain.md",
+        ".claude/routes/shared-lib.md",
+        "STRUCTURE.md"
+      ]
+    },
+    {
+      "patterns": [
+        "src/components/**"
+      ],
+      "docs": [
+        ".claude/rules/domain.md",
+        ".claude/routes/shared-components.md"
+      ]
+    },
+    {
+      "patterns": [
+        "scripts/**",
+        ".githooks/**",
+        ".claude/settings.json",
+        "package.json"
+      ],
+      "docs": [
+        "STRUCTURE.md",
+        ".claude/rules/workflow.md",
+        ".claude/rules/testing.md"
+      ]
+    }
+  ],
+  "requiredChecks": {
+    "base": [
+      "npm run check:auth",
+      "npm run lint",
+      "npm run type-check"
+    ],
+    "structural": [
+      "npm run build"
+    ],
+    "harness": [
+      "npm run harness -- validate",
+      "npm run harness -- docs detect"
+    ]
+  }
+}
