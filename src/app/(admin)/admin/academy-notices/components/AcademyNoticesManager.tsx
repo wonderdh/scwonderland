@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   listAcademyNotices,
@@ -21,10 +21,14 @@ import { FormGroup } from "@/components/forms/FormGroup";
 import { ConfirmDialog } from "@/components/overlays/ConfirmDialog";
 import { toast } from "sonner";
 
-export function AcademyNoticesManager() {
+export function AcademyNoticesManager({
+  initialNotices,
+}: {
+  initialNotices: AcademyNotice[];
+}) {
   const router = useRouter();
-  const [notices, setNotices] = useState<AcademyNotice[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [notices, setNotices] = useState<AcademyNotice[]>(initialNotices);
+  const [loading, setLoading] = useState(false);
   const [view, setView] = useState<"list" | "form">("list");
   const [error, setError] = useState<string | null>(null);
 
@@ -50,10 +54,8 @@ export function AcademyNoticesManager() {
     setLoading(false);
   }, []);
 
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    loadNotices();
-  }, [loadNotices]);
+  // 초기 데이터는 page.tsx에서 SSR로 전달받음 — mount 시 추가 fetch 없음
+  // mutation 후에는 loadNotices()로 reload
 
   const openCreateForm = () => {
     setEditingId(null);
