@@ -8,6 +8,11 @@
 - `src/app/(admin)/admin/actions/class-actions.ts`
 - `src/app/(admin)/admin/actions/user-actions.ts`
 
+## Related Actions / Types / Components
+- `class-actions.ts` class/student assignment actions
+- `user-actions.ts` active student lookup actions
+- Student/class domain types from `src/lib/types`
+
 ## Required Reading
 - `.claude/routes/admin-students.md`
 - `.claude/routes/admin-classes.md`

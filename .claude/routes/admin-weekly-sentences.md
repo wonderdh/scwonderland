@@ -10,6 +10,11 @@
 - `src/lib/constants/weekly-sentence.ts`
 - `src/lib/utils/weekly-sentence-week.ts`
 
+## Related Actions / Types / Components
+- `weekly-sentence-actions.ts` weekly sentence CRUD/import actions
+- Weekly sentence constants from `src/lib/constants/weekly-sentence.ts`
+- Week calculation helpers from `src/lib/utils/weekly-sentence-week.ts`
+
 ## Required Reading
 - `.claude/rules/domain.md`
 - `.claude/routes/shared-actions.md`

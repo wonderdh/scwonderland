@@ -8,6 +8,11 @@
 - `src/app/(admin)/m/attendance/components/`
 - `src/app/(admin)/admin/actions/attendance-actions.ts`
 
+## Related Actions / Types / Components
+- `attendance-actions.ts` mobile attendance read/write actions
+- Mobile attendance route components under `components/`
+- Attendance status/date types from `src/lib/types`
+
 ## Required Reading
 - `.claude/routes/admin-attendance.md`
 - `.claude/rules/domain.md`

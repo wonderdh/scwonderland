@@ -8,6 +8,11 @@
 - `src/app/(admin)/admin/actions/bus/board-actions.ts`
 - `src/app/(admin)/admin/actions/bus/manifest-actions.ts`
 
+## Related Actions / Types / Components
+- `board-actions.ts` boarding/check state mutations
+- `manifest-actions.ts` daily manifest loading
+- Shared bus check record types from `src/lib/types`
+
 ## Required Reading
 - `.claude/routes/admin-bus.md`
 - `.claude/routes/bus-staff.md`

@@ -37,6 +37,7 @@
 7. 병렬 작업은 file ownership을 먼저 나누고, 같은 파일을 두 subagent가 동시에 수정하지 않는다.
 8. 완료는 `npm run harness -- finish <plan-file>`로 처리한 뒤, `npm run harness -- commit "<message>"`로 커밋한다.
 9. main 병합은 `npm run harness -- merge-main <branch>`로 수행한다. main worktree가 dirty면 병합하지 않는다.
+10. 직접 `git add/commit/merge`, shell write, test/build 우회 명령을 사용하지 않는다. 하네스 hook과 script가 이를 차단한다.
 
 ## 항상 읽을 문서
 
@@ -50,8 +51,8 @@
 
 ## 작업 흐름
 
-1. `/start-task` skill 또는 `npm run harness -- worktree start <slug>`로 작업 worktree를 만든다.
-2. `.claude/plans/templates/PLAN_TEMPLATE.md`를 active plan으로 복사한다.
+1. `/start-task` skill 또는 `npm run harness -- worktree start <slug>`로 작업 worktree와 active plan을 만든다.
+2. active plan의 Run ID, Branch, Worktree를 확인한다.
 3. `npm run harness -- context <prompt-or-path>`로 관련 route/rule/docs를 확인한다.
 4. `worker` subagent가 구현한다.
 5. `docs-sync` skill과 `docs-auditor` subagent가 문서 최신화를 확인한다.
@@ -59,3 +60,10 @@
 7. `finish-task` skill 또는 `npm run harness -- finish <plan-file>`로 completed 이동을 처리한다.
 8. `npm run harness -- commit "<message>"`로 작업 브랜치에 커밋한다.
 9. `npm run harness -- merge-main <branch>`로 main에 병합하고 `C:\scwonderland`로 돌아온다.
+
+## 하네스 강제 조건
+
+- `npm run harness -- validate`는 manifest, structure, project subagents, route docs, action coverage를 검증한다.
+- `npm run harness -- self-test`는 main 수정 차단, Bash 우회 차단, docs 감지, tester 예외를 검증한다.
+- `finish`는 tester/docs-auditor 결과가 현재 run id, branch, worktree, commit head, worktree hash와 맞지 않으면 실패한다.
+- `.claude/runs/**` 원본은 로컬 산출물이며 커밋하지 않는다. 완료 요약은 completed plan에 남긴다.

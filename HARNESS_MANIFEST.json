@@ -1,5 +1,4 @@
 {
-  "generatedAt": "2026-04-27T15:28:13.806Z",
   "project": "scwonderland",
   "routes": [
     {
@@ -371,6 +370,14 @@
   ],
   "actions": [
     {
+      "file": "src/app/(academy)/academy/actions.ts",
+      "domain": "actions"
+    },
+    {
+      "file": "src/app/(admin)/admin/actions.ts",
+      "domain": "actions"
+    },
+    {
       "file": "src/app/(admin)/admin/actions/academy-notice-actions.ts",
       "domain": "academy-notice-actions"
     },
@@ -481,6 +488,10 @@
     {
       "file": "src/app/(admin)/admin/actions/weekly-sentence-actions.ts",
       "domain": "weekly-sentence-actions"
+    },
+    {
+      "file": "src/app/(bus)/bus/actions.ts",
+      "domain": "actions"
     }
   ],
   "components": [
@@ -642,6 +653,17 @@
     },
     {
       "patterns": [
+        "src/app/**/actions.ts",
+        "src/app/**/actions/**",
+        "src/app/**/*-actions.ts"
+      ],
+      "docs": [
+        ".claude/rules/domain.md",
+        ".claude/routes/shared-actions.md"
+      ]
+    },
+    {
+      "patterns": [
         "src/lib/navigation/admin-nav.ts"
       ],
       "docs": [
@@ -660,17 +682,27 @@
     },
     {
       "patterns": [
-        "src/app/(admin)/admin/actions/**"
+        "src/lib/auth/**",
+        "src/lib/bus/**",
+        "src/lib/constants/**",
+        "src/lib/hooks/**",
+        "src/lib/lunch/**",
+        "src/lib/server/**",
+        "src/lib/supabase/**",
+        "src/lib/ui/**",
+        "src/lib/utils/**",
+        "src/lib/types/**"
       ],
       "docs": [
         ".claude/rules/domain.md",
-        ".claude/routes/shared-actions.md"
+        ".claude/routes/shared-lib.md",
+        "STRUCTURE.md"
       ]
     },
     {
       "patterns": [
-        "src/lib/types/**",
-        "supabase/migrations/**"
+        "supabase/migrations/**",
+        "supabase/config.toml"
       ],
       "docs": [
         ".claude/rules/domain.md",
@@ -692,14 +724,52 @@
         "scripts/**",
         ".githooks/**",
         ".claude/settings.json",
-        "package.json"
+        ".claude/hooks/**",
+        ".claude/skills/**",
+        ".claude/agents/**",
+        "package.json",
+        "package-lock.json"
       ],
       "docs": [
         "STRUCTURE.md",
         ".claude/rules/workflow.md",
         ".claude/rules/testing.md"
       ]
+    },
+    {
+      "patterns": [
+        "HARNESS_MANIFEST.json",
+        "STRUCTURE.md"
+      ],
+      "docs": [
+        "STRUCTURE.md",
+        ".claude/rules/workflow.md"
+      ]
     }
+  ],
+  "protectedPatterns": [
+    "src/**",
+    "supabase/**",
+    "scripts/**",
+    ".githooks/**",
+    ".claude/CLAUDE.md",
+    ".claude/rules/**",
+    ".claude/routes/**",
+    ".claude/skills/**",
+    ".claude/agents/**",
+    ".claude/hooks/**",
+    ".claude/settings.json",
+    "HARNESS_MANIFEST.json",
+    "STRUCTURE.md",
+    "package.json",
+    "package-lock.json",
+    "next.config.*",
+    "tsconfig*.json",
+    "eslint.config.*",
+    "postcss.config.*",
+    "tailwind.config.*",
+    "public/**",
+    ".env*"
   ],
   "requiredChecks": {
     "base": [
@@ -712,6 +782,7 @@
     ],
     "harness": [
       "npm run harness -- validate",
+      "npm run harness -- self-test",
       "npm run harness -- docs detect"
     ]
   }

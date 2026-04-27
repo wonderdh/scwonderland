@@ -1,7 +1,4 @@
 #!/bin/sh
-# Harness + Server Action auth 검증.
+# Harness publish gate.
 # 재설치: npm run prepare
-npm run harness -- validate || exit 1
-node scripts/check-server-actions-auth.mjs || exit 1
-npm run lint || exit 1
-npm run type-check || exit 1
+npm run harness -- precommit || exit 1
