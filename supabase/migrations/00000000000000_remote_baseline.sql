@@ -2020,9 +2020,9 @@ ALTER TABLE "public"."academy_notice_attachments" ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "academy_notice_attachments_admin_all" ON "public"."academy_notice_attachments" TO "authenticated" USING ((EXISTS ( SELECT 1
    FROM "public"."profiles"
-  WHERE (("profiles"."id" = "auth"."uid"()) AND ("profiles"."role" = 'admin'::"public"."user_role"))))) WITH CHECK ((EXISTS ( SELECT 1
+  WHERE (("profiles"."id" = ( SELECT "auth"."uid"() AS "uid")) AND ("profiles"."role" = 'admin'::"public"."user_role"))))) WITH CHECK ((EXISTS ( SELECT 1
    FROM "public"."profiles"
-  WHERE (("profiles"."id" = "auth"."uid"()) AND ("profiles"."role" = 'admin'::"public"."user_role")))));
+  WHERE (("profiles"."id" = ( SELECT "auth"."uid"() AS "uid")) AND ("profiles"."role" = 'admin'::"public"."user_role")))));
 
 
 
@@ -2037,9 +2037,9 @@ ALTER TABLE "public"."academy_notices" ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "academy_notices_admin_all" ON "public"."academy_notices" TO "authenticated" USING ((EXISTS ( SELECT 1
    FROM "public"."profiles"
-  WHERE (("profiles"."id" = "auth"."uid"()) AND ("profiles"."role" = 'admin'::"public"."user_role"))))) WITH CHECK ((EXISTS ( SELECT 1
+  WHERE (("profiles"."id" = ( SELECT "auth"."uid"() AS "uid")) AND ("profiles"."role" = 'admin'::"public"."user_role"))))) WITH CHECK ((EXISTS ( SELECT 1
    FROM "public"."profiles"
-  WHERE (("profiles"."id" = "auth"."uid"()) AND ("profiles"."role" = 'admin'::"public"."user_role")))));
+  WHERE (("profiles"."id" = ( SELECT "auth"."uid"() AS "uid")) AND ("profiles"."role" = 'admin'::"public"."user_role")))));
 
 
 
@@ -2050,21 +2050,21 @@ CREATE POLICY "academy_notices_authenticated_read" ON "public"."academy_notices"
 ALTER TABLE "public"."academy_periods" ENABLE ROW LEVEL SECURITY;
 
 
-CREATE POLICY "academy_periods_admin_all" ON "public"."academy_periods" USING (("auth"."uid"() IN ( SELECT "profiles"."id"
+CREATE POLICY "academy_periods_admin_all" ON "public"."academy_periods" USING ((( SELECT "auth"."uid"() AS "uid") IN ( SELECT "profiles"."id"
    FROM "public"."profiles"
   WHERE ("profiles"."role" = 'admin'::"public"."user_role"))));
 
 
 
-CREATE POLICY "academy_periods_auth_read" ON "public"."academy_periods" FOR SELECT USING (("auth"."uid"() IS NOT NULL));
+CREATE POLICY "academy_periods_auth_read" ON "public"."academy_periods" FOR SELECT USING ((( SELECT "auth"."uid"() AS "uid") IS NOT NULL));
 
 
 
-CREATE POLICY "ae_admin_all" ON "public"."afterschool_enrollments" TO "authenticated" USING ("public"."is_current_user_admin"()) WITH CHECK ("public"."is_current_user_admin"());
+CREATE POLICY "ae_admin_all" ON "public"."afterschool_enrollments" TO "authenticated" USING (( SELECT "public"."is_current_user_admin"() AS "is_current_user_admin")) WITH CHECK (( SELECT "public"."is_current_user_admin"() AS "is_current_user_admin"));
 
 
 
-CREATE POLICY "ae_student_read" ON "public"."afterschool_enrollments" FOR SELECT TO "authenticated" USING (("student_profile_id" = "auth"."uid"()));
+CREATE POLICY "ae_student_read" ON "public"."afterschool_enrollments" FOR SELECT TO "authenticated" USING (("student_profile_id" = ( SELECT "auth"."uid"() AS "uid")));
 
 
 
@@ -2075,34 +2075,34 @@ CREATE POLICY "ae_teacher_read" ON "public"."afterschool_enrollments" FOR SELECT
 ALTER TABLE "public"."afterschool_enrollments" ENABLE ROW LEVEL SECURITY;
 
 
-CREATE POLICY "att_admin_all" ON "public"."attendance" USING ("public"."is_current_user_admin"()) WITH CHECK ("public"."is_current_user_admin"());
+CREATE POLICY "att_admin_all" ON "public"."attendance" USING (( SELECT "public"."is_current_user_admin"() AS "is_current_user_admin")) WITH CHECK (( SELECT "public"."is_current_user_admin"() AS "is_current_user_admin"));
 
 
 
-CREATE POLICY "att_student_select" ON "public"."attendance" FOR SELECT USING (("student_profile_id" = "auth"."uid"()));
+CREATE POLICY "att_student_select" ON "public"."attendance" FOR SELECT USING (("student_profile_id" = ( SELECT "auth"."uid"() AS "uid")));
 
 
 
-CREATE POLICY "att_teacher_delete" ON "public"."attendance" FOR DELETE USING (("public"."is_current_user_teacher"() AND ("student_profile_id" IN ( SELECT "public"."current_user_student_ids_for_teacher"() AS "current_user_student_ids_for_teacher"))));
+CREATE POLICY "att_teacher_delete" ON "public"."attendance" FOR DELETE USING ((( SELECT "public"."is_current_user_teacher"() AS "is_current_user_teacher") AND ("student_profile_id" IN ( SELECT "public"."current_user_student_ids_for_teacher"() AS "current_user_student_ids_for_teacher"))));
 
 
 
-CREATE POLICY "att_teacher_insert" ON "public"."attendance" FOR INSERT WITH CHECK (("public"."is_current_user_teacher"() AND ("student_profile_id" IN ( SELECT "public"."current_user_student_ids_for_teacher"() AS "current_user_student_ids_for_teacher"))));
+CREATE POLICY "att_teacher_insert" ON "public"."attendance" FOR INSERT WITH CHECK ((( SELECT "public"."is_current_user_teacher"() AS "is_current_user_teacher") AND ("student_profile_id" IN ( SELECT "public"."current_user_student_ids_for_teacher"() AS "current_user_student_ids_for_teacher"))));
 
 
 
-CREATE POLICY "att_teacher_select" ON "public"."attendance" FOR SELECT USING (("public"."is_current_user_teacher"() AND ("student_profile_id" IN ( SELECT "public"."current_user_student_ids_for_teacher"() AS "current_user_student_ids_for_teacher"))));
+CREATE POLICY "att_teacher_select" ON "public"."attendance" FOR SELECT USING ((( SELECT "public"."is_current_user_teacher"() AS "is_current_user_teacher") AND ("student_profile_id" IN ( SELECT "public"."current_user_student_ids_for_teacher"() AS "current_user_student_ids_for_teacher"))));
 
 
 
-CREATE POLICY "att_teacher_update" ON "public"."attendance" FOR UPDATE USING (("public"."is_current_user_teacher"() AND ("student_profile_id" IN ( SELECT "public"."current_user_student_ids_for_teacher"() AS "current_user_student_ids_for_teacher")))) WITH CHECK (("public"."is_current_user_teacher"() AND ("student_profile_id" IN ( SELECT "public"."current_user_student_ids_for_teacher"() AS "current_user_student_ids_for_teacher"))));
+CREATE POLICY "att_teacher_update" ON "public"."attendance" FOR UPDATE USING ((( SELECT "public"."is_current_user_teacher"() AS "is_current_user_teacher") AND ("student_profile_id" IN ( SELECT "public"."current_user_student_ids_for_teacher"() AS "current_user_student_ids_for_teacher")))) WITH CHECK ((( SELECT "public"."is_current_user_teacher"() AS "is_current_user_teacher") AND ("student_profile_id" IN ( SELECT "public"."current_user_student_ids_for_teacher"() AS "current_user_student_ids_for_teacher"))));
 
 
 
 ALTER TABLE "public"."attendance" ENABLE ROW LEVEL SECURITY;
 
 
-CREATE POLICY "bcr_admin_all" ON "public"."bus_check_records" TO "authenticated" USING ("public"."is_current_user_admin"()) WITH CHECK ("public"."is_current_user_admin"());
+CREATE POLICY "bcr_admin_all" ON "public"."bus_check_records" TO "authenticated" USING (( SELECT "public"."is_current_user_admin"() AS "is_current_user_admin")) WITH CHECK (( SELECT "public"."is_current_user_admin"() AS "is_current_user_admin"));
 
 
 
@@ -2110,7 +2110,7 @@ CREATE POLICY "bcr_bus_staff_all" ON "public"."bus_check_records" TO "authentica
 
 
 
-CREATE POLICY "bcr_student_read" ON "public"."bus_check_records" FOR SELECT TO "authenticated" USING (("student_profile_id" = "auth"."uid"()));
+CREATE POLICY "bcr_student_read" ON "public"."bus_check_records" FOR SELECT TO "authenticated" USING (("student_profile_id" = ( SELECT "auth"."uid"() AS "uid")));
 
 
 
@@ -2118,31 +2118,31 @@ CREATE POLICY "bcr_teacher_read" ON "public"."bus_check_records" FOR SELECT TO "
 
 
 
-CREATE POLICY "bcreq_admin_all" ON "public"."bus_change_requests" TO "authenticated" USING ("public"."is_current_user_admin"()) WITH CHECK ("public"."is_current_user_admin"());
+CREATE POLICY "bcreq_admin_all" ON "public"."bus_change_requests" TO "authenticated" USING (( SELECT "public"."is_current_user_admin"() AS "is_current_user_admin")) WITH CHECK (( SELECT "public"."is_current_user_admin"() AS "is_current_user_admin"));
 
 
 
-CREATE POLICY "bcreq_self_insert" ON "public"."bus_change_requests" FOR INSERT TO "authenticated" WITH CHECK (("student_profile_id" = "auth"."uid"()));
+CREATE POLICY "bcreq_self_insert" ON "public"."bus_change_requests" FOR INSERT TO "authenticated" WITH CHECK (("student_profile_id" = ( SELECT "auth"."uid"() AS "uid")));
 
 
 
-CREATE POLICY "bcreq_self_read" ON "public"."bus_change_requests" FOR SELECT TO "authenticated" USING (("student_profile_id" = "auth"."uid"()));
+CREATE POLICY "bcreq_self_read" ON "public"."bus_change_requests" FOR SELECT TO "authenticated" USING (("student_profile_id" = ( SELECT "auth"."uid"() AS "uid")));
 
 
 
-CREATE POLICY "bcreq_student_delete" ON "public"."bus_change_requests" FOR DELETE TO "authenticated" USING (("student_profile_id" = "auth"."uid"()));
+CREATE POLICY "bcreq_student_delete" ON "public"."bus_change_requests" FOR DELETE TO "authenticated" USING (("student_profile_id" = ( SELECT "auth"."uid"() AS "uid")));
 
 
 
-CREATE POLICY "bcreq_student_update_pending" ON "public"."bus_change_requests" FOR UPDATE TO "authenticated" USING ((("student_profile_id" = "auth"."uid"()) AND ("status" = 'pending'::"text"))) WITH CHECK (("student_profile_id" = "auth"."uid"()));
+CREATE POLICY "bcreq_student_update_pending" ON "public"."bus_change_requests" FOR UPDATE TO "authenticated" USING ((("student_profile_id" = ( SELECT "auth"."uid"() AS "uid")) AND ("status" = 'pending'::"text"))) WITH CHECK (("student_profile_id" = ( SELECT "auth"."uid"() AS "uid")));
 
 
 
-CREATE POLICY "bcreq_teacher_read" ON "public"."bus_change_requests" FOR SELECT TO "authenticated" USING ("public"."is_current_user_teacher"());
+CREATE POLICY "bcreq_teacher_read" ON "public"."bus_change_requests" FOR SELECT TO "authenticated" USING (( SELECT "public"."is_current_user_teacher"() AS "is_current_user_teacher"));
 
 
 
-CREATE POLICY "bn_admin_all" ON "public"."bus_numbers" TO "authenticated" USING ("public"."is_current_user_admin"()) WITH CHECK ("public"."is_current_user_admin"());
+CREATE POLICY "bn_admin_all" ON "public"."bus_numbers" TO "authenticated" USING (( SELECT "public"."is_current_user_admin"() AS "is_current_user_admin")) WITH CHECK (( SELECT "public"."is_current_user_admin"() AS "is_current_user_admin"));
 
 
 
@@ -2150,7 +2150,7 @@ CREATE POLICY "bn_auth_read" ON "public"."bus_numbers" FOR SELECT TO "authentica
 
 
 
-CREATE POLICY "bsda_admin_all" ON "public"."bus_stop_day_assignments" TO "authenticated" USING ("public"."is_current_user_admin"()) WITH CHECK ("public"."is_current_user_admin"());
+CREATE POLICY "bsda_admin_all" ON "public"."bus_stop_day_assignments" TO "authenticated" USING (( SELECT "public"."is_current_user_admin"() AS "is_current_user_admin")) WITH CHECK (( SELECT "public"."is_current_user_admin"() AS "is_current_user_admin"));
 
 
 
@@ -2158,17 +2158,17 @@ CREATE POLICY "bsda_bus_staff_read" ON "public"."bus_stop_day_assignments" FOR S
 
 
 
-CREATE POLICY "bsda_student_read" ON "public"."bus_stop_day_assignments" FOR SELECT TO "authenticated" USING (("auth"."uid"() IN ( SELECT "profiles"."id"
+CREATE POLICY "bsda_student_read" ON "public"."bus_stop_day_assignments" FOR SELECT TO "authenticated" USING ((( SELECT "auth"."uid"() AS "uid") IN ( SELECT "profiles"."id"
    FROM "public"."profiles"
   WHERE ("profiles"."role" = 'student'::"public"."user_role"))));
 
 
 
-CREATE POLICY "bsda_teacher_read" ON "public"."bus_stop_day_assignments" FOR SELECT TO "authenticated" USING ("public"."is_current_user_teacher"());
+CREATE POLICY "bsda_teacher_read" ON "public"."bus_stop_day_assignments" FOR SELECT TO "authenticated" USING (( SELECT "public"."is_current_user_teacher"() AS "is_current_user_teacher"));
 
 
 
-CREATE POLICY "bss_admin_all" ON "public"."bus_stop_schedules" TO "authenticated" USING ("public"."is_current_user_admin"()) WITH CHECK ("public"."is_current_user_admin"());
+CREATE POLICY "bss_admin_all" ON "public"."bus_stop_schedules" TO "authenticated" USING (( SELECT "public"."is_current_user_admin"() AS "is_current_user_admin")) WITH CHECK (( SELECT "public"."is_current_user_admin"() AS "is_current_user_admin"));
 
 
 
@@ -2178,25 +2178,25 @@ CREATE POLICY "bss_bus_staff_read" ON "public"."bus_stop_schedules" FOR SELECT T
 
 
 
-CREATE POLICY "bss_student_read" ON "public"."bus_stop_schedules" FOR SELECT TO "authenticated" USING (("auth"."uid"() IN ( SELECT "profiles"."id"
+CREATE POLICY "bss_student_read" ON "public"."bus_stop_schedules" FOR SELECT TO "authenticated" USING ((( SELECT "auth"."uid"() AS "uid") IN ( SELECT "profiles"."id"
    FROM "public"."profiles"
   WHERE ("profiles"."role" = 'student'::"public"."user_role"))));
 
 
 
-CREATE POLICY "bss_teacher_read" ON "public"."bus_stop_schedules" FOR SELECT TO "authenticated" USING ("public"."is_current_user_teacher"());
+CREATE POLICY "bss_teacher_read" ON "public"."bus_stop_schedules" FOR SELECT TO "authenticated" USING (( SELECT "public"."is_current_user_teacher"() AS "is_current_user_teacher"));
 
 
 
-CREATE POLICY "bstaff_admin_all" ON "public"."bus_staff" TO "authenticated" USING ("public"."is_current_user_admin"()) WITH CHECK ("public"."is_current_user_admin"());
+CREATE POLICY "bstaff_admin_all" ON "public"."bus_staff" TO "authenticated" USING (( SELECT "public"."is_current_user_admin"() AS "is_current_user_admin")) WITH CHECK (( SELECT "public"."is_current_user_admin"() AS "is_current_user_admin"));
 
 
 
-CREATE POLICY "bstaff_self_read" ON "public"."bus_staff" FOR SELECT TO "authenticated" USING (("profile_id" = "auth"."uid"()));
+CREATE POLICY "bstaff_self_read" ON "public"."bus_staff" FOR SELECT TO "authenticated" USING (("profile_id" = ( SELECT "auth"."uid"() AS "uid")));
 
 
 
-CREATE POLICY "bstops_admin_all" ON "public"."bus_stops" TO "authenticated" USING ("public"."is_current_user_admin"()) WITH CHECK ("public"."is_current_user_admin"());
+CREATE POLICY "bstops_admin_all" ON "public"."bus_stops" TO "authenticated" USING (( SELECT "public"."is_current_user_admin"() AS "is_current_user_admin")) WITH CHECK (( SELECT "public"."is_current_user_admin"() AS "is_current_user_admin"));
 
 
 
@@ -2204,7 +2204,7 @@ CREATE POLICY "bstops_auth_read" ON "public"."bus_stops" FOR SELECT TO "authenti
 
 
 
-CREATE POLICY "bts_admin_all" ON "public"."bus_time_slots" TO "authenticated" USING ("public"."is_current_user_admin"()) WITH CHECK ("public"."is_current_user_admin"());
+CREATE POLICY "bts_admin_all" ON "public"."bus_time_slots" TO "authenticated" USING (( SELECT "public"."is_current_user_admin"() AS "is_current_user_admin")) WITH CHECK (( SELECT "public"."is_current_user_admin"() AS "is_current_user_admin"));
 
 
 
@@ -2241,9 +2241,9 @@ ALTER TABLE "public"."class_notice_attachments" ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "class_notice_attachments_admin_all" ON "public"."class_notice_attachments" TO "authenticated" USING ((EXISTS ( SELECT 1
    FROM "public"."profiles"
-  WHERE (("profiles"."id" = "auth"."uid"()) AND ("profiles"."role" = 'admin'::"public"."user_role"))))) WITH CHECK ((EXISTS ( SELECT 1
+  WHERE (("profiles"."id" = ( SELECT "auth"."uid"() AS "uid")) AND ("profiles"."role" = 'admin'::"public"."user_role"))))) WITH CHECK ((EXISTS ( SELECT 1
    FROM "public"."profiles"
-  WHERE (("profiles"."id" = "auth"."uid"()) AND ("profiles"."role" = 'admin'::"public"."user_role")))));
+  WHERE (("profiles"."id" = ( SELECT "auth"."uid"() AS "uid")) AND ("profiles"."role" = 'admin'::"public"."user_role")))));
 
 
 
@@ -2255,14 +2255,14 @@ CREATE POLICY "class_notice_attachments_read" ON "public"."class_notice_attachme
 
 CREATE POLICY "class_notice_attachments_teacher_delete" ON "public"."class_notice_attachments" FOR DELETE TO "authenticated" USING ((EXISTS ( SELECT 1
    FROM "public"."class_notices" "cn"
-  WHERE (("cn"."id" = "class_notice_attachments"."class_notice_id") AND ("cn"."author_id" = "auth"."uid"())))));
+  WHERE (("cn"."id" = "class_notice_attachments"."class_notice_id") AND ("cn"."author_id" = ( SELECT "auth"."uid"() AS "uid"))))));
 
 
 
 CREATE POLICY "class_notice_attachments_teacher_insert" ON "public"."class_notice_attachments" FOR INSERT TO "authenticated" WITH CHECK ((EXISTS ( SELECT 1
    FROM ("public"."class_notices" "cn"
      JOIN "public"."class_teachers" "ct" ON (("ct"."class_id" = "cn"."class_id")))
-  WHERE (("cn"."id" = "class_notice_attachments"."class_notice_id") AND ("ct"."teacher_profile_id" = "auth"."uid"())))));
+  WHERE (("cn"."id" = "class_notice_attachments"."class_notice_id") AND ("ct"."teacher_profile_id" = ( SELECT "auth"."uid"() AS "uid"))))));
 
 
 
@@ -2271,72 +2271,72 @@ ALTER TABLE "public"."class_notices" ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "class_notices_admin_all" ON "public"."class_notices" TO "authenticated" USING ((EXISTS ( SELECT 1
    FROM "public"."profiles"
-  WHERE (("profiles"."id" = "auth"."uid"()) AND ("profiles"."role" = 'admin'::"public"."user_role"))))) WITH CHECK ((EXISTS ( SELECT 1
+  WHERE (("profiles"."id" = ( SELECT "auth"."uid"() AS "uid")) AND ("profiles"."role" = 'admin'::"public"."user_role"))))) WITH CHECK ((EXISTS ( SELECT 1
    FROM "public"."profiles"
-  WHERE (("profiles"."id" = "auth"."uid"()) AND ("profiles"."role" = 'admin'::"public"."user_role")))));
+  WHERE (("profiles"."id" = ( SELECT "auth"."uid"() AS "uid")) AND ("profiles"."role" = 'admin'::"public"."user_role")))));
 
 
 
 CREATE POLICY "class_notices_student_select" ON "public"."class_notices" FOR SELECT TO "authenticated" USING ((EXISTS ( SELECT 1
    FROM "public"."class_students" "cs"
-  WHERE (("cs"."student_profile_id" = "auth"."uid"()) AND ("cs"."class_id" = "class_notices"."class_id")))));
+  WHERE (("cs"."student_profile_id" = ( SELECT "auth"."uid"() AS "uid")) AND ("cs"."class_id" = "class_notices"."class_id")))));
 
 
 
-CREATE POLICY "class_notices_teacher_delete" ON "public"."class_notices" FOR DELETE TO "authenticated" USING (("author_id" = "auth"."uid"()));
+CREATE POLICY "class_notices_teacher_delete" ON "public"."class_notices" FOR DELETE TO "authenticated" USING (("author_id" = ( SELECT "auth"."uid"() AS "uid")));
 
 
 
 CREATE POLICY "class_notices_teacher_insert" ON "public"."class_notices" FOR INSERT TO "authenticated" WITH CHECK ((EXISTS ( SELECT 1
    FROM "public"."class_teachers" "ct"
-  WHERE (("ct"."teacher_profile_id" = "auth"."uid"()) AND ("ct"."class_id" = "class_notices"."class_id")))));
+  WHERE (("ct"."teacher_profile_id" = ( SELECT "auth"."uid"() AS "uid")) AND ("ct"."class_id" = "class_notices"."class_id")))));
 
 
 
 CREATE POLICY "class_notices_teacher_select" ON "public"."class_notices" FOR SELECT TO "authenticated" USING ((EXISTS ( SELECT 1
    FROM "public"."class_teachers" "ct"
-  WHERE (("ct"."teacher_profile_id" = "auth"."uid"()) AND ("ct"."class_id" = "class_notices"."class_id")))));
+  WHERE (("ct"."teacher_profile_id" = ( SELECT "auth"."uid"() AS "uid")) AND ("ct"."class_id" = "class_notices"."class_id")))));
 
 
 
-CREATE POLICY "class_notices_teacher_update" ON "public"."class_notices" FOR UPDATE TO "authenticated" USING (("author_id" = "auth"."uid"())) WITH CHECK (("author_id" = "auth"."uid"()));
+CREATE POLICY "class_notices_teacher_update" ON "public"."class_notices" FOR UPDATE TO "authenticated" USING (("author_id" = ( SELECT "auth"."uid"() AS "uid"))) WITH CHECK (("author_id" = ( SELECT "auth"."uid"() AS "uid")));
 
 
 
 ALTER TABLE "public"."class_schedules" ENABLE ROW LEVEL SECURITY;
 
 
-CREATE POLICY "class_schedules_admin_all" ON "public"."class_schedules" TO "authenticated" USING ("public"."is_current_user_admin"()) WITH CHECK ("public"."is_current_user_admin"());
+CREATE POLICY "class_schedules_admin_all" ON "public"."class_schedules" TO "authenticated" USING (( SELECT "public"."is_current_user_admin"() AS "is_current_user_admin")) WITH CHECK (( SELECT "public"."is_current_user_admin"() AS "is_current_user_admin"));
 
 
 
-CREATE POLICY "class_schedules_student_select" ON "public"."class_schedules" FOR SELECT TO "authenticated" USING ((("student_profile_id" = "auth"."uid"()) OR ("class_id" IN ( SELECT "public"."current_user_enrolled_class_ids"() AS "current_user_enrolled_class_ids"))));
+CREATE POLICY "class_schedules_student_select" ON "public"."class_schedules" FOR SELECT TO "authenticated" USING ((("student_profile_id" = ( SELECT "auth"."uid"() AS "uid")) OR ("class_id" IN ( SELECT "public"."current_user_enrolled_class_ids"() AS "current_user_enrolled_class_ids"))));
 
 
 
-CREATE POLICY "class_schedules_teacher_select" ON "public"."class_schedules" FOR SELECT TO "authenticated" USING (("public"."is_current_user_teacher"() AND (("teacher_profile_id" = "auth"."uid"()) OR ("class_id" IN ( SELECT "public"."current_user_teaching_class_ids"() AS "current_user_teaching_class_ids")))));
+CREATE POLICY "class_schedules_teacher_select" ON "public"."class_schedules" FOR SELECT TO "authenticated" USING ((( SELECT "public"."is_current_user_teacher"() AS "is_current_user_teacher") AND (("teacher_profile_id" = ( SELECT "auth"."uid"() AS "uid")) OR ("class_id" IN ( SELECT "public"."current_user_teaching_class_ids"() AS "current_user_teaching_class_ids")))));
 
 
 
 ALTER TABLE "public"."class_students" ENABLE ROW LEVEL SECURITY;
 
 
-CREATE POLICY "class_students_admin_all" ON "public"."class_students" TO "authenticated" USING ("public"."is_current_user_admin"()) WITH CHECK ("public"."is_current_user_admin"());
+CREATE POLICY "class_students_admin_all" ON "public"."class_students" TO "authenticated" USING (( SELECT "public"."is_current_user_admin"() AS "is_current_user_admin")) WITH CHECK (( SELECT "public"."is_current_user_admin"() AS "is_current_user_admin"));
 
 
 
-CREATE POLICY "class_students_student_select" ON "public"."class_students" FOR SELECT TO "authenticated" USING (("student_profile_id" = "auth"."uid"()));
+CREATE POLICY "class_students_student_select" ON "public"."class_students" FOR SELECT TO "authenticated" USING (("student_profile_id" = ( SELECT "auth"."uid"() AS "uid")));
 
 
 
-CREATE POLICY "class_students_teacher_select" ON "public"."class_students" FOR SELECT TO "authenticated" USING (("public"."is_current_user_teacher"() AND ("class_id" IN ( SELECT "public"."current_user_teaching_class_ids"() AS "current_user_teaching_class_ids"))));
+CREATE POLICY "class_students_teacher_select" ON "public"."class_students" FOR SELECT TO "authenticated" USING ((( SELECT "public"."is_current_user_teacher"() AS "is_current_user_teacher") AND ("class_id" IN ( SELECT "public"."current_user_teaching_class_ids"() AS "current_user_teaching_class_ids"))));
 
 
 
 ALTER TABLE "public"."class_teachers" ENABLE ROW LEVEL SECURITY;
 
 
-CREATE POLICY "class_teachers_admin_all" ON "public"."class_teachers" TO "authenticated" USING ("public"."is_current_user_admin"()) WITH CHECK ("public"."is_current_user_admin"());
+CREATE POLICY "class_teachers_admin_all" ON "public"."class_teachers" TO "authenticated" USING (( SELECT "public"."is_current_user_admin"() AS "is_current_user_admin")) WITH CHECK (( SELECT "public"."is_current_user_admin"() AS "is_current_user_admin"));
 
 
 
@@ -2344,13 +2344,13 @@ CREATE POLICY "class_teachers_coworker_select" ON "public"."class_teachers" FOR 
 
 
 
-CREATE POLICY "class_teachers_self_select" ON "public"."class_teachers" FOR SELECT TO "authenticated" USING (("teacher_profile_id" = "auth"."uid"()));
+CREATE POLICY "class_teachers_self_select" ON "public"."class_teachers" FOR SELECT TO "authenticated" USING (("teacher_profile_id" = ( SELECT "auth"."uid"() AS "uid")));
 
 
 
 CREATE POLICY "class_teachers_student_select" ON "public"."class_teachers" FOR SELECT TO "authenticated" USING ((EXISTS ( SELECT 1
    FROM "public"."class_students"
-  WHERE (("class_students"."class_id" = "class_teachers"."class_id") AND ("class_students"."student_profile_id" = "auth"."uid"())))));
+  WHERE (("class_students"."class_id" = "class_teachers"."class_id") AND ("class_students"."student_profile_id" = ( SELECT "auth"."uid"() AS "uid"))))));
 
 
 
@@ -2359,9 +2359,9 @@ ALTER TABLE "public"."class_textbooks" ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "class_textbooks_admin_all" ON "public"."class_textbooks" TO "authenticated" USING ((EXISTS ( SELECT 1
    FROM "public"."profiles"
-  WHERE (("profiles"."id" = "auth"."uid"()) AND ("profiles"."role" = 'admin'::"public"."user_role"))))) WITH CHECK ((EXISTS ( SELECT 1
+  WHERE (("profiles"."id" = ( SELECT "auth"."uid"() AS "uid")) AND ("profiles"."role" = 'admin'::"public"."user_role"))))) WITH CHECK ((EXISTS ( SELECT 1
    FROM "public"."profiles"
-  WHERE (("profiles"."id" = "auth"."uid"()) AND ("profiles"."role" = 'admin'::"public"."user_role")))));
+  WHERE (("profiles"."id" = ( SELECT "auth"."uid"() AS "uid")) AND ("profiles"."role" = 'admin'::"public"."user_role")))));
 
 
 
@@ -2376,7 +2376,7 @@ CREATE POLICY "class_textbooks_teacher_select" ON "public"."class_textbooks" FOR
 ALTER TABLE "public"."classes" ENABLE ROW LEVEL SECURITY;
 
 
-CREATE POLICY "classes_admin_all" ON "public"."classes" TO "authenticated" USING ("public"."is_current_user_admin"()) WITH CHECK ("public"."is_current_user_admin"());
+CREATE POLICY "classes_admin_all" ON "public"."classes" TO "authenticated" USING (( SELECT "public"."is_current_user_admin"() AS "is_current_user_admin")) WITH CHECK (( SELECT "public"."is_current_user_admin"() AS "is_current_user_admin"));
 
 
 
@@ -2384,11 +2384,11 @@ CREATE POLICY "classes_student_select" ON "public"."classes" FOR SELECT TO "auth
 
 
 
-CREATE POLICY "classes_teacher_select" ON "public"."classes" FOR SELECT TO "authenticated" USING (("public"."is_current_user_teacher"() AND ("id" IN ( SELECT "public"."current_user_teaching_class_ids"() AS "current_user_teaching_class_ids"))));
+CREATE POLICY "classes_teacher_select" ON "public"."classes" FOR SELECT TO "authenticated" USING ((( SELECT "public"."is_current_user_teacher"() AS "is_current_user_teacher") AND ("id" IN ( SELECT "public"."current_user_teaching_class_ids"() AS "current_user_teaching_class_ids"))));
 
 
 
-CREATE POLICY "ha_admin_all" ON "public"."homework_assignments" USING ("public"."is_current_user_admin"()) WITH CHECK ("public"."is_current_user_admin"());
+CREATE POLICY "ha_admin_all" ON "public"."homework_assignments" USING (( SELECT "public"."is_current_user_admin"() AS "is_current_user_admin")) WITH CHECK (( SELECT "public"."is_current_user_admin"() AS "is_current_user_admin"));
 
 
 
@@ -2396,7 +2396,7 @@ CREATE POLICY "ha_student_select" ON "public"."homework_assignments" FOR SELECT 
 
 
 
-CREATE POLICY "ha_teacher_all" ON "public"."homework_assignments" USING (("public"."is_current_user_teacher"() AND (("teacher_id" = "auth"."uid"()) OR ("class_id" IN ( SELECT "public"."current_user_teaching_class_ids"() AS "current_user_teaching_class_ids"))))) WITH CHECK (("public"."is_current_user_teacher"() AND (("teacher_id" = "auth"."uid"()) OR ("class_id" IN ( SELECT "public"."current_user_teaching_class_ids"() AS "current_user_teaching_class_ids")))));
+CREATE POLICY "ha_teacher_all" ON "public"."homework_assignments" USING ((( SELECT "public"."is_current_user_teacher"() AS "is_current_user_teacher") AND (("teacher_id" = ( SELECT "auth"."uid"() AS "uid")) OR ("class_id" IN ( SELECT "public"."current_user_teaching_class_ids"() AS "current_user_teaching_class_ids"))))) WITH CHECK ((( SELECT "public"."is_current_user_teacher"() AS "is_current_user_teacher") AND (("teacher_id" = ( SELECT "auth"."uid"() AS "uid")) OR ("class_id" IN ( SELECT "public"."current_user_teaching_class_ids"() AS "current_user_teaching_class_ids")))));
 
 
 
@@ -2409,59 +2409,59 @@ ALTER TABLE "public"."homework_submission_files" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "public"."homework_submissions" ENABLE ROW LEVEL SECURITY;
 
 
-CREATE POLICY "hs_admin_all" ON "public"."homework_submissions" USING ("public"."is_current_user_admin"()) WITH CHECK ("public"."is_current_user_admin"());
+CREATE POLICY "hs_admin_all" ON "public"."homework_submissions" USING (( SELECT "public"."is_current_user_admin"() AS "is_current_user_admin")) WITH CHECK (( SELECT "public"."is_current_user_admin"() AS "is_current_user_admin"));
 
 
 
-CREATE POLICY "hs_student_insert" ON "public"."homework_submissions" FOR INSERT WITH CHECK (("student_profile_id" = "auth"."uid"()));
+CREATE POLICY "hs_student_insert" ON "public"."homework_submissions" FOR INSERT WITH CHECK (("student_profile_id" = ( SELECT "auth"."uid"() AS "uid")));
 
 
 
-CREATE POLICY "hs_student_select" ON "public"."homework_submissions" FOR SELECT USING (("student_profile_id" = "auth"."uid"()));
+CREATE POLICY "hs_student_select" ON "public"."homework_submissions" FOR SELECT USING (("student_profile_id" = ( SELECT "auth"."uid"() AS "uid")));
 
 
 
-CREATE POLICY "hs_student_update" ON "public"."homework_submissions" FOR UPDATE USING (("student_profile_id" = "auth"."uid"())) WITH CHECK (("student_profile_id" = "auth"."uid"()));
+CREATE POLICY "hs_student_update" ON "public"."homework_submissions" FOR UPDATE USING (("student_profile_id" = ( SELECT "auth"."uid"() AS "uid"))) WITH CHECK (("student_profile_id" = ( SELECT "auth"."uid"() AS "uid")));
 
 
 
-CREATE POLICY "hs_teacher_select" ON "public"."homework_submissions" FOR SELECT USING (("public"."is_current_user_teacher"() AND ("assignment_id" IN ( SELECT "homework_assignments"."id"
+CREATE POLICY "hs_teacher_select" ON "public"."homework_submissions" FOR SELECT USING ((( SELECT "public"."is_current_user_teacher"() AS "is_current_user_teacher") AND ("assignment_id" IN ( SELECT "homework_assignments"."id"
    FROM "public"."homework_assignments"
   WHERE ("homework_assignments"."class_id" IN ( SELECT "public"."current_user_teaching_class_ids"() AS "current_user_teaching_class_ids"))))));
 
 
 
-CREATE POLICY "hs_teacher_update" ON "public"."homework_submissions" FOR UPDATE USING (("public"."is_current_user_teacher"() AND ("assignment_id" IN ( SELECT "homework_assignments"."id"
+CREATE POLICY "hs_teacher_update" ON "public"."homework_submissions" FOR UPDATE USING ((( SELECT "public"."is_current_user_teacher"() AS "is_current_user_teacher") AND ("assignment_id" IN ( SELECT "homework_assignments"."id"
    FROM "public"."homework_assignments"
-  WHERE ("homework_assignments"."class_id" IN ( SELECT "public"."current_user_teaching_class_ids"() AS "current_user_teaching_class_ids")))))) WITH CHECK (("public"."is_current_user_teacher"() AND ("assignment_id" IN ( SELECT "homework_assignments"."id"
+  WHERE ("homework_assignments"."class_id" IN ( SELECT "public"."current_user_teaching_class_ids"() AS "current_user_teaching_class_ids")))))) WITH CHECK ((( SELECT "public"."is_current_user_teacher"() AS "is_current_user_teacher") AND ("assignment_id" IN ( SELECT "homework_assignments"."id"
    FROM "public"."homework_assignments"
   WHERE ("homework_assignments"."class_id" IN ( SELECT "public"."current_user_teaching_class_ids"() AS "current_user_teaching_class_ids"))))));
 
 
 
-CREATE POLICY "hsf_admin_all" ON "public"."homework_submission_files" USING ("public"."is_current_user_admin"()) WITH CHECK ("public"."is_current_user_admin"());
+CREATE POLICY "hsf_admin_all" ON "public"."homework_submission_files" USING (( SELECT "public"."is_current_user_admin"() AS "is_current_user_admin")) WITH CHECK (( SELECT "public"."is_current_user_admin"() AS "is_current_user_admin"));
 
 
 
 CREATE POLICY "hsf_student_delete" ON "public"."homework_submission_files" FOR DELETE USING (("submission_id" IN ( SELECT "homework_submissions"."id"
    FROM "public"."homework_submissions"
-  WHERE ("homework_submissions"."student_profile_id" = "auth"."uid"()))));
+  WHERE ("homework_submissions"."student_profile_id" = ( SELECT "auth"."uid"() AS "uid")))));
 
 
 
 CREATE POLICY "hsf_student_insert" ON "public"."homework_submission_files" FOR INSERT WITH CHECK (("submission_id" IN ( SELECT "homework_submissions"."id"
    FROM "public"."homework_submissions"
-  WHERE ("homework_submissions"."student_profile_id" = "auth"."uid"()))));
+  WHERE ("homework_submissions"."student_profile_id" = ( SELECT "auth"."uid"() AS "uid")))));
 
 
 
 CREATE POLICY "hsf_student_select" ON "public"."homework_submission_files" FOR SELECT USING (("submission_id" IN ( SELECT "homework_submissions"."id"
    FROM "public"."homework_submissions"
-  WHERE ("homework_submissions"."student_profile_id" = "auth"."uid"()))));
+  WHERE ("homework_submissions"."student_profile_id" = ( SELECT "auth"."uid"() AS "uid")))));
 
 
 
-CREATE POLICY "hsf_teacher_select" ON "public"."homework_submission_files" FOR SELECT USING (("public"."is_current_user_teacher"() AND ("submission_id" IN ( SELECT "hs"."id"
+CREATE POLICY "hsf_teacher_select" ON "public"."homework_submission_files" FOR SELECT USING ((( SELECT "public"."is_current_user_teacher"() AS "is_current_user_teacher") AND ("submission_id" IN ( SELECT "hs"."id"
    FROM "public"."homework_submissions" "hs"
   WHERE ("hs"."assignment_id" IN ( SELECT "homework_assignments"."id"
            FROM "public"."homework_assignments"
@@ -2469,38 +2469,38 @@ CREATE POLICY "hsf_teacher_select" ON "public"."homework_submission_files" FOR S
 
 
 
-CREATE POLICY "lcoa_admin_all" ON "public"."lunch_class_order_anchors" TO "authenticated" USING ("public"."is_current_user_admin"()) WITH CHECK ("public"."is_current_user_admin"());
+CREATE POLICY "lcoa_admin_all" ON "public"."lunch_class_order_anchors" TO "authenticated" USING (( SELECT "public"."is_current_user_admin"() AS "is_current_user_admin")) WITH CHECK (( SELECT "public"."is_current_user_admin"() AS "is_current_user_admin"));
 
 
 
 ALTER TABLE "public"."learning_records" ENABLE ROW LEVEL SECURITY;
 
 
-CREATE POLICY "lla_admin_all" ON "public"."lunch_leader_anchors" TO "authenticated" USING ("public"."is_current_user_admin"()) WITH CHECK ("public"."is_current_user_admin"());
+CREATE POLICY "lla_admin_all" ON "public"."lunch_leader_anchors" TO "authenticated" USING (( SELECT "public"."is_current_user_admin"() AS "is_current_user_admin")) WITH CHECK (( SELECT "public"."is_current_user_admin"() AS "is_current_user_admin"));
 
 
 
-CREATE POLICY "lr_admin_all" ON "public"."learning_records" USING ("public"."is_current_user_admin"()) WITH CHECK ("public"."is_current_user_admin"());
+CREATE POLICY "lr_admin_all" ON "public"."learning_records" USING (( SELECT "public"."is_current_user_admin"() AS "is_current_user_admin")) WITH CHECK (( SELECT "public"."is_current_user_admin"() AS "is_current_user_admin"));
 
 
 
-CREATE POLICY "lr_student_select" ON "public"."learning_records" FOR SELECT USING (("student_profile_id" = "auth"."uid"()));
+CREATE POLICY "lr_student_select" ON "public"."learning_records" FOR SELECT USING (("student_profile_id" = ( SELECT "auth"."uid"() AS "uid")));
 
 
 
-CREATE POLICY "lr_teacher_delete" ON "public"."learning_records" FOR DELETE USING (("public"."is_current_user_teacher"() AND ("student_profile_id" IN ( SELECT "public"."current_user_student_ids_for_teacher"() AS "current_user_student_ids_for_teacher"))));
+CREATE POLICY "lr_teacher_delete" ON "public"."learning_records" FOR DELETE USING ((( SELECT "public"."is_current_user_teacher"() AS "is_current_user_teacher") AND ("student_profile_id" IN ( SELECT "public"."current_user_student_ids_for_teacher"() AS "current_user_student_ids_for_teacher"))));
 
 
 
-CREATE POLICY "lr_teacher_insert" ON "public"."learning_records" FOR INSERT WITH CHECK (("public"."is_current_user_teacher"() AND ("student_profile_id" IN ( SELECT "public"."current_user_student_ids_for_teacher"() AS "current_user_student_ids_for_teacher"))));
+CREATE POLICY "lr_teacher_insert" ON "public"."learning_records" FOR INSERT WITH CHECK ((( SELECT "public"."is_current_user_teacher"() AS "is_current_user_teacher") AND ("student_profile_id" IN ( SELECT "public"."current_user_student_ids_for_teacher"() AS "current_user_student_ids_for_teacher"))));
 
 
 
-CREATE POLICY "lr_teacher_select" ON "public"."learning_records" FOR SELECT USING (("public"."is_current_user_teacher"() AND ("student_profile_id" IN ( SELECT "public"."current_user_student_ids_for_teacher"() AS "current_user_student_ids_for_teacher"))));
+CREATE POLICY "lr_teacher_select" ON "public"."learning_records" FOR SELECT USING ((( SELECT "public"."is_current_user_teacher"() AS "is_current_user_teacher") AND ("student_profile_id" IN ( SELECT "public"."current_user_student_ids_for_teacher"() AS "current_user_student_ids_for_teacher"))));
 
 
 
-CREATE POLICY "lr_teacher_update" ON "public"."learning_records" FOR UPDATE USING (("public"."is_current_user_teacher"() AND ("student_profile_id" IN ( SELECT "public"."current_user_student_ids_for_teacher"() AS "current_user_student_ids_for_teacher")))) WITH CHECK (("public"."is_current_user_teacher"() AND ("student_profile_id" IN ( SELECT "public"."current_user_student_ids_for_teacher"() AS "current_user_student_ids_for_teacher"))));
+CREATE POLICY "lr_teacher_update" ON "public"."learning_records" FOR UPDATE USING ((( SELECT "public"."is_current_user_teacher"() AS "is_current_user_teacher") AND ("student_profile_id" IN ( SELECT "public"."current_user_student_ids_for_teacher"() AS "current_user_student_ids_for_teacher")))) WITH CHECK ((( SELECT "public"."is_current_user_teacher"() AS "is_current_user_teacher") AND ("student_profile_id" IN ( SELECT "public"."current_user_student_ids_for_teacher"() AS "current_user_student_ids_for_teacher"))));
 
 
 
@@ -2513,7 +2513,7 @@ ALTER TABLE "public"."lunch_leader_anchors" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "public"."notice_attachments" ENABLE ROW LEVEL SECURITY;
 
 
-CREATE POLICY "notice_attachments_admin_all" ON "public"."notice_attachments" USING (("auth"."uid"() IN ( SELECT "profiles"."id"
+CREATE POLICY "notice_attachments_admin_all" ON "public"."notice_attachments" USING ((( SELECT "auth"."uid"() AS "uid") IN ( SELECT "profiles"."id"
    FROM "public"."profiles"
   WHERE ("profiles"."role" = 'admin'::"public"."user_role"))));
 
@@ -2534,7 +2534,7 @@ CREATE POLICY "notice_attachments_public_read" ON "public"."notice_attachments" 
 ALTER TABLE "public"."notices" ENABLE ROW LEVEL SECURITY;
 
 
-CREATE POLICY "notices_admin_all" ON "public"."notices" USING (("auth"."uid"() IN ( SELECT "profiles"."id"
+CREATE POLICY "notices_admin_all" ON "public"."notices" USING ((( SELECT "auth"."uid"() AS "uid") IN ( SELECT "profiles"."id"
    FROM "public"."profiles"
   WHERE ("profiles"."role" = 'admin'::"public"."user_role"))));
 
@@ -2551,15 +2551,15 @@ CREATE POLICY "notices_public_read" ON "public"."notices" FOR SELECT USING (("is
 ALTER TABLE "public"."profiles" ENABLE ROW LEVEL SECURITY;
 
 
-CREATE POLICY "profiles_admin_all" ON "public"."profiles" TO "authenticated" USING ("public"."is_current_user_admin"()) WITH CHECK ("public"."is_current_user_admin"());
+CREATE POLICY "profiles_admin_all" ON "public"."profiles" TO "authenticated" USING (( SELECT "public"."is_current_user_admin"() AS "is_current_user_admin")) WITH CHECK (( SELECT "public"."is_current_user_admin"() AS "is_current_user_admin"));
 
 
 
-CREATE POLICY "profiles_self_select" ON "public"."profiles" FOR SELECT TO "authenticated" USING (("auth"."uid"() = "id"));
+CREATE POLICY "profiles_self_select" ON "public"."profiles" FOR SELECT TO "authenticated" USING ((( SELECT "auth"."uid"() AS "uid") = "id"));
 
 
 
-CREATE POLICY "profiles_self_update" ON "public"."profiles" FOR UPDATE TO "authenticated" USING (("auth"."uid"() = "id")) WITH CHECK (("auth"."uid"() = "id"));
+CREATE POLICY "profiles_self_update" ON "public"."profiles" FOR UPDATE TO "authenticated" USING ((( SELECT "auth"."uid"() AS "uid") = "id")) WITH CHECK ((( SELECT "auth"."uid"() AS "uid") = "id"));
 
 
 
@@ -2571,42 +2571,42 @@ CREATE POLICY "public read weekly_sentences" ON "public"."weekly_sentences" FOR 
 
 
 
-CREATE POLICY "rc_admin_all" ON "public"."report_cards" USING ("public"."is_current_user_admin"()) WITH CHECK ("public"."is_current_user_admin"());
+CREATE POLICY "rc_admin_all" ON "public"."report_cards" USING (( SELECT "public"."is_current_user_admin"() AS "is_current_user_admin")) WITH CHECK (( SELECT "public"."is_current_user_admin"() AS "is_current_user_admin"));
 
 
 
-CREATE POLICY "rc_student_select" ON "public"."report_cards" FOR SELECT USING (("student_profile_id" = "auth"."uid"()));
+CREATE POLICY "rc_student_select" ON "public"."report_cards" FOR SELECT USING (("student_profile_id" = ( SELECT "auth"."uid"() AS "uid")));
 
 
 
-CREATE POLICY "rc_student_update" ON "public"."report_cards" FOR UPDATE USING (("student_profile_id" = "auth"."uid"())) WITH CHECK (("student_profile_id" = "auth"."uid"()));
+CREATE POLICY "rc_student_update" ON "public"."report_cards" FOR UPDATE USING (("student_profile_id" = ( SELECT "auth"."uid"() AS "uid"))) WITH CHECK (("student_profile_id" = ( SELECT "auth"."uid"() AS "uid")));
 
 
 
-CREATE POLICY "rc_teacher_delete" ON "public"."report_cards" FOR DELETE TO "authenticated" USING (("public"."is_current_user_native_teacher"() AND ("author_id" = "auth"."uid"())));
+CREATE POLICY "rc_teacher_delete" ON "public"."report_cards" FOR DELETE TO "authenticated" USING ((( SELECT "public"."is_current_user_native_teacher"() AS "is_current_user_native_teacher") AND ("author_id" = ( SELECT "auth"."uid"() AS "uid"))));
 
 
 
-CREATE POLICY "rc_teacher_insert" ON "public"."report_cards" FOR INSERT TO "authenticated" WITH CHECK (("public"."is_current_user_native_teacher"() AND ("author_id" = "auth"."uid"()) AND ("student_profile_id" IN ( SELECT "public"."current_user_student_ids_for_teacher"() AS "current_user_student_ids_for_teacher"))));
+CREATE POLICY "rc_teacher_insert" ON "public"."report_cards" FOR INSERT TO "authenticated" WITH CHECK ((( SELECT "public"."is_current_user_native_teacher"() AS "is_current_user_native_teacher") AND ("author_id" = ( SELECT "auth"."uid"() AS "uid")) AND ("student_profile_id" IN ( SELECT "public"."current_user_student_ids_for_teacher"() AS "current_user_student_ids_for_teacher"))));
 
 
 
-CREATE POLICY "rc_teacher_select" ON "public"."report_cards" FOR SELECT USING (("public"."is_current_user_teacher"() AND (("author_id" = "auth"."uid"()) OR ("student_profile_id" IN ( SELECT "public"."current_user_student_ids_for_teacher"() AS "current_user_student_ids_for_teacher")))));
+CREATE POLICY "rc_teacher_select" ON "public"."report_cards" FOR SELECT USING ((( SELECT "public"."is_current_user_teacher"() AS "is_current_user_teacher") AND (("author_id" = ( SELECT "auth"."uid"() AS "uid")) OR ("student_profile_id" IN ( SELECT "public"."current_user_student_ids_for_teacher"() AS "current_user_student_ids_for_teacher")))));
 
 
 
-CREATE POLICY "rc_teacher_update" ON "public"."report_cards" FOR UPDATE TO "authenticated" USING (("public"."is_current_user_native_teacher"() AND ("author_id" = "auth"."uid"()))) WITH CHECK (("public"."is_current_user_native_teacher"() AND ("author_id" = "auth"."uid"())));
+CREATE POLICY "rc_teacher_update" ON "public"."report_cards" FOR UPDATE TO "authenticated" USING ((( SELECT "public"."is_current_user_native_teacher"() AS "is_current_user_native_teacher") AND ("author_id" = ( SELECT "auth"."uid"() AS "uid")))) WITH CHECK ((( SELECT "public"."is_current_user_native_teacher"() AS "is_current_user_native_teacher") AND ("author_id" = ( SELECT "auth"."uid"() AS "uid"))));
 
 
 
 ALTER TABLE "public"."report_cards" ENABLE ROW LEVEL SECURITY;
 
 
-CREATE POLICY "sbd_admin_all" ON "public"."student_bus_defaults" TO "authenticated" USING ("public"."is_current_user_admin"()) WITH CHECK ("public"."is_current_user_admin"());
+CREATE POLICY "sbd_admin_all" ON "public"."student_bus_defaults" TO "authenticated" USING (( SELECT "public"."is_current_user_admin"() AS "is_current_user_admin")) WITH CHECK (( SELECT "public"."is_current_user_admin"() AS "is_current_user_admin"));
 
 
 
-CREATE POLICY "sbd_self_read" ON "public"."student_bus_defaults" FOR SELECT TO "authenticated" USING (("student_profile_id" = "auth"."uid"()));
+CREATE POLICY "sbd_self_read" ON "public"."student_bus_defaults" FOR SELECT TO "authenticated" USING (("student_profile_id" = ( SELECT "auth"."uid"() AS "uid")));
 
 
 
@@ -2622,13 +2622,13 @@ ALTER TABLE "public"."student_textbook_progress" ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "student_textbook_progress_admin_all" ON "public"."student_textbook_progress" TO "authenticated" USING ((EXISTS ( SELECT 1
    FROM "public"."profiles"
-  WHERE (("profiles"."id" = "auth"."uid"()) AND ("profiles"."role" = 'admin'::"public"."user_role"))))) WITH CHECK ((EXISTS ( SELECT 1
+  WHERE (("profiles"."id" = ( SELECT "auth"."uid"() AS "uid")) AND ("profiles"."role" = 'admin'::"public"."user_role"))))) WITH CHECK ((EXISTS ( SELECT 1
    FROM "public"."profiles"
-  WHERE (("profiles"."id" = "auth"."uid"()) AND ("profiles"."role" = 'admin'::"public"."user_role")))));
+  WHERE (("profiles"."id" = ( SELECT "auth"."uid"() AS "uid")) AND ("profiles"."role" = 'admin'::"public"."user_role")))));
 
 
 
-CREATE POLICY "student_textbook_progress_student_select" ON "public"."student_textbook_progress" FOR SELECT TO "authenticated" USING (("student_profile_id" = "auth"."uid"()));
+CREATE POLICY "student_textbook_progress_student_select" ON "public"."student_textbook_progress" FOR SELECT TO "authenticated" USING (("student_profile_id" = ( SELECT "auth"."uid"() AS "uid")));
 
 
 
@@ -2643,42 +2643,42 @@ CREATE POLICY "student_textbook_progress_teacher_update" ON "public"."student_te
 ALTER TABLE "public"."students" ENABLE ROW LEVEL SECURITY;
 
 
-CREATE POLICY "students_admin_all" ON "public"."students" TO "authenticated" USING ("public"."is_current_user_admin"()) WITH CHECK ("public"."is_current_user_admin"());
+CREATE POLICY "students_admin_all" ON "public"."students" TO "authenticated" USING (( SELECT "public"."is_current_user_admin"() AS "is_current_user_admin")) WITH CHECK (( SELECT "public"."is_current_user_admin"() AS "is_current_user_admin"));
 
 
 
-CREATE POLICY "students_self_select" ON "public"."students" FOR SELECT TO "authenticated" USING (("profile_id" = "auth"."uid"()));
+CREATE POLICY "students_self_select" ON "public"."students" FOR SELECT TO "authenticated" USING (("profile_id" = ( SELECT "auth"."uid"() AS "uid")));
 
 
 
-CREATE POLICY "students_teacher_select" ON "public"."students" FOR SELECT TO "authenticated" USING (("public"."is_current_user_teacher"() AND (EXISTS ( SELECT 1
+CREATE POLICY "students_teacher_select" ON "public"."students" FOR SELECT TO "authenticated" USING ((( SELECT "public"."is_current_user_teacher"() AS "is_current_user_teacher") AND (EXISTS ( SELECT 1
    FROM ("public"."class_students" "cs"
      JOIN "public"."class_teachers" "ct" ON (("ct"."class_id" = "cs"."class_id")))
-  WHERE (("cs"."student_profile_id" = "students"."profile_id") AND ("ct"."teacher_profile_id" = "auth"."uid"()))))));
+  WHERE (("cs"."student_profile_id" = "students"."profile_id") AND ("ct"."teacher_profile_id" = ( SELECT "auth"."uid"() AS "uid")))))));
 
 
 
 ALTER TABLE "public"."teachers" ENABLE ROW LEVEL SECURITY;
 
 
-CREATE POLICY "teachers_admin_all" ON "public"."teachers" TO "authenticated" USING ("public"."is_current_user_admin"()) WITH CHECK ("public"."is_current_user_admin"());
+CREATE POLICY "teachers_admin_all" ON "public"."teachers" TO "authenticated" USING (( SELECT "public"."is_current_user_admin"() AS "is_current_user_admin")) WITH CHECK (( SELECT "public"."is_current_user_admin"() AS "is_current_user_admin"));
 
 
 
-CREATE POLICY "teachers_coworker_select" ON "public"."teachers" FOR SELECT TO "authenticated" USING (("public"."is_current_user_teacher"() AND ("profile_id" IN ( SELECT "ct"."teacher_profile_id"
+CREATE POLICY "teachers_coworker_select" ON "public"."teachers" FOR SELECT TO "authenticated" USING ((( SELECT "public"."is_current_user_teacher"() AS "is_current_user_teacher") AND ("profile_id" IN ( SELECT "ct"."teacher_profile_id"
    FROM "public"."class_teachers" "ct"
   WHERE ("ct"."class_id" IN ( SELECT "public"."current_user_teaching_class_ids"() AS "current_user_teaching_class_ids"))))));
 
 
 
-CREATE POLICY "teachers_self_select" ON "public"."teachers" FOR SELECT TO "authenticated" USING ((("profile_id" = "auth"."uid"()) AND "public"."is_current_user_teacher"()));
+CREATE POLICY "teachers_self_select" ON "public"."teachers" FOR SELECT TO "authenticated" USING ((("profile_id" = ( SELECT "auth"."uid"() AS "uid")) AND ( SELECT "public"."is_current_user_teacher"() AS "is_current_user_teacher")));
 
 
 
 ALTER TABLE "public"."textbooks" ENABLE ROW LEVEL SECURITY;
 
 
-CREATE POLICY "textbooks_admin_all" ON "public"."textbooks" TO "authenticated" USING ("public"."is_current_user_admin"()) WITH CHECK ("public"."is_current_user_admin"());
+CREATE POLICY "textbooks_admin_all" ON "public"."textbooks" TO "authenticated" USING (( SELECT "public"."is_current_user_admin"() AS "is_current_user_admin")) WITH CHECK (( SELECT "public"."is_current_user_admin"() AS "is_current_user_admin"));
 
 
 
@@ -2689,14 +2689,14 @@ CREATE POLICY "textbooks_authenticated_read" ON "public"."textbooks" FOR SELECT 
 ALTER TABLE "public"."weekly_sentence_config" ENABLE ROW LEVEL SECURITY;
 
 
-CREATE POLICY "weekly_sentence_config_admin_all" ON "public"."weekly_sentence_config" TO "authenticated" USING ("public"."is_current_user_admin"()) WITH CHECK ("public"."is_current_user_admin"());
+CREATE POLICY "weekly_sentence_config_admin_all" ON "public"."weekly_sentence_config" TO "authenticated" USING (( SELECT "public"."is_current_user_admin"() AS "is_current_user_admin")) WITH CHECK (( SELECT "public"."is_current_user_admin"() AS "is_current_user_admin"));
 
 
 
 ALTER TABLE "public"."weekly_sentences" ENABLE ROW LEVEL SECURITY;
 
 
-CREATE POLICY "weekly_sentences_admin_all" ON "public"."weekly_sentences" TO "authenticated" USING ("public"."is_current_user_admin"()) WITH CHECK ("public"."is_current_user_admin"());
+CREATE POLICY "weekly_sentences_admin_all" ON "public"."weekly_sentences" TO "authenticated" USING (( SELECT "public"."is_current_user_admin"() AS "is_current_user_admin")) WITH CHECK (( SELECT "public"."is_current_user_admin"() AS "is_current_user_admin"));
 
 
 
