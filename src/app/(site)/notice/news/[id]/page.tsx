@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { getNoticeWithAttachments } from "@/app/(admin)/admin/actions/notice-actions";
 import { PageContent } from "@/app/(site)/_components/sections/PageContent";
 import { notFound } from "next/navigation";
-import Image from "next/image";
 import Link from "next/link";
 
 type Props = { params: Promise<{ id: string }> };

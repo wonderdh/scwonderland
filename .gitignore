@@ -57,6 +57,9 @@ PLUGINS.md
 .claude/agents/
 .claude/settings.local.json
 
+# omc (oh-my-claudecode) 세션/상태
+.omc/
+
 # playwright 스크린샷 (루트 레벨 — 실수로 떨궜을 때 방어)
 /*.png
 /*.jpg

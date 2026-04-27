@@ -37,7 +37,11 @@ function mergeStopGroups(
     return a.stopName.localeCompare(b.stopName);
   });
 
-  return enriched.map(({ sortOrder: _unused, ...rest }) => rest);
+  return enriched.map(({ stopName, estimatedTime, students }) => ({
+    stopName,
+    estimatedTime,
+    students,
+  }));
 }
 
 // 호차별 색상 팔레트 (Tailwind purge-safe 리터럴)
