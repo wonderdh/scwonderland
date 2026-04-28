@@ -2,7 +2,7 @@
 
 이 프로젝트의 Claude Code 협업 도구(하네스). **하네스 관련 작업** — 훅 추가/수정, 세션 컨텍스트 변경, `ARCHITECTURE.md` 구조 갱신, `.claude/settings.json` 수정 — 을 하기 전에 이 문서를 읽는다.
 
-## 현재 상태 (v1.1, 2026-04-28)
+## 현재 상태 (v1.2, 2026-04-28)
 
 - **SessionStart 훅 1개**: `.claude/hooks/session-start.mjs`. ARCHITECTURE.md 본문을 system prompt 에 주입.
 - **루트 마크다운 2개**: `CLAUDE.md` (Claude Code 자동 로드), `ARCHITECTURE.md` (훅으로 주입).
@@ -41,6 +41,9 @@ Claude Code 가 `<project>/CLAUDE.md` 를 자동 로드하므로 훅이 또 주�
 ### 폴더별 AGENTS.md 자동 주입 (PreToolUse) 보류
 v1 시점엔 폴더별 `AGENTS.md` 가 0개라 PreToolUse 훅이 할 일이 없음. 폴더에 실제 가이드가 쌓이면 그때 PreToolUse 로 자동 주입(v2). 그 전엔 CLAUDE.md 의 "수정 폴더에 AGENTS.md 있으면 모두 읽어" 규칙으로 모델에게 위임.
 
+### ARCHITECTURE.md 를 엄브렐러로 축약 (v1.1 → v1.2)
+ARCHITECTURE.md 가 트리 + 규칙 + 환경 + 명령어를 한 파일에 다 담아 49줄로 비대해지고 있었음. 거기에다 CLAUDE.md 와 명령어/환경 규칙이 중복. 결정: ARCHITECTURE.md 는 **폴더 트리 + 한 줄 코멘트**만. 디테일은 도메인 폴더의 `AGENTS.md` 로 위임. 동시에 첫 시드 3개 작성 — `src/app/(admin)/admin/actions/AGENTS.md` (서버 액션 인증), `src/lib/supabase/AGENTS.md` (3 클라이언트 사용 분기), `supabase/AGENTS.md` (마이그레이션 흐름) — 빈 placeholder 표 대신 살아있는 예시에서 출발. 훅은 그대로 (ARCHITECTURE.md 본문만 읽음). 파일명은 `AGENTS.md` 유지 — Codex/Cursor 등 다른 에이전트도 인식하는 사실상 표준이고, Claude Code subagent 정의 (`.claude/agents/<name>.md`) 와 위치·의미 모두 다름.
+
 ### `.githooks/pre-commit` 및 `prepare` 스크립트 제거
 이전 하네스가 게이팅 용도로 썼으나 새 흐름에선 강제 검증 자체가 없음. `npm install` 시 자동으로 `core.hooksPath` 가 박히는 것도 위험 → `prepare` 도 같이 제거.
 
@@ -68,7 +71,7 @@ cat C:/scwonderland/.claude/hooks/session-start.log | tail -3
 ## v2 후보 (이번 범위 아님)
 
 - **PreToolUse 폴더 컨텍스트 주입**: Edit/Write 대상 경로의 폴더 트리에서 `AGENTS.md` 모아 additionalContext 로 inject.
-- **폴더별 AGENTS.md 점진 추가**: `src/app/(admin)/admin/actions/`, `src/lib/`, `supabase/migrations/` 등 작업 빈도 높은 곳부터.
+- **폴더별 AGENTS.md 추가**: 첫 3개 (`(admin)/admin/actions/`, `lib/supabase/`, `supabase/`) 시드 완료 (v1.2). 다음 후보 — `src/lib/bus/`, `src/components/bus/`, `src/app/(monitor)/`, `src/app/(academy)/academy/`. 작업 빈도 보고 한 폴더씩 추가.
 - **로그 회전**: `session-start.log` 1MB 넘으면 `.1` 으로 백업.
 - **drift 검증**: ARCHITECTURE.md 가 실제 폴더 구조와 어긋나면 경고하는 검증 스크립트 (수동 실행).
 - **세션 source 별 다른 컨텍스트**: 예 — startup 일 때만 환영 메시지, resume 일 때 최근 commit 요약 등.
