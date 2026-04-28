@@ -8,7 +8,7 @@
 - `src/` — 애플리케이션 코드
 - `supabase/` — 마이그레이션, RLS, config
 - `public/` — 정적 자산
-- `docs/` — 패턴 가이드 (캐시, SSR, 관찰성 등)
+- `docs/` — 패턴 가이드 (캐시, SSR, 관찰성) + `HARNESS.md` (Claude Code 협업 도구 문서)
 
 ## src/ Layout
 - `src/app/(site)/` — 공개 마케팅 사이트
