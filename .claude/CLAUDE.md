@@ -1,69 +1,22 @@
-# SC Wonderland Claude Harness
+# SC Wonderland 프로젝트 가이드
 
-이 문서는 Claude Code가 이 저장소에서 작업할 때 따르는 최상위 규칙이다.
+Next.js 16 App Router + React 19 + TypeScript + Tailwind v4 + Supabase 기반 학원 관리 SaaS.
 
-## 기본 행동 원칙
+## 스택 핵심
+- App Router는 route group(`(site)`, `(academy)`, `(admin)`, `(bus)`, `(monitor)`)으로 구분.
+- Server Action은 `src/app/(admin)/admin/actions/`, `src/app/(academy)/academy/.../actions/` 등에 위치.
+- 공용 유틸은 `src/lib/`, UI 컴포넌트는 `src/components/`.
 
-### 1. 코딩 전 생각하기
-- 가정을 명시한다. 모호하면 질문하거나 plan에 가정으로 고정한다.
-- 여러 해석이 가능하면 조용히 하나를 고르지 말고 tradeoff를 드러낸다.
-- 더 단순한 접근이 있으면 먼저 제안한다.
+## 작업 시 주의
+- Server Action은 mutation 전에 `verifyAdmin` / `verifyTeacherOrAdmin` / `verifyAuthenticated` 중 하나로 인증 검증 필수. 못 넣을 사정이 있으면 `// @auth-skip: <이유>` 주석.
+- Supabase 마이그레이션은 `supabase/migrations/` 에 추가하고 `npm run db:types` 로 타입 재생성.
+- 환경변수는 `.env*` 사용. 민감값 커밋 금지.
 
-### 2. 단순함 우선
-- 요청 범위 밖 기능을 만들지 않는다.
-- 한 번만 쓰는 코드를 위해 추상화를 만들지 않는다.
-- 불필요한 설정화, 일반화, 방어 코드를 추가하지 않는다.
-- 200줄로 쓴 코드가 50줄로 가능하면 줄인다.
+## 자주 쓰는 명령
+- `npm run dev` — 개발 서버
+- `npm run build` — 프로덕션 빌드
+- `npm run lint` / `npm run type-check`
+- `npm run db:types` / `npm run db:types:local`
 
-### 3. 외과적 변경
-- 사용자 요청에 직접 연결되는 줄만 바꾼다.
-- 주변 코드 개선, 포맷 변경, 리팩터링은 별도 요청 없이는 하지 않는다.
-- 기존 스타일을 따른다.
-- 내 변경으로 생긴 unused import/변수/함수만 정리한다.
-
-### 4. 목표 기반 실행
-- 구현 전 성공 기준과 검증 방법을 plan에 적는다.
-- 버그 수정은 재현 조건과 통과 기준을 함께 둔다.
-- 완료 전 tester와 docs-auditor 결과를 확인한다.
-
-## 필수 하네스 규칙
-
-1. `main` branch는 오케스트레이션 전용이다. 코드, 설정, script, package 파일을 직접 수정하지 않는다.
-2. 작업은 `npm run harness -- worktree start <task-slug>`로 만든 `claude/<task-slug>` worktree에서 수행한다.
-3. 코드 수정 전 `.claude/plans/active/`에 active plan이 있어야 한다.
-4. 구조 변경이 있으면 관련 md를 반드시 최신화한다. 문서 최신화는 코드 변경의 일부다.
-5. 테스트/빌드/검증은 main agent가 직접 실행하지 않는다. `tester` subagent 결과만 완료 조건으로 인정한다.
-6. 문서 drift와 예외 승인은 `docs-auditor` subagent가 담당한다.
-7. 병렬 작업은 file ownership을 먼저 나누고, 같은 파일을 두 subagent가 동시에 수정하지 않는다.
-8. 완료는 `npm run harness -- finish <plan-file>`로 처리한 뒤, `npm run harness -- commit "<message>"`로 커밋한다.
-9. main 병합은 `npm run harness -- merge-main <branch>`로 수행한다. main worktree가 dirty면 병합하지 않는다.
-10. 직접 `git add/commit/merge`, shell write, test/build 우회 명령을 사용하지 않는다. 하네스 hook과 script가 이를 차단한다.
-
-## 항상 읽을 문서
-
-- `STRUCTURE.md`
-- `HARNESS_MANIFEST.json`
-- `.claude/rules/core.md`
-- `.claude/rules/workflow.md`
-- `.claude/rules/docs-sync.md`
-- `.claude/rules/testing.md`
-- `.claude/routes/_index.md`
-
-## 작업 흐름
-
-1. `/start-task` skill 또는 `npm run harness -- worktree start <slug>`로 작업 worktree와 active plan을 만든다.
-2. active plan의 Run ID, Branch, Worktree를 확인한다.
-3. `npm run harness -- context <prompt-or-path>`로 관련 route/rule/docs를 확인한다.
-4. `worker` subagent가 구현한다.
-5. `docs-sync` skill과 `docs-auditor` subagent가 문서 최신화를 확인한다.
-6. `tester` subagent가 필수 검증을 실행한다.
-7. `finish-task` skill 또는 `npm run harness -- finish <plan-file>`로 completed 이동을 처리한다.
-8. `npm run harness -- commit "<message>"`로 작업 브랜치에 커밋한다.
-9. `npm run harness -- merge-main <branch>`로 main에 병합하고 `C:\scwonderland`로 돌아온다.
-
-## 하네스 강제 조건
-
-- `npm run harness -- validate`는 manifest, structure, project subagents, route docs, action coverage를 검증한다.
-- `npm run harness -- self-test`는 main 수정 차단, Bash 우회 차단, docs 감지, tester 예외를 검증한다.
-- `finish`는 tester/docs-auditor 결과가 현재 run id, branch, worktree, commit head, worktree hash와 맞지 않으면 실패한다.
-- `.claude/runs/**` 원본은 로컬 산출물이며 커밋하지 않는다. 완료 요약은 completed plan에 남긴다.
+## 문서
+- `docs/` 에 캐시, SSR, 관찰성 등 패턴 가이드.

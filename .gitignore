@@ -46,17 +46,7 @@ next-env.d.ts
 # playwright MCP 로그/스냅샷
 .playwright-mcp/
 
-# claude-code-harness
-claude-code-harness.config.json
-PLUGINS.md
-
-# claude 세션/상태 (CLAUDE.md, rules/, routes/ 는 커밋 유지)
-.claude/sessions/
-.claude/state/
-.claude/worktrees/
-.claude/runs/**
-!.claude/runs/
-!.claude/runs/.gitkeep
+# claude 로컬 세션
 .claude/settings.local.json
 
 # omc (oh-my-claudecode) 세션/상태

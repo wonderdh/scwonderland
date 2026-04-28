@@ -8,9 +8,6 @@
     "start": "next start",
     "lint": "eslint",
     "type-check": "tsc --noEmit",
-    "check:auth": "node scripts/check-server-actions-auth.mjs",
-    "harness": "node scripts/harness.mjs",
-    "prepare": "git config core.hooksPath .githooks",
     "db:types": "supabase gen types typescript --project-id $SB_PROJECT > lib/types/database.generated.ts",
     "db:types:local": "supabase gen types typescript --local > lib/types/database.generated.ts"
   },

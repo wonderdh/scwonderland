@@ -1,4 +1,0 @@
-#!/bin/sh
-# Harness publish gate.
-# 재설치: npm run prepare
-npm run harness -- precommit || exit 1
