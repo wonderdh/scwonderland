@@ -48,7 +48,7 @@ next-env.d.ts
 
 # claude 로컬 세션
 .claude/settings.local.json
-.claude/hooks/session-start.log
+.claude/hooks/*.log
 
 # omc (oh-my-claudecode) 세션/상태
 .omc/*
