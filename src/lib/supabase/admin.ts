@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import type { Database } from "@/lib/types/database.generated";
 
 /**
  * 서버 전용. RLS 무시, 사용자 생성/삭제 등 Admin API 사용.
@@ -12,7 +13,7 @@ export function createAdminClient() {
       "NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required for admin client"
     );
   }
-  return createClient(url, key, {
+  return createClient<Database>(url, key, {
     auth: {
       persistSession: false,
       autoRefreshToken: false,
