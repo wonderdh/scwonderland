@@ -19,11 +19,11 @@ export default async function AcademyLayout({
   if (user) {
     const admin = createAdminClient();
     const [{ data: teacher }, { data: profile }] = await Promise.all([
-      admin.from("teachers").select("teacher_type").eq("profile_id", user.id).maybeSingle(),
-      admin.from("profiles").select("first_name").eq("id", user.id).maybeSingle(),
+      admin.from("teachers").select("teacher_type").eq("id", user.id).maybeSingle(),
+      admin.from("profiles").select("username").eq("id", user.id).maybeSingle(),
     ]);
     isNative = teacher?.teacher_type === "native";
-    displayName = profile?.first_name ?? user.email?.split("@")[0] ?? null;
+    displayName = profile?.username ?? user.email?.split("@")[0] ?? null;
   }
 
   return (

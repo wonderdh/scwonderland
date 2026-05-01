@@ -85,7 +85,7 @@ export async function upsertWeeklySentence(
         week_number: weekNumber,
         level,
         english: english.trim(),
-        korean: korean?.trim() || null,
+        korean: korean.trim(),
         example: example?.trim() || null,
         answer: answer?.trim() || null,
         updated_at: new Date().toISOString(),

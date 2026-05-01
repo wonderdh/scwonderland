@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { verifyAdmin, verifyAuthenticated } from "./auth-helpers";
 import { logger } from "@/lib/server/logger";
+import { toGroupType } from "@/lib/server/domain-helpers";
 import type { AcademyPeriod } from "@/lib/types";
 
 // ── 수업 시간대 CRUD ──
@@ -40,6 +41,7 @@ export async function createAcademyPeriod(
   if (!startTime || !endTime) return { error: "시작/종료 시간을 입력해 주세요." };
   if (startTime >= endTime) return { error: "시작 시간은 종료 시간보다 빨라야 합니다." };
 
+  const groupType = toGroupType(groupLabel) ?? "afternoon";
   const { data, error } = await supabase
     .from("academy_periods")
     .insert({
@@ -47,6 +49,7 @@ export async function createAcademyPeriod(
       start_time: startTime,
       end_time: endTime,
       has_dropoff: false,
+      group_type: groupType,
       group_label: groupLabel?.trim() || null,
     })
     .select("id")

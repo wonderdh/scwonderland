@@ -4,7 +4,12 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { verifyAdmin } from "./auth-helpers";
 import { logger } from "@/lib/server/logger";
 import { todayKst, formatDateYmdKst } from "@/lib/utils/date-kst";
-import type { ReservationAttendance, ReservationBusChange } from "@/lib/types";
+import type {
+  ReservationAttendance,
+  ReservationBusChange,
+  BusChangeType,
+  BusRequestStatus,
+} from "@/lib/types";
 
 /** 향후 예약된 출결 + 버스 변경 통합 조회 (관리자 전용) */
 export async function getUpcomingReservations(
@@ -108,8 +113,8 @@ export async function getUpcomingReservations(
     student_profile_id: b.student_id, // students.id = profiles.id (shared PK)
     student_name: nameMap.get(b.student_id) ?? "이름 없음",
     request_date: b.request_date,
-    change_type: b.change_type,
-    status: b.status,
+    change_type: b.change_type as BusChangeType,
+    status: b.status as BusRequestStatus,
     reason: b.reason,
     new_bus_number_label: b.new_bus_number_id
       ? busNumberMap.get(b.new_bus_number_id) ?? null

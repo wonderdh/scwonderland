@@ -78,3 +78,7 @@ supabase/archive/
 
 # codex 로그
 .codex-logs/
+
+# typecheck/lint 출력 캐시 (로컬 진단용)
+.typecheck-output.txt
+.lint-output.txt

@@ -461,7 +461,7 @@ export async function batchUpdateClassStudents(
         return student ? { class_id: item.classId, student_id: student.id } : null;
       })
     );
-    const inserts = rows.filter(Boolean);
+    const inserts = rows.filter((r): r is NonNullable<typeof r> => r !== null);
     if (inserts.length) {
       const { error } = await supabase.from("class_students").insert(inserts);
       if (error) return { error: error.message };

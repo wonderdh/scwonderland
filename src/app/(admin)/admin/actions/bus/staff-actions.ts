@@ -14,77 +14,24 @@ import type {
 
 // ── 버스 담당자 CRUD ──
 
+// 신 스키마(user_role enum)에서 "bus" 역할이 제거됐고 bus_staff 테이블도 사라졌습니다.
+// 버스 기사 도메인 재도입 결정이 날 때까지 list/create 는 비활성화 stub.
+
 export async function createBusStaff(
-  formData: FormData
+  _formData: FormData
 ): Promise<{ error?: string }> {
   const auth = await verifyAdmin();
   if ("error" in auth) return { error: auth.error };
-  const email = normalizeEmail((formData.get("email") as string) ?? "");
-  const password = (formData.get("password") as string) ?? "";
-  const name = (formData.get("name") as string)?.trim() ?? "";
-  const busNumberId = (formData.get("bus_number_id") as string) || null;
-
-  if (!email || !password || !name) {
-    return { error: "아이디, 비밀번호, 이름을 입력해 주세요." };
-  }
-
-  const supabase = createAdminClient();
-  const { data, error } = await supabase.auth.admin.createUser({
-    email,
-    password,
-    email_confirm: true,
-    user_metadata: {
-      role: "bus",
-      name,
-    },
-  });
-
-  if (error) {
-    logger.error("[createBusStaff]", error.message, { email });
-    return { error: error.message };
-  }
-  if (!data.user) {
-    return { error: "사용자 생성에 실패했습니다." };
-  }
-
-  return {};
+  return {
+    error:
+      "버스 기사 계정 생성 기능은 현재 비활성화되어 있습니다. (스키마 재정비 중)",
+  };
 }
 
 export async function listBusStaff(): Promise<BusStaffProfile[]> {
-  const supabase = createAdminClient();
-
-  const { data: profiles, error: profilesError } = await supabase
-    .from("profiles")
-    .select("id, username")
-    .eq("role", "bus")
-    .is("deleted_at", null);
-
-  if (profilesError) {
-    logger.error("[listBusStaff]", profilesError.message);
-    return [];
-  }
-  if (!profiles?.length) return [];
-
-  const ids = profiles.map((p) => p.id);
-
-  // Auth 이메일 조회
-  const { data: users } = await supabase.auth.admin.listUsers();
-  const userMap = new Map(
-    (users?.users ?? []).filter((u) => ids.includes(u.id)).map((u) => [u.id, u])
-  );
-
-  return profiles.map((p) => {
-    const u = userMap.get(p.id);
-    return {
-      id: p.id,
-      profile_id: p.id,
-      email: u?.email ?? "",
-      name: p.username ?? "",
-      bus_number_id: null,
-      bus_label: null,
-      created_at: u?.created_at ?? "",
-    };
-  }) as BusStaffProfile[];
+  const auth = await verifyAdmin();
+  if ("error" in auth) return [];
+  return [];
 }
 
 export async function updateBusStaff(
