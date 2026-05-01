@@ -71,3 +71,10 @@ supabase/.temp/
 supabase/.branches/
 # seed.sql은 원격 dump일 수 있어 commit 금지 (PII 보호)
 supabase/seed.sql
+
+# DB 백업 / cutover snapshot (PII + bcrypt hash 포함, commit 금지)
+backups/
+supabase/archive/
+
+# codex 로그
+.codex-logs/

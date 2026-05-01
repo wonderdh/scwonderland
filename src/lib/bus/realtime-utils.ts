@@ -80,7 +80,6 @@ export function applyChangeRequest(
         student_profile_id: sid,
         korean_name: (student as BusManifestEntry).korean_name,
         english_name: (student as BusManifestEntry).english_name,
-        student_number: (student as BusManifestEntry).student_number,
         original_bus_label: originalBusLabel,
         change_type: "no_ride",
       }
@@ -88,7 +87,6 @@ export function applyChangeRequest(
         student_profile_id: sid,
         korean_name: null,
         english_name: null,
-        student_number: null,
         change_type: "no_ride",
       });
 

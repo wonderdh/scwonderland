@@ -6,10 +6,20 @@ import { revalidatePath } from "next/cache";
 import { verifyAdmin } from "./auth-helpers";
 import { logger } from "@/lib/server/logger";
 import type { UserWithProfile } from "@/lib/types";
+import {
+  getStudentRecordByProfileId,
+  getTeacherRecordByProfileId,
+  getUserIdsByRole,
+  toGroupLabel,
+} from "@/lib/server/domain-helpers";
 
-export async function createStudent(
-  formData: FormData
-): Promise<{ error?: string }> {
+async function listAuthUsersMap(supabase: ReturnType<typeof createAdminClient>, ids: string[]) {
+  const { data } = await supabase.auth.admin.listUsers({ perPage: 1000 });
+  const idSet = new Set(ids);
+  return new Map((data?.users ?? []).filter((user) => idSet.has(user.id)).map((user) => [user.id, user]));
+}
+
+export async function createStudent(formData: FormData): Promise<{ error?: string }> {
   const auth = await verifyAdmin();
   if ("error" in auth) return { error: auth.error };
 
@@ -35,8 +45,6 @@ export async function createStudent(
       first_name: korean_name,
       last_name: english_name,
       role: "student",
-      korean_name,
-      english_name,
     },
   });
 
@@ -44,25 +52,36 @@ export async function createStudent(
     logger.error("[createStudent]", error.message);
     return { error: error.message };
   }
-  if (!data.user) {
-    return { error: "사용자 생성에 실패했습니다." };
+  if (!data.user) return { error: "사용자 생성에 실패했습니다." };
+
+  const profileId = data.user.id;
+  const username = email.split("@")[0];
+  const [{ error: profileError }, { error: studentError }] = await Promise.all([
+    supabase.from("profiles").insert({
+      id: profileId,
+      username,
+      role: "student",
+    }),
+    supabase.from("students").insert({
+      id: profileId,
+      korean_name,
+      english_name: english_name || null,
+      age: age !== null && !isNaN(age) ? age : null,
+      group_type,
+    }),
+  ]);
+
+  const firstError = profileError ?? studentError;
+  if (firstError) {
+    logger.error("[createStudent:domain]", firstError.message, { profileId });
+    return { error: firstError.message };
   }
 
-  const studentUpdate: Record<string, unknown> = {};
-  if (age !== null && !isNaN(age)) studentUpdate.age = age;
-  if (group_type) studentUpdate.group_type = group_type;
-  if (Object.keys(studentUpdate).length > 0) {
-    await supabase.from("students").update(studentUpdate).eq("profile_id", data.user.id);
-  }
-
-  logger.info("[createStudent]", "학생 생성 완료", { userId: data.user.id, group_type });
   revalidatePath("/admin", "layout");
   return {};
 }
 
-export async function createTeacher(
-  formData: FormData
-): Promise<{ error?: string }> {
+export async function createTeacher(formData: FormData): Promise<{ error?: string }> {
   const auth = await verifyAdmin();
   if ("error" in auth) return { error: auth.error };
 
@@ -85,10 +104,7 @@ export async function createTeacher(
     email_confirm: true,
     user_metadata: {
       first_name: name,
-      last_name: "",
       role: "teacher",
-      name,
-      teacher_type,
     },
   });
 
@@ -96,19 +112,29 @@ export async function createTeacher(
     logger.error("[createTeacher]", error.message);
     return { error: error.message };
   }
-  if (!data.user) {
-    return { error: "사용자 생성에 실패했습니다." };
+  if (!data.user) return { error: "사용자 생성에 실패했습니다." };
+
+  const profileId = data.user.id;
+  const username = email.split("@")[0];
+  const [{ error: profileError }, { error: teacherError }] = await Promise.all([
+    supabase.from("profiles").insert({
+      id: profileId,
+      username,
+      role: "teacher",
+    }),
+    supabase.from("teachers").insert({
+      id: profileId,
+      name,
+      teacher_type,
+    }),
+  ]);
+
+  const firstError = profileError ?? teacherError;
+  if (firstError) {
+    logger.error("[createTeacher:domain]", firstError.message, { profileId });
+    return { error: firstError.message };
   }
 
-  // teachers 테이블에 teacher_type 업데이트 (트리거가 기본값 korean으로 생성하므로)
-  if (teacher_type === "native") {
-    await supabase
-      .from("teachers")
-      .update({ teacher_type: "native" })
-      .eq("profile_id", data.user.id);
-  }
-
-  logger.info("[createTeacher]", "교사 생성 완료", { userId: data.user.id, teacher_type });
   revalidatePath("/admin", "layout");
   return {};
 }
@@ -118,214 +144,158 @@ export async function listAdmins(): Promise<{ id: string; email: string; name: s
   if ("error" in auth) return [];
 
   const supabase = createAdminClient();
+  const adminIds = await getUserIdsByRole(supabase, "admin");
+  if (!adminIds.length) return [];
+
   const { data: profiles } = await supabase
     .from("profiles")
-    .select("id, first_name, role")
-    .eq("role", "admin")
+    .select("id, username, deleted_at")
+    .in("id", adminIds)
     .is("deleted_at", null);
-
   if (!profiles?.length) return [];
 
-  const { data: users } = await supabase.auth.admin.listUsers({ perPage: 1000 });
-  const idSet = new Set(profiles.map((p) => p.id));
-  const userMap = new Map(
-    (users?.users ?? []).filter((u) => idSet.has(u.id)).map((u) => [u.id, u])
-  );
-
+  const authUsers = await listAuthUsersMap(supabase, profiles.map((profile) => profile.id));
   return profiles
-    .map((p) => {
-      const u = userMap.get(p.id);
+    .map((profile) => {
+      const user = authUsers.get(profile.id);
       return {
-        id: p.id,
-        email: u?.email ?? "",
-        name: p.first_name ?? u?.email?.split("@")[0] ?? "",
-        created_at: u?.created_at ?? "",
+        id: profile.id,
+        email: user?.email ?? "",
+        name: profile.username ?? user?.email?.split("@")[0] ?? "",
+        created_at: user?.created_at ?? "",
       };
     })
     .sort((a, b) => a.created_at.localeCompare(b.created_at));
 }
 
-export async function listUsersByRole(
-  role: "student" | "teacher"
-): Promise<UserWithProfile[]> {
+export async function listUsersByRole(role: "student" | "teacher"): Promise<UserWithProfile[]> {
   const auth = await verifyAdmin();
   if ("error" in auth) return [];
 
   const supabase = createAdminClient();
+  const roleIds = await getUserIdsByRole(supabase, role);
+  if (!roleIds.length) return [];
 
   const { data: profiles, error: profilesError } = await supabase
     .from("profiles")
-    .select("id, first_name, last_name")
-    .eq("role", role)
+    .select("id, username")
+    .in("id", roleIds)
     .is("deleted_at", null);
-
-  if (profilesError) {
-    logger.error("[listUsersByRole]", profilesError.message, { role });
-    return [];
-  }
-  if (!profiles?.length) {
+  if (profilesError || !profiles?.length) {
+    if (profilesError) logger.error("[listUsersByRole]", profilesError.message, { role });
     return [];
   }
 
-  const ids = profiles.map((p) => p.id);
-
-  // auth.admin.listUsers로 이메일 직접 조회 (RPC 의존 제거)
-  const { data: authUsersData } = await supabase.auth.admin.listUsers({ perPage: 1000 });
-  const idSet = new Set(ids);
-  const emailMap = new Map(
-    (authUsersData?.users ?? [])
-      .filter((u) => idSet.has(u.id))
-      .map((u) => [u.id, u.email ?? ""])
-  );
+  const ids = profiles.map((profile) => profile.id);
+  const authUsers = await listAuthUsersMap(supabase, ids);
 
   if (role === "student") {
     const { data: students } = await supabase
       .from("students")
-      .select("profile_id, korean_name, english_name, student_number, age, group_type")
-      .in("profile_id", ids);
-    const studentMap = new Map(
-      (students ?? []).map((s) => [s.profile_id, s])
-    );
-    return profiles.map((p) => {
-      const s = studentMap.get(p.id);
-      return {
-        id: p.id,
-        email: emailMap.get(p.id) ?? "",
-        first_name: p.first_name,
-        last_name: p.last_name,
-        korean_name: s?.korean_name ?? p.first_name,
-        english_name: s?.english_name ?? p.last_name,
-        student_number: s?.student_number ?? null,
-        age: s?.age ?? null,
-        group_type: (s?.group_type as "유치부" | "오후반" | null) ?? null,
-      };
-    }).sort((a, b) => a.korean_name.localeCompare(b.korean_name, "ko"));
+      .select("id, korean_name, english_name, age, group_type")
+      .in("id", ids);
+    const studentMap = new Map((students ?? []).map((student) => [student.id, student]));
+    return profiles
+      .map((profile) => {
+        const student = studentMap.get(profile.id);
+        return {
+          id: profile.id,
+          email: authUsers.get(profile.id)?.email ?? "",
+          first_name: student?.korean_name ?? null,
+          last_name: student?.english_name ?? null,
+          korean_name: student?.korean_name ?? null,
+          english_name: student?.english_name ?? null,
+          age: student?.age ?? null,
+          group_type: (student?.group_type as "유치부" | "오후반" | null) ?? null,
+        };
+      })
+      .sort((a, b) => (a.korean_name ?? "").localeCompare(b.korean_name ?? "", "ko"));
   }
 
   const { data: teachers } = await supabase
     .from("teachers")
-    .select("profile_id, name, teacher_number, teacher_type")
-    .in("profile_id", ids);
-  const teacherMap = new Map(
-    (teachers ?? []).map((t) => [t.profile_id, t])
-  );
-  return profiles.map((p) => {
-    const t = teacherMap.get(p.id);
-    return {
-      id: p.id,
-      email: emailMap.get(p.id) ?? "",
-      first_name: p.first_name,
-      last_name: p.last_name,
-      name: t?.name ?? p.first_name,
-      teacher_number: t?.teacher_number ?? null,
-      teacher_type: (t?.teacher_type ?? "korean") as "korean" | "native",
-    };
-  }).sort((a, b) => a.name.localeCompare(b.name, "ko"));
+    .select("id, name, teacher_type")
+    .in("id", ids);
+  const teacherMap = new Map((teachers ?? []).map((teacher) => [teacher.id, teacher]));
+  return profiles
+    .map((profile) => {
+      const teacher = teacherMap.get(profile.id);
+      return {
+        id: profile.id,
+        email: authUsers.get(profile.id)?.email ?? "",
+        first_name: teacher?.name ?? null,
+        last_name: null,
+        name: teacher?.name ?? profile.username ?? "",
+        teacher_type: (teacher?.teacher_type ?? "korean") as "korean" | "native",
+      };
+    })
+    .sort((a, b) => (a.name ?? "").localeCompare(b.name ?? "", "ko"));
 }
 
-/** 삭제 전 경고용: 교사의 반 담임 + 수업 배정 건수 조회 */
-export async function getTeacherAssignmentCounts(
-  userId: string
-): Promise<{ classCount: number; scheduleCount: number }> {
+export async function getTeacherAssignmentCounts(userId: string): Promise<{ classCount: number; scheduleCount: number }> {
   const auth = await verifyAdmin();
   if ("error" in auth) return { classCount: 0, scheduleCount: 0 };
 
   const supabase = createAdminClient();
+  const teacher = await getTeacherRecordByProfileId(supabase, userId);
+  if (!teacher) return { classCount: 0, scheduleCount: 0 };
 
   const [{ count: classCount }, { count: scheduleCount }] = await Promise.all([
-    supabase
-      .from("class_teachers")
-      .select("*", { count: "exact", head: true })
-      .eq("teacher_profile_id", userId),
-    supabase
-      .from("class_schedules")
-      .select("*", { count: "exact", head: true })
-      .eq("teacher_profile_id", userId),
+    supabase.from("class_teachers").select("*", { count: "exact", head: true }).eq("teacher_id", teacher.id),
+    supabase.from("class_schedules").select("*", { count: "exact", head: true }).eq("teacher_id", teacher.id),
   ]);
 
-  return {
-    classCount: classCount ?? 0,
-    scheduleCount: scheduleCount ?? 0,
-  };
+  return { classCount: classCount ?? 0, scheduleCount: scheduleCount ?? 0 };
 }
 
-/** 삭제 전 경고용: 학생의 연관 데이터 건수 조회 */
-export async function getStudentLinkedCounts(
-  userId: string
-): Promise<{ attendanceCount: number; busDefaultCount: number; progressCount: number }> {
+export async function getStudentLinkedCounts(userId: string): Promise<{ attendanceCount: number; busDefaultCount: number; progressCount: number }> {
   const auth = await verifyAdmin();
   if ("error" in auth) return { attendanceCount: 0, busDefaultCount: 0, progressCount: 0 };
 
   const supabase = createAdminClient();
-  const [{ count: attendanceCount }, { count: busDefaultCount }, { count: progressCount }] = await Promise.all([
-    supabase.from("attendance").select("*", { count: "exact", head: true }).eq("student_profile_id", userId),
-    supabase.from("student_bus_defaults").select("*", { count: "exact", head: true }).eq("student_profile_id", userId),
-    supabase.from("student_textbook_progress").select("*", { count: "exact", head: true }).eq("student_profile_id", userId),
+  const student = await getStudentRecordByProfileId(supabase, userId);
+  if (!student) return { attendanceCount: 0, busDefaultCount: 0, progressCount: 0 };
+
+  const [{ count: attendanceCount }, { count: busDefaultCount }] = await Promise.all([
+    supabase.from("attendance").select("*", { count: "exact", head: true }).eq("student_id", student.id),
+    supabase.from("student_bus_defaults").select("*", { count: "exact", head: true }).eq("student_id", student.id),
   ]);
+
   return {
     attendanceCount: attendanceCount ?? 0,
     busDefaultCount: busDefaultCount ?? 0,
-    progressCount: progressCount ?? 0,
+    progressCount: 0,
   };
 }
 
-/** 소프트 삭제: deleted_at 설정 + Auth ban */
-export async function deleteUserById(
-  formData: FormData
-): Promise<{ error?: string }> {
+export async function deleteUserById(formData: FormData): Promise<{ error?: string }> {
   const auth = await verifyAdmin();
   if ("error" in auth) return { error: auth.error };
 
   const id = (formData.get("id") as string)?.trim();
   if (!id) return { error: "id가 없습니다." };
 
-  logger.info("[deleteUserById]", "사용자 삭제 시작", { id });
-
   const supabase = createAdminClient();
+  const [student, teacher] = await Promise.all([
+    getStudentRecordByProfileId(supabase, id),
+    getTeacherRecordByProfileId(supabase, id),
+  ]);
 
-  // 1. 반 담임 배정 삭제 (교사인 경우)
-  const { error: classTeacherError } = await supabase
-    .from("class_teachers")
-    .delete()
-    .eq("teacher_profile_id", id);
-  if (classTeacherError) {
-    logger.error("[deleteUserById:class_teachers]", classTeacherError.message, { id });
+  if (teacher) {
+    await supabase.from("class_teachers").delete().eq("teacher_id", teacher.id);
+    await supabase.from("class_schedules").delete().eq("teacher_id", teacher.id);
   }
 
-  // 2. 수업 배정 삭제 (교사인 경우)
-  const { error: scheduleError } = await supabase
-    .from("class_schedules")
-    .delete()
-    .eq("teacher_profile_id", id);
-  if (scheduleError) {
-    logger.error("[deleteUserById:class_schedules]", scheduleError.message, { id });
-  }
-
-  // 3. 반 학생 배정 삭제 (학생인 경우)
-  const { error: classStudentError } = await supabase
-    .from("class_students")
-    .delete()
-    .eq("student_profile_id", id);
-  if (classStudentError) {
-    logger.error("[deleteUserById:class_students]", classStudentError.message, { id });
-  }
-
-  // 4. 방과후 등록 삭제 (학생인 경우)
-  const { error: afterschoolError } = await supabase
-    .from("afterschool_enrollments")
-    .delete()
-    .eq("student_profile_id", id);
-  if (afterschoolError) {
-    logger.error("[deleteUserById:afterschool_enrollments]", afterschoolError.message, { id });
-  }
-
-  // 5. 버스 기본값 삭제 (학생인 경우)
-  const { error: busDefaultError } = await supabase
-    .from("student_bus_defaults")
-    .delete()
-    .eq("student_profile_id", id);
-  if (busDefaultError) {
-    logger.error("[deleteUserById:student_bus_defaults]", busDefaultError.message, { id });
+  if (student) {
+    await Promise.all([
+      supabase.from("class_students").delete().eq("student_id", student.id),
+      supabase.from("afterschool_enrollments").delete().eq("student_id", student.id),
+      supabase.from("student_bus_defaults").delete().eq("student_id", student.id),
+      supabase.from("attendance").delete().eq("student_id", student.id),
+      supabase.from("bus_change_requests").delete().eq("student_id", student.id),
+      supabase.from("bus_check_records").delete().eq("student_id", student.id),
+      supabase.from("report_cards").delete().eq("student_id", student.id),
+    ]);
   }
 
   const { error: profileError } = await supabase
@@ -337,29 +307,20 @@ export async function deleteUserById(
     return { error: profileError.message };
   }
 
-  const { error: banError } = await supabase.auth.admin.updateUserById(id, {
+  await supabase.auth.admin.updateUserById(id, {
     ban_duration: "876000h",
   });
-  if (banError) {
-    logger.error("[deleteUserById:ban]", banError.message, { id });
-  }
 
-  logger.info("[deleteUserById]", "사용자 삭제 완료", { id });
   revalidatePath("/admin", "layout");
   return {};
 }
 
-/** 복구: deleted_at 초기화 + Auth unban */
-export async function restoreUser(
-  userId: string
-): Promise<{ error?: string }> {
+export async function restoreUser(userId: string): Promise<{ error?: string }> {
   const auth = await verifyAdmin();
   if ("error" in auth) return { error: auth.error };
-
   if (!userId) return { error: "id가 없습니다." };
 
   const supabase = createAdminClient();
-
   const { error: profileError } = await supabase
     .from("profiles")
     .update({ deleted_at: null })
@@ -369,25 +330,14 @@ export async function restoreUser(
     return { error: profileError.message };
   }
 
-  const { error: unbanError } = await supabase.auth.admin.updateUserById(userId, {
-    ban_duration: "none",
-  });
-  if (unbanError) {
-    logger.error("[restoreUser:unban]", unbanError.message, { userId });
-  }
-
-  logger.info("[restoreUser]", "사용자 복구 완료", { userId });
+  await supabase.auth.admin.updateUserById(userId, { ban_duration: "none" });
   revalidatePath("/admin", "layout");
   return {};
 }
 
-/** 영구 삭제: Auth 유저 삭제 (DB CASCADE) */
-export async function permanentlyDeleteUser(
-  userId: string
-): Promise<{ error?: string }> {
+export async function permanentlyDeleteUser(userId: string): Promise<{ error?: string }> {
   const auth = await verifyAdmin();
   if ("error" in auth) return { error: auth.error };
-
   if (!userId) return { error: "id가 없습니다." };
 
   const supabase = createAdminClient();
@@ -396,84 +346,68 @@ export async function permanentlyDeleteUser(
     logger.error("[permanentlyDeleteUser]", error.message, { userId });
     return { error: error.message };
   }
-  logger.info("[permanentlyDeleteUser]", "사용자 영구 삭제 완료", { userId });
+
   revalidatePath("/admin", "layout");
   return {};
 }
 
-/** 삭제된 유저 목록 조회 */
-export async function listDeletedUsers(
-  role: "student" | "teacher"
-): Promise<UserWithProfile[]> {
+export async function listDeletedUsers(role: "student" | "teacher"): Promise<UserWithProfile[]> {
   const auth = await verifyAdmin();
   if ("error" in auth) return [];
 
   const supabase = createAdminClient();
+  const roleIds = await getUserIdsByRole(supabase, role);
+  if (!roleIds.length) return [];
 
-  const { data: profiles, error: profilesError } = await supabase
+  const { data: profiles } = await supabase
     .from("profiles")
-    .select("id, first_name, last_name, deleted_at")
-    .eq("role", role)
+    .select("id, username, deleted_at")
+    .in("id", roleIds)
     .not("deleted_at", "is", null);
+  if (!profiles?.length) return [];
 
-  if (profilesError || !profiles?.length) return [];
-
-  const ids = profiles.map((p) => p.id);
-
-  const { data: authUsers } = await supabase.rpc("get_user_emails_by_ids", {
-    user_ids: ids,
-  });
-  const emailMap = new Map(
-    ((authUsers ?? []) as { id: string; email: string }[]).map((u) => [u.id, u.email])
-  );
+  const authUsers = await listAuthUsersMap(supabase, profiles.map((profile) => profile.id));
 
   if (role === "student") {
     const { data: students } = await supabase
       .from("students")
-      .select("profile_id, korean_name, english_name, student_number, age")
-      .in("profile_id", ids);
-    const studentMap = new Map(
-      (students ?? []).map((s) => [s.profile_id, s])
-    );
-    return profiles.map((p) => {
-      const s = studentMap.get(p.id);
+      .select("id, korean_name, english_name, age, group_type")
+      .in("id", profiles.map((profile) => profile.id));
+    const studentMap = new Map((students ?? []).map((student) => [student.id, student]));
+    return profiles.map((profile) => {
+      const student = studentMap.get(profile.id);
       return {
-        id: p.id,
-        email: emailMap.get(p.id) ?? "",
-        first_name: p.first_name,
-        last_name: p.last_name,
-        korean_name: s?.korean_name ?? p.first_name,
-        english_name: s?.english_name ?? p.last_name,
-        student_number: s?.student_number ?? null,
-        age: s?.age ?? null,
+        id: profile.id,
+        email: authUsers.get(profile.id)?.email ?? "",
+        first_name: student?.korean_name ?? null,
+        last_name: student?.english_name ?? null,
+        korean_name: student?.korean_name ?? null,
+        english_name: student?.english_name ?? null,
+        age: student?.age ?? null,
+        group_type: (student?.group_type as "유치부" | "오후반" | null) ?? null,
       };
     });
   }
 
   const { data: teachers } = await supabase
     .from("teachers")
-    .select("profile_id, name, teacher_number, teacher_type")
-    .in("profile_id", ids);
-  const teacherMap = new Map(
-    (teachers ?? []).map((t) => [t.profile_id, t])
-  );
-  return profiles.map((p) => {
-    const t = teacherMap.get(p.id);
+    .select("id, name, teacher_type")
+    .in("id", profiles.map((profile) => profile.id));
+  const teacherMap = new Map((teachers ?? []).map((teacher) => [teacher.id, teacher]));
+  return profiles.map((profile) => {
+    const teacher = teacherMap.get(profile.id);
     return {
-      id: p.id,
-      email: emailMap.get(p.id) ?? "",
-      first_name: p.first_name,
-      last_name: p.last_name,
-      name: t?.name ?? p.first_name,
-      teacher_number: t?.teacher_number ?? null,
-      teacher_type: (t?.teacher_type ?? "korean") as "korean" | "native",
+      id: profile.id,
+      email: authUsers.get(profile.id)?.email ?? "",
+      first_name: teacher?.name ?? null,
+      last_name: null,
+      name: teacher?.name ?? profile.username ?? "",
+      teacher_type: (teacher?.teacher_type ?? "korean") as "korean" | "native",
     };
   });
 }
 
-export async function updateStudentProfile(
-  formData: FormData
-): Promise<{ error?: string }> {
+export async function updateStudentProfile(formData: FormData): Promise<{ error?: string }> {
   const auth = await verifyAdmin();
   if ("error" in auth) return { error: auth.error };
 
@@ -489,32 +423,27 @@ export async function updateStudentProfile(
   if (!korean_name) return { error: "한글 이름을 입력해 주세요." };
 
   const supabase = createAdminClient();
-
-  const { error: profileError } = await supabase
-    .from("profiles")
-    .update({ first_name: korean_name, last_name: english_name })
-    .eq("id", id);
-  if (profileError) {
-    logger.error("[updateStudentProfile:profile]", profileError.message, { id });
-    return { error: profileError.message };
-  }
-
   const { error: studentError } = await supabase
     .from("students")
-    .update({ korean_name, english_name, age: age !== null && !isNaN(age) ? age : null, group_type, updated_at: new Date().toISOString() })
-    .eq("profile_id", id);
+    .update({
+      korean_name,
+      english_name,
+      age: age !== null && !isNaN(age) ? age : null,
+      group_type,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id);
 
   if (studentError) {
     logger.error("[updateStudentProfile]", studentError.message, { id });
     return { error: studentError.message };
   }
+
   revalidatePath("/admin", "layout");
   return {};
 }
 
-export async function updateTeacherProfile(
-  formData: FormData
-): Promise<{ error?: string }> {
+export async function updateTeacherProfile(formData: FormData): Promise<{ error?: string }> {
   const auth = await verifyAdmin();
   if ("error" in auth) return { error: auth.error };
 
@@ -526,56 +455,33 @@ export async function updateTeacherProfile(
   if (!name) return { error: "이름을 입력해 주세요." };
 
   const supabase = createAdminClient();
-
-  const { error: profileError } = await supabase
-    .from("profiles")
-    .update({ first_name: name, last_name: "" })
-    .eq("id", id);
-  if (profileError) {
-    logger.error("[updateTeacherProfile:profile]", profileError.message, { id });
-    return { error: profileError.message };
-  }
-
-  const updateData: Record<string, unknown> = { name, updated_at: new Date().toISOString() };
-  if (teacher_type === "korean" || teacher_type === "native") {
-    updateData.teacher_type = teacher_type;
-  }
-
   const { error: teacherError } = await supabase
     .from("teachers")
-    .update(updateData)
-    .eq("profile_id", id);
+    .update({
+      name,
+      teacher_type: teacher_type === "korean" || teacher_type === "native" ? teacher_type : undefined,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id);
 
   if (teacherError) {
     logger.error("[updateTeacherProfile]", teacherError.message, { id });
     return { error: teacherError.message };
   }
+
   revalidatePath("/admin", "layout");
   return {};
 }
 
-export async function resetUserPassword(
-  userId: string,
-  newPassword: string
-): Promise<{ error?: string }> {
+export async function resetUserPassword(userId: string, newPassword: string): Promise<{ error?: string }> {
   const auth = await verifyAdmin();
   if ("error" in auth) return { error: auth.error };
-
-  if (!userId || !newPassword) {
-    return { error: "사용자 ID와 새 비밀번호를 입력해 주세요." };
-  }
-  if (newPassword.length < 6) {
-    return { error: "비밀번호는 최소 6자 이상이어야 합니다." };
-  }
+  if (!userId || !newPassword) return { error: "사용자 ID와 새 비밀번호를 입력해 주세요." };
+  if (newPassword.length < 4) return { error: "비밀번호는 최소 4자 이상이어야 합니다." };
 
   const supabase = createAdminClient();
-  const { error } = await supabase.auth.admin.updateUserById(userId, {
-    password: newPassword,
-  });
-  if (error) {
-    logger.error("[resetUserPassword]", error.message, { userId });
-    return { error: error.message };
-  }
+  const { error } = await supabase.auth.admin.updateUserById(userId, { password: newPassword });
+  if (error) return { error: error.message };
   revalidatePath("/admin", "layout");
   return {};
 }
@@ -585,7 +491,6 @@ export async function bulkResetStudentPasswords(
 ): Promise<{ success: number; failed: number; error?: string }> {
   const auth = await verifyAdmin();
   if ("error" in auth) return { success: 0, failed: 0, error: auth.error };
-
   if (!students.length) return { success: 0, failed: 0 };
 
   const supabase = createAdminClient();
@@ -594,45 +499,42 @@ export async function bulkResetStudentPasswords(
 
   for (const { id, password } of students) {
     const { error } = await supabase.auth.admin.updateUserById(id, { password });
-    if (error) {
-      logger.error("[bulkResetStudentPasswords]", error.message, { id });
-      failed++;
-    } else {
-      success++;
-    }
+    if (error) failed++;
+    else success++;
   }
 
   return { success, failed };
 }
 
 export async function listAllStudents(): Promise<
-  { id: string; korean_name: string | null; english_name: string | null; student_number: string | null; age: number | null; group_type: string | null }[]
+  { id: string; korean_name: string | null; english_name: string | null; age: number | null; group_type: string | null }[]
 > {
   const auth = await verifyAdmin();
   if ("error" in auth) return [];
 
   const supabase = createAdminClient();
+  const activeIds = await getUserIdsByRole(supabase, "student");
+  if (!activeIds.length) return [];
 
-  // 소프트 삭제되지 않은 학생만 조회
-  const { data: activeProfileIds } = await supabase
+  const { data: activeProfiles } = await supabase
     .from("profiles")
     .select("id")
-    .eq("role", "student")
+    .in("id", activeIds)
     .is("deleted_at", null);
-  const activeIds = (activeProfileIds ?? []).map((p) => p.id);
-  if (activeIds.length === 0) return [];
+  const filteredIds = (activeProfiles ?? []).map((profile) => profile.id);
+  if (!filteredIds.length) return [];
 
   const { data: students } = await supabase
     .from("students")
-    .select("profile_id, korean_name, english_name, student_number, age, group_type")
-    .in("profile_id", activeIds)
+    .select("id, korean_name, english_name, age, group_type")
+    .in("id", filteredIds)
     .order("korean_name");
-  return (students ?? []).map((s) => ({
-    id: s.profile_id,
-    korean_name: s.korean_name ?? null,
-    english_name: s.english_name ?? null,
-    student_number: s.student_number ?? null,
-    age: s.age ?? null,
-    group_type: s.group_type ?? null,
+
+  return (students ?? []).map((student) => ({
+    id: student.id,
+    korean_name: student.korean_name ?? null,
+    english_name: student.english_name ?? null,
+    age: student.age ?? null,
+    group_type: student.group_type ?? toGroupLabel(null),
   }));
 }

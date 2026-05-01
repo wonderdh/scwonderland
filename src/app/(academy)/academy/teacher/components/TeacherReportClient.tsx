@@ -282,9 +282,6 @@ export function TeacherReportClient({
                         <p className={`text-sm font-medium truncate ${getAgeColor(studentAgeMap.get(s.student_profile_id) ?? null).text}`}>
                           {renderStudentName(s)}
                         </p>
-                        {s.student_number && (
-                          <p className="text-xs text-slate-400 font-mono">{s.student_number}</p>
-                        )}
                       </div>
                       <div className="flex flex-col items-end gap-1 shrink-0">
                         {s.has_report ? (

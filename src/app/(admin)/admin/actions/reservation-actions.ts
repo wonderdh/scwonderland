@@ -30,7 +30,7 @@ export async function getUpcomingReservations(
   // 1. 미래 출결 예약 (내일~)
   const { data: attData, error: attError } = await supabase
     .from("attendance")
-    .select("id, student_profile_id, attendance_date, status, note")
+    .select("id, student_id, attendance_date, status, note")
     .gte("attendance_date", tomorrowDate)
     .lte("attendance_date", futureEnd)
     .order("attendance_date");
@@ -42,7 +42,7 @@ export async function getUpcomingReservations(
   // 2. 미래 버스 변경 (내일~)
   const { data: busData, error: busError } = await supabase
     .from("bus_change_requests")
-    .select("id, student_profile_id, request_date, change_type, status, reason, new_bus_number_id, new_bus_time_slot_id")
+    .select("id, student_id, request_date, change_type, status, reason, new_bus_number_id, new_bus_time_slot_id")
     .gte("request_date", tomorrowDate)
     .lte("request_date", futureEnd)
     .order("request_date");
@@ -51,20 +51,20 @@ export async function getUpcomingReservations(
     logger.error("[getUpcomingReservations:bus]", busError.message);
   }
 
-  // 학생 이름 조인
+  // 학생 이름 조인 (students.id = profiles.id 공유 PK)
   const allStudentIds = new Set<string>();
-  for (const a of attData ?? []) allStudentIds.add(a.student_profile_id);
-  for (const b of busData ?? []) allStudentIds.add(b.student_profile_id);
+  for (const a of attData ?? []) allStudentIds.add(a.student_id);
+  for (const b of busData ?? []) allStudentIds.add(b.student_id);
 
   const ids = [...allStudentIds];
   let nameMap = new Map<string, string>();
   if (ids.length > 0) {
     const { data: students } = await supabase
       .from("students")
-      .select("profile_id, korean_name")
-      .in("profile_id", ids);
+      .select("id, korean_name")
+      .in("id", ids);
     nameMap = new Map(
-      (students ?? []).map((s) => [s.profile_id, s.korean_name ?? "이름 없음"]),
+      (students ?? []).map((s) => [s.id, s.korean_name ?? "이름 없음"]),
     );
   }
 
@@ -94,8 +94,9 @@ export async function getUpcomingReservations(
 
   const attendance: ReservationAttendance[] = (attData ?? []).map((a) => ({
     id: a.id,
-    student_profile_id: a.student_profile_id,
-    student_name: nameMap.get(a.student_profile_id) ?? "이름 없음",
+    student_id: a.student_id,
+    student_profile_id: a.student_id, // students.id = profiles.id (shared PK)
+    student_name: nameMap.get(a.student_id) ?? "이름 없음",
     attendance_date: a.attendance_date,
     status: a.status,
     note: a.note,
@@ -103,8 +104,9 @@ export async function getUpcomingReservations(
 
   const busChanges: ReservationBusChange[] = (busData ?? []).map((b) => ({
     id: b.id,
-    student_profile_id: b.student_profile_id,
-    student_name: nameMap.get(b.student_profile_id) ?? "이름 없음",
+    student_id: b.student_id,
+    student_profile_id: b.student_id, // students.id = profiles.id (shared PK)
+    student_name: nameMap.get(b.student_id) ?? "이름 없음",
     request_date: b.request_date,
     change_type: b.change_type,
     status: b.status,

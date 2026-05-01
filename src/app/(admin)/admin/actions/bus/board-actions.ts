@@ -3,6 +3,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { verifyAuthenticated } from "../auth-helpers";
 import { logger } from "@/lib/server/logger";
+import { getStudentRecordByProfileId } from "@/lib/server/domain-helpers";
 
 // ── 탑승 체크 ──
 
@@ -15,15 +16,17 @@ export async function boardBusStudent(
   const auth = await verifyAuthenticated();
   if ("error" in auth) return { error: auth.error };
   const supabase = createAdminClient();
+  const student = await getStudentRecordByProfileId(supabase, studentProfileId);
+  if (!student) return { error: "학생 정보를 찾을 수 없습니다." };
   const { error } = await supabase.from("bus_check_records").upsert(
     {
-      student_profile_id: studentProfileId,
+      student_id: student.id,
       check_date: checkDate,
       bus_time_slot_id: busTimeSlotId,
       bus_number_id: busNumberId,
       boarded_at: new Date().toISOString(),
     },
-    { onConflict: "student_profile_id,check_date" }
+    { onConflict: "student_id,check_date" }
   );
   if (error) {
     logger.error("[boardBusStudent]", error.message);
@@ -40,12 +43,14 @@ export async function unboardBusStudent(
   const auth = await verifyAuthenticated();
   if ("error" in auth) return { error: auth.error };
   const supabase = createAdminClient();
+  const student = await getStudentRecordByProfileId(supabase, studentProfileId);
+  if (!student) return {};
 
   // 기존 레코드 확인
   const { data: record } = await supabase
     .from("bus_check_records")
     .select("id, checked_at")
-    .eq("student_profile_id", studentProfileId)
+    .eq("student_id", student.id)
     .eq("check_date", checkDate)
     .maybeSingle();
 
@@ -88,16 +93,18 @@ export async function checkBusStudent(
   const auth = await verifyAuthenticated();
   if ("error" in auth) return { error: auth.error };
   const supabase = createAdminClient();
+  const student = await getStudentRecordByProfileId(supabase, studentProfileId);
+  if (!student) return { error: "학생 정보를 찾을 수 없습니다." };
   const { error } = await supabase.from("bus_check_records").upsert(
     {
-      student_profile_id: studentProfileId,
+      student_id: student.id,
       check_date: checkDate,
       bus_time_slot_id: busTimeSlotId,
       bus_number_id: busNumberId,
       checked_at: new Date().toISOString(),
       checked_by: checkedBy,
     },
-    { onConflict: "student_profile_id,check_date" }
+    { onConflict: "student_id,check_date" }
   );
   if (error) {
     logger.error("[checkBusStudent]", error.message);
@@ -114,13 +121,15 @@ export async function uncheckBusStudent(
   const auth = await verifyAuthenticated();
   if ("error" in auth) return { error: auth.error };
   const supabase = createAdminClient();
+  const student = await getStudentRecordByProfileId(supabase, studentProfileId);
+  if (!student) return {};
 
   // boarded_at이 있으면 checked_at만 null로 (탑승 상태로 복귀)
   // boarded_at도 없으면 레코드 삭제
   const { data: record } = await supabase
     .from("bus_check_records")
     .select("id, boarded_at")
-    .eq("student_profile_id", studentProfileId)
+    .eq("student_id", student.id)
     .eq("check_date", checkDate)
     .maybeSingle();
 
@@ -165,23 +174,31 @@ export async function batchBusCheckRecord(
   if ("error" in auth) return { error: auth.error };
   const supabase = createAdminClient();
   const now = new Date().toISOString();
+  const studentRecords = await Promise.all(
+    items.map((item) => getStudentRecordByProfileId(supabase, item.studentProfileId))
+  );
+  const normalized = items.flatMap((item, index) => {
+    const student = studentRecords[index];
+    if (!student) return [];
+    return [{ ...item, studentId: student.id }];
+  });
 
-  const boardItems = items.filter((i) => i.action === "board");
-  const checkItems = items.filter((i) => i.action === "check");
-  const unboardItems = items.filter((i) => i.action === "unboard");
-  const uncheckItems = items.filter((i) => i.action === "uncheck");
+  const boardItems = normalized.filter((i) => i.action === "board");
+  const checkItems = normalized.filter((i) => i.action === "check");
+  const unboardItems = normalized.filter((i) => i.action === "unboard");
+  const uncheckItems = normalized.filter((i) => i.action === "uncheck");
 
   // 탑승: 배치 upsert
   if (boardItems.length > 0) {
     const { error } = await supabase.from("bus_check_records").upsert(
       boardItems.map((i) => ({
-        student_profile_id: i.studentProfileId,
+        student_id: i.studentId,
         check_date: checkDate,
         bus_time_slot_id: i.busTimeSlotId,
         bus_number_id: i.busNumberId,
         boarded_at: now,
       })),
-      { onConflict: "student_profile_id,check_date" }
+      { onConflict: "student_id,check_date" }
     );
     if (error) {
       logger.error("[batchBusCheckRecord:board]", error.message);
@@ -193,14 +210,14 @@ export async function batchBusCheckRecord(
   if (checkItems.length > 0) {
     const { error } = await supabase.from("bus_check_records").upsert(
       checkItems.map((i) => ({
-        student_profile_id: i.studentProfileId,
+        student_id: i.studentId,
         check_date: checkDate,
         bus_time_slot_id: i.busTimeSlotId,
         bus_number_id: i.busNumberId,
         checked_at: now,
         checked_by: checkedBy,
       })),
-      { onConflict: "student_profile_id,check_date" }
+      { onConflict: "student_id,check_date" }
     );
     if (error) {
       logger.error("[batchBusCheckRecord:check]", error.message);
@@ -210,12 +227,12 @@ export async function batchBusCheckRecord(
 
   // 탑승 취소: UPDATE + 빈 레코드 삭제
   if (unboardItems.length > 0) {
-    const ids = unboardItems.map((i) => i.studentProfileId);
+    const ids = unboardItems.map((i) => i.studentId);
     const { error: unboardErr } = await supabase
       .from("bus_check_records")
       .update({ boarded_at: null })
       .eq("check_date", checkDate)
-      .in("student_profile_id", ids);
+      .in("student_id", ids);
     if (unboardErr) {
       logger.error("[batchBusCheckRecord:unboard]", unboardErr.message);
       return { error: unboardErr.message };
@@ -224,7 +241,7 @@ export async function batchBusCheckRecord(
       .from("bus_check_records")
       .delete()
       .eq("check_date", checkDate)
-      .in("student_profile_id", ids)
+      .in("student_id", ids)
       .is("boarded_at", null)
       .is("checked_at", null);
     if (unboardDelErr) {
@@ -235,12 +252,12 @@ export async function batchBusCheckRecord(
 
   // 하차 취소: UPDATE + 빈 레코드 삭제
   if (uncheckItems.length > 0) {
-    const ids = uncheckItems.map((i) => i.studentProfileId);
+    const ids = uncheckItems.map((i) => i.studentId);
     const { error: uncheckErr } = await supabase
       .from("bus_check_records")
       .update({ checked_at: null, checked_by: null })
       .eq("check_date", checkDate)
-      .in("student_profile_id", ids);
+      .in("student_id", ids);
     if (uncheckErr) {
       logger.error("[batchBusCheckRecord:uncheck]", uncheckErr.message);
       return { error: uncheckErr.message };
@@ -249,7 +266,7 @@ export async function batchBusCheckRecord(
       .from("bus_check_records")
       .delete()
       .eq("check_date", checkDate)
-      .in("student_profile_id", ids)
+      .in("student_id", ids)
       .is("boarded_at", null)
       .is("checked_at", null);
     if (uncheckDelErr) {

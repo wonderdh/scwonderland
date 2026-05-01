@@ -33,14 +33,14 @@ export async function listAllChangeRequests(
     return [];
   }
 
-  const studentIds = [...new Set((data ?? []).map((d) => d.student_profile_id))];
-  let studentMap = new Map<string, { korean_name: string | null; english_name: string | null; student_number: string | null }>();
+  const studentIds = [...new Set((data ?? []).map((d) => d.student_id))];
+  let studentMap = new Map<string, { korean_name: string | null; english_name: string | null }>();
   if (studentIds.length) {
     const { data: students } = await supabase
       .from("students")
-      .select("profile_id, korean_name, english_name, student_number")
-      .in("profile_id", studentIds);
-    studentMap = new Map((students ?? []).map((s) => [s.profile_id, s]));
+      .select("id, korean_name, english_name")
+      .in("id", studentIds);
+    studentMap = new Map((students ?? []).map((s) => [s.id, s]));
   }
 
   const slotIds = [...new Set((data ?? []).filter((d) => d.new_bus_time_slot_id).map((d) => d.new_bus_time_slot_id))];
@@ -67,11 +67,11 @@ export async function listAllChangeRequests(
   const needsDefaultSlot = (data ?? []).filter((d) => !d.new_bus_time_slot_id);
   const defaultSlotMap = new Map<string, { label: string; time: string }>();
   if (needsDefaultSlot.length > 0) {
-    const defStudentIds = [...new Set(needsDefaultSlot.map((d) => d.student_profile_id))];
+    const defStudentIds = [...new Set(needsDefaultSlot.map((d) => d.student_id))];
     const { data: defaults } = await supabase
       .from("student_bus_defaults")
-      .select("student_profile_id, bus_time_slot_id")
-      .in("student_profile_id", defStudentIds);
+      .select("student_id, bus_time_slot_id")
+      .in("student_id", defStudentIds);
     if (defaults?.length) {
       const defSlotIds = [...new Set(defaults.map((d) => d.bus_time_slot_id).filter(Boolean))];
       if (defSlotIds.length) {
@@ -79,7 +79,7 @@ export async function listAllChangeRequests(
         const defSlotLookup = new Map((defSlots ?? []).map((s) => [s.id, { label: s.label, time: s.time }]));
         for (const d of defaults) {
           if (!d.bus_time_slot_id) continue;
-          const key = d.student_profile_id;
+          const key = d.student_id;
           if (defaultSlotMap.has(key)) continue;
           const slotInfo = defSlotLookup.get(d.bus_time_slot_id);
           if (slotInfo) defaultSlotMap.set(key, slotInfo);
@@ -94,11 +94,11 @@ export async function listAllChangeRequests(
     // request_date에서 요일 계산
     const { data: origData } = await supabase
       .from("student_bus_defaults")
-      .select("student_profile_id, day_of_week, bus_time_slot_id, bus_stop_id")
-      .in("student_profile_id", studentIds);
+      .select("student_id, day_of_week, bus_time_slot_id, bus_stop_id")
+      .in("student_id", studentIds);
     for (const o of origData ?? []) {
       origDefaults.set(
-        `${o.student_profile_id}:${o.day_of_week}`,
+        `${o.student_id}:${o.day_of_week}`,
         { slot_id: o.bus_time_slot_id, stop_id: o.bus_stop_id }
       );
     }
@@ -151,15 +151,15 @@ export async function listAllChangeRequests(
   }
 
   return (data ?? []).map((d) => {
-    const student = studentMap.get(d.student_profile_id);
+    const student = studentMap.get(d.student_id);
     const slot = d.new_bus_time_slot_id
       ? slotMap.get(d.new_bus_time_slot_id)
-      : defaultSlotMap.get(d.student_profile_id);
+      : defaultSlotMap.get(d.student_id);
 
     // 기존 일정
     const dow = new Date(d.request_date + "T00:00:00").getDay();
     const isoDay = dow === 0 ? 7 : dow;
-    const origKey = `${d.student_profile_id}:${isoDay}`;
+    const origKey = `${d.student_id}:${isoDay}`;
     const orig = origDefaults.get(origKey);
     const origSlot = orig?.slot_id ? slotMap.get(orig.slot_id) : undefined;
     const origStop = orig?.stop_id ? stopMap.get(orig.stop_id) : undefined;
@@ -167,9 +167,10 @@ export async function listAllChangeRequests(
 
     return {
       ...d,
+      student_profile_id: d.student_id,
       korean_name: student?.korean_name ?? null,
       english_name: student?.english_name ?? null,
-      student_number: student?.student_number ?? null,
+
       new_time_slot_label: slot?.label,
       new_time_slot_time: slot?.time,
       new_bus_label: d.new_bus_number_id ? busMap.get(d.new_bus_number_id) : undefined,
@@ -196,14 +197,14 @@ export async function listChangeRequestsByDate(date: string): Promise<BusChangeR
     return [];
   }
 
-  const studentIds = [...new Set((data ?? []).map((d) => d.student_profile_id))];
-  let studentMap = new Map<string, { korean_name: string | null; english_name: string | null; student_number: string | null }>();
+  const studentIds = [...new Set((data ?? []).map((d) => d.student_id))];
+  let studentMap = new Map<string, { korean_name: string | null; english_name: string | null }>();
   if (studentIds.length) {
     const { data: students } = await supabase
       .from("students")
-      .select("profile_id, korean_name, english_name, student_number")
-      .in("profile_id", studentIds);
-    studentMap = new Map((students ?? []).map((s) => [s.profile_id, s]));
+      .select("id, korean_name, english_name")
+      .in("id", studentIds);
+    studentMap = new Map((students ?? []).map((s) => [s.id, s]));
   }
 
   const slotIds = [...new Set((data ?? []).filter((d) => d.new_bus_time_slot_id).map((d) => d.new_bus_time_slot_id))];
@@ -230,11 +231,11 @@ export async function listChangeRequestsByDate(date: string): Promise<BusChangeR
   const needsDefaultSlot = (data ?? []).filter((d) => !d.new_bus_time_slot_id);
   const defaultSlotMap = new Map<string, { label: string; time: string }>();
   if (needsDefaultSlot.length > 0) {
-    const defStudentIds = [...new Set(needsDefaultSlot.map((d) => d.student_profile_id))];
+    const defStudentIds = [...new Set(needsDefaultSlot.map((d) => d.student_id))];
     const { data: defaults } = await supabase
       .from("student_bus_defaults")
-      .select("student_profile_id, bus_time_slot_id")
-      .in("student_profile_id", defStudentIds);
+      .select("student_id, bus_time_slot_id")
+      .in("student_id", defStudentIds);
     if (defaults?.length) {
       const defSlotIds = [...new Set(defaults.map((d) => d.bus_time_slot_id).filter(Boolean))];
       if (defSlotIds.length) {
@@ -242,7 +243,7 @@ export async function listChangeRequestsByDate(date: string): Promise<BusChangeR
         const defSlotLookup = new Map((defSlots ?? []).map((s) => [s.id, { label: s.label, time: s.time }]));
         for (const d of defaults) {
           if (!d.bus_time_slot_id) continue;
-          const key = d.student_profile_id;
+          const key = d.student_id;
           if (defaultSlotMap.has(key)) continue;
           const slotInfo = defSlotLookup.get(d.bus_time_slot_id);
           if (slotInfo) defaultSlotMap.set(key, slotInfo);
@@ -256,11 +257,11 @@ export async function listChangeRequestsByDate(date: string): Promise<BusChangeR
   if (studentIds.length && data?.length) {
     const { data: origData } = await supabase
       .from("student_bus_defaults")
-      .select("student_profile_id, day_of_week, bus_time_slot_id, bus_stop_id")
-      .in("student_profile_id", studentIds);
+      .select("student_id, day_of_week, bus_time_slot_id, bus_stop_id")
+      .in("student_id", studentIds);
     for (const o of origData ?? []) {
       origDefaults.set(
-        `${o.student_profile_id}:${o.day_of_week}`,
+        `${o.student_id}:${o.day_of_week}`,
         { slot_id: o.bus_time_slot_id, stop_id: o.bus_stop_id }
       );
     }
@@ -310,14 +311,14 @@ export async function listChangeRequestsByDate(date: string): Promise<BusChangeR
   }
 
   return (data ?? []).map((d) => {
-    const student = studentMap.get(d.student_profile_id);
+    const student = studentMap.get(d.student_id);
     const slot = d.new_bus_time_slot_id
       ? slotMap.get(d.new_bus_time_slot_id)
-      : defaultSlotMap.get(d.student_profile_id);
+      : defaultSlotMap.get(d.student_id);
 
     const dow = new Date(d.request_date + "T00:00:00").getDay();
     const isoDay = dow === 0 ? 7 : dow;
-    const origKey = `${d.student_profile_id}:${isoDay}`;
+    const origKey = `${d.student_id}:${isoDay}`;
     const orig = origDefaults.get(origKey);
     const origSlot = orig?.slot_id ? slotMap.get(orig.slot_id) : undefined;
     const origStop = orig?.stop_id ? stopMap.get(orig.stop_id) : undefined;
@@ -325,9 +326,10 @@ export async function listChangeRequestsByDate(date: string): Promise<BusChangeR
 
     return {
       ...d,
+      student_profile_id: d.student_id,
       korean_name: student?.korean_name ?? null,
       english_name: student?.english_name ?? null,
-      student_number: student?.student_number ?? null,
+
       new_time_slot_label: slot?.label,
       new_time_slot_time: slot?.time,
       new_bus_label: d.new_bus_number_id ? busMap.get(d.new_bus_number_id) : undefined,
@@ -441,7 +443,7 @@ export async function getStudentChangeRequests(
   const { data, error } = await supabase
     .from("bus_change_requests")
     .select("*")
-    .eq("student_profile_id", studentProfileId)
+    .eq("student_id", studentProfileId)
     .gte("request_date", today)
     .order("request_date");
   if (error) {
@@ -491,7 +493,7 @@ export async function submitBusChangeRequest(
   const supabase = createAdminClient();
 
   const { error } = await supabase.from("bus_change_requests").insert({
-    student_profile_id: studentProfileId,
+    student_id: studentProfileId,
     request_date: requestDate,
     change_type: changeType,
     new_bus_time_slot_id: newBusTimeSlotId || null,
@@ -522,7 +524,7 @@ export async function cancelBusChangeRequest(
     .from("bus_change_requests")
     .delete()
     .eq("id", requestId)
-    .eq("student_profile_id", studentProfileId)
+    .eq("student_id", studentProfileId)
     .eq("status", "pending");
   if (error) {
     logger.error("[cancelBusChangeRequest]", error.message);
@@ -552,7 +554,7 @@ export async function createAdminBusChange(
   const finalStopId = newBusStopId || null;
 
   const { error } = await supabase.from("bus_change_requests").insert({
-    student_profile_id: studentProfileId,
+    student_id: studentProfileId,
     request_date: requestDate,
     change_type: changeType,
     new_bus_time_slot_id: finalSlotId,
@@ -575,18 +577,18 @@ export async function createAdminBusChange(
     const { data: classStudents } = await supabase
       .from("class_students")
       .select("class_id")
-      .eq("student_profile_id", studentProfileId);
+      .eq("student_id", studentProfileId);
     if (classStudents?.length) {
       await supabase.from("attendance").upsert(
         classStudents.map((cs) => ({
-          student_profile_id: studentProfileId,
+          student_id: studentProfileId,
           class_id: cs.class_id,
           attendance_date: requestDate,
           status: "absent",
           note: "버스 결석 자동 등록",
           recorded_by: auth.userId,
         })),
-        { onConflict: "student_profile_id,class_id,attendance_date", ignoreDuplicates: false }
+        { onConflict: "student_id,class_id,attendance_date", ignoreDuplicates: false }
       );
     }
   }
@@ -613,7 +615,7 @@ export async function updateAdminBusChange(
 
   const { data: existing } = await supabase
     .from("bus_change_requests")
-    .select("student_profile_id, request_date")
+    .select("student_id, request_date")
     .eq("id", requestId)
     .single();
 
@@ -641,18 +643,18 @@ export async function updateAdminBusChange(
     const { data: classStudents } = await supabase
       .from("class_students")
       .select("class_id")
-      .eq("student_profile_id", existing.student_profile_id);
+      .eq("student_id", existing.student_id);
     if (classStudents?.length) {
       await supabase.from("attendance").upsert(
         classStudents.map((cs) => ({
-          student_profile_id: existing.student_profile_id,
+          student_id: existing.student_id,
           class_id: cs.class_id,
           attendance_date: existing.request_date,
           status: "absent",
           note: "버스 결석 자동 등록",
           recorded_by: auth.userId,
         })),
-        { onConflict: "student_profile_id,class_id,attendance_date", ignoreDuplicates: false }
+        { onConflict: "student_id,class_id,attendance_date", ignoreDuplicates: false }
       );
     }
   }
@@ -677,7 +679,7 @@ export async function getExistingBusChange(
   const { data } = await supabase
     .from("bus_change_requests")
     .select("id, change_type, new_bus_time_slot_id, new_bus_number_id, new_bus_stop_id, reason")
-    .eq("student_profile_id", studentProfileId)
+    .eq("student_id", studentProfileId)
     .eq("request_date", requestDate)
     .eq("status", "approved")
     .maybeSingle();
@@ -721,7 +723,7 @@ export async function bulkCreateBusChanges(
   const now = new Date().toISOString();
 
   const rows = dates.map((d) => ({
-    student_profile_id: studentProfileId,
+    student_id: studentProfileId,
     request_date: d,
     change_type: changeType,
     new_bus_time_slot_id: newBusTimeSlotId || null,
@@ -737,7 +739,7 @@ export async function bulkCreateBusChanges(
   const { data: inserted, error } = await supabase
     .from("bus_change_requests")
     .upsert(rows, {
-      onConflict: "student_profile_id,request_date",
+      onConflict: "student_id,request_date",
       ignoreDuplicates: true,
     })
     .select("id");

@@ -16,9 +16,7 @@ export type UserWithProfile = {
   korean_name?: string | null;
   english_name?: string | null;
   age?: number | null;
-  student_number?: string | null;
   name?: string | null;
-  teacher_number?: string | null;
   teacher_type?: "korean" | "native";
   group_type?: "유치부" | "오후반" | null;
 };
@@ -52,10 +50,10 @@ export type ClassWithDetails = {
 export type ClassStudentRow = {
   id: string;
   student_profile_id: string;
+  student_id?: string;
   korean_name: string | null;
   english_name: string | null;
   age?: number | null;
-  student_number: string | null;
 };
 
 // ── Academy 타입 ──
@@ -66,7 +64,6 @@ export type StudentProfile = {
   korean_name: string | null;
   english_name: string | null;
   age?: number | null;
-  student_number: string | null;
 };
 
 export type StudentClassItem = {
@@ -78,7 +75,6 @@ export type TeacherProfile = {
   id: string;
   email: string;
   name: string | null;
-  teacher_number: string | null;
   teacher_type: "korean" | "native";
 };
 
@@ -87,18 +83,18 @@ export type TeacherClassWithStudents = {
   name: string;
   students: {
     profile_id: string;
+    student_id?: string;
     korean_name: string | null;
     english_name: string | null;
-    student_number: string | null;
     age: number | null;
   }[];
 };
 
 export type ReportCardStatus = {
   student_profile_id: string;
+  student_id?: string;
   korean_name: string | null;
   english_name: string | null;
-  student_number: string | null;
   has_report: boolean;
   has_reply: boolean;
   report_id: string | null;
@@ -131,9 +127,9 @@ export type StudentTextbookItem = {
 
 export type ClassTextbookProgressRow = {
   student_profile_id: string;
+  student_id?: string;
   korean_name: string | null;
   english_name: string | null;
-  student_number: string | null;
   progress_id: string | null;
   status: "not_started" | "in_progress" | "completed";
   completed_units: number;
@@ -151,6 +147,7 @@ export type AdminStudentClassItem = {
 // ── 출결 타입 ──
 
 export type StudentWithAttendance = {
+  student_id?: string;
   student_profile_id: string;
   korean_name: string | null;
   english_name: string | null;
@@ -161,6 +158,7 @@ export type StudentWithAttendance = {
 
 export type AttendanceRecord = {
   id: string;
+  student_id?: string;
   student_profile_id: string;
   attendance_date: string;
   status: "present" | "absent" | "late" | "early_leave";
@@ -312,6 +310,7 @@ export type NoticeAttachment = {
 
 export type StudentBusDefault = {
   id: string;
+  student_id?: string;
   student_profile_id: string;
   day_of_week: number;
   bus_time_slot_id: string;
@@ -328,6 +327,7 @@ export type StudentBusDefault = {
 
 export type BusChangeRequest = {
   id: string;
+  student_id?: string;
   student_profile_id: string;
   request_date: string;
   change_type: BusChangeType;
@@ -346,7 +346,6 @@ export type BusChangeRequest = {
   new_bus_stop_name?: string;
   korean_name?: string | null;
   english_name?: string | null;
-  student_number?: string | null;
   orig_time_slot_time?: string;
   orig_time_slot_label?: string;
   orig_bus_label?: string;
@@ -356,10 +355,10 @@ export type BusChangeRequest = {
 };
 
 export type BusManifestEntry = {
+  student_id?: string;
   student_profile_id: string;
   korean_name: string | null;
   english_name: string | null;
-  student_number: string | null;
   age: number | null;
   is_changed: boolean;
   is_absent?: boolean;
@@ -394,10 +393,10 @@ export type BusManifestGroup = {
 };
 
 export type NoRideEntry = {
+  student_id?: string;
   student_profile_id: string;
   korean_name: string | null;
   english_name: string | null;
-  student_number: string | null;
   original_slot_time?: string;
   original_bus_label?: string;
   change_type?: NoRideChangeType;
@@ -405,6 +404,7 @@ export type NoRideEntry = {
 };
 
 export type AfterSchoolBusEntry = {
+  student_id?: string;
   student_profile_id: string;
   korean_name: string | null;
   english_name: string | null;
@@ -427,6 +427,7 @@ export type BusStaffProfile = {
 
 export type BusDefaultAssignment = {
   id: string;
+  student_id?: string;
   student_profile_id: string;
   korean_name: string | null;
   english_name: string | null;
@@ -455,6 +456,7 @@ export type ClassTextbook = {
 
 export type StudentTextbookProgress = {
   id: string;
+  student_id?: string;
   student_profile_id: string;
   textbook_id: string;
   textbook_title: string;
@@ -486,6 +488,7 @@ export type DayEnrollment = {
 };
 
 export type AfterschoolStudentEnrollment = {
+  student_id?: string;
   student_profile_id: string;
   korean_name: string | null;
   english_name: string | null;
@@ -614,6 +617,7 @@ export type ClassReportSummary = {
 
 export type ReservationAttendance = {
   id: string;
+  student_id?: string;
   student_profile_id: string;
   student_name: string;
   attendance_date: string;
@@ -623,6 +627,7 @@ export type ReservationAttendance = {
 
 export type ReservationBusChange = {
   id: string;
+  student_id?: string;
   student_profile_id: string;
   student_name: string;
   request_date: string;

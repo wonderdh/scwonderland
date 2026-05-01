@@ -5,40 +5,40 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { verifyAdmin, verifyAuthenticated } from "./auth-helpers";
 import { logger } from "@/lib/server/logger";
 import type { ClassWithDetails, ClassStudentRow, ClassTeacherInfo, AdminStudentClassItem } from "@/lib/types";
+import {
+  getStudentRecordByProfileId,
+  getStudentsByIds,
+  getTeacherRecordByProfileId,
+  getTeachersByIds,
+  getUserIdsByRole,
+  toGroupLabel,
+  toGroupType,
+} from "@/lib/server/domain-helpers";
 
-// ── 내부 헬퍼: class_id → 교사 목록 매핑 ──
 async function buildClassTeacherMap(
   supabase: ReturnType<typeof createAdminClient>,
-  classIds: string[],
+  classIds: string[]
 ): Promise<Map<string, ClassTeacherInfo[]>> {
   if (!classIds.length) return new Map();
 
   const { data: classTeachers } = await supabase
     .from("class_teachers")
-    .select("class_id, teacher_profile_id")
+    .select("class_id, teacher_id")
     .in("class_id", classIds);
+  const teacherIds = [...new Set((classTeachers ?? []).map((row) => row.teacher_id))];
+  const teachersById = await getTeachersByIds(supabase, teacherIds);
 
-  const teacherIds = [...new Set((classTeachers ?? []).map((ct) => ct.teacher_profile_id))];
-  if (!teacherIds.length) return new Map();
-
-  const { data: teachers } = await supabase
-    .from("teachers")
-    .select("profile_id, name, teacher_type")
-    .in("profile_id", teacherIds);
-
-  const teacherMap = new Map((teachers ?? []).map((t) => [t.profile_id, t]));
   const result = new Map<string, ClassTeacherInfo[]>();
-
-  for (const ct of classTeachers ?? []) {
-    const teacher = teacherMap.get(ct.teacher_profile_id);
+  for (const row of classTeachers ?? []) {
+    const teacher = teachersById.get(row.teacher_id);
     if (!teacher) continue;
-    const list = result.get(ct.class_id) ?? [];
+    const list = result.get(row.class_id) ?? [];
     list.push({
       profile_id: teacher.profile_id,
       name: teacher.name ?? "",
       teacher_type: (teacher.teacher_type ?? "korean") as "korean" | "native",
     });
-    result.set(ct.class_id, list);
+    result.set(row.class_id, list);
   }
 
   return result;
@@ -48,49 +48,42 @@ export async function listClassesWithDetails(): Promise<ClassWithDetails[]> {
   const auth = await verifyAdmin();
   if ("error" in auth) return [];
   const supabase = createAdminClient();
-  const { data: classes, error: classesError } = await supabase
+
+  const { data: classes, error } = await supabase
     .from("classes")
-    .select("id, name, group_label, color_index, created_at, updated_at")
+    .select("id, name, group_type, group_label, color_index, created_at, updated_at")
     .order("name");
-  if (classesError) {
-    logger.error("[listClassesWithDetails]", classesError.message);
-    return [];
-  }
-  if (!classes?.length) {
+  if (error || !classes?.length) {
+    if (error) logger.error("[listClassesWithDetails]", error.message);
     return [];
   }
 
-  const classIds = classes.map((c) => c.id);
+  const classIds = classes.map((item) => item.id);
   const teachersByClass = await buildClassTeacherMap(supabase, classIds);
-
   const [{ data: members }, { data: schedules }] = await Promise.all([
     supabase.from("class_students").select("class_id"),
     supabase.from("class_schedules").select("class_id"),
   ]);
-  const countByClass = (members ?? []).reduce(
-    (acc, row) => {
-      acc[row.class_id] = (acc[row.class_id] ?? 0) + 1;
-      return acc;
-    },
-    {} as Record<string, number>
-  );
-  const scheduleCountByClass = (schedules ?? []).reduce(
-    (acc, row) => {
-      acc[row.class_id] = (acc[row.class_id] ?? 0) + 1;
-      return acc;
-    },
-    {} as Record<string, number>
-  );
-  return classes.map((c) => ({
-    id: c.id,
-    name: c.name,
-    group_label: (c.group_label ?? null) as "유치부" | "방과후" | "오후반" | null,
-    color_index: c.color_index ?? null,
-    teachers: teachersByClass.get(c.id) ?? [],
-    student_count: countByClass[c.id] ?? 0,
-    schedule_count: scheduleCountByClass[c.id] ?? 0,
-    created_at: c.created_at,
-    updated_at: c.updated_at,
+
+  const studentCountByClass = (members ?? []).reduce((acc, row) => {
+    acc[row.class_id] = (acc[row.class_id] ?? 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+  const scheduleCountByClass = (schedules ?? []).reduce((acc, row) => {
+    acc[row.class_id] = (acc[row.class_id] ?? 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+
+  return classes.map((item) => ({
+    id: item.id,
+    name: item.name,
+    group_label: (item.group_label ?? toGroupLabel(item.group_type) ?? null) as ClassWithDetails["group_label"],
+    color_index: item.color_index ?? null,
+    teachers: teachersByClass.get(item.id) ?? [],
+    student_count: studentCountByClass[item.id] ?? 0,
+    schedule_count: scheduleCountByClass[item.id] ?? 0,
+    created_at: item.created_at,
+    updated_at: item.updated_at,
   }));
 }
 
@@ -101,69 +94,52 @@ export async function getClassWithStudents(
   if ("error" in auth) return { class: null, students: [] };
   const supabase = createAdminClient();
 
-  // 직접 단일 반 조회 (N+1 쿼리 제거)
-  const { data: classRow, error: classError } = await supabase
+  const { data: classRow, error } = await supabase
     .from("classes")
-    .select("id, name, group_label, color_index, created_at, updated_at")
+    .select("id, name, group_type, group_label, color_index, created_at, updated_at")
     .eq("id", classId)
     .single();
+  if (error || !classRow) return { class: null, students: [] };
 
-  if (classError || !classRow) {
-    return { class: null, students: [] };
-  }
-
-  // 교사 정보 조회
-  const classTeacherMap = await buildClassTeacherMap(supabase, [classId]);
-  const teachers: ClassTeacherInfo[] = classTeacherMap.get(classId) ?? [];
-
-  // 학생 수
+  const teachers = (await buildClassTeacherMap(supabase, [classId])).get(classId) ?? [];
   const { count: studentCount } = await supabase
     .from("class_students")
     .select("*", { count: "exact", head: true })
     .eq("class_id", classId);
 
-  const classWithDetails: ClassWithDetails = {
-    id: classRow.id,
-    name: classRow.name,
-    group_label: (classRow.group_label ?? null) as "유치부" | "방과후" | "오후반" | null,
-    color_index: classRow.color_index ?? null,
-    teachers,
-    student_count: studentCount ?? 0,
-    schedule_count: 0,
-    created_at: classRow.created_at,
-    updated_at: classRow.updated_at,
-  };
-
-  // 학생 목록 조회
   const { data: rows } = await supabase
     .from("class_students")
-    .select("id, student_profile_id")
+    .select("id, student_id")
     .eq("class_id", classId);
-  if (!rows?.length) {
-    return { class: classWithDetails, students: [] };
-  }
-  const profileIds = rows.map((r) => r.student_profile_id);
-  const { data: students } = await supabase
-    .from("students")
-    .select("profile_id, korean_name, english_name, student_number")
-    .in("profile_id", profileIds);
-  const studentMap = new Map(
-    (students ?? []).map((s) => [s.profile_id, s])
-  );
-  const studentsList: ClassStudentRow[] = rows.map((r) => {
-    const s = studentMap.get(r.student_profile_id);
-    return {
-      id: r.id,
-      student_profile_id: r.student_profile_id,
-      korean_name: s?.korean_name ?? null,
-      english_name: s?.english_name ?? null,
-      student_number: s?.student_number ?? null,
-    };
-  });
-  return { class: classWithDetails, students: studentsList };
+  const studentIds = (rows ?? []).map((row) => row.student_id);
+  const studentsById = await getStudentsByIds(supabase, studentIds);
+
+  return {
+    class: {
+      id: classRow.id,
+      name: classRow.name,
+      group_label: (classRow.group_label ?? toGroupLabel(classRow.group_type) ?? null) as ClassWithDetails["group_label"],
+      color_index: classRow.color_index ?? null,
+      teachers,
+      student_count: studentCount ?? 0,
+      schedule_count: 0,
+      created_at: classRow.created_at,
+      updated_at: classRow.updated_at,
+    },
+    students: (rows ?? []).map((row) => {
+      const student = studentsById.get(row.student_id);
+      return {
+        id: row.id,
+        student_profile_id: student?.profile_id ?? "",
+        korean_name: student?.korean_name ?? null,
+        english_name: student?.english_name ?? null,
+        age: student?.age ?? null,
+        student_number: null,
+      };
+    }),
+  };
 }
 
-/** 특정 학생의 소속 반 목록 (반 이름 + 담당 교사 정보) */
 export async function getStudentClasses(
   studentProfileId: string
 ): Promise<{ classes: AdminStudentClassItem[]; error?: string }> {
@@ -171,66 +147,58 @@ export async function getStudentClasses(
   if ("error" in auth) return { classes: [] };
   const supabase = createAdminClient();
 
-  const { data: members, error: membersError } = await supabase
+  const student = await getStudentRecordByProfileId(supabase, studentProfileId);
+  if (!student) return { classes: [] };
+
+  const { data: memberships, error } = await supabase
     .from("class_students")
     .select("class_id")
-    .eq("student_profile_id", studentProfileId);
-  if (membersError) {
-    logger.error("[getStudentClasses]", membersError.message);
-    return { classes: [], error: membersError.message };
-  }
-  if (!members?.length) return { classes: [] };
+    .eq("student_id", student.id);
+  if (error) return { classes: [], error: error.message };
+  if (!memberships?.length) return { classes: [] };
 
-  const classIds = members.map((m) => m.class_id);
+  const classIds = memberships.map((row) => row.class_id);
   const { data: classes } = await supabase
     .from("classes")
     .select("id, name")
     .in("id", classIds)
     .order("name");
-  if (!classes?.length) return { classes: [] };
-
   const classTeacherMap = await buildClassTeacherMap(supabase, classIds);
 
   return {
-    classes: classes.map((c) => ({
-      id: c.id,
-      name: c.name,
-      teachers: (classTeacherMap.get(c.id) ?? []).map((t) => ({
-        name: t.name,
-        teacher_type: t.teacher_type,
+    classes: (classes ?? []).map((item) => ({
+      id: item.id,
+      name: item.name,
+      teachers: (classTeacherMap.get(item.id) ?? []).map((teacher) => ({
+        name: teacher.name,
+        teacher_type: teacher.teacher_type,
       })),
     })),
   };
 }
 
-/** 모든 반의 소속 학생 목록 (class_id별 그룹용). 반 검색 시 학생 이름으로도 찾을 수 있게. */
 export async function getAllClassStudentsFlat(): Promise<
   { class_id: string; id: string; student_profile_id: string; korean_name: string | null; english_name: string | null; student_number: string | null }[]
 > {
   const auth = await verifyAdmin();
   if ("error" in auth) return [];
   const supabase = createAdminClient();
-  const { data: rows } = await supabase
-    .from("class_students")
-    .select("id, class_id, student_profile_id");
-  if (!rows?.length) return [];
-  const profileIds = [...new Set(rows.map((r) => r.student_profile_id))];
-  const { data: students } = await supabase
-    .from("students")
-    .select("profile_id, korean_name, english_name, student_number")
-    .in("profile_id", profileIds);
-  const studentMap = new Map(
-    (students ?? []).map((s) => [s.profile_id, s])
+
+  const { data: rows } = await supabase.from("class_students").select("id, class_id, student_id");
+  const studentsById = await getStudentsByIds(
+    supabase,
+    [...new Set((rows ?? []).map((row) => row.student_id))]
   );
-  return rows.map((r) => {
-    const s = studentMap.get(r.student_profile_id);
+
+  return (rows ?? []).map((row) => {
+    const student = studentsById.get(row.student_id);
     return {
-      class_id: r.class_id,
-      id: r.id,
-      student_profile_id: r.student_profile_id,
-      korean_name: s?.korean_name ?? null,
-      english_name: s?.english_name ?? null,
-      student_number: s?.student_number ?? null,
+      class_id: row.class_id,
+      id: row.id,
+      student_profile_id: student?.profile_id ?? "",
+      korean_name: student?.korean_name ?? null,
+      english_name: student?.english_name ?? null,
+      student_number: null,
     };
   });
 }
@@ -239,62 +207,57 @@ export async function createClass(
   name: string,
   teacherProfileIds: string[],
   groupLabel?: string,
-  colorIndex?: number | null,
+  colorIndex?: number | null
 ): Promise<{ error?: string; id?: string }> {
   const auth = await verifyAdmin();
   if ("error" in auth) return { error: auth.error };
   const supabase = createAdminClient();
-  const n = name?.trim();
-  if (!n) return { error: "반 이름을 입력해 주세요." };
+  const normalizedName = name?.trim();
+  if (!normalizedName) return { error: "반 이름을 입력해 주세요." };
+
+  const groupType = toGroupType(groupLabel ?? null);
   const { data, error } = await supabase
     .from("classes")
-    .insert({ name: n, group_label: groupLabel || null, color_index: colorIndex ?? null })
+    .insert({
+      name: normalizedName,
+      group_type: groupType ?? "kindergarten",
+      group_label: groupLabel ?? toGroupLabel(groupType ?? "kindergarten"),
+      color_index: colorIndex ?? null,
+    })
     .select("id")
     .single();
-  if (error) {
-    logger.error("[createClass]", error.message, { name });
-    return { error: error.message };
-  }
-  // 교사 배정
-  if (teacherProfileIds.length > 0) {
-    const { error: ctError } = await supabase
-      .from("class_teachers")
-      .insert(teacherProfileIds.map((tid) => ({ class_id: data.id, teacher_profile_id: tid })));
-    if (ctError) {
-      logger.error("[createClass:teachers]", ctError.message);
-      return { error: "교사 배정에 실패했습니다." };
+  if (error || !data) return { error: error?.message ?? "반 생성에 실패했습니다." };
+
+  if (teacherProfileIds.length) {
+    const teacherRows = await Promise.all(teacherProfileIds.map((profileId) => getTeacherRecordByProfileId(supabase, profileId)));
+    const teacherIds = teacherRows.filter(Boolean).map((row) => row!.id);
+    if (teacherIds.length) {
+      const { error: teacherError } = await supabase
+        .from("class_teachers")
+        .insert(teacherIds.map((teacherId) => ({ class_id: data.id, teacher_id: teacherId })));
+      if (teacherError) return { error: teacherError.message };
     }
   }
 
-  logger.info("[createClass]", "반 생성 완료", { id: data.id, name: n, groupLabel });
+  const { data: periods } = await supabase
+    .from("academy_periods")
+    .select("id")
+    .eq("group_type", groupType ?? "kindergarten")
+    .eq("is_active", true);
+  if (periods?.length) {
+    const rows = periods.flatMap((period) =>
+      [1, 2, 3, 4, 5].map((day) => ({
+        class_id: data.id,
+        academy_period_id: period.id,
+        day_of_week: day,
+        teacher_id: null,
+        label: null,
+      }))
+    );
+    await supabase.from("class_schedules").insert(rows);
+  }
+
   revalidatePath("/admin/classes");
-
-  // 유치부 자동 배정: 모든 교시×요일 슬롯을 빈 상태로 생성
-  if (groupLabel === "유치부") {
-    const { data: kindergartenPeriods } = await supabase
-      .from("academy_periods")
-      .select("id")
-      .eq("group_label", "유치부")
-      .eq("is_active", true);
-
-    if (kindergartenPeriods?.length) {
-      const rows = kindergartenPeriods.flatMap((p) =>
-        [1, 2, 3, 4, 5].map((day) => ({
-          class_id: data.id,
-          academy_period_id: p.id,
-          day_of_week: day,
-          teacher_profile_id: null,
-          label: null,
-          textbook_id: null,
-        })),
-      );
-      const { error: autoErr } = await supabase.from("class_schedules").insert(rows);
-      if (autoErr && autoErr.code !== "23505") {
-        logger.error("[createClass:autoAssign]", autoErr.message);
-      }
-    }
-  }
-
   return { id: data.id };
 }
 
@@ -303,86 +266,40 @@ export async function updateClass(
   name: string,
   teacherProfileIds: string[],
   groupLabel?: string,
-  colorIndex?: number | null,
+  colorIndex?: number | null
 ): Promise<{ error?: string }> {
   const auth = await verifyAdmin();
   if ("error" in auth) return { error: auth.error };
   const supabase = createAdminClient();
-  const n = name?.trim();
-  if (!n) return { error: "반 이름을 입력해 주세요." };
+  const normalizedName = name?.trim();
+  if (!normalizedName) return { error: "반 이름을 입력해 주세요." };
+
+  const groupType = toGroupType(groupLabel ?? null);
   const { error } = await supabase
     .from("classes")
     .update({
-      name: n,
-      group_label: groupLabel || null,
+      name: normalizedName,
+      group_type: groupType ?? "kindergarten",
+      group_label: groupLabel ?? toGroupLabel(groupType ?? "kindergarten"),
       color_index: colorIndex ?? null,
       updated_at: new Date().toISOString(),
     })
     .eq("id", classId);
-  if (error) {
-    logger.error("[updateClass]", error.message, { classId, name });
-    return { error: error.message };
-  }
-  // 교사 재배정: 기존 삭제 → 새로 삽입
-  const { error: deleteError } = await supabase.from("class_teachers").delete().eq("class_id", classId);
-  if (deleteError) {
-    logger.error("[updateClass:teachers:delete]", deleteError.message);
-    return { error: "교사 배정 수정에 실패했습니다." };
-  }
-  if (teacherProfileIds.length > 0) {
-    const { error: ctError } = await supabase
-      .from("class_teachers")
-      .insert(teacherProfileIds.map((tid) => ({ class_id: classId, teacher_profile_id: tid })));
-    if (ctError) {
-      logger.error("[updateClass:teachers]", ctError.message);
-      return { error: "교사 배정 수정에 실패했습니다." };
+  if (error) return { error: error.message };
+
+  await supabase.from("class_teachers").delete().eq("class_id", classId);
+  if (teacherProfileIds.length) {
+    const teacherRows = await Promise.all(teacherProfileIds.map((profileId) => getTeacherRecordByProfileId(supabase, profileId)));
+    const teacherIds = teacherRows.filter(Boolean).map((row) => row!.id);
+    if (teacherIds.length) {
+      const { error: teacherError } = await supabase
+        .from("class_teachers")
+        .insert(teacherIds.map((teacherId) => ({ class_id: classId, teacher_id: teacherId })));
+      if (teacherError) return { error: teacherError.message };
     }
   }
 
-  logger.info("[updateClass]", "반 수정 완료", { classId, name: n, groupLabel });
   revalidatePath("/admin/classes");
-
-  // 유치부 자동 배정: 비어있는 슬롯만 추가 (기존 배정 보존)
-  if (groupLabel === "유치부") {
-    const { data: kindergartenPeriods } = await supabase
-      .from("academy_periods")
-      .select("id")
-      .eq("group_label", "유치부")
-      .eq("is_active", true);
-
-    if (kindergartenPeriods?.length) {
-      const { data: existing } = await supabase
-        .from("class_schedules")
-        .select("academy_period_id, day_of_week")
-        .eq("class_id", classId)
-        .is("student_profile_id", null);
-
-      const existingSet = new Set(
-        (existing ?? []).map((e) => `${e.academy_period_id}_${e.day_of_week}`),
-      );
-
-      const rows = kindergartenPeriods.flatMap((p) =>
-        [1, 2, 3, 4, 5]
-          .filter((day) => !existingSet.has(`${p.id}_${day}`))
-          .map((day) => ({
-            class_id: classId,
-            academy_period_id: p.id,
-            day_of_week: day,
-            teacher_profile_id: null,
-            label: null,
-            textbook_id: null,
-          })),
-      );
-
-      if (rows.length > 0) {
-        const { error: autoErr } = await supabase.from("class_schedules").insert(rows);
-        if (autoErr && autoErr.code !== "23505") {
-          logger.error("[updateClass:autoAssign]", autoErr.message);
-        }
-      }
-    }
-  }
-
   return {};
 }
 
@@ -391,87 +308,60 @@ export async function deleteClass(classId: string): Promise<{ error?: string }> 
   if ("error" in auth) return { error: auth.error };
   const supabase = createAdminClient();
   const { error } = await supabase.from("classes").delete().eq("id", classId);
-  if (error) {
-    logger.error("[deleteClass]", error.message, { classId });
-    return { error: error.message };
-  }
-  logger.info("[deleteClass]", "반 삭제 완료", { classId });
+  if (error) return { error: error.message };
   revalidatePath("/admin/classes");
   return {};
 }
 
-/** 삭제 전 경고용: 반의 연관 데이터 건수 조회 */
 export async function getClassLinkedCounts(
   classId: string
 ): Promise<{ studentCount: number; homeworkCount: number; noticeCount: number }> {
   const auth = await verifyAdmin();
   if ("error" in auth) return { studentCount: 0, homeworkCount: 0, noticeCount: 0 };
-
   const supabase = createAdminClient();
-  const [{ count: studentCount }, { count: homeworkCount }, { count: noticeCount }] = await Promise.all([
-    supabase.from("class_students").select("*", { count: "exact", head: true }).eq("class_id", classId),
-    supabase.from("homework_assignments").select("*", { count: "exact", head: true }).eq("class_id", classId),
-    supabase.from("class_notices").select("*", { count: "exact", head: true }).eq("class_id", classId),
-  ]);
-  return {
-    studentCount: studentCount ?? 0,
-    homeworkCount: homeworkCount ?? 0,
-    noticeCount: noticeCount ?? 0,
-  };
+  const { count: studentCount } = await supabase
+    .from("class_students")
+    .select("*", { count: "exact", head: true })
+    .eq("class_id", classId);
+  return { studentCount: studentCount ?? 0, homeworkCount: 0, noticeCount: 0 };
 }
 
-export async function addStudentToClass(
-  classId: string,
-  studentProfileId: string
-): Promise<{ error?: string }> {
+export async function addStudentToClass(classId: string, studentProfileId: string): Promise<{ error?: string }> {
   const auth = await verifyAdmin();
   if ("error" in auth) return { error: auth.error };
   const supabase = createAdminClient();
+  const student = await getStudentRecordByProfileId(supabase, studentProfileId);
+  if (!student) return { error: "학생 정보를 찾을 수 없습니다." };
   const { error } = await supabase.from("class_students").insert({
     class_id: classId,
-    student_profile_id: studentProfileId,
+    student_id: student.id,
   });
-  if (error) {
-    logger.error("[addStudentToClass]", error.message, { classId, studentProfileId });
-    return { error: error.message };
-  }
-  logger.info("[addStudentToClass]", "학생 반 배정", { classId, studentProfileId });
+  if (error) return { error: error.message };
   revalidatePath("/admin/classes");
   return {};
 }
 
-export async function removeStudentFromClass(
-  classStudentId: string
-): Promise<{ error?: string }> {
+export async function removeStudentFromClass(classStudentId: string): Promise<{ error?: string }> {
   const auth = await verifyAdmin();
   if ("error" in auth) return { error: auth.error };
   const supabase = createAdminClient();
 
-  // 반 소속 정보 조회 (방과후 등록 정리에 필요)
   const { data: classStudent } = await supabase
     .from("class_students")
-    .select("class_id, student_profile_id")
+    .select("class_id, student_id")
     .eq("id", classStudentId)
-    .single();
+    .maybeSingle();
 
-  // 방과후 등록 삭제 (방과후 반이 아닌 경우 무해하게 0건 삭제)
   if (classStudent) {
     await supabase
       .from("afterschool_enrollments")
       .delete()
       .eq("class_id", classStudent.class_id)
-      .eq("student_profile_id", classStudent.student_profile_id);
+      .eq("student_id", classStudent.student_id);
   }
 
-  const { error } = await supabase
-    .from("class_students")
-    .delete()
-    .eq("id", classStudentId);
-  if (error) {
-    logger.error("[removeStudentFromClass]", error.message, { classStudentId });
-    return { error: error.message };
-  }
-  logger.info("[removeStudentFromClass]", "학생 반 제외", { classStudentId });
+  const { error } = await supabase.from("class_students").delete().eq("id", classStudentId);
+  if (error) return { error: error.message };
   revalidatePath("/admin/classes");
   return {};
 }
@@ -482,25 +372,26 @@ export async function listTeachersForSelect(): Promise<
   const auth = await verifyAdmin();
   if ("error" in auth) return [];
   const supabase = createAdminClient();
+  const teacherIds = await getUserIdsByRole(supabase, "teacher");
+  if (!teacherIds.length) return [];
 
-  // 소프트 삭제되지 않은 교사만 조회
-  const { data: activeProfileIds } = await supabase
+  const { data: activeProfiles } = await supabase
     .from("profiles")
     .select("id")
-    .eq("role", "teacher")
+    .in("id", teacherIds)
     .is("deleted_at", null);
-  const activeIds = (activeProfileIds ?? []).map((p) => p.id);
-  if (activeIds.length === 0) return [];
+  const profileIds = (activeProfiles ?? []).map((profile) => profile.id);
+  if (!profileIds.length) return [];
 
   const { data } = await supabase
     .from("teachers")
-    .select("profile_id, name, teacher_type")
-    .in("profile_id", activeIds)
+    .select("id, name, teacher_type")
+    .in("id", profileIds)
     .order("name");
-  return (data ?? []).map((t) => ({
-    id: t.profile_id,
-    name: t.name ?? "",
-    teacher_type: (t.teacher_type ?? "korean") as "korean" | "native",
+  return (data ?? []).map((teacher) => ({
+    id: teacher.id,
+    name: teacher.name ?? "",
+    teacher_type: (teacher.teacher_type ?? "korean") as "korean" | "native",
   }));
 }
 
@@ -510,21 +401,32 @@ export async function listStudentsNotInClass(
   const auth = await verifyAdmin();
   if ("error" in auth) return [];
   const supabase = createAdminClient();
-  const { data: inClass } = await supabase
+
+  const { data: memberships } = await supabase
     .from("class_students")
-    .select("student_profile_id")
+    .select("student_id")
     .eq("class_id", classId);
-  const ids = new Set((inClass ?? []).map((r) => r.student_profile_id));
+  const assignedStudentIds = new Set((memberships ?? []).map((row) => row.student_id));
+
+  const activeProfileIds = await getUserIdsByRole(supabase, "student");
+  const { data: activeProfiles } = await supabase
+    .from("profiles")
+    .select("id")
+    .in("id", activeProfileIds)
+    .is("deleted_at", null);
+  const profileIds = (activeProfiles ?? []).map((profile) => profile.id);
+
   const { data: students } = await supabase
     .from("students")
-    .select("profile_id, korean_name, english_name, student_number");
+    .select("id, korean_name, english_name")
+    .in("id", profileIds);
   return (students ?? [])
-    .filter((s) => !ids.has(s.profile_id))
-    .map((s) => ({
-      id: s.profile_id,
-      korean_name: s.korean_name ?? null,
-      english_name: s.english_name ?? null,
-      student_number: s.student_number ?? null,
+    .filter((student) => !assignedStudentIds.has(student.id))
+    .map((student) => ({
+      id: student.id,
+      korean_name: student.korean_name ?? null,
+      english_name: student.english_name ?? null,
+      student_number: null,
     }));
 }
 
@@ -536,41 +438,40 @@ export async function batchUpdateClassStudents(
   if ("error" in auth) return { error: auth.error };
   const supabase = createAdminClient();
 
-  if (removes.length > 0) {
-    // afterschool_enrollments 정리
+  if (removes.length) {
     const { data: classStudents } = await supabase
       .from("class_students")
-      .select("class_id, student_profile_id")
+      .select("class_id, student_id")
       .in("id", removes);
-    if (classStudents?.length) {
-      for (const cs of classStudents) {
-        await supabase
-          .from("afterschool_enrollments")
-          .delete()
-          .eq("class_id", cs.class_id)
-          .eq("student_profile_id", cs.student_profile_id);
-      }
+    for (const classStudent of classStudents ?? []) {
+      await supabase
+        .from("afterschool_enrollments")
+        .delete()
+        .eq("class_id", classStudent.class_id)
+        .eq("student_id", classStudent.student_id);
     }
     const { error } = await supabase.from("class_students").delete().in("id", removes);
     if (error) return { error: error.message };
   }
 
-  if (adds.length > 0) {
-    const { error } = await supabase
-      .from("class_students")
-      .insert(adds.map((a) => ({ class_id: a.classId, student_profile_id: a.profileId })));
-    if (error) return { error: error.message };
+  if (adds.length) {
+    const rows = await Promise.all(
+      adds.map(async (item) => {
+        const student = await getStudentRecordByProfileId(supabase, item.profileId);
+        return student ? { class_id: item.classId, student_id: student.id } : null;
+      })
+    );
+    const inserts = rows.filter(Boolean);
+    if (inserts.length) {
+      const { error } = await supabase.from("class_students").insert(inserts);
+      if (error) return { error: error.message };
+    }
   }
 
-  logger.info("[batchUpdateClassStudents]", "학생 배정 일괄 저장", {
-    removes: removes.length,
-    adds: adds.length,
-  });
   revalidatePath("/admin/classes");
   return {};
 }
 
-/** 비밀번호 일괄 내보내기용 — 반별 학생 ID 목록 (관리자 전용, 방과후 제외) */
 export async function listClassesWithStudentIds(): Promise<
   { id: string; name: string; colorIndex: number | null; studentProfileIds: string[] }[]
 > {
@@ -580,26 +481,30 @@ export async function listClassesWithStudentIds(): Promise<
 
   const { data: classes } = await supabase
     .from("classes")
-    .select("id, name, group_label, color_index")
-    .neq("group_label", "방과후")
+    .select("id, name, group_type, group_label, color_index")
+    .neq("group_type", "afterschool")
     .order("name");
   if (!classes?.length) return [];
 
-  const { data: rows } = await supabase
-    .from("class_students")
-    .select("class_id, student_profile_id");
+  const { data: rows } = await supabase.from("class_students").select("class_id, student_id");
+  const studentsById = await getStudentsByIds(
+    supabase,
+    [...new Set((rows ?? []).map((row) => row.student_id))]
+  );
 
   const classStudentMap = new Map<string, string[]>();
   for (const row of rows ?? []) {
+    const profileId = studentsById.get(row.student_id)?.profile_id;
+    if (!profileId) continue;
     const list = classStudentMap.get(row.class_id) ?? [];
-    list.push(row.student_profile_id);
+    list.push(profileId);
     classStudentMap.set(row.class_id, list);
   }
 
-  return classes.map((c) => ({
-    id: c.id,
-    name: c.name,
-    colorIndex: c.color_index ?? null,
-    studentProfileIds: classStudentMap.get(c.id) ?? [],
+  return classes.map((item) => ({
+    id: item.id,
+    name: item.name,
+    colorIndex: item.color_index ?? null,
+    studentProfileIds: classStudentMap.get(item.id) ?? [],
   }));
 }

@@ -18,7 +18,8 @@ export const BUS_CHANGE_TYPE_CONFIG: Record<BusChangeType, {
   icon: ComponentType<{ className?: string }>;
   badgeClass: string;
 }> = {
-  change:  { label: "변경",   icon: Check,     badgeClass: "bg-blue-100 text-blue-800 border border-blue-300" },
-  no_ride: { label: "미탑승", icon: X,         badgeClass: "bg-orange-100 text-orange-800 border border-orange-300" },
-  absent:  { label: "결석",   icon: X,         badgeClass: "bg-red-100 text-red-800 border border-red-300" },
+  change:           { label: "변경",     icon: Check,     badgeClass: "bg-blue-100 text-blue-800 border border-blue-300" },
+  no_ride:          { label: "미탑승",   icon: X,         badgeClass: "bg-orange-100 text-orange-800 border border-orange-300" },
+  absent:           { label: "결석",     icon: X,         badgeClass: "bg-red-100 text-red-800 border border-red-300" },
+  temporary_change: { label: "임시변경", icon: Check,     badgeClass: "bg-purple-100 text-purple-800 border border-purple-300" },
 };

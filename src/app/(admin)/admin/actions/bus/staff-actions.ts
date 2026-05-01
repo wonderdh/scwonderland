@@ -34,8 +34,6 @@ export async function createBusStaff(
     password,
     email_confirm: true,
     user_metadata: {
-      first_name: name,
-      last_name: "",
       role: "bus",
       name,
     },
@@ -49,14 +47,6 @@ export async function createBusStaff(
     return { error: "사용자 생성에 실패했습니다." };
   }
 
-  // 트리거가 bus_staff 레코드를 자동 생성 → bus_number_id 업데이트
-  if (busNumberId) {
-    await supabase
-      .from("bus_staff")
-      .update({ bus_number_id: busNumberId, updated_at: new Date().toISOString() })
-      .eq("profile_id", data.user.id);
-  }
-
   return {};
 }
 
@@ -65,7 +55,7 @@ export async function listBusStaff(): Promise<BusStaffProfile[]> {
 
   const { data: profiles, error: profilesError } = await supabase
     .from("profiles")
-    .select("id, first_name")
+    .select("id, username")
     .eq("role", "bus")
     .is("deleted_at", null);
 
@@ -83,37 +73,16 @@ export async function listBusStaff(): Promise<BusStaffProfile[]> {
     (users?.users ?? []).filter((u) => ids.includes(u.id)).map((u) => [u.id, u])
   );
 
-  // bus_staff 조인
-  const { data: staffRows } = await supabase
-    .from("bus_staff")
-    .select("id, profile_id, name, bus_number_id, created_at")
-    .in("profile_id", ids);
-  const staffMap = new Map(
-    (staffRows ?? []).map((s) => [s.profile_id, s])
-  );
-
-  // bus_numbers 조인
-  const busIds = [...new Set((staffRows ?? []).filter((s) => s.bus_number_id).map((s) => s.bus_number_id))];
-  let busMap = new Map<string, string>();
-  if (busIds.length) {
-    const { data: buses } = await supabase
-      .from("bus_numbers")
-      .select("id, label")
-      .in("id", busIds);
-    busMap = new Map((buses ?? []).map((b) => [b.id, b.label]));
-  }
-
   return profiles.map((p) => {
     const u = userMap.get(p.id);
-    const s = staffMap.get(p.id);
     return {
-      id: s?.id ?? "",
+      id: p.id,
       profile_id: p.id,
       email: u?.email ?? "",
-      name: s?.name ?? p.first_name ?? "",
-      bus_number_id: s?.bus_number_id ?? null,
-      bus_label: s?.bus_number_id ? (busMap.get(s.bus_number_id) ?? null) : null,
-      created_at: s?.created_at ?? "",
+      name: p.username ?? "",
+      bus_number_id: null,
+      bus_label: null,
+      created_at: u?.created_at ?? "",
     };
   }) as BusStaffProfile[];
 }
@@ -130,25 +99,16 @@ export async function updateBusStaff(
 
   const supabase = createAdminClient();
 
-  const { error: staffError } = await supabase
-    .from("bus_staff")
-    .update({
-      name: trimmed,
-      bus_number_id: busNumberId || null,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("profile_id", profileId);
-
-  if (staffError) {
-    logger.error("[updateBusStaff]", staffError.message);
-    return { error: staffError.message };
-  }
-
-  // profiles.first_name도 동기화
-  await supabase
+  // profiles.username 업데이트
+  const { error: profileError } = await supabase
     .from("profiles")
-    .update({ first_name: trimmed })
+    .update({ username: trimmed })
     .eq("id", profileId);
+
+  if (profileError) {
+    logger.error("[updateBusStaff]", profileError.message);
+    return { error: profileError.message };
+  }
 
   return {};
 }
@@ -178,19 +138,20 @@ export async function getWeeklyDropoffExportData(): Promise<
   // 2. 활성 학생 전체 조회
   const { data: studentData, error: studentError } = await supabase
     .from("students")
-    .select("profile_id, korean_name, english_name, age, profiles!inner(deleted_at)")
+    .select("id, korean_name, english_name, age, profiles!inner(deleted_at)")
     .is("profiles.deleted_at", null);
   if (studentError) {
     logger.error("[getWeeklyDropoffExportData] students", studentError.message);
     return { error: studentError.message };
   }
   const allStudents = (studentData ?? []).map((s) => ({
-    profile_id: s.profile_id as string,
+    student_id: s.id as string,
+    profile_id: s.id as string, // students.id = profiles.id (shared PK)
     korean_name: s.korean_name as string | null,
     english_name: s.english_name as string | null,
     age: (s.age as number | null) ?? null,
   }));
-  const allStudentIds = new Set(allStudents.map((s) => s.profile_id));
+  const allStudentIds = new Set(allStudents.map((s) => s.student_id));
 
   // 3. 호차 전체 조회
   const { data: busData } = await supabase
@@ -223,7 +184,7 @@ export async function getWeeklyDropoffExportData(): Promise<
     slotIds.length > 0
       ? supabase
           .from("student_bus_defaults")
-          .select("student_profile_id, bus_stop_id, bus_time_slot_id, day_of_week, note")
+          .select("student_id, bus_stop_id, bus_time_slot_id, day_of_week, note")
           .in("bus_time_slot_id", slotIds)
       : Promise.resolve({ data: [], error: null }),
     slotIds.length > 0
@@ -241,12 +202,12 @@ export async function getWeeklyDropoffExportData(): Promise<
 
   // 6. 학생 정보 맵 (step 2에서 이미 조회한 allStudents 재활용)
   const studMap = new Map(
-    allStudents.map((s) => [s.profile_id, s])
+    allStudents.map((s) => [s.student_id, s])
   );
 
   // 7. 메모리 필터링을 위한 (day, slotId) 키 기반 맵 구성
   type DefaultRow = {
-    student_profile_id: string;
+    student_id: string;
     bus_stop_id: string | null;
     bus_time_slot_id: string;
     day_of_week: number;
@@ -257,7 +218,7 @@ export async function getWeeklyDropoffExportData(): Promise<
     const key = `${d.day_of_week as number}:${d.bus_time_slot_id as string}`;
     const list = defaultsByDaySlot.get(key) ?? [];
     list.push({
-      student_profile_id: d.student_profile_id as string,
+      student_id: d.student_id as string,
       bus_stop_id: d.bus_stop_id as string | null,
       bus_time_slot_id: d.bus_time_slot_id as string,
       day_of_week: d.day_of_week as number,
@@ -278,7 +239,7 @@ export async function getWeeklyDropoffExportData(): Promise<
   const unassigned: DropoffExportData["unassigned"] = [];
 
   for (let day = 1; day <= 5; day++) {
-    // 이 날 배정된 student_profile_id 추적
+    // 이 날 배정된 student_id 추적
     const assignedIds = new Set<string>();
 
     // 각 시간대별로 메모리 필터링
@@ -290,18 +251,18 @@ export async function getWeeklyDropoffExportData(): Promise<
       const stopToBusId = assignmentsByDaySlot.get(key) ?? new Map<string, string>();
 
       for (const d of defaults) {
-        const pid = d.student_profile_id;
-        assignedIds.add(pid);
-        if (!allStudentIds.has(pid)) continue; // 삭제된 학생 스킵
+        const studentId = d.student_id;
+        assignedIds.add(studentId);
+        if (!allStudentIds.has(studentId)) continue; // 삭제된 학생 스킵
 
-        const stud = studMap.get(pid);
+        const stud = studMap.get(studentId);
         const stopId = d.bus_stop_id;
         const busId = stopId ? (stopToBusId.get(stopId) ?? null) : null;
         const stopInfo = stopId ? stopInfoMap.get(stopId) : undefined;
 
         rows.push({
           day,
-          profile_id: pid,
+          profile_id: stud?.profile_id ?? studentId,
           slotLabel: slot.label,
           slotTime: slot.time,
           busLabel: busId ? (busMap.get(busId) ?? "미지정") : "미지정",
@@ -332,9 +293,9 @@ export async function getWeeklyDropoffExportData(): Promise<
   // 방과후 수강 현황 조회
   const { data: afterschoolData } = await supabase
     .from("afterschool_enrollments")
-    .select("student_profile_id, day_of_week");
+    .select("student_id, day_of_week");
   const afterschoolEnrollments = (afterschoolData ?? []).map((e) => ({
-    profile_id: e.student_profile_id as string,
+    profile_id: allStudents.find((student) => student.student_id === (e.student_id as string))?.profile_id ?? (e.student_id as string),
     day: e.day_of_week as number,
   }));
 

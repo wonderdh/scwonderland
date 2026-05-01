@@ -15,8 +15,8 @@ function matchSearch(user: UserWithProfile, q: string, variant: Variant): boolea
   const lower = q.trim().toLowerCase();
   const fields: (string | null | undefined)[] =
     variant === "students"
-      ? [user.korean_name, user.english_name, user.first_name, user.last_name, user.student_number, user.email]
-      : [user.name, user.first_name, user.last_name, user.teacher_number, user.email];
+      ? [user.korean_name, user.english_name, user.first_name, user.last_name, user.email]
+      : [user.name, user.first_name, user.last_name, user.email];
   return fields.some((f) => f && String(f).toLowerCase().includes(lower));
 }
 

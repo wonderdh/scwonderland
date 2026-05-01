@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { hasUserRole } from "@/lib/auth/user-roles";
 import { redirect } from "next/navigation";
 import { TeacherNav } from "./components/TeacherNav";
 import { TeacherTypeProvider } from "./components/TeacherTypeContext";
@@ -19,27 +20,19 @@ export default async function TeacherLayout({
   }
 
   const admin = createAdminClient();
-  const { data: profile } = await admin
-    .from("profiles")
-    .select("role, first_name")
+  const isTeacher = await hasUserRole(admin, user.id, "teacher");
+  if (!isTeacher) {
+    redirect("/academy/dashboard");
+  }
+
+  const { data: teacher } = await admin
+    .from("teachers")
+    .select("teacher_type, name")
     .eq("id", user.id)
     .single();
 
-  if (!profile) {
-    redirect("/academy/login");
-  }
-
-  if (profile.role !== "teacher") {
-    redirect("/academy/dashboard");
-  }
-  const { data: teacher } = await admin
-    .from("teachers")
-    .select("teacher_type")
-    .eq("profile_id", user.id)
-    .single();
-
   const teacherType = (teacher?.teacher_type ?? "korean") as "korean" | "native";
-  const teacherName = profile?.first_name ?? undefined;
+  const teacherName = teacher?.name ?? undefined;
 
   return (
     <div className="mx-auto max-w-4xl">

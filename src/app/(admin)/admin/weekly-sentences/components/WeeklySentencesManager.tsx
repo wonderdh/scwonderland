@@ -32,7 +32,7 @@ export function WeeklySentencesManager({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [sentences, setSentences] = useState(initialSentences);
-  const [config, setConfig] = useState(initialConfig);
+  const [config, setConfig] = useState<WeeklySentenceConfig | null>(initialConfig);
 
   // 편집 모달 상태
   const [editTarget, setEditTarget] = useState<{

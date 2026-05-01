@@ -1,6 +1,7 @@
 "use server";
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getUserRoles, hasUserRole } from "@/lib/auth/user-roles";
 import { createClient } from "@/lib/supabase/server";
 import type { StudentProfile, StudentClassItem, TeacherProfile, TeacherClassWithStudents, ReportCardStatus, TeacherClassTextbook, StudentTextbookItem } from "@/lib/types";
 
@@ -12,25 +13,20 @@ export async function getCurrentStudentProfile(): Promise<StudentProfile | null>
   } = await supabase.auth.getUser();
   if (!user) return null;
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("id, role, first_name, last_name")
-    .eq("id", user.id)
-    .single();
-  if (profile?.role !== "student") return null;
+  const isStudent = await hasUserRole(supabase, user.id, "student");
+  if (!isStudent) return null;
 
   const { data: student } = await supabase
     .from("students")
-    .select("profile_id, korean_name, english_name, student_number")
-    .eq("profile_id", user.id)
+    .select("id, korean_name, english_name")
+    .eq("id", user.id)
     .single();
 
   return {
     id: user.id,
     email: user.email ?? "",
-    korean_name: student?.korean_name ?? profile?.first_name ?? null,
-    english_name: student?.english_name ?? profile?.last_name ?? null,
-    student_number: student?.student_number ?? null,
+    korean_name: student?.korean_name ?? null,
+    english_name: student?.english_name ?? null,
   };
 }
 
@@ -42,18 +38,21 @@ export async function getCurrentStudentClasses(): Promise<StudentClassItem[]> {
   } = await supabase.auth.getUser();
   if (!user) return [];
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
+  const admin = createAdminClient();
+  const isStudent = await hasUserRole(admin, user.id, "student");
+  if (!isStudent) return [];
+
+  const { data: student } = await admin
+    .from("students")
+    .select("id")
     .eq("id", user.id)
     .single();
-  if (profile?.role !== "student") return [];
+  if (!student) return [];
 
-  const admin = createAdminClient();
   const { data: members } = await admin
     .from("class_students")
     .select("class_id")
-    .eq("student_profile_id", user.id);
+    .eq("student_id", student.id);
   if (!members?.length) return [];
 
   const classIds = members.map((m) => m.class_id);
@@ -66,20 +65,26 @@ export async function getCurrentStudentClasses(): Promise<StudentClassItem[]> {
   // class_teachers 중간 테이블에서 교사 매핑 조회
   const { data: classTeachers } = await admin
     .from("class_teachers")
-    .select("class_id, teacher_profile_id")
+    .select("class_id, teacher_id")
     .in("class_id", classIds);
 
   const teacherIds = [
-    ...new Set((classTeachers ?? []).map((ct) => ct.teacher_profile_id)),
+    ...new Set((classTeachers ?? []).map((ct) => ct.teacher_id)),
   ];
-  let teacherMap = new Map<string, { name: string; teacher_type: string }>();
+  let teacherMap = new Map<string, { name: string | null; teacher_type: string }>();
   if (teacherIds.length > 0) {
     const { data: teachers } = await admin
       .from("teachers")
-      .select("profile_id, name, teacher_type")
-      .in("profile_id", teacherIds);
+      .select("id, name, teacher_type")
+      .in("id", teacherIds);
     teacherMap = new Map(
-      (teachers ?? []).map((t) => [t.profile_id, { name: t.name ?? "", teacher_type: t.teacher_type ?? "korean" }])
+      (teachers ?? []).map((teacher) => [
+        teacher.id,
+        {
+          name: teacher.name ?? null,
+          teacher_type: teacher.teacher_type ?? "korean",
+        },
+      ])
     );
   }
 
@@ -88,7 +93,7 @@ export async function getCurrentStudentClasses(): Promise<StudentClassItem[]> {
     teachers: (classTeachers ?? [])
       .filter((ct) => ct.class_id === c.id)
       .map((ct) => {
-        const t = teacherMap.get(ct.teacher_profile_id);
+        const t = teacherMap.get(ct.teacher_id);
         return {
           name: t?.name ?? null,
           teacher_type: (t?.teacher_type ?? "korean") as "korean" | "native",
@@ -106,25 +111,20 @@ export async function getCurrentTeacherProfile(): Promise<TeacherProfile | null>
   } = await supabase.auth.getUser();
   if (!user) return null;
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("id, role, first_name")
-    .eq("id", user.id)
-    .single();
-  if (profile?.role !== "teacher") return null;
+  const isTeacher = await hasUserRole(supabase, user.id, "teacher");
+  if (!isTeacher) return null;
 
   const admin = createAdminClient();
   const { data: teacher } = await admin
     .from("teachers")
-    .select("profile_id, name, teacher_number, teacher_type")
-    .eq("profile_id", user.id)
+    .select("id, name, teacher_type")
+    .eq("id", user.id)
     .single();
 
   return {
     id: user.id,
     email: user.email ?? "",
-    name: teacher?.name ?? profile?.first_name ?? null,
-    teacher_number: teacher?.teacher_number ?? null,
+    name: teacher?.name ?? null,
     teacher_type: (teacher?.teacher_type ?? "korean") as "korean" | "native",
   };
 }
@@ -137,19 +137,22 @@ export async function getTeacherClasses(): Promise<TeacherClassWithStudents[]> {
   } = await supabase.auth.getUser();
   if (!user) return [];
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
+  const admin = createAdminClient();
+  const isTeacher = await hasUserRole(admin, user.id, "teacher");
+  if (!isTeacher) return [];
+
+  const { data: teacher } = await admin
+    .from("teachers")
+    .select("id")
     .eq("id", user.id)
     .single();
-  if (profile?.role !== "teacher") return [];
+  if (!teacher) return [];
 
-  const admin = createAdminClient();
   // class_teachers 중간 테이블에서 담당 반 조회
   const { data: classTeacherRows } = await admin
     .from("class_teachers")
     .select("class_id")
-    .eq("teacher_profile_id", user.id);
+    .eq("teacher_id", teacher.id);
   if (!classTeacherRows?.length) return [];
 
   const classIds = classTeacherRows.map((ct) => ct.class_id);
@@ -162,17 +165,17 @@ export async function getTeacherClasses(): Promise<TeacherClassWithStudents[]> {
 
   const { data: members } = await admin
     .from("class_students")
-    .select("class_id, student_profile_id")
+    .select("class_id, student_id")
     .in("class_id", classIds);
 
-  const studentIds = [...new Set((members ?? []).map((m) => m.student_profile_id))];
-  let studentMap = new Map<string, { korean_name: string | null; english_name: string | null; student_number: string | null; age: number | null }>();
+  const studentIds = [...new Set((members ?? []).map((m) => m.student_id))];
+  let studentMap = new Map<string, { id: string; korean_name: string | null; english_name: string | null }>();
   if (studentIds.length) {
     const { data: students } = await admin
       .from("students")
-      .select("profile_id, korean_name, english_name, student_number, age")
-      .in("profile_id", studentIds);
-    studentMap = new Map((students ?? []).map((s) => [s.profile_id, s]));
+      .select("id, korean_name, english_name")
+      .in("id", studentIds);
+    studentMap = new Map((students ?? []).map((studentRow) => [studentRow.id, studentRow]));
   }
 
   return classes.map((c) => ({
@@ -181,13 +184,12 @@ export async function getTeacherClasses(): Promise<TeacherClassWithStudents[]> {
     students: (members ?? [])
       .filter((m) => m.class_id === c.id)
       .map((m) => {
-        const s = studentMap.get(m.student_profile_id);
+        const s = studentMap.get(m.student_id);
         return {
-          profile_id: m.student_profile_id,
+          profile_id: s?.id ?? "",  // students.id IS the profile_id (shared PK)
           korean_name: s?.korean_name ?? null,
           english_name: s?.english_name ?? null,
-          student_number: s?.student_number ?? null,
-          age: s?.age ?? null,
+          age: null,
         };
       }),
   }));
@@ -208,57 +210,60 @@ export async function getClassReportStatus(
   const admin = createAdminClient();
 
   // 권한 확인: admin은 전체, teacher는 담당반만, 그 외 차단
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
+  const { roles } = await getUserRoles(supabase, user.id);
 
-  if (profile?.role === "teacher") {
+  if (roles.includes("teacher")) {
+    const { data: teacher } = await admin
+      .from("teachers")
+      .select("id")
+      .eq("id", user.id)
+      .single();
+    if (!teacher) return [];
+
     const { data: assignment } = await admin
       .from("class_teachers")
       .select("class_id")
-      .eq("teacher_profile_id", user.id)
+      .eq("teacher_id", teacher.id)
       .eq("class_id", classId)
       .maybeSingle();
     if (!assignment) return [];
-  } else if (profile?.role !== "admin") {
+  } else if (!roles.includes("admin")) {
     return [];
   }
 
   // 반 학생 목록
   const { data: members } = await admin
     .from("class_students")
-    .select("student_profile_id")
+    .select("student_id")
     .eq("class_id", classId);
   if (!members?.length) return [];
 
-  const studentIds = members.map((m) => m.student_profile_id);
+  const studentIds = members.map((m) => m.student_id);
 
-  // 학생 정보
+  // 학생 정보 (students.id = profiles.id, shared PK)
   const { data: students } = await admin
     .from("students")
-    .select("profile_id, korean_name, english_name, student_number")
-    .in("profile_id", studentIds);
-  const studentMap = new Map((students ?? []).map((s) => [s.profile_id, s]));
+    .select("id, korean_name, english_name")
+    .in("id", studentIds);
+  const studentMap = new Map((students ?? []).map((studentRow) => [studentRow.id, studentRow]));
 
-  // 리포트카드 조회
+  // 리포트카드 조회 (report_cards.student_id = students.id)
   const { data: reports } = await admin
     .from("report_cards")
-    .select("id, student_profile_id, content, reply")
-    .in("student_profile_id", studentIds)
+    .select("id, student_id, content, reply")
+    .in("student_id", studentIds)
     .eq("year", year)
     .eq("month", month);
-  const reportMap = new Map((reports ?? []).map((r) => [r.student_profile_id, r]));
+  const reportMap = new Map((reports ?? []).map((r) => [r.student_id, r]));
 
   return studentIds.map((sid) => {
     const s = studentMap.get(sid);
     const r = reportMap.get(sid);
     return {
-      student_profile_id: sid,
+      student_profile_id: sid,  // students.id IS the profile_id (shared PK)
       korean_name: s?.korean_name ?? null,
       english_name: s?.english_name ?? null,
-      student_number: s?.student_number ?? null,
+      student_number: null,
       has_report: r != null && r.content != null && r.content.trim() !== "",
       has_reply: r != null && r.reply != null && r.reply.trim() !== "",
       report_id: r?.id ?? null,
@@ -307,12 +312,8 @@ export async function getCurrentStudentTextbooks(): Promise<StudentTextbookItem[
   } = await supabase.auth.getUser();
   if (!user) return [];
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-  if (profile?.role !== "student") return [];
+  const isStudent = await hasUserRole(supabase, user.id, "student");
+  if (!isStudent) return [];
 
   const admin = createAdminClient();
 

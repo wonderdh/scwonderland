@@ -2,6 +2,7 @@
 
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
+import { getUserRoles } from "@/lib/auth/user-roles";
 import { logger } from "@/lib/server/logger";
 
 /**
@@ -21,16 +22,12 @@ const cachedVerifyAdmin = cache(
       return { error: "인증이 필요합니다." };
     }
 
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .single();
+    const { roles } = await getUserRoles(supabase, user.id);
 
-    if (profile?.role !== "admin") {
+    if (!roles.includes("admin")) {
       logger.warn("[verifyAdmin]", "관리자 권한 없음", {
         userId: user.id,
-        role: profile?.role ?? "없음",
+        roles,
       });
       return { error: "관리자만 접근 가능합니다." };
     }
@@ -81,20 +78,22 @@ const cachedVerifyTeacherOrAdmin = cache(
       return { error: "인증이 필요합니다." };
     }
 
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .single();
+    const { roles } = await getUserRoles(supabase, user.id);
 
-    if (profile?.role !== "teacher" && profile?.role !== "admin") {
+    const role = roles.includes("admin")
+      ? "admin"
+      : roles.includes("teacher")
+        ? "teacher"
+        : null;
+
+    if (!role) {
       logger.warn("[verifyTeacherOrAdmin]", "권한 없음", {
         userId: user.id,
-        role: profile?.role ?? "없음",
+        roles,
       });
       return { error: "교사 또는 관리자만 접근 가능합니다." };
     }
-    return { userId: user.id, role: profile.role };
+    return { userId: user.id, role };
   }
 );
 

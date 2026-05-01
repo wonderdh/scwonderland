@@ -14,7 +14,7 @@ export async function getCurrentBusStaffProfile(): Promise<BusStaffProfile | nul
   const admin = createAdminClient();
   const { data: profile } = await admin
     .from("profiles")
-    .select("role, first_name")
+    .select("role, username")
     .eq("id", user.id)
     .single();
   if (profile?.role !== "bus") return null;
@@ -39,7 +39,7 @@ export async function getCurrentBusStaffProfile(): Promise<BusStaffProfile | nul
     id: staff?.id ?? "",
     profile_id: user.id,
     email: user.email ?? "",
-    name: staff?.name ?? profile?.first_name ?? "",
+    name: staff?.name ?? profile?.username ?? "",
     bus_number_id: staff?.bus_number_id ?? null,
     bus_label: busLabel,
     created_at: staff?.created_at ?? "",

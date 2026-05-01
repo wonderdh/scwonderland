@@ -70,9 +70,6 @@ export function TrashView({
             <thead>
               <tr className="bg-muted/50 border-b">
                 <th className="py-3 px-4 text-left text-xs font-medium text-muted-foreground">이름</th>
-                <th className="py-3 px-4 text-left text-xs font-medium text-muted-foreground">
-                  {variant === "student" ? "학번" : "교번"}
-                </th>
                 <th className="py-3 px-4 text-left text-xs font-medium text-muted-foreground">아이디</th>
                 <th className="py-3 px-4 text-right text-xs font-medium text-muted-foreground">작업</th>
               </tr>
@@ -85,15 +82,10 @@ export function TrashView({
                       user.first_name ||
                       "—"
                     : user.name ?? user.first_name ?? "—";
-                const number =
-                  variant === "student"
-                    ? user.student_number ?? "—"
-                    : user.teacher_number ?? "—";
                 const userPending = pending[user.id];
                 return (
                   <tr key={user.id} className="border-b last:border-b-0">
                     <td className="py-3 px-4 font-medium">{name}</td>
-                    <td className="py-3 px-4 font-mono text-muted-foreground">{number}</td>
                     <td className="py-3 px-4 font-mono text-muted-foreground">{user.email?.split("@")[0] || "—"}</td>
                     <td className="py-3 px-4 text-right">
                       <div className="flex gap-2 justify-end">

@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { hasUserRole } from "@/lib/auth/user-roles";
 import { redirect } from "next/navigation";
 import { StudentNav } from "./components/StudentNav";
 
@@ -16,17 +17,8 @@ export default async function StudentLayout({
     redirect("/academy/login?next=/academy/student");
   }
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-
-  if (!profile) {
-    redirect("/academy/login");
-  }
-
-  if (profile.role !== "student") {
+  const isStudent = await hasUserRole(supabase, user.id, "student");
+  if (!isStudent) {
     redirect("/academy/dashboard");
   }
 

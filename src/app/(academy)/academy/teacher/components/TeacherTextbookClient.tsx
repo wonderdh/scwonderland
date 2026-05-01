@@ -331,11 +331,6 @@ export function TeacherTextbookClient({
                                 </span>
                               )}
                             </p>
-                            {row.student_number && (
-                              <p className="text-xs text-slate-400 font-mono">
-                                {row.student_number}
-                              </p>
-                            )}
                           </div>
                           <div className="shrink-0 text-right">
                             <p className="text-xs text-slate-400">

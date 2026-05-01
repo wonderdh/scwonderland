@@ -32,7 +32,6 @@ type StudentInfo = {
   id: string;
   korean_name: string | null;
   english_name: string | null;
-  student_number: string | null;
   age: number | null;
   group_type: string | null;
 };
@@ -43,7 +42,6 @@ type FlatClassStudent = {
   student_profile_id: string;
   korean_name: string | null;
   english_name: string | null;
-  student_number: string | null;
 };
 
 type TextbookOption = {

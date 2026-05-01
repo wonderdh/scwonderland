@@ -9,7 +9,7 @@
  */
 
 /** 변경 유형 전체. admin·학생·결석 연동 포함. */
-export const BUS_CHANGE_TYPES = ["change", "no_ride", "absent"] as const;
+export const BUS_CHANGE_TYPES = ["change", "no_ride", "absent", "temporary_change"] as const;
 export type BusChangeType = (typeof BUS_CHANGE_TYPES)[number];
 
 /**

@@ -2,8 +2,10 @@
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { verifyAdmin, verifyAuthenticated } from "../auth-helpers";
+import { getUserRoles } from "@/lib/auth/user-roles";
 import { logger } from "@/lib/server/logger";
 import { buildStopToBusMaps } from "./_helpers";
+import { getStudentRecordByProfileId, getStudentsByIds } from "@/lib/server/domain-helpers";
 import type {
   BusDefaultAssignment,
   StudentBusDefault,
@@ -20,7 +22,7 @@ export async function listAllActiveStudentNames(): Promise<
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("students")
-    .select("profile_id, korean_name, english_name, age, profiles!inner(deleted_at)")
+    .select("id, korean_name, english_name, age, profiles!inner(deleted_at)")
     .is("profiles.deleted_at", null);
 
   if (error) {
@@ -29,27 +31,27 @@ export async function listAllActiveStudentNames(): Promise<
   }
 
   // group_label 조회: class_students → classes.group_label
-  const profileIds = (data ?? []).map((s) => s.profile_id);
+  const studentIds = (data ?? []).map((s) => s.id);
   const groupMap = new Map<string, string>();
-  if (profileIds.length) {
+  if (studentIds.length) {
     const { data: classLinks } = await supabase
       .from("class_students")
-      .select("student_profile_id, classes!inner(group_label)")
-      .in("student_profile_id", profileIds);
+      .select("student_id, classes!inner(group_label)")
+      .in("student_id", studentIds);
     for (const link of classLinks ?? []) {
       const gl = (link.classes as unknown as { group_label: string | null })?.group_label;
-      if (gl && !groupMap.has(link.student_profile_id)) {
-        groupMap.set(link.student_profile_id, gl);
+      if (gl && !groupMap.has(link.student_id)) {
+        groupMap.set(link.student_id, gl);
       }
     }
   }
 
   return (data ?? []).map((s) => ({
-    profile_id: s.profile_id,
+    profile_id: s.id,
     korean_name: s.korean_name,
     english_name: s.english_name,
     age: s.age ?? null,
-    group_label: groupMap.get(s.profile_id) ?? null,
+    group_label: groupMap.get(s.id) ?? null,
   }));
 }
 
@@ -63,21 +65,20 @@ export async function getStudentBusDefaults(
   if ("error" in auth) return [];
   const supabase = createAdminClient();
   if (studentProfileId !== auth.userId) {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", auth.userId)
-      .single();
-    if (!profile || !["admin", "teacher"].includes(profile.role ?? "")) {
+    const { roles } = await getUserRoles(supabase, auth.userId);
+    if (!roles.includes("admin") && !roles.includes("teacher")) {
       logger.warn("[getStudentBusDefaults]", "권한 없음", { requestedBy: auth.userId });
       return [];
     }
   }
 
+  const student = await getStudentRecordByProfileId(supabase, studentProfileId);
+  if (!student) return [];
+
   const { data, error } = await supabase
     .from("student_bus_defaults")
     .select("*")
-    .eq("student_profile_id", studentProfileId)
+    .eq("student_id", student.id)
     .order("day_of_week");
   if (error) {
     logger.error("[getStudentBusDefaults]", error.message);
@@ -132,6 +133,7 @@ export async function getStudentBusDefaults(
       : null;
     return {
       ...d,
+      student_profile_id: student.profile_id,
       time_slot_label: slot?.label,
       time_slot_time: slot?.time,
       bus_label: derivedBusId ? busMap.get(derivedBusId) : undefined,
@@ -151,9 +153,11 @@ export async function upsertStudentBusDefault(
   const auth = await verifyAdmin();
   if ("error" in auth) return { error: auth.error };
   const supabase = createAdminClient();
+  const student = await getStudentRecordByProfileId(supabase, studentProfileId);
+  if (!student) return { error: "학생 정보를 찾을 수 없습니다." };
   const { error } = await supabase.from("student_bus_defaults").upsert(
     {
-      student_profile_id: studentProfileId,
+      student_id: student.id,
       day_of_week: dayOfWeek,
       bus_time_slot_id: busTimeSlotId,
       estimated_time: estimatedTime || null,
@@ -161,7 +165,7 @@ export async function upsertStudentBusDefault(
       bus_stop_id: busStopId ?? null,
       updated_at: new Date().toISOString(),
     },
-    { onConflict: "student_profile_id,day_of_week" }
+    { onConflict: "student_id,day_of_week" }
   );
   if (error) {
     logger.error("[upsertStudentBusDefault]", error.message);
@@ -217,7 +221,7 @@ export async function saveBulkBusDefaults(
   // 1. 기존 배정 조회 — 저장 대상 시간대만 (다른 시간대 배정은 건드리지 않음)
   let fetchQuery = supabase
     .from("student_bus_defaults")
-    .select("id, student_profile_id, bus_time_slot_id")
+    .select("id, student_id, bus_time_slot_id")
     .eq("day_of_week", dayOfWeek);
   if (slotIds.length === 1) {
     fetchQuery = fetchQuery.eq("bus_time_slot_id", slotIds[0]);
@@ -232,10 +236,24 @@ export async function saveBulkBusDefaults(
     return { error: fetchErr.message };
   }
 
-  const newMap = new Map(assignments.map((a) => [a.student_profile_id, a]));
+  const studentRecords = await Promise.all(
+    assignments.map((assignment) => getStudentRecordByProfileId(supabase, assignment.student_profile_id))
+  );
+  const normalized = assignments.flatMap((assignment, index) => {
+    const student = studentRecords[index];
+    if (!student) return [];
+    return [{
+      student_id: student.id,
+      student_profile_id: student.profile_id,
+      bus_time_slot_id: assignment.bus_time_slot_id,
+      bus_stop_id: assignment.bus_stop_id ?? null,
+      note: assignment.note ?? null,
+    }];
+  });
+  const newMap = new Map(normalized.map((a) => [a.student_id, a]));
 
   // 2. 삭제: 같은 시간대 배정 중 새 목록에 없는 학생만 삭제
-  const toDelete = (existing ?? []).filter((e) => !newMap.has(e.student_profile_id)).map((e) => e.id);
+  const toDelete = (existing ?? []).filter((e) => !newMap.has(e.student_id)).map((e) => e.id);
   if (toDelete.length) {
     const { error: delErr } = await supabase
       .from("student_bus_defaults")
@@ -248,10 +266,10 @@ export async function saveBulkBusDefaults(
   }
 
   // 3. Upsert: 새 목록의 모든 배정
-  if (assignments.length) {
+  if (normalized.length) {
     const now = new Date().toISOString();
-    const rows = assignments.map((a) => ({
-      student_profile_id: a.student_profile_id,
+    const rows = normalized.map((a) => ({
+      student_id: a.student_id,
       day_of_week: dayOfWeek,
       bus_time_slot_id: a.bus_time_slot_id,
       bus_stop_id: a.bus_stop_id ?? null,
@@ -260,14 +278,14 @@ export async function saveBulkBusDefaults(
     }));
     const { error: upsertErr } = await supabase
       .from("student_bus_defaults")
-      .upsert(rows, { onConflict: "student_profile_id,day_of_week" });
+      .upsert(rows, { onConflict: "student_id,day_of_week" });
     if (upsertErr) {
       logger.error("[saveBulkBusDefaults] upsert", upsertErr.message);
       return { error: upsertErr.message };
     }
   }
 
-  return { saved: assignments.length + toDelete.length };
+  return { saved: normalized.length + toDelete.length };
 }
 
 // ── 일괄 배정 조회 ──
@@ -296,32 +314,27 @@ export async function getBulkBusDefaults(
   if (!defaults?.length) return [];
 
   // batch fetch students + stop→bus 매핑 병렬
-  const profileIds = [...new Set(defaults.map((d) => d.student_profile_id))];
+  const studentDomainIds = [...new Set(defaults.map((d) => d.student_id))];
   const stopIds = [...new Set(defaults.filter((d) => d.bus_stop_id).map((d) => d.bus_stop_id))];
 
-  const [studentsResult, stopBusMaps, stopsResult] = await Promise.all([
-    supabase
-      .from("students")
-      .select("profile_id, korean_name, english_name, age")
-      .in("profile_id", profileIds),
+  const [studentsMap, stopBusMaps, stopsResult] = await Promise.all([
+    getStudentsByIds(supabase, studentDomainIds),
     buildStopToBusMaps(supabase, dayOfWeek),
     stopIds.length
       ? supabase.from("bus_stops").select("id, name").in("id", stopIds)
       : Promise.resolve({ data: [] as { id: string; name: string }[] }),
   ]);
 
-  const studentMap = new Map((studentsResult.data ?? []).map((s) => [s.profile_id, s]));
   const stopMap = new Map((stopsResult.data ?? []).map((s) => [s.id, s.name]));
 
   return defaults.map((d) => {
-    const student = studentMap.get(d.student_profile_id);
-    // 호차 파생: stop→bus 매핑에서 결정 (행별 슬롯 ID로 정확히 매칭)
+    const student = studentsMap.get(d.student_id);
     const derivedBusId = d.bus_stop_id
       ? stopBusMaps.getBySlot(d.bus_stop_id, d.bus_time_slot_id ?? null)
       : null;
     return {
       id: d.id,
-      student_profile_id: d.student_profile_id,
+      student_profile_id: student?.profile_id ?? "",
       korean_name: student?.korean_name ?? null,
       english_name: student?.english_name ?? null,
       age: student?.age ?? null,

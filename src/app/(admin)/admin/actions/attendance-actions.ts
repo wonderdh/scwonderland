@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { verifyAuthenticated, verifyAdmin, verifyTeacherOrAdmin } from "./auth-helpers";
 import { logger } from "@/lib/server/logger";
+import { getStudentRecordByProfileId, getStudentsByIds } from "@/lib/server/domain-helpers";
 import { sortStudentsByAgeAndName } from "@/lib/utils/student-sort";
 import type { AttendanceRecord, AttendanceStats, StudentWithAttendance } from "@/lib/types";
 
@@ -17,10 +18,12 @@ export async function listAttendanceRecords(
   if ("error" in auth) return [];
   if (year !== undefined && month !== undefined && (month < 1 || month > 12 || year < 2020 || year > 2100)) return [];
   const supabase = createAdminClient();
+  const student = await getStudentRecordByProfileId(supabase, studentProfileId);
+  if (!student) return [];
   let query = supabase
     .from("attendance")
     .select("*")
-    .eq("student_profile_id", studentProfileId)
+    .eq("student_id", student.id)
     .order("attendance_date", { ascending: false });
 
   if (year && month) {
@@ -38,7 +41,11 @@ export async function listAttendanceRecords(
     return [];
   }
 
-  return (data ?? []) as AttendanceRecord[];
+  return (data ?? []).map((row) => ({
+    ...row,
+    student_id: row.student_id,
+    student_profile_id: student.profile_id,
+  })) as AttendanceRecord[];
 }
 
 /** 출결 기록 생성/수정 (upsert) — 교사/관리자 전용 */
@@ -56,15 +63,18 @@ export async function recordAttendance(
     return { error: "올바른 출결 상태를 선택해 주세요." };
   }
 
+  const student = await getStudentRecordByProfileId(supabase, studentProfileId);
+  if (!student) return { error: "학생 정보를 찾을 수 없습니다." };
+
   const { error } = await supabase.from("attendance").upsert(
     {
-      student_profile_id: studentProfileId,
+      student_id: student.id,
       attendance_date: attendanceDate,
       status,
       note: note?.trim() || null,
       updated_at: new Date().toISOString(),
     },
-    { onConflict: "student_profile_id,attendance_date" }
+    { onConflict: "student_id,attendance_date" }
   );
 
   if (error) {
@@ -86,10 +96,12 @@ export async function getStudentAttendanceByDate(
   const auth = await verifyAuthenticated();
   if ("error" in auth) return { status: null, note: null };
   const supabase = createAdminClient();
+  const student = await getStudentRecordByProfileId(supabase, studentProfileId);
+  if (!student) return { status: null, note: null };
   const { data } = await supabase
     .from("attendance")
     .select("status, note")
-    .eq("student_profile_id", studentProfileId)
+    .eq("student_id", student.id)
     .eq("attendance_date", date)
     .maybeSingle();
   return { status: data?.status ?? null, note: data?.note ?? null };
@@ -126,27 +138,29 @@ export async function getClassAttendanceByDate(
   // 반 학생 목록
   const { data: members } = await supabase
     .from("class_students")
-    .select("student_profile_id")
+    .select("student_id")
     .eq("class_id", classId);
   if (!members?.length) return [];
 
-  const studentIds = members.map((m) => m.student_profile_id);
+  const studentIds = members.map((m) => m.student_id);
+  const studentMap = await getStudentsByIds(supabase, studentIds);
 
   // 해당 날짜 출결 기록
   const { data: records } = await supabase
     .from("attendance")
-    .select("student_profile_id, status, note")
+    .select("student_id, status, note")
     .eq("attendance_date", date)
-    .in("student_profile_id", studentIds);
+    .in("student_id", studentIds);
 
   const recordMap = new Map(
-    (records ?? []).map((r) => [r.student_profile_id, r])
+    (records ?? []).map((r) => [r.student_id, r])
   );
 
   return studentIds.map((sid) => {
     const r = recordMap.get(sid);
+    const student = studentMap.get(sid);
     return {
-      studentProfileId: sid,
+      studentProfileId: student?.profile_id ?? sid,
       status: r?.status ?? null,
       note: r?.note ?? null,
     };
@@ -164,7 +178,7 @@ export async function getClassStudentsWithAttendance(
 
   const { data: membersData, error: membersError } = await supabase
     .from("class_students")
-    .select("student_profile_id")
+    .select("student_id")
     .eq("class_id", classId);
 
   if (membersError) {
@@ -172,38 +186,27 @@ export async function getClassStudentsWithAttendance(
     return [];
   }
 
-  const profileIds = (membersData ?? []).map((m) => m.student_profile_id);
-  if (!profileIds.length) return [];
+  const studentIds = (membersData ?? []).map((m) => m.student_id);
+  if (!studentIds.length) return [];
 
   const attendanceResult = await supabase
     .from("attendance")
-    .select("student_profile_id, status, note")
+    .select("student_id, status, note")
     .eq("attendance_date", date)
-    .in("student_profile_id", profileIds);
+    .in("student_id", studentIds);
 
-  const { data: studentsData, error: studentsError } = await supabase
-    .from("students")
-    .select("profile_id, korean_name, english_name, age")
-    .in("profile_id", profileIds);
-
-  if (studentsError) {
-    logger.error("[getClassStudentsWithAttendance] students:", studentsError.message);
-    return [];
-  }
-
-  const studentMap = new Map(
-    (studentsData ?? []).map((s) => [s.profile_id, s])
-  );
+  const studentsMap = await getStudentsByIds(supabase, studentIds);
 
   const attendanceMap = new Map(
-    (attendanceResult.data ?? []).map((r) => [r.student_profile_id, r])
+    (attendanceResult.data ?? []).map((r) => [r.student_id, r])
   );
 
-  const result: StudentWithAttendance[] = profileIds.map((profileId) => {
-    const s = studentMap.get(profileId);
-    const att = attendanceMap.get(profileId);
+  const result: StudentWithAttendance[] = studentIds.map((studentId) => {
+    const s = studentsMap.get(studentId);
+    const att = attendanceMap.get(studentId);
     return {
-      student_profile_id: profileId,
+      student_id: studentId,
+      student_profile_id: s?.profile_id ?? studentId,
       korean_name: s?.korean_name ?? null,
       english_name: s?.english_name ?? null,
       age: s?.age ?? null,
@@ -238,17 +241,25 @@ export async function bulkRecordAttendance(
   }
 
   const supabase = createAdminClient();
-  const rows = records.map((r) => ({
-    student_profile_id: r.student_profile_id,
+  const studentRecords = await Promise.all(
+    records.map((record) => getStudentRecordByProfileId(supabase, record.student_profile_id))
+  );
+  const rows = records.flatMap((r, index) => {
+    const student = studentRecords[index];
+    if (!student) return [];
+    return [{
+    student_id: student.id,
     attendance_date: r.date,
     status: r.status,
     note: r.note?.trim() || null,
     updated_at: new Date().toISOString(),
-  }));
+  }];
+  });
+  if (!rows.length) return { error: "학생 정보를 찾을 수 없습니다." };
 
   const { error } = await supabase
     .from("attendance")
-    .upsert(rows, { onConflict: "student_profile_id,attendance_date" });
+    .upsert(rows, { onConflict: "student_id,attendance_date" });
 
   if (error) {
     logger.error("[bulkRecordAttendance]", error.message);
@@ -269,6 +280,8 @@ export async function getAttendanceStats(
   const auth = await verifyAuthenticated();
   if ("error" in auth) return { total: 0, present: 0, absent: 0, late: 0, early_leave: 0 };
   const supabase = createAdminClient();
+  const student = await getStudentRecordByProfileId(supabase, studentProfileId);
+  if (!student) return { total: 0, present: 0, absent: 0, late: 0, early_leave: 0 };
 
   const startDate = `${year}-${String(month).padStart(2, "0")}-01`;
   const endDate =
@@ -279,7 +292,7 @@ export async function getAttendanceStats(
   const { data } = await supabase
     .from("attendance")
     .select("status")
-    .eq("student_profile_id", studentProfileId)
+    .eq("student_id", student.id)
     .gte("attendance_date", startDate)
     .lt("attendance_date", endDate);
 
@@ -311,9 +324,11 @@ export async function bulkReserveAttendance(
   if (!dates.length) return { error: "날짜를 선택해 주세요." };
 
   const supabase = createAdminClient();
+  const student = await getStudentRecordByProfileId(supabase, studentProfileId);
+  if (!student) return { error: "학생 정보를 찾을 수 없습니다." };
   const now = new Date().toISOString();
   const rows = dates.map((d) => ({
-    student_profile_id: studentProfileId,
+    student_id: student.id,
     attendance_date: d,
     status,
     note: note?.trim() || null,
@@ -322,7 +337,7 @@ export async function bulkReserveAttendance(
 
   const { error } = await supabase
     .from("attendance")
-    .upsert(rows, { onConflict: "student_profile_id,attendance_date" });
+    .upsert(rows, { onConflict: "student_id,attendance_date" });
 
   if (error) {
     logger.error("[bulkReserveAttendance]", error.message);
@@ -333,7 +348,7 @@ export async function bulkReserveAttendance(
   let busCount = 0;
   if (autoBusNoRide && status === "absent") {
     const busRows = dates.map((d) => ({
-      student_profile_id: studentProfileId,
+      student_id: student.id,
       request_date: d,
       change_type: "absent",
       status: "approved",
@@ -345,7 +360,7 @@ export async function bulkReserveAttendance(
     const { data: inserted, error: busError } = await supabase
       .from("bus_change_requests")
       .upsert(busRows, {
-        onConflict: "student_profile_id,request_date",
+        onConflict: "student_id,request_date",
         ignoreDuplicates: true,
       })
       .select("id");

@@ -41,7 +41,6 @@ type StudentInfo = {
   id: string;
   korean_name: string | null;
   english_name: string | null;
-  student_number: string | null;
   age: number | null;
   group_type: string | null;
 };
@@ -52,7 +51,6 @@ type FlatClassStudent = {
   student_profile_id: string;
   korean_name: string | null;
   english_name: string | null;
-  student_number: string | null;
 };
 
 function UnassignedStudentItem({ s, showAgeBadge }: { s: StudentInfo; showAgeBadge: boolean }) {
@@ -82,11 +80,6 @@ function UnassignedStudentItem({ s, showAgeBadge }: { s: StudentInfo; showAgeBad
       <span className="text-foreground text-xs min-w-0 truncate">
         {[s.korean_name, s.english_name].filter(Boolean).join(" / ") || "—"}
       </span>
-      {s.student_number && (
-        <span className="font-mono text-muted-foreground text-xs shrink-0">
-          {s.student_number}
-        </span>
-      )}
     </div>
   );
 }
@@ -198,7 +191,6 @@ export function ClassesManager({
           student_profile_id: profileId,
           korean_name: s.korean_name,
           english_name: s.english_name,
-          student_number: s.student_number,
         });
       }
     }
@@ -214,7 +206,6 @@ export function ClassesManager({
         student_profile_id: s.student_profile_id,
         korean_name: s.korean_name,
         english_name: s.english_name,
-        student_number: s.student_number,
       });
     }
     return map;
@@ -249,8 +240,7 @@ export function ClassesManager({
       return students.some(
         (s) =>
           (s.korean_name && s.korean_name.toLowerCase().includes(q)) ||
-          (s.english_name && s.english_name.toLowerCase().includes(q)) ||
-          (s.student_number && s.student_number.toLowerCase().includes(q))
+          (s.english_name && s.english_name.toLowerCase().includes(q))
       );
     });
   }, [initialClasses, search, groupFilter, teacherFilter, activeOnly, studentsByClassId]);
@@ -285,8 +275,7 @@ export function ClassesManager({
       unassigned = unassigned.filter(
         (s) =>
           (s.korean_name && s.korean_name.toLowerCase().includes(q)) ||
-          (s.english_name && s.english_name.toLowerCase().includes(q)) ||
-          (s.student_number && s.student_number.toLowerCase().includes(q))
+          (s.english_name && s.english_name.toLowerCase().includes(q))
       );
     }
     // 나이순 → 이름순
@@ -1147,11 +1136,6 @@ function ClassCard({
                   >
                     <span className="text-foreground text-xs">
                       {[s.korean_name, s.english_name].filter(Boolean).join(" / ") || "—"}
-                      {s.student_number && (
-                        <span className="ml-1.5 font-mono text-muted-foreground text-xs">
-                          {s.student_number}
-                        </span>
-                      )}
                       {isPending && (
                         <span className="ml-1.5 text-xs text-amber-600">미저장</span>
                       )}
@@ -1572,7 +1556,6 @@ function AddStudentModal({
       id: string;
       korean_name: string | null;
       english_name: string | null;
-      student_number: string | null;
     }[]
   >([]);
   const [studentSearch, setStudentSearch] = useState("");
@@ -1596,8 +1579,7 @@ function AddStudentModal({
     return options.filter(
       (s) =>
         (s.korean_name && s.korean_name.toLowerCase().includes(q)) ||
-        (s.english_name && s.english_name.toLowerCase().includes(q)) ||
-        (s.student_number && s.student_number.toLowerCase().includes(q))
+        (s.english_name && s.english_name.toLowerCase().includes(q))
     );
   }, [options, studentSearch]);
 
@@ -1638,7 +1620,7 @@ function AddStudentModal({
               type="search"
               value={studentSearch}
               onChange={(e) => setStudentSearch(e.target.value)}
-              placeholder="이름 또는 학번으로 검색"
+              placeholder="이름으로 검색"
               className="w-full rounded-lg border border-input px-3 py-2 text-foreground placeholder-muted-foreground bg-background"
             />
           </div>
@@ -1655,8 +1637,7 @@ function AddStudentModal({
               <option value="">선택하세요</option>
               {filteredOptions.map((s) => (
                 <option key={s.id} value={s.id}>
-                  {[s.korean_name, s.english_name].filter(Boolean).join(" / ")} (
-                  {s.student_number ?? "—"})
+                  {[s.korean_name, s.english_name].filter(Boolean).join(" / ")}
                 </option>
               ))}
             </select>

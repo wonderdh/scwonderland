@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { getUserRoles } from "@/lib/auth/user-roles";
 import { redirect } from "next/navigation";
 import { LogoutButton } from "@/components/navigation/LogoutButton";
 
@@ -12,26 +13,18 @@ export default async function AcademyDashboardPage() {
     redirect("/academy/login?next=/academy/dashboard");
   }
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
+  const { primaryRole } = await getUserRoles(supabase, user.id);
 
-  if (profile?.role === "admin") {
+  if (primaryRole === "admin") {
     redirect("/admin");
   }
 
-  if (profile?.role === "student") {
+  if (primaryRole === "student") {
     redirect("/academy/student");
   }
 
-  if (profile?.role === "teacher") {
+  if (primaryRole === "teacher") {
     redirect("/academy/teacher");
-  }
-
-  if (profile?.role === "bus") {
-    redirect("/bus");
   }
 
   // 역할 미지정 사용자 (fallback)

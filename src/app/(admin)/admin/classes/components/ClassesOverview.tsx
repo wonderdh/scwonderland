@@ -13,7 +13,6 @@ type FlatClassStudent = {
   student_profile_id: string;
   korean_name: string | null;
   english_name: string | null;
-  student_number: string | null;
 };
 
 const GROUP_STYLE: Record<GroupKey, {
@@ -206,9 +205,6 @@ export function ClassesOverview({
                               key={s.id}
                               className="text-xs text-foreground/80 flex items-center gap-2 overflow-hidden"
                             >
-                              <span className="text-muted-foreground shrink-0">
-                                {s.student_number ?? "—"}
-                              </span>
                               <span className="truncate">
                                 {formatStudentName(s, { fallback: "—" })}
                               </span>

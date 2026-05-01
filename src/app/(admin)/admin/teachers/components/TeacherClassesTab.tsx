@@ -193,11 +193,6 @@ function ClassRow({
                         <span className="text-foreground">
                           {[s.korean_name, s.english_name].filter(Boolean).join(" / ") || "—"}
                         </span>
-                        {s.student_number && (
-                          <span className="ml-auto font-mono text-xs text-muted-foreground">
-                            {s.student_number}
-                          </span>
-                        )}
                       </div>
                     ))}
                   </div>

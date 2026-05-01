@@ -57,11 +57,6 @@ export default async function TeacherClassesPage() {
                             </span>
                           )}
                         </span>
-                        {s.student_number && (
-                          <span className="text-xs font-mono text-muted-foreground">
-                            {s.student_number}
-                          </span>
-                        )}
                       </li>
                     ))}
                   </ul>
