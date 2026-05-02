@@ -1,8 +1,12 @@
 import type { BusManifestGroup, BusManifestEntry, NoRideEntry } from "@/lib/types";
 import type { BusChangeType } from "@/lib/bus/state";
 
+// Postgres CDC 페이로드는 실 컬럼명(student_id)으로 옵니다. Shared PK 이후
+// student_id == profile_id 이므로 alias 처리. 호출처는 student_id 또는
+// 호환용 student_profile_id 어느 쪽으로 보내도 동작.
 export type CheckRecordRow = {
-  student_profile_id: string;
+  student_id?: string;
+  student_profile_id?: string;
   boarded_at: string | null;
   checked_at: string | null;
   check_date: string;
@@ -10,7 +14,8 @@ export type CheckRecordRow = {
 
 export type ChangeRequestRow = {
   id: string;
-  student_profile_id: string;
+  student_id?: string;
+  student_profile_id?: string;
   change_type: BusChangeType;
   new_bus_number_id: string | null;
   new_bus_time_slot_id: string | null;
@@ -19,16 +24,24 @@ export type ChangeRequestRow = {
   status: string;
 };
 
+function rowStudentId(
+  row: { student_id?: string; student_profile_id?: string }
+): string | undefined {
+  return row.student_id ?? row.student_profile_id;
+}
+
 /** bus_check_records INSERT/UPDATE/DELETE → 해당 학생의 boarded_at/checked_at 패치 */
 export function applyCheckRecord(
   groups: BusManifestGroup[],
   event: "INSERT" | "UPDATE" | "DELETE",
   row: CheckRecordRow
 ): BusManifestGroup[] {
+  const sid = rowStudentId(row);
+  if (!sid) return groups;
   return groups.map((g) => ({
     ...g,
     students: g.students.map((s) => {
-      if (s.student_profile_id !== row.student_profile_id) return s;
+      if (s.student_profile_id !== sid) return s;
       if (event === "DELETE") return { ...s, boarded_at: null, checked_at: null };
       return { ...s, boarded_at: row.boarded_at, checked_at: row.checked_at };
     }),
@@ -47,7 +60,8 @@ export function applyChangeRequest(
     return { groups, noRides };
   }
 
-  const sid = row.student_profile_id;
+  const sid = rowStudentId(row);
+  if (!sid) return { groups, noRides };
 
   // absent: 그룹 내 is_absent 플래그 토글만 (그룹 구조 불변)
   if (row.change_type === "absent") {

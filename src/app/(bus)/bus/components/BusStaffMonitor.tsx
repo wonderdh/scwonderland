@@ -521,12 +521,12 @@ export function BusStaffMonitor({
 
   useBusRealtime(date, {
     onCheckRecord: (event, row) => {
-      if (!row.student_profile_id) { load(); return; }
+      if (!row.student_id && !row.student_profile_id) { load(); return; }
       if (pendingChangesRef.current.size > 0) return;
       setGroups((prev) => applyCheckRecord(prev, event, row));
     },
     onChangeRequest: (event, row) => {
-      if (!row.student_profile_id || event === "DELETE" || row.change_type === "change") { load(); return; }
+      if ((!row.student_id && !row.student_profile_id) || event === "DELETE" || row.change_type === "change") { load(); return; }
       const result = applyChangeRequest(groupsRef.current, noRidesRef.current, event, row);
       setGroups(result.groups);
       setNoRides(result.noRides);

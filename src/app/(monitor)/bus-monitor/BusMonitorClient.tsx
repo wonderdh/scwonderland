@@ -115,7 +115,7 @@ export function BusMonitorClient({
   useBusRealtime(todayDate, {
     onCheckRecord: (event, row) => {
       if (!isViewingToday) return;
-      if (!row.student_profile_id) { reloadToday(); return; }
+      if (!row.student_id && !row.student_profile_id) { reloadToday(); return; }
       setAllGroups((prev) =>
         prev.map((tg) => ({
           ...tg,
@@ -125,7 +125,7 @@ export function BusMonitorClient({
     },
     onChangeRequest: (event, row) => {
       if (!isViewingToday) return;
-      if (!row.student_profile_id || event === "DELETE" || row.change_type === "change") { reloadToday(); return; }
+      if ((!row.student_id && !row.student_profile_id) || event === "DELETE" || row.change_type === "change") { reloadToday(); return; }
       setAllGroups((prev) =>
         prev.map((tg) => {
           const newCards = tg.cards.map((card) => {
