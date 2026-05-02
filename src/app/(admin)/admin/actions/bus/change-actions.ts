@@ -588,7 +588,7 @@ export async function createAdminBusChange(
           note: "버스 결석 자동 등록",
           recorded_by: auth.userId,
         })),
-        { onConflict: "student_id,class_id,attendance_date", ignoreDuplicates: false }
+        { onConflict: "student_id,attendance_date", ignoreDuplicates: false }
       );
     }
   }
@@ -654,7 +654,7 @@ export async function updateAdminBusChange(
           note: "버스 결석 자동 등록",
           recorded_by: auth.userId,
         })),
-        { onConflict: "student_id,class_id,attendance_date", ignoreDuplicates: false }
+        { onConflict: "student_id,attendance_date", ignoreDuplicates: false }
       );
     }
   }

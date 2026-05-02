@@ -473,11 +473,15 @@ export async function updateTeacherProfile(formData: FormData): Promise<{ error?
   return {};
 }
 
+const MIN_PASSWORD_LENGTH = 8;
+
 export async function resetUserPassword(userId: string, newPassword: string): Promise<{ error?: string }> {
   const auth = await verifyAdmin();
   if ("error" in auth) return { error: auth.error };
   if (!userId || !newPassword) return { error: "사용자 ID와 새 비밀번호를 입력해 주세요." };
-  if (newPassword.length < 4) return { error: "비밀번호는 최소 4자 이상이어야 합니다." };
+  if (newPassword.length < MIN_PASSWORD_LENGTH) {
+    return { error: `비밀번호는 최소 ${MIN_PASSWORD_LENGTH}자 이상이어야 합니다.` };
+  }
 
   const supabase = createAdminClient();
   const { error } = await supabase.auth.admin.updateUserById(userId, { password: newPassword });
@@ -493,6 +497,15 @@ export async function bulkResetStudentPasswords(
   if ("error" in auth) return { success: 0, failed: 0, error: auth.error };
   if (!students.length) return { success: 0, failed: 0 };
 
+  const invalid = students.filter((s) => !s.id || !s.password || s.password.length < MIN_PASSWORD_LENGTH);
+  if (invalid.length) {
+    return {
+      success: 0,
+      failed: 0,
+      error: `${invalid.length}건의 비밀번호가 누락되었거나 ${MIN_PASSWORD_LENGTH}자 미만입니다.`,
+    };
+  }
+
   const supabase = createAdminClient();
   let success = 0;
   let failed = 0;
@@ -503,6 +516,7 @@ export async function bulkResetStudentPasswords(
     else success++;
   }
 
+  if (success > 0) revalidatePath("/admin", "layout");
   return { success, failed };
 }
 
