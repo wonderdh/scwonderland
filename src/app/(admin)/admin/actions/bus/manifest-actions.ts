@@ -1,8 +1,3 @@
-// @ts-nocheck — students.profile_id 잔존 select/in 호출 다수.
-// 점검 종료 전 일괄 refactor:
-//   - students.select("profile_id, ...") → students.select("id, ...")
-//   - students.in("profile_id", ids) → students.in("id", ids)
-//   - s.profile_id 사용처 → s.id (또는 domain-helpers 헬퍼 경유)
 "use server";
 
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -50,7 +45,7 @@ export async function getDailyBusManifest(
     isWeekday
       ? supabase
           .from("afterschool_enrollments")
-          .select("student_profile_id")
+          .select("student_id")
           .eq("day_of_week", isoDay)
       : Promise.resolve({ data: null }),
     buildStopToBusMaps(supabase, isoDay),
@@ -65,9 +60,9 @@ export async function getDailyBusManifest(
     (flaggedSlotsRaw ?? []).map((s) => s.id as string)
   );
 
-  // afterschool_enrollments는 student_profile_id 컬럼 유지 (미변환 테이블)
+  // Shared PK: students.id = profiles.id 이므로 student_id == profile_id
   const enrolledProfileIds = isWeekday && afterschoolEnrollments.data?.length
-    ? [...new Set(afterschoolEnrollments.data.map((e) => e.student_profile_id))]
+    ? [...new Set(afterschoolEnrollments.data.map((e) => e.student_id))]
     : [];
 
   const defaultRows = defaults ?? [];
@@ -78,10 +73,10 @@ export async function getDailyBusManifest(
     if (enrolledProfileIds.length) {
       const { data: students } = await supabase
         .from("students")
-        .select("profile_id, korean_name, english_name, age")
-        .in("profile_id", enrolledProfileIds);
+        .select("id, korean_name, english_name, age")
+        .in("id", enrolledProfileIds);
       afterschoolStudents = (students ?? []).map((s) => ({
-        student_profile_id: s.profile_id,
+        student_profile_id: s.id,
         korean_name: s.korean_name,
         english_name: s.english_name,
         age: s.age ?? null,
@@ -100,13 +95,13 @@ export async function getDailyBusManifest(
   const allSlotIds = [
     ...new Set([
       ...defaultRows.map((d) => d.bus_time_slot_id),
-      ...changeRows.filter((c) => c.new_bus_time_slot_id).map((c) => c.new_bus_time_slot_id),
+      ...changeRows.map((c) => c.new_bus_time_slot_id).filter((v): v is string => v !== null),
     ]),
   ];
-  const changeStopIds = changeRows.filter((c) => c.new_bus_stop_id).map((c) => c.new_bus_stop_id);
+  const changeStopIds = changeRows.map((c) => c.new_bus_stop_id).filter((v): v is string => v !== null);
   const allStopIds = [
     ...new Set([
-      ...defaultRows.filter((r) => r.bus_stop_id).map((r) => r.bus_stop_id),
+      ...defaultRows.map((r) => r.bus_stop_id).filter((v): v is string => v !== null),
       ...changeStopIds,
     ]),
   ];
@@ -123,9 +118,9 @@ export async function getDailyBusManifest(
     allStudentDomainIds.length
       ? supabase
           .from("students")
-          .select("id, profile_id, korean_name, english_name, age")
+          .select("id, korean_name, english_name, age")
           .in("id", allStudentDomainIds)
-      : Promise.resolve({ data: [] as { id: string; profile_id: string; korean_name: string | null; english_name: string | null; age: number | null }[] }),
+      : Promise.resolve({ data: [] as { id: string; korean_name: string | null; english_name: string | null; age: number | null }[] }),
     allSlotIds.length
       ? supabase.from("bus_time_slots").select("id, label, time").in("id", allSlotIds)
       : Promise.resolve({ data: [] as { id: string; label: string; time: string }[] }),
@@ -146,25 +141,24 @@ export async function getDailyBusManifest(
       : Promise.resolve({ data: [] as { id: string; name: string }[] }),
   ]);
 
-  // afterschool 전용: 버스 배정에 없는 학생만 profile_id로 추가 조회
-  const knownProfileIds = new Set((studentsRaw ?? []).map((s) => s.profile_id));
-  const afterschoolOnlyProfileIds = enrolledProfileIds.filter((pid) => !knownProfileIds.has(pid));
-  const { data: afterschoolStudentsRaw } = afterschoolOnlyProfileIds.length
+  // afterschool 전용: 버스 배정에 없는 학생만 추가 조회
+  // (Shared PK: students.id == profile_id)
+  const knownStudentIds = new Set((studentsRaw ?? []).map((s) => s.id));
+  const afterschoolOnlyIds = enrolledProfileIds.filter((pid) => !knownStudentIds.has(pid));
+  const { data: afterschoolStudentsRaw } = afterschoolOnlyIds.length
     ? await supabase
         .from("students")
-        .select("profile_id, korean_name, english_name, age")
-        .in("profile_id", afterschoolOnlyProfileIds)
-    : { data: [] as { profile_id: string; korean_name: string | null; english_name: string | null; age: number | null }[] };
+        .select("id, korean_name, english_name, age")
+        .in("id", afterschoolOnlyIds)
+    : { data: [] as { id: string; korean_name: string | null; english_name: string | null; age: number | null }[] };
 
   // ── 맵 구축 ──
-  // studentMap: students.id → 레코드
+  // studentMap: students.id (= profile_id) → 레코드
   const studentMap = new Map(
     (studentsRaw ?? []).map((s) => [s.id, s])
   );
-  // studentByProfileId: profile_id → 레코드 (afterschool 섹션용)
-  const studentByProfileId = new Map(
-    (studentsRaw ?? []).map((s) => [s.profile_id, s])
-  );
+  // Shared PK 라 studentByProfileId == studentMap. 호환을 위해 동일 reference 유지.
+  const studentByProfileId = studentMap;
 
   const slotMap = new Map(
     (slotsResult.data ?? []).map((s) => [s.id, { label: s.label, time: s.time }])
@@ -193,14 +187,14 @@ export async function getDailyBusManifest(
       .map((pid) => {
         const fromMain = studentByProfileId.get(pid);
         if (fromMain) return {
-          student_profile_id: fromMain.profile_id,
+          student_profile_id: fromMain.id,
           korean_name: fromMain.korean_name,
           english_name: fromMain.english_name,
           age: fromMain.age ?? null,
         };
-        const fromAfter = (afterschoolStudentsRaw ?? []).find((s) => s.profile_id === pid);
+        const fromAfter = (afterschoolStudentsRaw ?? []).find((s) => s.id === pid);
         if (fromAfter) return {
-          student_profile_id: fromAfter.profile_id,
+          student_profile_id: fromAfter.id,
           korean_name: fromAfter.korean_name,
           english_name: fromAfter.english_name,
           age: fromAfter.age ?? null,
@@ -265,7 +259,7 @@ export async function getDailyBusManifest(
           const stopName = def.bus_stop_id ? stopNameMap.get(def.bus_stop_id) : undefined;
           const stopTime = def.bus_stop_id ? getStopTime(def.bus_stop_id, def.bus_time_slot_id) : undefined;
           absentGroup.students.push({
-            student_profile_id: student.profile_id,
+            student_profile_id: student.id,
             korean_name: student.korean_name,
             english_name: student.english_name,
             age: student.age ?? null,
@@ -281,7 +275,7 @@ export async function getDailyBusManifest(
           });
         } else {
           noRides.push({
-            student_profile_id: student.profile_id,
+            student_profile_id: student.id,
             korean_name: student.korean_name,
             english_name: student.english_name,
             original_slot_time: getSlotTime(def.bus_time_slot_id),
@@ -294,7 +288,7 @@ export async function getDailyBusManifest(
       }
       if (change.change_type === "no_ride" && !change.new_bus_stop_id) {
         noRides.push({
-          student_profile_id: student.profile_id,
+          student_profile_id: student.id,
           korean_name: student.korean_name,
           english_name: student.english_name,
           original_slot_time: getSlotTime(def.bus_time_slot_id),
@@ -320,7 +314,7 @@ export async function getDailyBusManifest(
         : (def.bus_stop_id ? getStopTime(def.bus_stop_id, effectiveSlotId2) : null);
       const estimatedTime = newStopId ? stopTime : (stopTime ?? def.estimated_time);
       changedGroup.students.push({
-        student_profile_id: student.profile_id,
+        student_profile_id: student.id,
         korean_name: student.korean_name,
         english_name: student.english_name,
         age: student.age ?? null,
@@ -342,7 +336,7 @@ export async function getDailyBusManifest(
       const stopTime2 = def.bus_stop_id ? getStopTime(def.bus_stop_id, def.bus_time_slot_id) : undefined;
       const stopName2 = def.bus_stop_id ? stopNameMap.get(def.bus_stop_id) : undefined;
       defaultGroup.students.push({
-        student_profile_id: student.profile_id,
+        student_profile_id: student.id,
         korean_name: student.korean_name,
         english_name: student.english_name,
         age: student.age ?? null,
