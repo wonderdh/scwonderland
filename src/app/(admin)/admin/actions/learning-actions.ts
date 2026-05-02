@@ -1,36 +1,21 @@
 "use server";
 
-import { createAdminClient } from "@/lib/supabase/admin";
-import { revalidatePath } from "next/cache";
+// 신 스키마에서 learning_records 테이블이 제거되어 학습 기록 도메인은 비활성화 상태.
+// 도메인 재도입 결정 시 마이그레이션 + 코드 복원 필요.
 import { verifyAuthenticated as verifyAuthenticatedUser, verifyTeacherOrAdmin } from "./auth-helpers";
-import { logger } from "@/lib/server/logger";
-import { todayKst } from "@/lib/utils/date-kst";
 import type { LearningRecord } from "@/lib/types";
 
-/** 학생의 학습 기록 목록 (최신순) */
 export async function listLearningRecords(
-  studentProfileId: string
+  _studentProfileId: string
 ): Promise<LearningRecord[]> {
   const auth = await verifyAuthenticatedUser();
   if ("error" in auth) return [];
-
-  const supabase = createAdminClient();
-  const { data, error } = await supabase
-    .from("learning_records")
-    .select("*")
-    .eq("student_profile_id", studentProfileId)
-    .order("record_date", { ascending: false });
-  if (error) {
-    logger.error("[listLearningRecords]", error.message);
-    return [];
-  }
-  return (data ?? []) as LearningRecord[];
+  return [];
 }
 
-/** 학습 기록 생성 — 교사/관리자 전용 */
 export async function createLearningRecord(
-  studentProfileId: string,
-  record: {
+  _studentProfileId: string,
+  _record: {
     record_date: string;
     category: string;
     title: string;
@@ -41,38 +26,12 @@ export async function createLearningRecord(
 ): Promise<{ error?: string; id?: string }> {
   const auth = await verifyTeacherOrAdmin();
   if ("error" in auth) return { error: auth.error };
-
-  const supabase = createAdminClient();
-
-  if (!record.title?.trim()) return { error: "제목을 입력해 주세요." };
-  if (!record.category) return { error: "카테고리를 선택해 주세요." };
-
-  const { data, error } = await supabase
-    .from("learning_records")
-    .insert({
-      student_profile_id: studentProfileId,
-      record_date: record.record_date || todayKst(),
-      category: record.category,
-      title: record.title.trim(),
-      content: record.content?.trim() || null,
-      score: record.score ?? null,
-      max_score: record.max_score ?? null,
-    })
-    .select("id")
-    .single();
-
-  if (error) {
-    logger.error("[createLearningRecord]", error.message);
-    return { error: error.message };
-  }
-  revalidatePath("/academy");
-  return { id: data.id };
+  return { error: "학습 기록 도메인은 현재 비활성화되어 있습니다." };
 }
 
-/** 학습 기록 수정 — 교사/관리자 전용 */
 export async function updateLearningRecord(
-  recordId: string,
-  updates: {
+  _recordId: string,
+  _updates: {
     record_date?: string;
     category?: string;
     title?: string;
@@ -83,52 +42,13 @@ export async function updateLearningRecord(
 ): Promise<{ error?: string }> {
   const auth = await verifyTeacherOrAdmin();
   if ("error" in auth) return { error: auth.error };
-
-  const supabase = createAdminClient();
-
-  if (updates.title !== undefined && !updates.title.trim()) {
-    return { error: "제목을 입력해 주세요." };
-  }
-
-  const updateData: Record<string, unknown> = {
-    updated_at: new Date().toISOString(),
-  };
-  if (updates.record_date !== undefined) updateData.record_date = updates.record_date;
-  if (updates.category !== undefined) updateData.category = updates.category;
-  if (updates.title !== undefined) updateData.title = updates.title.trim();
-  if (updates.content !== undefined) updateData.content = updates.content.trim() || null;
-  if (updates.score !== undefined) updateData.score = updates.score;
-  if (updates.max_score !== undefined) updateData.max_score = updates.max_score;
-
-  const { error } = await supabase
-    .from("learning_records")
-    .update(updateData)
-    .eq("id", recordId);
-
-  if (error) {
-    logger.error("[updateLearningRecord]", error.message);
-    return { error: error.message };
-  }
-  revalidatePath("/academy");
-  return {};
+  return { error: "학습 기록 도메인은 현재 비활성화되어 있습니다." };
 }
 
-/** 학습 기록 삭제 — 교사/관리자 전용 */
 export async function deleteLearningRecord(
-  recordId: string
+  _recordId: string
 ): Promise<{ error?: string }> {
   const auth = await verifyTeacherOrAdmin();
   if ("error" in auth) return { error: auth.error };
-
-  const supabase = createAdminClient();
-  const { error } = await supabase
-    .from("learning_records")
-    .delete()
-    .eq("id", recordId);
-  if (error) {
-    logger.error("[deleteLearningRecord]", error.message);
-    return { error: error.message };
-  }
-  revalidatePath("/academy");
-  return {};
+  return { error: "학습 기록 도메인은 현재 비활성화되어 있습니다." };
 }

@@ -4,12 +4,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { verifyAdmin } from "./auth-helpers";
 import { logger } from "@/lib/server/logger";
 import { todayKst, formatDateYmdKst } from "@/lib/utils/date-kst";
-import type {
-  ReservationAttendance,
-  ReservationBusChange,
-  BusChangeType,
-  BusRequestStatus,
-} from "@/lib/types";
+import type { ReservationAttendance, ReservationBusChange } from "@/lib/types";
+import type { BusChangeType, BusRequestStatus } from "@/lib/bus/state";
 
 /** 향후 예약된 출결 + 버스 변경 통합 조회 (관리자 전용) */
 export async function getUpcomingReservations(

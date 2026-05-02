@@ -74,3 +74,9 @@ export type {
 
 export type { ActionResult } from "./server-action";
 export { ok, fail, okVoid } from "./server-action";
+
+export type {
+  BusChangeType,
+  BusRequestStatus,
+  NoRideChangeType,
+} from "@/lib/bus/state";

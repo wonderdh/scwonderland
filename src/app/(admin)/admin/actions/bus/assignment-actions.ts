@@ -86,7 +86,7 @@ export async function getStudentBusDefaults(
   }
 
   const slotIds = [...new Set((data ?? []).map((d) => d.bus_time_slot_id))];
-  const stopIds = [...new Set((data ?? []).filter((d) => d.bus_stop_id).map((d) => d.bus_stop_id))];
+  const stopIds = [...new Set((data ?? []).map((d) => d.bus_stop_id).filter((v): v is string => v !== null))];
 
   // 요일별 stop→bus 매핑 조회 (시간대별 정확한 매핑)
   const dayKeys = [...new Set((data ?? []).map((d) => `${d.day_of_week}`))];
@@ -315,7 +315,7 @@ export async function getBulkBusDefaults(
 
   // batch fetch students + stop→bus 매핑 병렬
   const studentDomainIds = [...new Set(defaults.map((d) => d.student_id))];
-  const stopIds = [...new Set(defaults.filter((d) => d.bus_stop_id).map((d) => d.bus_stop_id))];
+  const stopIds = [...new Set(defaults.map((d) => d.bus_stop_id).filter((v): v is string => v !== null))];
 
   const [studentsMap, stopBusMaps, stopsResult] = await Promise.all([
     getStudentsByIds(supabase, studentDomainIds),

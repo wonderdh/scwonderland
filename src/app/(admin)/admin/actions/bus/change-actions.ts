@@ -43,9 +43,9 @@ export async function listAllChangeRequests(
     studentMap = new Map((students ?? []).map((s) => [s.id, s]));
   }
 
-  const slotIds = [...new Set((data ?? []).filter((d) => d.new_bus_time_slot_id).map((d) => d.new_bus_time_slot_id))];
-  const busIds = [...new Set((data ?? []).filter((d) => d.new_bus_number_id).map((d) => d.new_bus_number_id))];
-  const stopIds = [...new Set((data ?? []).filter((d) => d.new_bus_stop_id).map((d) => d.new_bus_stop_id))];
+  const slotIds = [...new Set((data ?? []).map((d) => d.new_bus_time_slot_id).filter((v): v is string => v !== null))];
+  const busIds = [...new Set((data ?? []).map((d) => d.new_bus_number_id).filter((v): v is string => v !== null))];
+  const stopIds = [...new Set((data ?? []).map((d) => d.new_bus_stop_id).filter((v): v is string => v !== null))];
   let slotMap = new Map<string, { label: string; time: string }>();
   let busMap = new Map<string, string>();
   let stopMap = new Map<string, string>();
@@ -207,9 +207,9 @@ export async function listChangeRequestsByDate(date: string): Promise<BusChangeR
     studentMap = new Map((students ?? []).map((s) => [s.id, s]));
   }
 
-  const slotIds = [...new Set((data ?? []).filter((d) => d.new_bus_time_slot_id).map((d) => d.new_bus_time_slot_id))];
-  const busIds = [...new Set((data ?? []).filter((d) => d.new_bus_number_id).map((d) => d.new_bus_number_id))];
-  const stopIds = [...new Set((data ?? []).filter((d) => d.new_bus_stop_id).map((d) => d.new_bus_stop_id))];
+  const slotIds = [...new Set((data ?? []).map((d) => d.new_bus_time_slot_id).filter((v): v is string => v !== null))];
+  const busIds = [...new Set((data ?? []).map((d) => d.new_bus_number_id).filter((v): v is string => v !== null))];
+  const stopIds = [...new Set((data ?? []).map((d) => d.new_bus_stop_id).filter((v): v is string => v !== null))];
   let slotMap = new Map<string, { label: string; time: string }>();
   let busMap = new Map<string, string>();
   let stopMap = new Map<string, string>();
@@ -451,8 +451,8 @@ export async function getStudentChangeRequests(
     return [];
   }
 
-  const slotIds = [...new Set((data ?? []).filter((d) => d.new_bus_time_slot_id).map((d) => d.new_bus_time_slot_id))];
-  const busIds = [...new Set((data ?? []).filter((d) => d.new_bus_number_id).map((d) => d.new_bus_number_id))];
+  const slotIds = [...new Set((data ?? []).map((d) => d.new_bus_time_slot_id).filter((v): v is string => v !== null))];
+  const busIds = [...new Set((data ?? []).map((d) => d.new_bus_number_id).filter((v): v is string => v !== null))];
   let slotMap = new Map<string, { label: string; time: string }>();
   let busMap = new Map<string, string>();
 
