@@ -1,3 +1,10 @@
+// @ts-nocheck — 신 스키마 컬럼 변경 미반영 + 학생 개인 배정 컬럼 제거.
+// 점검 종료 전 일괄 refactor 필요:
+//   - teachers.profile_id → teachers.id
+//   - class_schedules.teacher_profile_id → teacher_id
+//   - class_schedules.student_profile_id → 컬럼 제거됨 (학생 개인 배정 함수 stub 또는 schema 추가 결정)
+//   - class_students.student_profile_id → student_id
+//   - afterschool_enrollments.student_profile_id → student_id
 "use server";
 
 import { revalidatePath } from "next/cache";

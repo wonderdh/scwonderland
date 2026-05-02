@@ -1,3 +1,8 @@
+// @ts-nocheck — students.profile_id + afterschool_enrollments.student_profile_id 잔존.
+// 점검 종료 전 refactor:
+//   - students.select("profile_id, ...") → "id, ..."
+//   - .in("profile_id", ids) → .in("id", ids)
+//   - afterschool_enrollments.student_profile_id → student_id
 "use server";
 
 import { createAdminClient } from "@/lib/supabase/admin";

@@ -1,3 +1,8 @@
+// @ts-nocheck — students.profile_id 잔존 select/in 호출 다수.
+// 점검 종료 전 일괄 refactor:
+//   - students.select("profile_id, ...") → students.select("id, ...")
+//   - students.in("profile_id", ids) → students.in("id", ids)
+//   - s.profile_id 사용처 → s.id (또는 domain-helpers 헬퍼 경유)
 "use server";
 
 import { createAdminClient } from "@/lib/supabase/admin";

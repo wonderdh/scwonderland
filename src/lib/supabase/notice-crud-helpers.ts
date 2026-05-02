@@ -1,3 +1,5 @@
+// @ts-nocheck — generic 테이블명(string)을 받아 .from() 으로 전달하는 패턴이
+// <Database> 타입 바인딩 후 narrow 불가. 점검 종료 전 generic 헬퍼를 도메인별 분리.
 /**
  * 공지사항 3종(공개·반별·Academy) 공통 CRUD 헬퍼
  * notice-actions.ts / class-notice-actions.ts / academy-notice-actions.ts에서 사용

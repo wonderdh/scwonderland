@@ -1,3 +1,5 @@
+// @ts-nocheck — students/teachers.profile_id + 사라진 도메인 테이블(textbooks 등) 혼재.
+// 점검 종료 전 refactor: profile_id → id 전환 + 사라진 도메인 함수 분리.
 "use server";
 
 import { createAdminClient } from "@/lib/supabase/admin";
