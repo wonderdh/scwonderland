@@ -8,6 +8,14 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const ua = request.headers.get("user-agent") ?? "";
 
+  // 점검 모드: MAINTENANCE_MODE=off 가 아니면 모든 라우트를 /maintenance 로 rewrite.
+  // (정적 자산은 아래 config.matcher 가 미리 걸러줌)
+  if (process.env.MAINTENANCE_MODE !== "off" && pathname !== "/maintenance") {
+    const url = request.nextUrl.clone();
+    url.pathname = "/maintenance";
+    return NextResponse.rewrite(url, { status: 503 });
+  }
+
   // /admin (루트만) → 모바일이면 /m으로 리다이렉트
   if (pathname === "/admin" && MOBILE_UA.test(ua)) {
     return NextResponse.redirect(new URL("/m", request.url));
