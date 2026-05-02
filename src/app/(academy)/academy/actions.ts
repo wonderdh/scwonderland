@@ -1,5 +1,3 @@
-// @ts-nocheck — students/teachers.profile_id + 사라진 도메인 테이블(textbooks 등) 혼재.
-// 점검 종료 전 refactor: profile_id → id 전환 + 사라진 도메인 함수 분리.
 "use server";
 
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -273,39 +271,16 @@ export async function getClassReportStatus(
   });
 }
 
-/** 특정 반에 배정된 교재 목록 */
-export async function getClassTextbooks(classId: string): Promise<TeacherClassTextbook[]> {
-  // 인증 검증
+// 신 스키마에서 textbooks/class_textbooks/student_textbook_progress 테이블이
+// 제거되어 교재 도메인은 비활성화. 도메인 재도입 결정 시 마이그레이션 + 본 stub
+// 복구.
+
+export async function getClassTextbooks(_classId: string): Promise<TeacherClassTextbook[]> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return [];
-
-  const admin = createAdminClient();
-
-  const { data: classTextbooks } = await admin
-    .from("class_textbooks")
-    .select("textbook_id")
-    .eq("class_id", classId);
-  if (!classTextbooks?.length) return [];
-
-  const textbookIds = classTextbooks.map((ct) => ct.textbook_id);
-  const { data: textbooks } = await admin
-    .from("textbooks")
-    .select("id, title, series, level, category, total_units")
-    .in("id", textbookIds)
-    .eq("is_active", true);
-
-  return (textbooks ?? []).map((t) => ({
-    id: t.id,
-    textbook_title: t.title,
-    textbook_series: t.series ?? null,
-    textbook_level: t.level ?? null,
-    textbook_category: t.category ?? "general",
-    total_units: t.total_units ?? 0,
-  }));
+  return [];
 }
-
-// --- 학생 본인 교재 진도 조회 ---
 
 export async function getCurrentStudentTextbooks(): Promise<StudentTextbookItem[]> {
   const supabase = await createClient();
@@ -313,55 +288,5 @@ export async function getCurrentStudentTextbooks(): Promise<StudentTextbookItem[
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return [];
-
-  const isStudent = await hasUserRole(supabase, user.id, "student");
-  if (!isStudent) return [];
-
-  const admin = createAdminClient();
-
-  const { data: progress } = await admin
-    .from("student_textbook_progress")
-    .select("id, textbook_id, source_type, source_class_id, status, completed_units")
-    .eq("student_profile_id", user.id);
-
-  if (!progress?.length) return [];
-
-  // 교재 정보 조인
-  const textbookIds = [...new Set(progress.map((p) => p.textbook_id))];
-  const { data: textbooks } = await admin
-    .from("textbooks")
-    .select("id, title, series, level, category, total_units, cover_image")
-    .in("id", textbookIds)
-    .eq("is_active", true);
-  const textbookMap = new Map((textbooks ?? []).map((t) => [t.id, t]));
-
-  // 반 정보 조인
-  const classIds = [...new Set(progress.map((p) => p.source_class_id).filter(Boolean))] as string[];
-  let classMap = new Map<string, string>();
-  if (classIds.length) {
-    const { data: classes } = await admin
-      .from("classes")
-      .select("id, name")
-      .in("id", classIds);
-    classMap = new Map((classes ?? []).map((c) => [c.id, c.name]));
-  }
-
-  return progress
-    .filter((p) => textbookMap.has(p.textbook_id))
-    .map((p) => {
-      const t = textbookMap.get(p.textbook_id)!;
-      return {
-        id: p.id,
-        textbook_title: t.title,
-        textbook_series: t.series ?? null,
-        textbook_level: t.level ?? null,
-        textbook_category: t.category ?? "general",
-        textbook_cover_image: t.cover_image ?? null,
-        total_units: t.total_units ?? 0,
-        source_type: p.source_type as "class" | "individual",
-        source_class_name: p.source_class_id ? classMap.get(p.source_class_id) ?? null : null,
-        status: p.status as "not_started" | "in_progress" | "completed",
-        completed_units: p.completed_units ?? 0,
-      };
-    });
+  return [];
 }

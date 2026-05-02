@@ -1,8 +1,3 @@
-// @ts-nocheck — students.profile_id + afterschool_enrollments.student_profile_id 잔존.
-// 점검 종료 전 refactor:
-//   - students.select("profile_id, ...") → "id, ..."
-//   - .in("profile_id", ids) → .in("id", ids)
-//   - afterschool_enrollments.student_profile_id → student_id
 "use server";
 
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -22,7 +17,7 @@ export async function getOrCreateAfterschoolClass(): Promise<{ id: string; name:
   const { data: existing } = await supabase
     .from("classes")
     .select("id, name")
-    .eq("group_label", "방과후")
+    .eq("group_type", "afterschool")
     .limit(1)
     .single();
 
@@ -31,7 +26,7 @@ export async function getOrCreateAfterschoolClass(): Promise<{ id: string; name:
   // 없으면 자동 생성
   const { data: created, error } = await supabase
     .from("classes")
-    .insert({ name: "방과후", group_label: "방과후" })
+    .insert({ name: "방과후", group_type: "afterschool", group_label: "방과후" })
     .select("id, name")
     .single();
 
@@ -51,51 +46,52 @@ export async function getAfterschoolEnrollments(
 
   const { data: enrollments } = await supabase
     .from("afterschool_enrollments")
-    .select("student_profile_id, day_of_week, second_period")
+    .select("student_id, day_of_week")
     .eq("class_id", classId);
 
+  // second_period 컬럼은 신 스키마에서 제거됨. false 고정 (academy_period_id 기반
+  // 2교시 추적은 별도 도메인 결정 필요).
   const studentDaysMap = new Map<string, DayEnrollment[]>();
   for (const e of enrollments ?? []) {
-    const days = studentDaysMap.get(e.student_profile_id) ?? [];
-    days.push({ day: e.day_of_week, second_period: e.second_period });
-    studentDaysMap.set(e.student_profile_id, days);
+    const days = studentDaysMap.get(e.student_id) ?? [];
+    days.push({ day: e.day_of_week, second_period: false });
+    studentDaysMap.set(e.student_id, days);
   }
 
-  const profileIds = [...studentDaysMap.keys()];
-  if (!profileIds.length) return [];
+  const studentIds = [...studentDaysMap.keys()];
+  if (!studentIds.length) return [];
 
   const [studentRowsResult, classRowsResult] = await Promise.all([
     supabase
       .from("students")
-      .select("profile_id, korean_name, english_name, age")
-      .in("profile_id", profileIds),
+      .select("id, korean_name, english_name, age")
+      .in("id", studentIds),
     // 방과후 반 제외한 첫 번째 소속 반 이름
     supabase
       .from("class_students")
-      .select("student_profile_id, classes(id, name, group_label)")
-      .in("student_profile_id", profileIds)
+      .select("student_id, classes(id, name, group_type)")
+      .in("student_id", studentIds)
       .neq("class_id", classId),
   ]);
 
-  // 학생별 반 이름 맵 (방과후 제외, group_label 기준 유치부→오후반 우선 순)
+  // 학생별 반 이름 맵 (방과후 제외)
   const classNameMap = new Map<string, string>();
   for (const row of classRowsResult.data ?? []) {
-    const cls = (row.classes as unknown) as { id: string; name: string; group_label: string } | null;
+    const cls = (row.classes as unknown) as { id: string; name: string; group_type: string } | null;
     if (!cls) continue;
-    // 이미 있으면 유치부 우선
-    const existing = classNameMap.get(row.student_profile_id);
-    if (!existing) {
-      classNameMap.set(row.student_profile_id, cls.name);
+    if (cls.group_type === "afterschool") continue;
+    if (!classNameMap.has(row.student_id)) {
+      classNameMap.set(row.student_id, cls.name);
     }
   }
 
   const students = (studentRowsResult.data ?? []).map((s) => ({
-    student_profile_id: s.profile_id,
+    student_profile_id: s.id,
     korean_name: s.korean_name ?? null,
     english_name: s.english_name ?? null,
     age: s.age ?? null,
-    days: (studentDaysMap.get(s.profile_id) ?? []).sort((a, b) => a.day - b.day),
-    class_name: classNameMap.get(s.profile_id) ?? null,
+    days: (studentDaysMap.get(s.id) ?? []).sort((a, b) => a.day - b.day),
+    class_name: classNameMap.get(s.id) ?? null,
   }));
 
   students.sort((a, b) => (a.korean_name ?? "").localeCompare(b.korean_name ?? ""));
@@ -108,7 +104,7 @@ export async function enrollStudent(
   classId: string,
   studentProfileId: string,
   days: number[],
-  secondPeriod: boolean,
+  _secondPeriod: boolean,
 ): Promise<{ error?: string }> {
   const auth = await verifyAdmin();
   if ("error" in auth) return { error: auth.error };
@@ -116,11 +112,11 @@ export async function enrollStudent(
 
   const supabase = createAdminClient();
 
+  // second_period 컬럼 제거됨 — 인자만 받아 호환 유지.
   const rows = days.map((d) => ({
     class_id: classId,
-    student_profile_id: studentProfileId,
+    student_id: studentProfileId,
     day_of_week: d,
-    second_period: secondPeriod,
   }));
 
   const { error } = await supabase.from("afterschool_enrollments").insert(rows);
@@ -133,8 +129,8 @@ export async function enrollStudent(
   const { error: csError } = await supabase
     .from("class_students")
     .upsert(
-      { class_id: classId, student_profile_id: studentProfileId },
-      { onConflict: "class_id,student_profile_id", ignoreDuplicates: true },
+      { class_id: classId, student_id: studentProfileId },
+      { onConflict: "class_id,student_id", ignoreDuplicates: true },
     );
   if (csError && csError.code !== "23505") {
     logger.error("[enrollStudent:class_students]", csError.message);
@@ -158,7 +154,7 @@ export async function removeAfterschoolStudent(
     .from("afterschool_enrollments")
     .delete()
     .eq("class_id", classId)
-    .eq("student_profile_id", studentProfileId);
+    .eq("student_id", studentProfileId);
 
   if (aeError) {
     logger.error("[removeAfterschoolStudent:enrollments]", aeError.message);
@@ -169,7 +165,7 @@ export async function removeAfterschoolStudent(
     .from("class_students")
     .delete()
     .eq("class_id", classId)
-    .eq("student_profile_id", studentProfileId);
+    .eq("student_id", studentProfileId);
 
   if (csError) {
     logger.error("[removeAfterschoolStudent:class_students]", csError.message);
@@ -191,10 +187,10 @@ export async function listAvailableStudents(
 
   const { data: enrolled } = await supabase
     .from("afterschool_enrollments")
-    .select("student_profile_id")
+    .select("student_id")
     .eq("class_id", classId);
 
-  const enrolledIds = new Set((enrolled ?? []).map((e) => e.student_profile_id));
+  const enrolledIds = new Set((enrolled ?? []).map((e) => e.student_id));
 
   const { data: activeProfiles } = await supabase
     .from("profiles")
@@ -207,14 +203,14 @@ export async function listAvailableStudents(
 
   const { data: students } = await supabase
     .from("students")
-    .select("profile_id, korean_name, english_name, age")
-    .in("profile_id", activeIds)
+    .select("id, korean_name, english_name, age")
+    .in("id", activeIds)
     .order("korean_name");
 
   return (students ?? [])
-    .filter((s) => !enrolledIds.has(s.profile_id))
+    .filter((s) => !enrolledIds.has(s.id))
     .map((s) => ({
-      id: s.profile_id,
+      id: s.id,
       korean_name: s.korean_name ?? null,
       english_name: s.english_name ?? null,
       age: s.age ?? null,
@@ -223,7 +219,7 @@ export async function listAvailableStudents(
 
 // ── 학생별 방과후 등록 요일 조회 ──
 
-/** 특정 요일에 방과후에 등록된 학생 profile_id 목록 */
+/** 특정 요일에 방과후에 등록된 학생 id 목록 (= profile_id, Shared PK) */
 export async function listAfterschoolStudentIdsByDay(
   day: number,
 ): Promise<string[]> {
@@ -233,10 +229,9 @@ export async function listAfterschoolStudentIdsByDay(
   const supabase = createAdminClient();
   const { data } = await supabase
     .from("afterschool_enrollments")
-    .select("student_profile_id")
+    .select("student_id")
     .eq("day_of_week", day);
-  // 중복 제거
-  return [...new Set((data ?? []).map((d) => d.student_profile_id))];
+  return [...new Set((data ?? []).map((d) => d.student_id))];
 }
 
 export async function getStudentAfterschoolDays(
@@ -249,11 +244,11 @@ export async function getStudentAfterschoolDays(
   const { data } = await supabase
     .from("afterschool_enrollments")
     .select("day_of_week")
-    .eq("student_profile_id", studentProfileId);
+    .eq("student_id", studentProfileId);
   return (data ?? []).map((d) => d.day_of_week).sort();
 }
 
-/** 학생의 방과후 등록 정보 (요일 + 2교시 여부) */
+/** 학생의 방과후 등록 정보 (요일 + 2교시 여부). second_period 는 schema 제거로 false 고정. */
 export async function getStudentAfterschoolDetail(
   studentProfileId: string,
 ): Promise<{ day_of_week: number; second_period: boolean }[]> {
@@ -263,9 +258,11 @@ export async function getStudentAfterschoolDetail(
   const supabase = createAdminClient();
   const { data } = await supabase
     .from("afterschool_enrollments")
-    .select("day_of_week, second_period")
-    .eq("student_profile_id", studentProfileId);
-  return (data ?? []).sort((a, b) => a.day_of_week - b.day_of_week);
+    .select("day_of_week")
+    .eq("student_id", studentProfileId);
+  return (data ?? [])
+    .map((d) => ({ day_of_week: d.day_of_week, second_period: false }))
+    .sort((a, b) => a.day_of_week - b.day_of_week);
 }
 
 // ── 특정 요일 등록 삭제 ──
@@ -281,7 +278,7 @@ export async function deleteAfterschoolEnrollmentDay(
   const { error } = await supabase
     .from("afterschool_enrollments")
     .delete()
-    .eq("student_profile_id", studentProfileId)
+    .eq("student_id", studentProfileId)
     .eq("day_of_week", dayOfWeek);
 
   if (error) {
@@ -294,24 +291,13 @@ export async function deleteAfterschoolEnrollmentDay(
 // ── 특정 요일 2교시 여부 업데이트 ──
 
 export async function updateAfterschoolSecondPeriod(
-  studentProfileId: string,
-  dayOfWeek: number,
-  secondPeriod: boolean,
+  _studentProfileId: string,
+  _dayOfWeek: number,
+  _secondPeriod: boolean,
 ): Promise<{ error?: string }> {
   const auth = await verifyAdmin();
   if ("error" in auth) return { error: auth.error };
-
-  const supabase = createAdminClient();
-  const { error } = await supabase
-    .from("afterschool_enrollments")
-    .update({ second_period: secondPeriod })
-    .eq("student_profile_id", studentProfileId)
-    .eq("day_of_week", dayOfWeek);
-
-  if (error) {
-    logger.error("[updateAfterschoolSecondPeriod]", error.message);
-    return { error: error.message };
-  }
+  // second_period 컬럼 제거됨. 호환 stub.
   return {};
 }
 
@@ -331,19 +317,19 @@ export async function bulkUpdateEnrollmentDays(
     .from("afterschool_enrollments")
     .delete()
     .eq("class_id", classId)
-    .in("student_profile_id", studentIds);
+    .in("student_id", studentIds);
 
   if (delError) {
     logger.error("[bulkUpdateEnrollmentDays:delete]", delError.message);
     return { error: delError.message };
   }
 
+  // second_period 컬럼 제거됨 — 무시
   const rows = updates.flatMap((u) =>
     u.days.map((d) => ({
       class_id: classId,
-      student_profile_id: u.studentProfileId,
+      student_id: u.studentProfileId,
       day_of_week: d.day,
-      second_period: d.second_period,
     })),
   );
 
@@ -362,7 +348,7 @@ export async function bulkUpdateEnrollmentDays(
         .from("class_students")
         .delete()
         .eq("class_id", classId)
-        .eq("student_profile_id", u.studentProfileId);
+        .eq("student_id", u.studentProfileId);
     }
   }
 
