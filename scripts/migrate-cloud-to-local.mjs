@@ -2,20 +2,31 @@
  * Cloud → Local 마이그레이션 스크립트
  *
  * 구 스키마(cloud) → 신 스키마(local, Shared PK) 변환
- * 모든 계정 비밀번호 = 1111
+ * 모든 계정 비밀번호 = 환경변수 LOCAL_DEFAULT_PASSWORD (기본 "1111", dev 전용)
  *
- * 사용법: node scripts/migrate-cloud-to-local.mjs
+ * 사용법:
+ *   CLOUD_SUPABASE_URL=...           \
+ *   CLOUD_SUPABASE_SERVICE_KEY=...   \
+ *   LOCAL_SUPABASE_URL=...           \
+ *   LOCAL_SUPABASE_SERVICE_KEY=...   \
+ *   node scripts/migrate-cloud-to-local.mjs
  */
 
 import { createClient } from "@supabase/supabase-js";
 
-// ── 설정 ──────────────────────────────────────────────
-const CLOUD_URL = "https://jxrzhonxnkjpjmzdhyoi.supabase.co";
-const CLOUD_SERVICE_KEY = "sb_secret_Bwc8pu-wphNspUaXMH4pdg_5m9GYCJ7";
+// ── 설정 (env 필수) ───────────────────────────────────
+const CLOUD_URL = process.env.CLOUD_SUPABASE_URL;
+const CLOUD_SERVICE_KEY = process.env.CLOUD_SUPABASE_SERVICE_KEY;
+const LOCAL_URL = process.env.LOCAL_SUPABASE_URL ?? "http://127.0.0.1:54321";
+const LOCAL_SERVICE_KEY = process.env.LOCAL_SUPABASE_SERVICE_KEY;
+const DEFAULT_PASSWORD = process.env.LOCAL_DEFAULT_PASSWORD ?? "1111";
 
-const LOCAL_URL = "http://127.0.0.1:54321";
-const LOCAL_SERVICE_KEY =
-  "***REMOVED***";
+if (!CLOUD_URL || !CLOUD_SERVICE_KEY || !LOCAL_SERVICE_KEY) {
+  console.error(
+    "환경변수 필수: CLOUD_SUPABASE_URL, CLOUD_SUPABASE_SERVICE_KEY, LOCAL_SUPABASE_SERVICE_KEY",
+  );
+  process.exit(1);
+}
 
 const BATCH = 50; // upsert 배치 크기
 
@@ -49,7 +60,7 @@ function log(msg) {
 // ── 메인 ─────────────────────────────────────────────
 async function main() {
   log("=== SC Wonderland Cloud → Local 마이그레이션 시작 ===");
-  log("비밀번호: 모든 계정 1111");
+  log(`비밀번호: 모든 계정 ${DEFAULT_PASSWORD}`);
 
   // ── 1. cloud 데이터 읽기 ──────────────────────────
   log("1/7 cloud 데이터 읽는 중...");
@@ -148,7 +159,7 @@ async function main() {
     }
     const { error } = await local.auth.admin.createUser({
       email: u.email,
-      password: "1111",
+      password: DEFAULT_PASSWORD,
       email_confirm: true,
       user_metadata: {},
     });
@@ -306,7 +317,7 @@ async function main() {
   // ── 완료 ─────────────────────────────────────────
   log("=== 마이그레이션 완료 ===");
   log("검증: http://127.0.0.1:54323 (Supabase Studio)");
-  log("로그인 테스트: s1@scwonderland.com / 1111");
+  log(`로그인 테스트: s1@scwonderland.com / ${DEFAULT_PASSWORD}`);
 }
 
 main().catch((e) => {
