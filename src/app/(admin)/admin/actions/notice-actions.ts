@@ -27,6 +27,10 @@ export async function listNotices(
 ): Promise<(Notice & { image_count: number; attachment_count: number })[]> {
   const auth = await verifyAuthenticated();
   if ("error" in auth) return [];
+  if (includeUnpublished) {
+    const adminAuth = await verifyAdmin();
+    if ("error" in adminAuth) return [];
+  }
   return listPublicNoticesCommon(CONFIG, createAdminClient(), includeUnpublished) as Promise<
     (Notice & { image_count: number; attachment_count: number })[]
   >;

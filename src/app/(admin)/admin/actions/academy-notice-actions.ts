@@ -27,6 +27,10 @@ export async function listAcademyNotices(
 ): Promise<AcademyNotice[]> {
   const auth = await verifyAuthenticated();
   if ("error" in auth) return [];
+  if (includeUnpublished) {
+    const adminAuth = await verifyAdmin();
+    if ("error" in adminAuth) return [];
+  }
   return listPublicNoticesCommon(CONFIG, createAdminClient(), includeUnpublished) as Promise<
     AcademyNotice[]
   >;
