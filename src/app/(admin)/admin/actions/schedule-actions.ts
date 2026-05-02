@@ -29,66 +29,73 @@ export async function getGroupTimetableGrid(
 
   const supabase = createAdminClient();
 
-  // 1. 해당 그룹의 교시 목록
-  const { data: periods } = await supabase
+  // 1. 해당 그룹의 교시 목록 — group_label 또는 group_type 매칭
+  // (cutover 후 일부 행은 group_label 비어있고 group_type 만 채워짐)
+  const groupTypeMap: Record<string, string> = {
+    "유치부": "kindergarten",
+    "오후반": "afternoon",
+    "방과후": "afterschool",
+  };
+  const groupType = groupTypeMap[groupLabel];
+
+  let periodsQuery = supabase
     .from("academy_periods")
     .select("id, name, start_time, end_time")
-    .eq("group_label", groupLabel)
     .eq("is_active", true)
     .order("start_time");
+  periodsQuery = groupType
+    ? periodsQuery.or(`group_label.eq.${groupLabel},group_type.eq.${groupType}`)
+    : periodsQuery.eq("group_label", groupLabel);
+
+  const { data: periods } = await periodsQuery;
 
   if (!periods?.length) return { periods: [], classes: [], cells: {}, teachers: [], textbooks: [] };
 
   const periodIds = periods.map((p) => p.id);
 
-  // 2. 해당 그룹의 반 목록 (group_label로 직접 조회)
-  const { data: classRows } = await supabase
+  // 2. 해당 그룹의 반 목록 (group_label 또는 group_type 매칭)
+  let classesQuery = supabase
     .from("classes")
     .select("id, name, english_name")
-    .eq("group_label", groupLabel)
     .order("name");
+  classesQuery = groupType
+    ? classesQuery.or(`group_label.eq.${groupLabel},group_type.eq.${groupType}`)
+    : classesQuery.eq("group_label", groupLabel);
+  const { data: classRows } = await classesQuery;
   const classes = (classRows ?? []) as { id: string; name: string; english_name: string | null }[];
 
-  // 3. 해당 교시에 배정된 수업 시간표 전체 (반 배정만, 학생 개인 배정 제외)
+  // 3. 해당 교시에 배정된 수업 시간표 전체 (반 배정. 신 스키마는 학생 개인 배정 컬럼 없음)
   const { data: schedules } = await supabase
     .from("class_schedules")
-    .select("id, class_id, academy_period_id, day_of_week, teacher_profile_id, label, textbook_id")
-    .in("academy_period_id", periodIds)
-    .is("student_profile_id", null);
+    .select("id, class_id, academy_period_id, day_of_week, teacher_id, label")
+    .in("academy_period_id", periodIds);
 
-  // 4+5. 활성 교사 전체 조회 (deleted_at IS NULL 필터 + 정렬) — 단일 쿼리
+  // 4. 활성 교사 전체 조회 (Shared PK: teachers.id = profiles.id)
   const { data: allTeachersData } = await supabase
     .from("teachers")
-    .select("profile_id, name, teacher_type, profiles!inner(deleted_at)")
+    .select("id, name, teacher_type, profiles!inner(deleted_at)")
     .is("profiles.deleted_at", null)
     .order("name");
 
   const teacherMap = new Map(
     (allTeachersData ?? []).map((t) => [
-      t.profile_id,
+      t.id,
       { name: t.name, teacher_type: t.teacher_type },
     ]),
   );
 
-  // 6. 전체 교재 목록 (배정용)
-  const { data: allTextbooks } = await supabase
-    .from("textbooks")
-    .select("id, title, series")
-    .eq("is_active", true)
-    .order("title");
-
-  // 7. 셀 맵 구성 (슬롯당 복수 교사 배열)
+  // 5. 셀 맵 구성 (슬롯당 복수 교사 배열). textbooks 도메인은 신 스키마에서 제거됨.
   const cells: GroupTimetableData["cells"] = {};
   for (const s of schedules ?? []) {
-    const teacher = s.teacher_profile_id ? teacherMap.get(s.teacher_profile_id) : null;
+    const teacher = s.teacher_id ? teacherMap.get(s.teacher_id) : null;
     const key = `${s.class_id}_${s.academy_period_id}_${s.day_of_week}`;
     const entry: CellEntry = {
       scheduleId: s.id,
       label: s.label ?? null,
-      teacherId: s.teacher_profile_id ?? null,
+      teacherId: s.teacher_id ?? null,
       teacherName: teacher?.name ?? null,
       teacherType: (teacher?.teacher_type ?? "korean") as "korean" | "native",
-      textbookId: s.textbook_id ?? null,
+      textbookId: null,
     };
     if (cells[key]) {
       cells[key].push(entry);
@@ -102,15 +109,11 @@ export async function getGroupTimetableGrid(
     classes,
     cells,
     teachers: (allTeachersData ?? []).map((t) => ({
-      id: t.profile_id,
+      id: t.id,
       name: t.name,
       teacher_type: t.teacher_type as "korean" | "native",
     })),
-    textbooks: (allTextbooks ?? []).map((tb) => ({
-      id: tb.id,
-      title: tb.title,
-      series: tb.series ?? null,
-    })),
+    textbooks: [], // textbooks 도메인 제거됨
   };
 }
 
