@@ -280,7 +280,7 @@ export async function listAllClassesReportStatus(
 
   const admin = createAdminClient();
   const [{ data: classes, error: classError }, { data: memberships, error: membershipError }, { data: cards, error: cardError }] = await Promise.all([
-    admin.from("classes").select("id, name, group_label").neq("group_label", "방과후").order("name"),
+    admin.from("classes").select("id, name, group_type").neq("group_type", "afterschool").order("name"),
     admin.from("class_students").select("class_id, student_id"),
     admin.from("report_cards").select("student_id").eq("year", year).eq("month", month),
   ]);
@@ -334,7 +334,7 @@ export async function listUntranslatedReports(
   // 3. 반 이름 조회 (class_students + classes, 방과후 제외)
   const { data: classMemberships } = await admin
     .from("class_students")
-    .select("student_id, classes(name, group_label)")
+    .select("student_id, classes(name, group_type)")
     .in("student_id", studentIds);
 
   // 4. 코드에서 조인
@@ -345,8 +345,8 @@ export async function listUntranslatedReports(
   // 방과후 제외, 학생당 본반은 1개이므로 첫 번째 비방과후 항목만 사용
   const classMap = new Map<string, string>();
   for (const m of classMemberships ?? []) {
-    const cls = m.classes as unknown as { name: string; group_label: string | null } | null;
-    if (cls?.group_label !== "방과후" && !classMap.has(m.student_id)) {
+    const cls = m.classes as unknown as { name: string; group_type: string } | null;
+    if (cls?.group_type !== "afterschool" && !classMap.has(m.student_id)) {
       classMap.set(m.student_id, cls?.name ?? "—");
     }
   }
