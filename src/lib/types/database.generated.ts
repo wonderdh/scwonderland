@@ -56,29 +56,6 @@ export type Database = {
         }
         Relationships: []
       }
-      admins: {
-        Row: {
-          created_at: string
-          id: string
-        }
-        Insert: {
-          created_at?: string
-          id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "admins_id_fkey"
-            columns: ["id"]
-            isOneToOne: true
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       afterschool_enrollments: {
         Row: {
           academy_period_id: string | null
@@ -708,7 +685,7 @@ export type Database = {
           id: string
           is_pinned: boolean
           is_published: boolean
-          published_at: string
+          published_at: string | null
           title: string
           updated_at: string
         }
@@ -720,7 +697,7 @@ export type Database = {
           id?: string
           is_pinned?: boolean
           is_published?: boolean
-          published_at?: string
+          published_at?: string | null
           title?: string
           updated_at?: string
         }
@@ -732,7 +709,7 @@ export type Database = {
           id?: string
           is_pinned?: boolean
           is_published?: boolean
-          published_at?: string
+          published_at?: string | null
           title?: string
           updated_at?: string
         }

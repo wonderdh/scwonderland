@@ -49,6 +49,7 @@ next-env.d.ts
 # claude 로컬 세션
 .claude/settings.local.json
 .claude/hooks/*.log
+.claude/*.lock
 
 # omc (oh-my-claudecode) 세션/상태
 .omc/*
@@ -69,8 +70,11 @@ _notes/
 # supabase CLI 로컬 캐시/메타 (config.toml과 migrations/는 커밋 유지)
 supabase/.temp/
 supabase/.branches/
+supabase/snippets/
 # seed.sql은 원격 dump일 수 있어 commit 금지 (PII 보호)
 supabase/seed.sql
+# 로컬 dump 산출물 (PII 가능성)
+/dump*.sql
 
 # DB 백업 / cutover snapshot (PII + bcrypt hash 포함, commit 금지)
 backups/
