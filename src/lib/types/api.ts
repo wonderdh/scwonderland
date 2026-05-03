@@ -600,9 +600,9 @@ export type UntranslatedReport = {
   id: string;
   student_name: string;
   class_name: string;
-  content: string | null;
+  content_en: string | null;
   content_ko: string | null;
-  reply: string | null;
+  reply_ko: string | null;
   reply_en: string | null;
 };
 

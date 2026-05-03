@@ -750,39 +750,39 @@ export type Database = {
       report_cards: {
         Row: {
           author_id: string | null
-          content: string | null
+          content_en: string | null
           content_ko: string | null
           created_at: string
           id: string
           month: number
-          reply: string | null
           reply_en: string | null
+          reply_ko: string | null
           student_id: string
           updated_at: string
           year: number
         }
         Insert: {
           author_id?: string | null
-          content?: string | null
+          content_en?: string | null
           content_ko?: string | null
           created_at?: string
           id?: string
           month: number
-          reply?: string | null
           reply_en?: string | null
+          reply_ko?: string | null
           student_id: string
           updated_at?: string
           year: number
         }
         Update: {
           author_id?: string | null
-          content?: string | null
+          content_en?: string | null
           content_ko?: string | null
           created_at?: string
           id?: string
           month?: number
-          reply?: string | null
           reply_en?: string | null
+          reply_ko?: string | null
           student_id?: string
           updated_at?: string
           year?: number

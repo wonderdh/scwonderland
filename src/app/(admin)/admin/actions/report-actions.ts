@@ -27,7 +27,7 @@ export async function getReportCard(
   if (!student) return null;
   const { data, error } = await supabase
     .from("report_cards")
-    .select("id, student_id, year, month, author_id, content, content_ko, reply, reply_en, created_at, updated_at")
+    .select("id, student_id, year, month, author_id, content_en, content_ko, reply_ko, reply_en, created_at, updated_at")
     .eq("student_id", student.id)
     .eq("year", year)
     .eq("month", month)
@@ -149,7 +149,7 @@ export async function upsertReportCard(
       year: y,
       month: m,
       author_id: user.id,
-      content: trimmedContent,
+      content_en: trimmedContent,
       content_ko,
       updated_at: new Date().toISOString(),
     },
@@ -229,7 +229,7 @@ export async function updateReportCardReply(
 
   const { data: row } = await supabase
     .from("report_cards")
-    .select("id, student_id, content")
+    .select("id, student_id, content_en")
     .eq("id", reportCardId)
     .single();
   if (!row) return { error: "리포트카드를 찾을 수 없습니다." };
@@ -237,7 +237,7 @@ export async function updateReportCardReply(
   const studentRows = await getStudentsByIds(admin, [row.student_id]);
   const student = studentRows.get(row.student_id);
   if (!student || student.profile_id !== user.id) return { error: "본인 리포트카드만 답글을 달 수 있습니다." };
-  if (row.content == null || row.content === "") {
+  if (row.content_en == null || row.content_en === "") {
     return { error: "본문이 작성된 후에 답글을 남길 수 있습니다." };
   }
 
@@ -252,7 +252,7 @@ export async function updateReportCardReply(
 
   const { error } = await supabase
     .from("report_cards")
-    .update({ reply: trimmedReply, reply_en, updated_at: new Date().toISOString() })
+    .update({ reply_ko: trimmedReply, reply_en, updated_at: new Date().toISOString() })
     .eq("id", reportCardId)
     .eq("student_id", row.student_id);
   if (error) {
@@ -315,13 +315,13 @@ export async function listUntranslatedReports(
 
   const admin = createAdminClient();
 
-  // 1. 리포트카드 조회 (content 있는 것만)
+  // 1. 리포트카드 조회 (content_en 있는 것만)
   const { data: cards, error } = await admin
     .from("report_cards")
-    .select("id, content, content_ko, reply, reply_en, student_id")
+    .select("id, content_en, content_ko, reply_ko, reply_en, student_id")
     .eq("year", year)
     .eq("month", month)
-    .not("content", "is", null);
+    .not("content_en", "is", null);
 
   if (error || !cards || cards.length === 0) {
     if (error) logger.error("[listUntranslatedReports]", error.message);
@@ -355,9 +355,9 @@ export async function listUntranslatedReports(
     id: card.id,
     student_name: studentMap.get(card.student_id) ?? "—",
     class_name: classMap.get(card.student_id) ?? "—",
-    content: card.content,
+    content_en: card.content_en,
     content_ko: card.content_ko,
-    reply: card.reply,
+    reply_ko: card.reply_ko,
     reply_en: card.reply_en,
   }));
 }
@@ -409,7 +409,7 @@ export async function translateReportCard(
 
   const { data: row } = await admin
     .from("report_cards")
-    .select("content, reply, student_id, author_id")
+    .select("content_en, reply_ko, student_id, author_id")
     .eq("id", reportCardId)
     .single();
 
@@ -430,8 +430,8 @@ export async function translateReportCard(
   ].filter(Boolean) as string[];
 
   if (target === "content") {
-    if (!row.content) return { error: "번역할 본문이 없습니다." };
-    const content_ko = await translateText(row.content, "ko", studentNames);
+    if (!row.content_en) return { error: "번역할 본문이 없습니다." };
+    const content_ko = await translateText(row.content_en, "ko", studentNames);
     if (!content_ko) return { error: "번역에 실패했습니다. API 키를 확인해 주세요." };
     const { error } = await admin
       .from("report_cards")
@@ -439,8 +439,8 @@ export async function translateReportCard(
       .eq("id", reportCardId);
     if (error) return { error: error.message };
   } else {
-    if (!row.reply) return { error: "번역할 답글이 없습니다." };
-    const reply_en = await translateText(row.reply, "en", studentNames);
+    if (!row.reply_ko) return { error: "번역할 답글이 없습니다." };
+    const reply_en = await translateText(row.reply_ko, "en", studentNames);
     if (!reply_en) return { error: "번역에 실패했습니다. API 키를 확인해 주세요." };
     const { error } = await admin
       .from("report_cards")

@@ -101,7 +101,7 @@ export function TeacherReportClient({
     try {
       const data = await getReportCard(selectedStudentId, year, month);
       setReport(data);
-      setContent(data?.content ?? "");
+      setContent(data?.content_en ?? "");
     } catch {
       setReportError(isNative ? "Failed to load report." : "리포트카드를 불러오지 못했습니다.");
     } finally {
@@ -142,11 +142,11 @@ export function TeacherReportClient({
     const prevYear = month === 1 ? year - 1 : year;
     try {
       const prev = await getReportCard(selectedStudentId, prevYear, prevMonth);
-      if (!prev?.content || !prev.content.trim()) {
+      if (!prev?.content_en || !prev.content_en.trim()) {
         setSaveMessage({ type: "error", text: L.copyEmpty });
         return;
       }
-      setContent(prev.content);
+      setContent(prev.content_en);
       setSaveMessage({ type: "success", text: L.copyDone });
       setTimeout(() => setSaveMessage(null), 3000);
     } catch {
@@ -161,7 +161,7 @@ export function TeacherReportClient({
 
   const handleDelete = async () => {
     if (!report?.id) return;
-    const hasReply = !!(report.reply && report.reply.trim());
+    const hasReply = !!(report.reply_ko && report.reply_ko.trim());
     const confirmMsg = hasReply ? L.deleteConfirm : L.deleteConfirmNoReply;
     if (!window.confirm(confirmMsg)) return;
     setDeleting(true);
@@ -395,7 +395,7 @@ export function TeacherReportClient({
                             영어 원문 보기
                           </summary>
                           <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-slate-500">
-                            {report.content}
+                            {report.content_en}
                           </p>
                         </details>
                       </div>
@@ -473,7 +473,7 @@ export function TeacherReportClient({
                 <div className="p-4 space-y-3">
                   {reportLoading ? (
                     <LoadingState label={L.loading} />
-                  ) : report?.reply != null && report.reply.trim() !== "" ? (
+                  ) : report?.reply_ko != null && report.reply_ko.trim() !== "" ? (
                     <>
                       {/* 영어 번역본 (원어민 교사 우선 표시) */}
                       {isNative && report.reply_en && (
@@ -486,7 +486,7 @@ export function TeacherReportClient({
                               View original (Korean)
                             </summary>
                             <p className="mt-1.5 whitespace-pre-wrap text-sm text-slate-500">
-                              {report.reply}
+                              {report.reply_ko}
                             </p>
                           </details>
                         </div>
@@ -494,7 +494,7 @@ export function TeacherReportClient({
                       {/* 한국인 교사 or 번역 없음: 원문만 표시 */}
                       {(!isNative || !report.reply_en) && (
                         <p className="whitespace-pre-wrap text-sm text-slate-800">
-                          {report.reply}
+                          {report.reply_ko}
                         </p>
                       )}
                     </>

@@ -63,12 +63,12 @@ export default async function StudentReportsPage({
           {selectedReport ? (
             <div className="space-y-5">
               <StudentReportView report={selectedReport} />
-              {selectedReport.content != null &&
-                selectedReport.content.trim() !== "" && (
+              {selectedReport.content_en != null &&
+                selectedReport.content_en.trim() !== "" && (
                   <ReportCardReplyForm
                     key={selectedReport.id}
                     reportCardId={selectedReport.id}
-                    initialReply={selectedReport.reply ?? ""}
+                    initialReply={selectedReport.reply_ko ?? ""}
                     initialReplyEn={selectedReport.reply_en}
                   />
                 )}
@@ -95,9 +95,9 @@ export default async function StudentReportsPage({
 
 /** 학부모용 리포트 뷰: 영어 원문 기본 표시, 한국어 번역은 클릭 시 펼침 */
 function StudentReportView({ report }: { report: ReportCard }) {
-  const hasContent = report.content != null && report.content.trim() !== "";
+  const hasContent = report.content_en != null && report.content_en.trim() !== "";
   const hasKo = report.content_ko != null && report.content_ko.trim() !== "";
-  const hasReply = report.reply != null && report.reply.trim() !== "";
+  const hasReply = report.reply_ko != null && report.reply_ko.trim() !== "";
 
   return (
     <div className="mx-auto w-full max-w-2xl space-y-6">
@@ -118,7 +118,7 @@ function StudentReportView({ report }: { report: ReportCard }) {
           </div>
           <div className="p-4 sm:p-5 space-y-4">
             <p className="whitespace-pre-wrap text-base leading-relaxed text-slate-800 sm:text-sm">
-              {report.content}
+              {report.content_en}
             </p>
             {hasKo && (
               <details className="border-t border-slate-100 pt-3">
@@ -155,7 +155,7 @@ function StudentReportView({ report }: { report: ReportCard }) {
           </div>
           <div className="p-4 sm:p-5">
             <p className="whitespace-pre-wrap text-base leading-relaxed text-slate-800 sm:text-sm">
-              {report.reply}
+              {report.reply_ko}
             </p>
           </div>
         </section>

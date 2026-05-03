@@ -20,7 +20,7 @@ export function ReportTranslateManager({
   const [loadingId, setLoadingId] = useState<string | null>(null);
 
   const needsContentTranslation = reports.filter((r) => !r.content_ko);
-  const needsReplyTranslation = reports.filter((r) => r.reply && !r.reply_en);
+  const needsReplyTranslation = reports.filter((r) => r.reply_ko && !r.reply_en);
   const translated = reports.filter((r) => r.content_ko);
 
   const handleTranslate = async (id: string, target: "content" | "reply") => {
@@ -112,7 +112,7 @@ export function ReportTranslateManager({
                     <td className="px-4 py-3 font-medium text-slate-800 whitespace-nowrap">{r.student_name}</td>
                     <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{r.class_name}</td>
                     <td className="px-4 py-3 text-slate-500 max-w-xs">
-                      <span className="line-clamp-1">{r.content?.slice(0, 100)}</span>
+                      <span className="line-clamp-1">{r.content_en?.slice(0, 100)}</span>
                     </td>
                     <td className="px-4 py-3 text-right">
                       <button
@@ -157,7 +157,7 @@ export function ReportTranslateManager({
                     <td className="px-4 py-3 font-medium text-slate-800 whitespace-nowrap">{r.student_name}</td>
                     <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{r.class_name}</td>
                     <td className="px-4 py-3 text-slate-500 max-w-xs">
-                      <span className="line-clamp-1">{r.reply?.slice(0, 100)}</span>
+                      <span className="line-clamp-1">{r.reply_ko?.slice(0, 100)}</span>
                     </td>
                     <td className="px-4 py-3 text-right">
                       <button

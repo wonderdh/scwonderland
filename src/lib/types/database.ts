@@ -9,9 +9,9 @@ export type ReportCard = {
   month: number;
   author_id: string | null;
   author_name?: string | null;
-  content: string | null;
+  content_en: string | null;
   content_ko: string | null;
-  reply: string | null;
+  reply_ko: string | null;
   reply_en: string | null;
   created_at: string;
   updated_at: string;

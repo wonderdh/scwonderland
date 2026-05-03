@@ -36,7 +36,7 @@ export function StudentReportTab({ studentProfileId }: { studentProfileId: strin
     setError(null);
     const data = await getReportCard(studentProfileId, year, month);
     setReport(data);
-    setContent(data?.content ?? "");
+    setContent(data?.content_en ?? "");
     setLoading(false);
   }, [studentProfileId, year, month]);
 
@@ -197,9 +197,9 @@ export function StudentReportTab({ studentProfileId }: { studentProfileId: strin
           </span>
         </div>
         <div className="p-4 sm:p-5">
-          {report?.reply != null && report.reply !== "" ? (
+          {report?.reply_ko != null && report.reply_ko !== "" ? (
             <p className="whitespace-pre-wrap text-base text-foreground sm:text-sm">
-              {report.reply}
+              {report.reply_ko}
             </p>
           ) : (
             <p className="text-sm text-muted-foreground">아직 답글이 없습니다.</p>

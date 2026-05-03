@@ -250,7 +250,7 @@ export async function getClassReportStatus(
   // 리포트카드 조회 (report_cards.student_id = students.id)
   const { data: reports } = await admin
     .from("report_cards")
-    .select("id, student_id, content, reply")
+    .select("id, student_id, content_en, reply_ko")
     .in("student_id", studentIds)
     .eq("year", year)
     .eq("month", month);
@@ -264,8 +264,8 @@ export async function getClassReportStatus(
       korean_name: s?.korean_name ?? null,
       english_name: s?.english_name ?? null,
       student_number: null,
-      has_report: r != null && r.content != null && r.content.trim() !== "",
-      has_reply: r != null && r.reply != null && r.reply.trim() !== "",
+      has_report: r != null && r.content_en != null && r.content_en.trim() !== "",
+      has_reply: r != null && r.reply_ko != null && r.reply_ko.trim() !== "",
       report_id: r?.id ?? null,
     };
   });
