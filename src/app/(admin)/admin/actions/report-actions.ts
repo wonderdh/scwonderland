@@ -263,13 +263,6 @@ export async function updateReportCardReply(
   return {};
 }
 
-type ClassReportStatusRow = {
-  class_id: string;
-  class_name: string;
-  total_students: number;
-  written_count: number;
-};
-
 /** 전체 반의 지정 년/월 리포트카드 작성 현황 요약 (관리자 전용). */
 export async function listAllClassesReportStatus(
   year: number,

@@ -1,3 +1,6 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/lib/types/database.generated";
+
 export const USER_ROLE_PRIORITY = ["admin", "teacher", "student"] as const;
 
 export type UserRole = (typeof USER_ROLE_PRIORITY)[number];
@@ -7,8 +10,10 @@ type RoleLookup = {
   primaryRole: UserRole | null;
 };
 
+type Client = SupabaseClient<Database>;
+
 export async function getUserRoles(
-  supabase: any,
+  supabase: Client,
   profileId: string
 ): Promise<RoleLookup> {
   const { data } = await supabase
@@ -17,13 +22,13 @@ export async function getUserRoles(
     .eq("id", profileId)
     .maybeSingle();
 
-  const role = data?.role as UserRole | null;
+  const role = (data?.role ?? null) as UserRole | null;
   const roles: UserRole[] = role ? [role] : [];
-  return { roles, primaryRole: role ?? null };
+  return { roles, primaryRole: role };
 }
 
 export async function hasUserRole(
-  supabase: any,
+  supabase: Client,
   profileId: string,
   role: UserRole
 ): Promise<boolean> {

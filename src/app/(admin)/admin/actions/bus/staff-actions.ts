@@ -1,7 +1,6 @@
 "use server";
 
 import { createAdminClient } from "@/lib/supabase/admin";
-import { normalizeEmail } from "@/lib/auth/auth-utils";
 import { verifyAdmin } from "../auth-helpers";
 import { logger } from "@/lib/server/logger";
 import type {
@@ -37,7 +36,7 @@ export async function listBusStaff(): Promise<BusStaffProfile[]> {
 export async function updateBusStaff(
   profileId: string,
   name: string,
-  busNumberId: string | null
+  _busNumberId: string | null
 ): Promise<{ error?: string }> {
   const auth = await verifyAdmin();
   if ("error" in auth) return { error: auth.error };
