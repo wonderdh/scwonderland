@@ -3,7 +3,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getUserRoles, hasUserRole } from "@/lib/auth/user-roles";
 import { createClient } from "@/lib/supabase/server";
-import type { StudentProfile, StudentClassItem, TeacherProfile, TeacherClassWithStudents, ReportCardStatus, TeacherClassTextbook, StudentTextbookItem } from "@/lib/types";
+import type { StudentProfile, StudentClassItem, TeacherProfile, TeacherClassWithStudents, ReportCardStatus } from "@/lib/types";
 
 /** 로그인한 학생 본인의 프로필(학생 정보). 학생이 아니면 null. */
 export async function getCurrentStudentProfile(): Promise<StudentProfile | null> {
@@ -271,22 +271,3 @@ export async function getClassReportStatus(
   });
 }
 
-// 신 스키마에서 textbooks/class_textbooks/student_textbook_progress 테이블이
-// 제거되어 교재 도메인은 비활성화. 도메인 재도입 결정 시 마이그레이션 + 본 stub
-// 복구.
-
-export async function getClassTextbooks(_classId: string): Promise<TeacherClassTextbook[]> {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return [];
-  return [];
-}
-
-export async function getCurrentStudentTextbooks(): Promise<StudentTextbookItem[]> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return [];
-  return [];
-}

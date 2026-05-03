@@ -3,9 +3,7 @@ import { getCurrentStudentProfile } from "../actions";
 import { Card, CardContent } from "@/components/ui/card";
 import { nowKstParts } from "@/lib/utils/date-kst";
 import {
-  PendingHomeworkWidget,
   AttendanceWidget,
-  RecentLearningWidget,
   StudentClassesCard,
   WidgetSkeleton,
   ClassesCardSkeleton,
@@ -41,16 +39,10 @@ export default async function StudentInfoPage() {
         </CardContent>
       </Card>
 
-      {/* 대시보드 위젯 3종 — 각 Suspense 경계로 독립 스트리밍 */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <Suspense fallback={<WidgetSkeleton />}>
-          <PendingHomeworkWidget profileId={profile.id} />
-        </Suspense>
+      {/* 대시보드 위젯 — 출석률 */}
+      <div className="grid grid-cols-1 gap-3">
         <Suspense fallback={<WidgetSkeleton />}>
           <AttendanceWidget profileId={profile.id} year={year} month={month} />
-        </Suspense>
-        <Suspense fallback={<WidgetSkeleton />}>
-          <RecentLearningWidget profileId={profile.id} />
         </Suspense>
       </div>
 

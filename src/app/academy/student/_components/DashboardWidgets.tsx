@@ -1,8 +1,5 @@
-import Link from "next/link";
 import {
-  getStudentHomework,
   getAttendanceStats,
-  listLearningRecords,
 } from "@/app/(admin)/admin/actions";
 import { getCurrentStudentClasses } from "../../actions";
 import {
@@ -13,7 +10,6 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { SkeletonBone as Bone } from "@/components/skeletons/SkeletonBone";
-import { formatDateKst } from "@/lib/utils/date-kst";
 
 export function WidgetSkeleton() {
   return (
@@ -25,52 +21,6 @@ export function WidgetSkeleton() {
       <Bone className="h-8 w-16" />
       <Bone className="h-3 w-24" />
     </div>
-  );
-}
-
-export async function PendingHomeworkWidget({ profileId }: { profileId: string }) {
-  const homework = await getStudentHomework(profileId);
-  const pendingCount = homework.filter(
-    (h) => !h.submission || h.submission.status === "pending",
-  ).length;
-
-  return (
-    <Link
-      href="/academy/student/homework"
-      className={`group rounded-xl border p-4 shadow-sm transition-colors ${
-        pendingCount > 0
-          ? "border-amber-200 bg-amber-50 hover:bg-amber-100"
-          : "border-emerald-200 bg-emerald-50 hover:bg-emerald-100"
-      }`}
-    >
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold uppercase tracking-wider text-slate-600">
-          미제출 숙제
-        </span>
-        <svg
-          className="h-4 w-4 text-slate-400 transition-transform group-hover:translate-x-0.5"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          strokeWidth={2}
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-        </svg>
-      </div>
-      <div className="mt-2 flex items-baseline gap-1">
-        <span
-          className={`text-3xl font-bold ${
-            pendingCount > 0 ? "text-amber-700" : "text-emerald-700"
-          }`}
-        >
-          {pendingCount}
-        </span>
-        <span className="text-sm text-slate-500">건</span>
-      </div>
-      <p className="mt-1 text-xs text-slate-500">
-        {pendingCount > 0 ? "지금 제출하러 가기" : "모두 제출 완료!"}
-      </p>
-    </Link>
   );
 }
 
@@ -111,31 +61,6 @@ export async function AttendanceWidget({
       <p className="mt-1 text-xs text-slate-500">
         출석 {attendanceStats.present} · 지각 {attendanceStats.late} · 결석 {attendanceStats.absent}
       </p>
-    </div>
-  );
-}
-
-export async function RecentLearningWidget({ profileId }: { profileId: string }) {
-  const records = await listLearningRecords(profileId);
-  const recent = records.slice(0, 3);
-
-  return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-      <span className="text-xs font-semibold uppercase tracking-wider text-slate-600">
-        최근 학습 기록
-      </span>
-      {recent.length === 0 ? (
-        <p className="mt-2 text-sm text-slate-500">아직 기록이 없습니다.</p>
-      ) : (
-        <ul className="mt-2 space-y-1">
-          {recent.map((r) => (
-            <li key={r.id} className="truncate text-xs text-slate-600">
-              <span className="font-medium text-slate-800">{r.title}</span>
-              <span className="ml-1 text-slate-500">· {formatDateKst(r.record_date)}</span>
-            </li>
-          ))}
-        </ul>
-      )}
     </div>
   );
 }

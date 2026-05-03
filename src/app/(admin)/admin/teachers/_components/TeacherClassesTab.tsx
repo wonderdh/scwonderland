@@ -1,9 +1,7 @@
 "use client";
 
 import { getClassWithStudents } from "../../actions";
-import { listClassTextbooks } from "../../actions/textbook-actions";
-import { TEXTBOOK_CATEGORIES } from "../../actions/textbook-constants";
-import type { ClassWithDetails, ClassStudentRow, ClassTextbook } from "@/lib/types";
+import type { ClassWithDetails, ClassStudentRow } from "@/lib/types";
 import { useCallback, useEffect, useState } from "react";
 import { LoadingState } from "@/components/feedback/LoadingState";
 import { TeacherBadges } from "@/components/badges/TeacherBadges";
@@ -28,7 +26,6 @@ export function TeacherClassesTab({
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  // group_label 기준으로 그룹핑 (방과후 제외)
   const nonAfterschool = myClasses.filter((c) => c.group_label !== "방과후");
   const grouped = GROUP_ORDER.reduce<Record<GroupKey, ClassWithDetails[]>>(
     (acc, g) => {
@@ -96,16 +93,11 @@ function ClassRow({
   onToggle: () => void;
 }) {
   const [students, setStudents] = useState<ClassStudentRow[]>([]);
-  const [textbooks, setTextbooks] = useState<ClassTextbook[]>([]);
   const [loaded, setLoaded] = useState(false);
 
   const loadData = useCallback(async () => {
-    const [classData, textbookData] = await Promise.all([
-      getClassWithStudents(cls.id),
-      listClassTextbooks(cls.id),
-    ]);
+    const classData = await getClassWithStudents(cls.id);
     setStudents(classData.students);
-    setTextbooks(textbookData);
     setLoaded(true);
   }, [cls.id]);
 
@@ -122,7 +114,6 @@ function ClassRow({
         isExpanded ? "border-primary/40 shadow-sm" : "border-slate-200"
       }`}
     >
-      {/* 헤더 - 클릭으로 토글 */}
       <button
         type="button"
         onClick={onToggle}
@@ -147,14 +138,12 @@ function ClassRow({
         </div>
       </button>
 
-      {/* 확장된 콘텐츠 */}
       {isExpanded && (
         <div className="border-t px-4 py-3 space-y-4">
           {!loaded ? (
             <LoadingState label="반 정보 불러오는 중..." className="py-4" />
           ) : (
             <>
-              {/* 담당 선생님 */}
               <div>
                 <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">담당 선생님</h4>
                 <div className="flex flex-wrap gap-1.5">
@@ -176,7 +165,6 @@ function ClassRow({
                 </div>
               </div>
 
-              {/* 학생 목록 */}
               <div>
                 <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
                   학생 목록 ({students.length}명)
@@ -198,35 +186,6 @@ function ClassRow({
                   </div>
                 )}
               </div>
-
-              {/* 배정 교재 */}
-              <div>
-                <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
-                  배정 교재 ({textbooks.length}권)
-                </h4>
-                {textbooks.length === 0 ? (
-                  <p className="text-xs text-muted-foreground">배정된 교재가 없습니다.</p>
-                ) : (
-                  <div className="space-y-1">
-                    {textbooks.map((ct) => {
-                      const catLabel = TEXTBOOK_CATEGORIES.find((c) => c.value === ct.textbook_category)?.label ?? ct.textbook_category;
-                      return (
-                        <div
-                          key={ct.id}
-                          className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 bg-blue-50/50 text-sm"
-                        >
-                          <span className="text-foreground">{ct.textbook_title}</span>
-                          <span className="rounded bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">{catLabel}</span>
-                          {ct.textbook_level && (
-                            <span className="text-xs text-muted-foreground">Lv.{ct.textbook_level}</span>
-                          )}
-                          <span className="ml-auto text-xs text-muted-foreground">{ct.total_units}단원</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
             </>
           )}
         </div>
@@ -234,4 +193,3 @@ function ClassRow({
     </div>
   );
 }
-

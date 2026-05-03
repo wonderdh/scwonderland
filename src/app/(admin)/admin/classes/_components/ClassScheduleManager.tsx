@@ -56,16 +56,9 @@ const SCHEDULE_GROUP_STYLE: Record<string, {
 };
 
 
-type TextbookOption = {
-  id: string;
-  title: string;
-  series: string | null;
-};
-
 type PendingCell = {
   teacherId: string | null;
   label: string | null;
-  textbookId: string | null;
 };
 
 type ScheduleCell = {
@@ -74,19 +67,16 @@ type ScheduleCell = {
   teacherName: string | null;
   teacherType: "korean" | "native";
   label: string | null;
-  textbookId: string | null;
 };
 
 export function ClassScheduleManager({
   classes,
   teachers,
   periods,
-  textbooks,
 }: {
   classes: ClassWithDetails[];
   teachers: TeacherOption[];
   periods: AcademyPeriod[];
-  textbooks: TextbookOption[];
 }) {
   const router = useRouter();
   const [search, setSearch] = useState("");
@@ -100,7 +90,6 @@ export function ClassScheduleManager({
   // Toolbar state
   const [toolTeacherId, setToolTeacherId] = useState("");
   const [toolLabel, setToolLabel] = useState("");
-  const [toolTextbookId, setToolTextbookId] = useState("");
 
   // Pending changes: key = `${periodId}|${day}`
   const [pendingChanges, setPendingChanges] = useState<Map<string, PendingCell>>(new Map());
@@ -173,7 +162,6 @@ export function ClassScheduleManager({
         teacherName: s.teacher_name,
         teacherType: s.teacher_type,
         label: s.label,
-        textbookId: s.textbook_id,
       });
     }
     setExistingCells(map);
@@ -204,7 +192,6 @@ export function ClassScheduleManager({
         next.set(key, {
           teacherId: toolTeacherId || null,
           label: toolLabel || null,
-          textbookId: toolTextbookId || null,
         });
       }
       return next;
@@ -242,7 +229,6 @@ export function ClassScheduleManager({
             parseInt(dayStr, 10),
             pending.teacherId,
             pending.label,
-            pending.textbookId,
           );
         }),
       );
@@ -454,22 +440,6 @@ export function ClassScheduleManager({
                     onChange={(e) => setToolLabel(e.target.value)}
                     className="text-xs border rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-primary w-24"
                   />
-                </div>
-
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xs text-muted-foreground font-medium shrink-0">교재</span>
-                  <select
-                    value={toolTextbookId}
-                    onChange={(e) => setToolTextbookId(e.target.value)}
-                    className="text-xs border rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-primary max-w-40"
-                  >
-                    <option value="">없음</option>
-                    {textbooks.map((tb) => (
-                      <option key={tb.id} value={tb.id}>
-                        {tb.series ? `[${tb.series}] ` : ""}{tb.title}
-                      </option>
-                    ))}
-                  </select>
                 </div>
 
                 <div className="flex items-center gap-2 ml-auto">

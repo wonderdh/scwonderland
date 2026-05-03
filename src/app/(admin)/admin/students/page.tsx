@@ -15,9 +15,7 @@ import { StudentGroupedList } from "./_components/StudentGroupedList";
 import { StudentInfoCard } from "./_components/StudentSelectedView";
 import { StudentTabNav, type StudentTabId } from "./_components/StudentTabNav";
 import { StudentClassesView } from "./_components/StudentClassesView";
-import { StudentLearningTab } from "./_components/StudentLearningTab";
 import { StudentReportTab } from "./_components/StudentReportTab";
-import { StudentTextbookTab } from "./_components/StudentTextbookTab";
 import { StudentAttendanceTab } from "./_components/StudentAttendanceTab";
 import { StudentBusTab } from "./_components/StudentBusTab";
 import { StudentTimetableTab } from "./_components/StudentTimetableTab";
@@ -97,16 +95,8 @@ export default async function AdminStudentsPage({
               {currentTab === "learning" && (
                 <div className="space-y-10">
                   <section>
-                    <h2 className="text-xl font-semibold text-slate-900 mt-2 mb-4 pb-2 border-b border-slate-200">학습관리</h2>
-                    <StudentLearningTab studentProfileId={selectedUser.id} />
-                  </section>
-                  <section>
-                    <h2 className="text-xl font-semibold text-slate-900 mt-8 mb-4 pb-2 border-b border-slate-200">리포트카드</h2>
+                    <h2 className="text-xl font-semibold text-slate-900 mt-2 mb-4 pb-2 border-b border-slate-200">리포트카드</h2>
                     <StudentReportTab studentProfileId={selectedUser.id} />
-                  </section>
-                  <section>
-                    <h2 className="text-xl font-semibold text-slate-900 mt-8 mb-4 pb-2 border-b border-slate-200">교재</h2>
-                    <StudentTextbookTab studentProfileId={selectedUser.id} />
                   </section>
                 </div>
               )}

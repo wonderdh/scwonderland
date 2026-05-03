@@ -28,7 +28,6 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
   {
     title: "수업",
     items: [
-      { href: "/admin/textbooks", label: "교재", icon: "book" },
       { href: "/admin/timetable", label: "시간표", icon: "calendar" },
       { href: "/admin/weekly-sentences", label: "주간 문장", icon: "sparkles" },
     ],
@@ -46,7 +45,6 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
     title: "공지",
     items: [
       { href: "/admin/notices", label: "공개 공지", icon: "bell" },
-      { href: "/admin/academy-notices", label: "포털 공지", icon: "megaphone" },
     ],
   },
 ];

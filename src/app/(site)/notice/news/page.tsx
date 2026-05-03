@@ -25,7 +25,7 @@ export default async function NewsPage() {
                 <article>
                   <div className="flex items-center gap-2">
                     <time
-                      dateTime={item.published_at}
+                      dateTime={item.published_at ?? undefined}
                       className="text-sm font-medium text-gray-500"
                     >
                       {item.published_at?.slice(0, 10)}
@@ -41,16 +41,6 @@ export default async function NewsPage() {
                   </h2>
                   {item.excerpt && (
                     <p className="mt-2 text-gray-600">{item.excerpt}</p>
-                  )}
-                  {(item.image_count > 0 || item.attachment_count > 0) && (
-                    <div className="mt-2 flex gap-3 text-xs text-gray-400">
-                      {item.image_count > 0 && (
-                        <span>이미지 {item.image_count}</span>
-                      )}
-                      {item.attachment_count > 0 && (
-                        <span>첨부파일 {item.attachment_count}</span>
-                      )}
-                    </div>
                   )}
                 </article>
               </Link>

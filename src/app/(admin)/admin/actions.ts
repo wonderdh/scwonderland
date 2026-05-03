@@ -58,21 +58,6 @@ export {
 } from "./actions/notice-actions";
 
 export {
-  listTextbooks,
-  getClassTextbookProgress,
-  batchUpdateProgress,
-  batchUpdateClassTextbooks,
-  getTextbookLinkedCounts,
-} from "./actions/textbook-actions";
-
-export {
-  listLearningRecords,
-  createLearningRecord,
-  updateLearningRecord,
-  deleteLearningRecord,
-} from "./actions/learning-actions";
-
-export {
   listAttendanceRecords,
   recordAttendance,
   deleteAttendance,
@@ -82,35 +67,6 @@ export {
   bulkRecordAttendance,
   getStudentAttendanceByDate,
 } from "./actions/attendance-actions";
-
-export {
-  listClassNotices,
-  getClassNoticeWithAttachments,
-  createClassNotice,
-  updateClassNotice,
-  deleteClassNotice,
-  getMyClassNotices,
-} from "./actions/class-notice-actions";
-
-export {
-  listAcademyNotices,
-  getAcademyNoticeWithAttachments,
-  createAcademyNotice,
-  updateAcademyNotice,
-  deleteAcademyNotice,
-} from "./actions/academy-notice-actions";
-
-export {
-  listHomeworkAssignments,
-  createHomeworkAssignment,
-  updateHomeworkAssignment,
-  deleteHomeworkAssignment,
-  listSubmissions,
-  getStudentHomework,
-  submitHomework,
-  reviewSubmission,
-  getSubmissionFiles,
-} from "./actions/homework-actions";
 
 export {
   listClassSchedules,
@@ -222,13 +178,3 @@ export {
 export {
   getUpcomingReservations,
 } from "./actions/reservation-actions";
-
-export {
-  listLunchGroupClasses,
-  setClassLunchGroup,
-  getLunchSchedule,
-  setLunchLeaderAnchor,
-  clearLunchLeaderAnchor,
-  setLunchClassOrderAnchor,
-  clearLunchClassOrderAnchor,
-} from "./actions/lunch-actions";
