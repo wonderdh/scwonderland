@@ -7,6 +7,9 @@ import { logger } from "@/lib/server/logger";
 import { getStudentRecordByProfileId, getStudentsByIds } from "@/lib/server/domain-helpers";
 import { sortStudentsByAgeAndName } from "@/lib/utils/student-sort";
 import type { AttendanceRecord, AttendanceStats, StudentWithAttendance } from "@/lib/types";
+import type { Database } from "@/lib/types/database.generated";
+
+type AttendanceStatus = Database["public"]["Enums"]["attendance_status"];
 
 /** 학생의 출결 기록 목록 (최신순) */
 export async function listAttendanceRecords(
@@ -70,7 +73,7 @@ export async function recordAttendance(
     {
       student_id: student.id,
       attendance_date: attendanceDate,
-      status,
+      status: status as AttendanceStatus,
       note: note?.trim() || null,
       updated_at: new Date().toISOString(),
     },
@@ -259,7 +262,7 @@ export async function bulkRecordAttendance(
 
   const { error } = await supabase
     .from("attendance")
-    .upsert(rows, { onConflict: "student_id,attendance_date" });
+    .upsert(rows as (Omit<(typeof rows)[number], "status"> & { status: AttendanceStatus })[], { onConflict: "student_id,attendance_date" });
 
   if (error) {
     logger.error("[bulkRecordAttendance]", error.message);
@@ -330,7 +333,7 @@ export async function bulkReserveAttendance(
   const rows = dates.map((d) => ({
     student_id: student.id,
     attendance_date: d,
-    status,
+    status: status as AttendanceStatus,
     note: note?.trim() || null,
     updated_at: now,
   }));
@@ -350,8 +353,8 @@ export async function bulkReserveAttendance(
     const busRows = dates.map((d) => ({
       student_id: student.id,
       request_date: d,
-      change_type: "absent",
-      status: "approved",
+      change_type: "absent" as const,
+      status: "approved" as const,
       reason: "출결 예약 연동 (결석)",
       requested_at: now,
       updated_at: now,

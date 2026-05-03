@@ -136,7 +136,7 @@ export type Database = {
           id: string
           note: string | null
           recorded_by: string | null
-          status: string
+          status: Database["public"]["Enums"]["attendance_status"]
           student_id: string
           updated_at: string
         }
@@ -147,7 +147,7 @@ export type Database = {
           id?: string
           note?: string | null
           recorded_by?: string | null
-          status: string
+          status: Database["public"]["Enums"]["attendance_status"]
           student_id: string
           updated_at?: string
         }
@@ -158,7 +158,7 @@ export type Database = {
           id?: string
           note?: string | null
           recorded_by?: string | null
-          status?: string
+          status?: Database["public"]["Enums"]["attendance_status"]
           student_id?: string
           updated_at?: string
         }
@@ -188,7 +188,7 @@ export type Database = {
       }
       bus_change_requests: {
         Row: {
-          change_type: string
+          change_type: Database["public"]["Enums"]["bus_change_type"]
           created_at: string
           id: string
           new_bus_number_id: string | null
@@ -200,12 +200,12 @@ export type Database = {
           review_note: string | null
           reviewed_at: string | null
           reviewed_by: string | null
-          status: string
+          status: Database["public"]["Enums"]["bus_change_status"]
           student_id: string
           updated_at: string
         }
         Insert: {
-          change_type: string
+          change_type: Database["public"]["Enums"]["bus_change_type"]
           created_at?: string
           id?: string
           new_bus_number_id?: string | null
@@ -217,12 +217,12 @@ export type Database = {
           review_note?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
-          status?: string
+          status?: Database["public"]["Enums"]["bus_change_status"]
           student_id: string
           updated_at?: string
         }
         Update: {
-          change_type?: string
+          change_type?: Database["public"]["Enums"]["bus_change_type"]
           created_at?: string
           id?: string
           new_bus_number_id?: string | null
@@ -234,7 +234,7 @@ export type Database = {
           review_note?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
-          status?: string
+          status?: Database["public"]["Enums"]["bus_change_status"]
           student_id?: string
           updated_at?: string
         }
@@ -967,7 +967,7 @@ export type Database = {
           auto_base_week: number
           id: number
           manual_week: number | null
-          mode: string
+          mode: Database["public"]["Enums"]["weekly_sentence_mode"]
           updated_at: string
         }
         Insert: {
@@ -975,7 +975,7 @@ export type Database = {
           auto_base_week?: number
           id: number
           manual_week?: number | null
-          mode?: string
+          mode?: Database["public"]["Enums"]["weekly_sentence_mode"]
           updated_at?: string
         }
         Update: {
@@ -983,7 +983,7 @@ export type Database = {
           auto_base_week?: number
           id?: number
           manual_week?: number | null
-          mode?: string
+          mode?: Database["public"]["Enums"]["weekly_sentence_mode"]
           updated_at?: string
         }
         Relationships: []
@@ -1029,15 +1029,21 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      get_my_role: {
-        Args: never
-        Returns: Database["public"]["Enums"]["user_role"]
-      }
+      [_ in never]: never
     }
     Enums: {
+      attendance_status:
+        | "present"
+        | "absent"
+        | "late"
+        | "early_leave"
+        | "excused"
+      bus_change_status: "pending" | "approved" | "rejected"
+      bus_change_type: "absent" | "change" | "no_ride" | "temporary_change"
       class_group: "kindergarten" | "afterschool" | "afternoon"
       teacher_type: "korean" | "native"
       user_role: "admin" | "teacher" | "student"
+      weekly_sentence_mode: "auto" | "manual"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1165,9 +1171,19 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      attendance_status: [
+        "present",
+        "absent",
+        "late",
+        "early_leave",
+        "excused",
+      ],
+      bus_change_status: ["pending", "approved", "rejected"],
+      bus_change_type: ["absent", "change", "no_ride", "temporary_change"],
       class_group: ["kindergarten", "afterschool", "afternoon"],
       teacher_type: ["korean", "native"],
       user_role: ["admin", "teacher", "student"],
+      weekly_sentence_mode: ["auto", "manual"],
     },
   },
 } as const
