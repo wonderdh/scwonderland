@@ -1,5 +1,5 @@
 import { listClassesWithDetails, listAllStudents } from "@/app/(admin)/admin/actions";
-import { MobileAttendanceClient } from "./components/MobileAttendanceClient";
+import { MobileAttendanceClient } from "./_components/MobileAttendanceClient";
 import { todayKst } from "@/lib/utils/date-kst";
 
 export default async function MobileAttendancePage() {

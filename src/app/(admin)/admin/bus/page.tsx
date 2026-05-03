@@ -1,16 +1,16 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { listBusNumbers, listBusTimeSlots, listBusStaff, listBusStops, listAllActiveStudentNames } from "../actions";
-import { BusTabNav, type BusTabId } from "./components/BusTabNav";
-import { BusTimeSlotsManager } from "./components/BusTimeSlotsManager";
-import { BusDashboard } from "./components/BusDashboard";
-import { BusChangeRequestsPanel } from "./components/BusChangeRequestsPanel";
-import { BusStaffManager } from "./components/BusStaffManager";
-import { BusOverviewPanel } from "./components/BusOverviewPanel";
-import { BusStopAssignmentManager } from "./components/BusStopAssignmentManager";
-import { BusStudentAssignmentManager } from "./components/BusStudentAssignmentManager";
-import { BusNumbersManager } from "./components/BusNumbersManager";
-import { BusExportButton } from "./components/BusExportButton";
+import { BusTabNav, type BusTabId } from "./_components/BusTabNav";
+import { BusTimeSlotsManager } from "./_components/BusTimeSlotsManager";
+import { BusDashboard } from "./_components/BusDashboard";
+import { BusChangeRequestsPanel } from "./_components/BusChangeRequestsPanel";
+import { BusStaffManager } from "./_components/BusStaffManager";
+import { BusOverviewPanel } from "./_components/BusOverviewPanel";
+import { BusStopAssignmentManager } from "./_components/BusStopAssignmentManager";
+import { BusStudentAssignmentManager } from "./_components/BusStudentAssignmentManager";
+import { BusNumbersManager } from "./_components/BusNumbersManager";
+import { BusExportButton } from "./_components/BusExportButton";
 import { DailyBusChanges } from "@/components/bus/DailyBusChanges";
 import { PageHeader } from "@/components/navigation/PageHeader";
 

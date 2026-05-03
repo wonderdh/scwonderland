@@ -7,22 +7,22 @@ import {
   updateStudentProfile,
   getStudentClasses,
 } from "../actions";
-import { AdminListSidebar } from "../components/AdminListSidebar";
-import { ScrollToSection } from "../components/ScrollToSection";
+import { AdminListSidebar } from "../_components/AdminListSidebar";
+import { ScrollToSection } from "../_components/ScrollToSection";
 import { PageHeader } from "@/components/navigation/PageHeader";
-import { AddStudentForm } from "./components/AddStudentForm";
-import { StudentGroupedList } from "./components/StudentGroupedList";
-import { StudentInfoCard } from "./components/StudentSelectedView";
-import { StudentTabNav, type StudentTabId } from "./components/StudentTabNav";
-import { StudentClassesView } from "./components/StudentClassesView";
-import { StudentLearningTab } from "./components/StudentLearningTab";
-import { StudentReportTab } from "./components/StudentReportTab";
-import { StudentTextbookTab } from "./components/StudentTextbookTab";
-import { StudentAttendanceTab } from "./components/StudentAttendanceTab";
-import { StudentBusTab } from "./components/StudentBusTab";
-import { StudentTimetableTab } from "./components/StudentTimetableTab";
-import { TrashView } from "../components/TrashView";
-import { BulkPasswordResetDialog } from "./components/BulkPasswordResetDialog";
+import { AddStudentForm } from "./_components/AddStudentForm";
+import { StudentGroupedList } from "./_components/StudentGroupedList";
+import { StudentInfoCard } from "./_components/StudentSelectedView";
+import { StudentTabNav, type StudentTabId } from "./_components/StudentTabNav";
+import { StudentClassesView } from "./_components/StudentClassesView";
+import { StudentLearningTab } from "./_components/StudentLearningTab";
+import { StudentReportTab } from "./_components/StudentReportTab";
+import { StudentTextbookTab } from "./_components/StudentTextbookTab";
+import { StudentAttendanceTab } from "./_components/StudentAttendanceTab";
+import { StudentBusTab } from "./_components/StudentBusTab";
+import { StudentTimetableTab } from "./_components/StudentTimetableTab";
+import { TrashView } from "../_components/TrashView";
+import { BulkPasswordResetDialog } from "./_components/BulkPasswordResetDialog";
 
 const VALID_TABS: StudentTabId[] = ["basic", "learning", "schedule", "bus"];
 

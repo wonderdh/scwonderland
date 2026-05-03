@@ -111,7 +111,7 @@ cat C:/scwonderland/.claude/hooks/pre-tool-use.log | tail -10
 - **Read 도 PreToolUse 대상에 포함**: 노이즈 vs 효용 측정 후. v1 은 modify 직전만.
 - **세션 dedupe state**: `.claude/state/agents-injected-{session_id}.json` 로 동일 AGENTS.md 재주입 차단. 토큰 비용 누적이 보일 때.
 - **PreCompact 연계**: compact 직전 자주 쓰인 AGENTS.md 다시 inject — compact 후 컨텍스트 손실 보호.
-- **폴더별 AGENTS.md 추가**: 첫 3개 (`(admin)/admin/actions/`, `lib/supabase/`, `supabase/`) 시드 완료 (v1.2). 다음 후보 — `src/lib/bus/`, `src/components/bus/`, `src/app/(monitor)/`, `src/app/(academy)/academy/`. 작업 빈도 보고 한 폴더씩 추가.
+- **폴더별 AGENTS.md 추가**: 첫 3개 (`(admin)/admin/actions/`, `lib/supabase/`, `supabase/`) 시드 완료 (v1.2). 다음 후보 — `src/lib/bus/`, `src/components/bus/`, `src/app/(monitor)/`, `src/app/academy/`. 작업 빈도 보고 한 폴더씩 추가.
 - **로그 회전**: `session-start.log` / `pre-tool-use.log` 1MB 넘으면 `.1` 로 백업.
 - **drift 검증**: ARCHITECTURE.md 의 `→ AGENTS.md` 마커와 실제 파일 일치, 폴더 트리와 실제 폴더 구조 일치 여부 경고하는 검증 스크립트 (수동 실행).
 - **세션 source 별 다른 컨텍스트**: 예 — startup 일 때만 환영 메시지, resume 일 때 최근 commit 요약 등.

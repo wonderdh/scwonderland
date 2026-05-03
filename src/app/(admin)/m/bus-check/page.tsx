@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { BusStaffMonitor } from "@/app/(bus)/bus/components/BusStaffMonitor";
+import { BusStaffMonitor } from "@/app/bus/_components/BusStaffMonitor";
 
 export default async function MobileBusCheckPage() {
   const supabase = await createClient();

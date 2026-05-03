@@ -1,5 +1,5 @@
 import { listAllClassesReportStatus, listUntranslatedReports } from "../actions";
-import { ReportTranslateManager } from "./components/ReportTranslateManager";
+import { ReportTranslateManager } from "./_components/ReportTranslateManager";
 import Link from "next/link";
 
 export const metadata = {

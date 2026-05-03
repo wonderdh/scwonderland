@@ -1,5 +1,5 @@
 import { listTextbooks } from "../actions/textbook-actions";
-import { TextbooksManager } from "./components/TextbooksManager";
+import { TextbooksManager } from "./_components/TextbooksManager";
 import { PageHeader } from "@/components/navigation/PageHeader";
 
 export default async function AdminTextbooksPage() {

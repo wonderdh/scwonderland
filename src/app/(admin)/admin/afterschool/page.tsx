@@ -3,7 +3,7 @@ import {
   getAfterschoolEnrollments,
   listAvailableStudents,
 } from "../actions";
-import { AfterschoolPageClient } from "./components/AfterschoolPageClient";
+import { AfterschoolPageClient } from "./_components/AfterschoolPageClient";
 
 export default async function AdminAfterschoolPage() {
   const afterschoolClass = await getOrCreateAfterschoolClass();

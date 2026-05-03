@@ -1,6 +1,6 @@
 import { listAcademyNotices } from "../actions";
 import { PageHeader } from "@/components/navigation/PageHeader";
-import { AcademyNoticesManager } from "./components/AcademyNoticesManager";
+import { AcademyNoticesManager } from "./_components/AcademyNoticesManager";
 
 export default async function AdminAcademyNoticesPage() {
   const initialNotices = await listAcademyNotices(true);

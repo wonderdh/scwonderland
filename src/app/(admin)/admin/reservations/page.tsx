@@ -5,7 +5,7 @@ import {
   listBusTimeSlots,
 } from "@/app/(admin)/admin/actions";
 import { PageHeader } from "@/components/navigation/PageHeader";
-import { ReservationDashboard } from "./components/ReservationDashboard";
+import { ReservationDashboard } from "./_components/ReservationDashboard";
 
 export default async function AdminReservationsPage() {
   const [reservations, students, busNumbers, busTimeSlots] = await Promise.all([

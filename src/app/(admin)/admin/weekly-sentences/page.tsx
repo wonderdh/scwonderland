@@ -3,7 +3,7 @@ import {
   getWeeklySentenceConfig,
 } from "@/app/(admin)/admin/actions";
 import { PageHeader } from "@/components/navigation/PageHeader";
-import { WeeklySentencesManager } from "./components/WeeklySentencesManager";
+import { WeeklySentencesManager } from "./_components/WeeklySentencesManager";
 
 export default async function AdminWeeklySentencesPage() {
   const [sentences, config] = await Promise.all([

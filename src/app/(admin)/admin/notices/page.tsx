@@ -1,6 +1,6 @@
 import { listNotices } from "../actions/notice-actions";
 import { PageHeader } from "@/components/navigation/PageHeader";
-import { NoticesManager } from "./components/NoticesManager";
+import { NoticesManager } from "./_components/NoticesManager";
 
 export default async function AdminNoticesPage() {
   const notices = await listNotices(true);

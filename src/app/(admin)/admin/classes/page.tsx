@@ -6,7 +6,7 @@ import {
   listAcademyPeriods,
   listTextbooks,
 } from "../actions";
-import { ClassesPageClient } from "./components/ClassesPageClient";
+import { ClassesPageClient } from "./_components/ClassesPageClient";
 
 export default async function AdminClassesPage() {
   const [classes, teachers, allClassStudents, allStudents, periods, textbooks] =

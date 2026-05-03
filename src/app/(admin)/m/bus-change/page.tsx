@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AdminBusChangeDnD } from "@/app/(admin)/admin/bus/components/AdminBusChangeDnD";
+import { AdminBusChangeDnD } from "@/app/(admin)/admin/bus/_components/AdminBusChangeDnD";
 import {
   listAllActiveStudentNames,
   listBusStops,

@@ -31,7 +31,7 @@
 | `src/app/(admin)/admin/actions/lunch-actions.ts` | `lunch_*` (lunch_groups, lunch_leader_anchors, …) |
 | `src/app/(admin)/admin/actions/class-notice-actions.ts` | `class_notices`, `notice_attachments` |
 | `src/app/(admin)/admin/actions/learning-actions.ts` | `learning_records` |
-| `src/app/(bus)/bus/layout.tsx` + `actions.ts` | `bus_staff` + `user_role`에 `"bus"` enum |
+| `src/app/bus/layout.tsx` + `actions.ts` | `bus_staff` + `user_role`에 `"bus"` enum |
 
 **결정 필요**: 각 도메인 schema 복원 vs 기능 폐지.
 
@@ -56,7 +56,7 @@ ts-nocheck 처리된 파일:
 | `src/app/(admin)/admin/actions/schedule-actions.ts` | teachers + class_schedules + class_students + afterschool_enrollments 다수 |
 | `src/app/(admin)/admin/actions/bus/manifest-actions.ts` | students.profile_id select/in |
 | `src/app/(admin)/admin/actions/afterschool-actions.ts` | students + afterschool_enrollments |
-| `src/app/(academy)/academy/actions.ts` | students/teachers + 사라진 도메인 혼재 |
+| `src/app/academy/actions.ts` | students/teachers + 사라진 도메인 혼재 |
 | `src/lib/supabase/notice-crud-helpers.ts` | generic 테이블명 string 패턴이 `<Database>` narrow 불가 |
 
 작업 순서 권고:
@@ -69,7 +69,7 @@ ts-nocheck 처리된 파일:
 - 파일: `src/lib/bus/realtime-utils.ts:5,13`
 - 현재 `CheckRecordRow.student_profile_id` / `ChangeRequestRow.student_profile_id` 사용
 - Postgres CDC 페이로드는 실 컬럼명인 `student_id` 를 보냄 → silent mismatch (모니터 stale)
-- 호출처: `src/app/(monitor)/bus-monitor/BusMonitorClient.tsx:118,128`, `src/app/(bus)/bus/components/BusStaffMonitor.tsx:524,529`
+- 호출처: `src/app/(monitor)/bus-monitor/BusMonitorClient.tsx:118,128`, `src/app/bus/_components/BusStaffMonitor.tsx:524,529`
 - manifest-actions.ts refactor 와 **함께** 처리 권고 (BusManifestEntry/NoRideEntry 타입의 `student_profile_id` 필드도 같이 정리)
 
 ---

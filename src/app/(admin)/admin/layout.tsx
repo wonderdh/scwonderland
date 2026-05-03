@@ -1,4 +1,4 @@
-import { AdminLayoutClient } from "@/app/(admin)/admin/components/AdminLayoutClient";
+import { AdminLayoutClient } from "@/app/(admin)/admin/_components/AdminLayoutClient";
 import { getUserRoles } from "@/lib/auth/user-roles";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";

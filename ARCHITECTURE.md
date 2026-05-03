@@ -11,11 +11,13 @@ Next.js 16 App Router + React 19 + TypeScript + Tailwind v4 + Supabase.
 ├── src/
 │   ├── app/
 │   │   ├── (site)/         — 공개 마케팅 사이트 (about / program / experience / community / notice)
-│   │   ├── (academy)/      — 학생·교사 포털 (/academy/...). actions 는 academy/actions.ts 1개
+│   │   ├── academy/        — 학생·교사 포털 (/academy/...). entry page.tsx 가 인증·역할 redirect, actions 는 academy/actions.ts 1개
 │   │   ├── (admin)/        — 관리자 대시보드 (/admin) + 모바일 (/m)
 │   │   │   └── admin/actions/ — 서버 액션 허브 (~20 파일 + bus/ 하위)  → AGENTS.md
-│   │   ├── (bus)/          — 버스 기사용 화면 (/bus)
+│   │   ├── bus/            — 버스 기사용 화면 (/bus, 현재 비활성)
 │   │   └── (monitor)/      — 버스/급식 모니터링 디스플레이 (TV)
+│   │  
+│   │   ※ 라우트 폴더 안 컴포넌트는 `_components/` (Next.js Private Folder) 컨벤션. 마케팅 사이트(`(site)`) 도 동일.
 │   ├── components/         — 공용 UI (badges / forms / overlays / skeletons / ui …)
 │   └── lib/
 │       ├── supabase/       — admin / server / client 3 클라이언트  → AGENTS.md

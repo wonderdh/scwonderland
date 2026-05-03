@@ -1,5 +1,5 @@
 import { listClassesWithDetails, listAllStudents } from "@/app/(admin)/admin/actions";
-import { AdminAttendanceClient } from "./components/AdminAttendanceClient";
+import { AdminAttendanceClient } from "./_components/AdminAttendanceClient";
 import { PageHeader } from "@/components/navigation/PageHeader";
 import { todayKst } from "@/lib/utils/date-kst";
 

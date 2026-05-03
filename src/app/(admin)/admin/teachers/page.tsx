@@ -8,15 +8,15 @@ import {
   updateTeacherProfile,
   getGroupTimetableGrid,
 } from "../actions";
-import { AdminListSidebar } from "../components/AdminListSidebar";
-import { UserList } from "../components/UserList";
-import { AddTeacherForm } from "./components/AddTeacherForm";
-import { TeacherInfoCard } from "./components/TeacherInfoCard";
-import { TeacherTabNav, type TeacherTabId } from "./components/TeacherTabNav";
-import { TeacherClassesTab } from "./components/TeacherClassesTab";
-import { TeacherTimetableTab } from "./components/TeacherTimetableTab";
-import { TrashView } from "../components/TrashView";
-import { BulkPasswordResetDialog } from "../students/components/BulkPasswordResetDialog";
+import { AdminListSidebar } from "../_components/AdminListSidebar";
+import { UserList } from "../_components/UserList";
+import { AddTeacherForm } from "./_components/AddTeacherForm";
+import { TeacherInfoCard } from "./_components/TeacherInfoCard";
+import { TeacherTabNav, type TeacherTabId } from "./_components/TeacherTabNav";
+import { TeacherClassesTab } from "./_components/TeacherClassesTab";
+import { TeacherTimetableTab } from "./_components/TeacherTimetableTab";
+import { TrashView } from "../_components/TrashView";
+import { BulkPasswordResetDialog } from "../students/_components/BulkPasswordResetDialog";
 import { PageHeader } from "@/components/navigation/PageHeader";
 
 const VALID_TABS: TeacherTabId[] = ["info", "classes", "timetable"];
