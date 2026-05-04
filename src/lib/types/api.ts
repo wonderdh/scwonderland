@@ -309,13 +309,15 @@ export type NoticeAttachment = {
 // ── 승하차(버스) 타입 ──
 
 export type StudentBusDefault = {
-  id: string;
+  id?: string;
   student_id?: string;
   student_profile_id: string;
+  direction: 'pickup' | 'dropoff';
   day_of_week: number;
   bus_time_slot_id: string;
   bus_stop_id?: string | null;
   bus_stop_name?: string | null;
+  /** @deprecated Wave 6에서 제거 예정. 호환성을 위해 optional 유지. */
   estimated_time?: string | null;
   note?: string | null;
   time_slot_label?: string;

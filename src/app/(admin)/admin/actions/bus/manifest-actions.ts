@@ -36,7 +36,8 @@ export async function getDailyBusManifest(
     supabase
       .from("student_bus_defaults")
       .select("*")
-      .eq("day_of_week", isoDay),
+      .eq("day_of_week", isoDay)
+      .eq("direction", "dropoff"),
     supabase
       .from("bus_change_requests")
       .select("*")
@@ -265,7 +266,7 @@ export async function getDailyBusManifest(
             age: student.age ?? null,
             is_changed: false,
             is_absent: true,
-            estimated_time: stopTime ?? def.estimated_time,
+            estimated_time: stopTime,
             note: "결석",
             bus_stop_name: stopName ?? null,
             bus_stop_sort_order: def.bus_stop_id ? stopBusMaps.getSortOrder(def.bus_stop_id, def.bus_time_slot_id) : null,
@@ -312,7 +313,7 @@ export async function getDailyBusManifest(
       const stopTime = newStopId
         ? getStopTime(newStopId, effectiveSlotId2)
         : (def.bus_stop_id ? getStopTime(def.bus_stop_id, effectiveSlotId2) : null);
-      const estimatedTime = newStopId ? stopTime : (stopTime ?? def.estimated_time);
+      const estimatedTime = stopTime;
       changedGroup.students.push({
         student_profile_id: student.id,
         korean_name: student.korean_name,
@@ -341,7 +342,7 @@ export async function getDailyBusManifest(
         english_name: student.english_name,
         age: student.age ?? null,
         is_changed: false,
-        estimated_time: stopTime2 ?? def.estimated_time,
+        estimated_time: stopTime2,
         note: def.note,
         bus_stop_name: stopName2 ?? null,
         bus_stop_sort_order: def.bus_stop_id ? stopBusMaps.getSortOrder(def.bus_stop_id, def.bus_time_slot_id) : null,

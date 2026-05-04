@@ -108,7 +108,6 @@ export type Database = {
       attendance: {
         Row: {
           attendance_date: string
-          class_id: string | null
           created_at: string
           id: string
           note: string | null
@@ -119,7 +118,6 @@ export type Database = {
         }
         Insert: {
           attendance_date: string
-          class_id?: string | null
           created_at?: string
           id?: string
           note?: string | null
@@ -130,7 +128,6 @@ export type Database = {
         }
         Update: {
           attendance_date?: string
-          class_id?: string | null
           created_at?: string
           id?: string
           note?: string | null
@@ -140,13 +137,6 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "attendance_class_id_fkey"
-            columns: ["class_id"]
-            isOneToOne: false
-            referencedRelation: "classes"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "attendance_recorded_by_fkey"
             columns: ["recorded_by"]
@@ -810,8 +800,7 @@ export type Database = {
           bus_time_slot_id: string
           created_at: string
           day_of_week: number
-          estimated_time: string | null
-          id: string
+          direction: Database["public"]["Enums"]["bus_direction"]
           note: string | null
           student_id: string
           updated_at: string
@@ -821,8 +810,7 @@ export type Database = {
           bus_time_slot_id: string
           created_at?: string
           day_of_week: number
-          estimated_time?: string | null
-          id?: string
+          direction: Database["public"]["Enums"]["bus_direction"]
           note?: string | null
           student_id: string
           updated_at?: string
@@ -832,8 +820,7 @@ export type Database = {
           bus_time_slot_id?: string
           created_at?: string
           day_of_week?: number
-          estimated_time?: string | null
-          id?: string
+          direction?: Database["public"]["Enums"]["bus_direction"]
           note?: string | null
           student_id?: string
           updated_at?: string
@@ -1017,6 +1004,7 @@ export type Database = {
         | "excused"
       bus_change_status: "pending" | "approved" | "rejected"
       bus_change_type: "absent" | "change" | "no_ride" | "temporary_change"
+      bus_direction: "pickup" | "dropoff"
       class_group: "kindergarten" | "afterschool" | "afternoon"
       teacher_type: "korean" | "native"
       user_role: "admin" | "teacher" | "student"
@@ -1157,6 +1145,7 @@ export const Constants = {
       ],
       bus_change_status: ["pending", "approved", "rejected"],
       bus_change_type: ["absent", "change", "no_ride", "temporary_change"],
+      bus_direction: ["pickup", "dropoff"],
       class_group: ["kindergarten", "afterschool", "afternoon"],
       teacher_type: ["korean", "native"],
       user_role: ["admin", "teacher", "student"],

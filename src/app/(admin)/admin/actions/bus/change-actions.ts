@@ -71,7 +71,8 @@ export async function listAllChangeRequests(
     const { data: defaults } = await supabase
       .from("student_bus_defaults")
       .select("student_id, bus_time_slot_id")
-      .in("student_id", defStudentIds);
+      .in("student_id", defStudentIds)
+      .eq("direction", "dropoff");
     if (defaults?.length) {
       const defSlotIds = [...new Set(defaults.map((d) => d.bus_time_slot_id).filter(Boolean))];
       if (defSlotIds.length) {
@@ -95,7 +96,8 @@ export async function listAllChangeRequests(
     const { data: origData } = await supabase
       .from("student_bus_defaults")
       .select("student_id, day_of_week, bus_time_slot_id, bus_stop_id")
-      .in("student_id", studentIds);
+      .in("student_id", studentIds)
+      .eq("direction", "dropoff");
     for (const o of origData ?? []) {
       origDefaults.set(
         `${o.student_id}:${o.day_of_week}`,
@@ -235,7 +237,8 @@ export async function listChangeRequestsByDate(date: string): Promise<BusChangeR
     const { data: defaults } = await supabase
       .from("student_bus_defaults")
       .select("student_id, bus_time_slot_id")
-      .in("student_id", defStudentIds);
+      .in("student_id", defStudentIds)
+      .eq("direction", "dropoff");
     if (defaults?.length) {
       const defSlotIds = [...new Set(defaults.map((d) => d.bus_time_slot_id).filter(Boolean))];
       if (defSlotIds.length) {
@@ -258,7 +261,8 @@ export async function listChangeRequestsByDate(date: string): Promise<BusChangeR
     const { data: origData } = await supabase
       .from("student_bus_defaults")
       .select("student_id, day_of_week, bus_time_slot_id, bus_stop_id")
-      .in("student_id", studentIds);
+      .in("student_id", studentIds)
+      .eq("direction", "dropoff");
     for (const o of origData ?? []) {
       origDefaults.set(
         `${o.student_id}:${o.day_of_week}`,

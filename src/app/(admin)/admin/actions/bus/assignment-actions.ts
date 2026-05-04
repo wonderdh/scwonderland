@@ -79,6 +79,7 @@ export async function getStudentBusDefaults(
     .from("student_bus_defaults")
     .select("*")
     .eq("student_id", student.id)
+    .eq("direction", "dropoff")
     .order("day_of_week");
   if (error) {
     logger.error("[getStudentBusDefaults]", error.message);
@@ -133,6 +134,7 @@ export async function getStudentBusDefaults(
       : null;
     return {
       ...d,
+      direction: 'dropoff' as const,
       student_profile_id: student.profile_id,
       time_slot_label: slot?.label,
       time_slot_time: slot?.time,
@@ -158,14 +160,14 @@ export async function upsertStudentBusDefault(
   const { error } = await supabase.from("student_bus_defaults").upsert(
     {
       student_id: student.id,
+      direction: 'dropoff' as const,
       day_of_week: dayOfWeek,
       bus_time_slot_id: busTimeSlotId,
-      estimated_time: estimatedTime || null,
       note: note?.trim() || null,
       bus_stop_id: busStopId ?? null,
       updated_at: new Date().toISOString(),
     },
-    { onConflict: "student_id,day_of_week" }
+    { onConflict: "student_id,direction,day_of_week" }
   );
   if (error) {
     logger.error("[upsertStudentBusDefault]", error.message);
@@ -221,7 +223,8 @@ export async function saveBulkBusDefaults(
   // 1. 기존 배정 조회 — 저장 대상 시간대만 (다른 시간대 배정은 건드리지 않음)
   let fetchQuery = supabase
     .from("student_bus_defaults")
-    .select("id, student_id, bus_time_slot_id")
+    .select("student_id, bus_time_slot_id")
+    .eq("direction", "dropoff")
     .eq("day_of_week", dayOfWeek);
   if (slotIds.length === 1) {
     fetchQuery = fetchQuery.eq("bus_time_slot_id", slotIds[0]);
@@ -252,13 +255,23 @@ export async function saveBulkBusDefaults(
   });
   const newMap = new Map(normalized.map((a) => [a.student_id, a]));
 
-  // 2. 삭제: 같은 시간대 배정 중 새 목록에 없는 학생만 삭제
-  const toDelete = (existing ?? []).filter((e) => !newMap.has(e.student_id)).map((e) => e.id);
-  if (toDelete.length) {
-    const { error: delErr } = await supabase
+  // 2. 삭제: 같은 시간대 배정 중 새 목록에 없는 학생만 삭제 (composite key 매칭)
+  const toDeleteStudentIds = (existing ?? [])
+    .filter((e) => !newMap.has(e.student_id))
+    .map((e) => e.student_id);
+  if (toDeleteStudentIds.length) {
+    let delQuery = supabase
       .from("student_bus_defaults")
       .delete()
-      .in("id", toDelete);
+      .eq("direction", "dropoff")
+      .eq("day_of_week", dayOfWeek)
+      .in("student_id", toDeleteStudentIds);
+    if (slotIds.length === 1) {
+      delQuery = delQuery.eq("bus_time_slot_id", slotIds[0]);
+    } else if (slotIds.length > 1) {
+      delQuery = delQuery.in("bus_time_slot_id", slotIds);
+    }
+    const { error: delErr } = await delQuery;
     if (delErr) {
       logger.error("[saveBulkBusDefaults] delete", delErr.message);
       return { error: delErr.message };
@@ -270,6 +283,7 @@ export async function saveBulkBusDefaults(
     const now = new Date().toISOString();
     const rows = normalized.map((a) => ({
       student_id: a.student_id,
+      direction: 'dropoff' as const,
       day_of_week: dayOfWeek,
       bus_time_slot_id: a.bus_time_slot_id,
       bus_stop_id: a.bus_stop_id ?? null,
@@ -278,14 +292,14 @@ export async function saveBulkBusDefaults(
     }));
     const { error: upsertErr } = await supabase
       .from("student_bus_defaults")
-      .upsert(rows, { onConflict: "student_id,day_of_week" });
+      .upsert(rows, { onConflict: "student_id,direction,day_of_week" });
     if (upsertErr) {
       logger.error("[saveBulkBusDefaults] upsert", upsertErr.message);
       return { error: upsertErr.message };
     }
   }
 
-  return { saved: normalized.length + toDelete.length };
+  return { saved: normalized.length + toDeleteStudentIds.length };
 }
 
 // ── 일괄 배정 조회 ──
@@ -301,6 +315,7 @@ export async function getBulkBusDefaults(
   let query = supabase
     .from("student_bus_defaults")
     .select("*")
+    .eq("direction", "dropoff")
     .eq("day_of_week", dayOfWeek);
   if (busTimeSlotId) {
     query = query.eq("bus_time_slot_id", busTimeSlotId);
@@ -333,7 +348,7 @@ export async function getBulkBusDefaults(
       ? stopBusMaps.getBySlot(d.bus_stop_id, d.bus_time_slot_id ?? null)
       : null;
     return {
-      id: d.id,
+      id: `${d.student_id}-${d.bus_time_slot_id}`,
       student_profile_id: student?.profile_id ?? "",
       korean_name: student?.korean_name ?? null,
       english_name: student?.english_name ?? null,
@@ -342,7 +357,7 @@ export async function getBulkBusDefaults(
       bus_stop_id: d.bus_stop_id ?? null,
       bus_stop_name: d.bus_stop_id ? (stopMap.get(d.bus_stop_id) ?? null) : null,
       bus_time_slot_id: d.bus_time_slot_id,
-      estimated_time: d.estimated_time ?? null,
+      estimated_time: null,
       note: d.note ?? null,
     };
   });

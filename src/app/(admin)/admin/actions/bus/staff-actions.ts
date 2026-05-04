@@ -132,6 +132,7 @@ export async function getWeeklyDropoffExportData(): Promise<
           .from("student_bus_defaults")
           .select("student_id, bus_stop_id, bus_time_slot_id, day_of_week, note")
           .in("bus_time_slot_id", slotIds)
+          .eq("direction", "dropoff")
       : Promise.resolve({ data: [], error: null }),
     slotIds.length > 0
       ? supabase
