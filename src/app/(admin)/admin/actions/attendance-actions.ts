@@ -75,6 +75,7 @@ export async function recordAttendance(
       attendance_date: attendanceDate,
       status: status as AttendanceStatus,
       note: note?.trim() || null,
+      recorded_by: auth.userId,
       updated_at: new Date().toISOString(),
     },
     { onConflict: "student_id,attendance_date" }
@@ -255,6 +256,7 @@ export async function bulkRecordAttendance(
     attendance_date: r.date,
     status: r.status,
     note: r.note?.trim() || null,
+    recorded_by: auth.userId,
     updated_at: new Date().toISOString(),
   }];
   });
@@ -335,6 +337,7 @@ export async function bulkReserveAttendance(
     attendance_date: d,
     status: status as AttendanceStatus,
     note: note?.trim() || null,
+    recorded_by: auth.userId,
     updated_at: now,
   }));
 
@@ -357,6 +360,8 @@ export async function bulkReserveAttendance(
       status: "approved" as const,
       reason: "출결 예약 연동 (결석)",
       requested_at: now,
+      reviewed_by: auth.userId,
+      reviewed_at: now,
       updated_at: now,
     }));
 

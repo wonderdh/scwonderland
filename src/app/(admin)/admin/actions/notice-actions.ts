@@ -75,6 +75,7 @@ export async function createNotice(
       excerpt,
       is_published,
       is_pinned,
+      author_id: auth.userId,
       published_at: is_published ? new Date().toISOString() : null,
     })
     .select("id")
