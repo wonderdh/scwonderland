@@ -7,6 +7,12 @@ export function NavigationProgress() {
   const pathname = usePathname();
   const [visible, setVisible] = useState(false);
   const isFirstRender = useRef(true);
+  const pathnameRef = useRef(pathname);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    pathnameRef.current = pathname;
+  }, [pathname]);
 
   // 네비게이션 완료 시 숨김 — pathname은 외부 router 상태, 변화 시 progress 표시 종료.
   useEffect(() => {
@@ -14,6 +20,7 @@ export function NavigationProgress() {
       isFirstRender.current = false;
       return;
     }
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setVisible(false);
   }, [pathname]);
@@ -31,7 +38,15 @@ export function NavigationProgress() {
         href.startsWith("tel:") ||
         /^https?:\/\//.test(href)
       ) return;
+
+      // 현재 페이지와 같은 경로면 pathname이 변하지 않아 바가 사라지지 않음 — 무시
+      const hrefPathname = href.split("?")[0].split("#")[0];
+      if (hrefPathname === pathnameRef.current) return;
+
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
       setVisible(true);
+      // 네비게이션 실패/취소 시 대비한 안전 타임아웃
+      timeoutRef.current = setTimeout(() => setVisible(false), 8000);
     };
 
     document.addEventListener("click", handleClick);
