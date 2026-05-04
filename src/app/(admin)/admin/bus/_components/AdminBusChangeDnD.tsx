@@ -67,7 +67,7 @@ export function AdminBusChangeDnD({
   const [studentSearch, setStudentSearch] = useState("");
   const [selectedStudentId, setSelectedStudentId] = useState("");
   const [loadingStudent, setLoadingStudent] = useState(false);
-  const [studentDefault, setStudentDefault] = useState<StudentBusDefault | null>(null);
+  const [studentDefaults, setStudentDefaults] = useState<StudentBusDefault[]>([]);
   const [existingId, setExistingId] = useState<string | null>(null);
 
   // 방과후 enrollment
@@ -116,7 +116,7 @@ export function AdminBusChangeDnD({
     ]).then(([defaults, existing, afterschool]) => {
       setAfterschoolDays(afterschool);
       const def = defaults.find((d) => d.day_of_week === dow) ?? null;
-      setStudentDefault(def);
+      setStudentDefaults(defaults);
       if (existing) {
         const loadedSlotId = existing.new_bus_time_slot_id ?? def?.bus_time_slot_id ?? "";
         const loadedStopId = existing.new_bus_stop_id ?? def?.bus_stop_id ?? "";
@@ -208,7 +208,7 @@ export function AdminBusChangeDnD({
   function resetAll() {
     setSelectedStudentId("");
     setStudentSearch("");
-    setStudentDefault(null);
+    setStudentDefaults([]);
     setExistingId(null);
     setStopMode("stop");
     setSlotId("");
@@ -371,26 +371,28 @@ export function AdminBusChangeDnD({
               </button>
             </div>
             {!loadingStudent && (
-              <div className="px-4 py-2 text-sm text-slate-600">
-                {studentDefault ? (
-                  <>
-                    평소:{" "}
-                    {studentDefault.bus_label && (
-                      <span className="font-medium">{studentDefault.bus_label}</span>
-                    )}
-                    {studentDefault.bus_stop_name && (
-                      <span className="ml-1 text-slate-400">· {studentDefault.bus_stop_name}</span>
-                    )}
-                    {studentDefault.time_slot_label && (
-                      <span className="ml-1 text-slate-400">
-                        ({formatTime(studentDefault.time_slot_time)}{" "}
-                        {studentDefault.time_slot_label})
-                      </span>
-                    )}
-                  </>
-                ) : (
-                  <span className="text-slate-400">해당 요일 기본 배정 없음</span>
-                )}
+              <div className="px-4 py-2 text-sm text-slate-600 space-y-1">
+                {[1, 2, 3, 4, 5].map((day) => {
+                  const d = studentDefaults.find((x) => x.day_of_week === day);
+                  const isToday = day === dow;
+                  const dayLabel = ["월", "화", "수", "목", "금"][day - 1];
+                  return (
+                    <div key={day} className={`flex items-center gap-1 ${isToday ? "font-semibold text-slate-800" : ""}`}>
+                      <span className="w-4 shrink-0 text-slate-400">{dayLabel}</span>
+                      {d ? (
+                        <>
+                          {d.bus_label && <span className="font-medium">{d.bus_label}</span>}
+                          {d.bus_stop_name && <span className="text-slate-400">· {d.bus_stop_name}</span>}
+                          {d.time_slot_label && (
+                            <span className="text-slate-400">({formatTime(d.time_slot_time)} {d.time_slot_label})</span>
+                          )}
+                        </>
+                      ) : (
+                        <span className="text-slate-300">미배정</span>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
