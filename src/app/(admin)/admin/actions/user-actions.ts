@@ -430,20 +430,31 @@ export async function updateStudentProfile(formData: FormData): Promise<{ error?
   if (!korean_name) return { error: "한글 이름을 입력해 주세요." };
 
   const supabase = createAdminClient();
-  const { error: studentError } = await supabase
+  // upsert 로 변경: 과거 createStudent FK race(students_profiles_fkey) 로 생긴 orphan
+  // (profiles 만 있고 students 없는) 케이스도 자동 복구. id 는 profiles.id FK 라
+  // 이미 listUsersByRole 로 나온 id 면 무조건 유효함. select 로 영향 행 확인.
+  const { data: upserted, error: studentError } = await supabase
     .from("students")
-    .update({
-      korean_name,
-      english_name,
-      age: age !== null && !isNaN(age) ? age : null,
-      group_type,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", id);
+    .upsert(
+      {
+        id,
+        korean_name,
+        english_name: english_name || null,
+        age: age !== null && !isNaN(age) ? age : null,
+        group_type,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "id" },
+    )
+    .select("id");
 
   if (studentError) {
     logger.error("[updateStudentProfile]", studentError.message, { id });
     return { error: studentError.message };
+  }
+  if (!upserted?.length) {
+    logger.error("[updateStudentProfile]", "no rows affected", { id });
+    return { error: "학생 정보를 저장하지 못했습니다." };
   }
 
   revalidatePath("/admin", "layout");
@@ -461,19 +472,31 @@ export async function updateTeacherProfile(formData: FormData): Promise<{ error?
   if (!id) return { error: "id가 없습니다." };
   if (!name) return { error: "이름을 입력해 주세요." };
 
+  const validTeacherType =
+    teacher_type === "korean" || teacher_type === "native" ? teacher_type : "korean";
+
   const supabase = createAdminClient();
-  const { error: teacherError } = await supabase
+  // upsert: orphan(profiles 만 있고 teachers 없음) 자동 복구
+  const { data: upserted, error: teacherError } = await supabase
     .from("teachers")
-    .update({
-      name,
-      teacher_type: teacher_type === "korean" || teacher_type === "native" ? teacher_type : undefined,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", id);
+    .upsert(
+      {
+        id,
+        name,
+        teacher_type: validTeacherType,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "id" },
+    )
+    .select("id");
 
   if (teacherError) {
     logger.error("[updateTeacherProfile]", teacherError.message, { id });
     return { error: teacherError.message };
+  }
+  if (!upserted?.length) {
+    logger.error("[updateTeacherProfile]", "no rows affected", { id });
+    return { error: "교사 정보를 저장하지 못했습니다." };
   }
 
   revalidatePath("/admin", "layout");
