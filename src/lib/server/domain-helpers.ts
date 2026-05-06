@@ -66,6 +66,36 @@ export async function getStudentRecordByProfileId(
   return { ...data, profile_id: data.id };
 }
 
+/**
+ * profile_id 에 해당하는 students 행을 보장. 없으면 profiles.username 기반으로 stub 생성.
+ * 과거 createStudent FK race condition 으로 생긴 orphan(profiles 만 있고 students 없음)
+ * 자동 복구. 호출 전 profile 이 student 역할인지 확인 권장.
+ */
+export async function ensureStudentRecord(
+  supabase: AdminClient,
+  profileId: string
+): Promise<StudentRecord | null> {
+  const existing = await getStudentRecordByProfileId(supabase, profileId);
+  if (existing) return existing;
+
+  // orphan 판별: profile 이 student 역할인 경우만 자동 복구
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("id, username, role")
+    .eq("id", profileId)
+    .maybeSingle();
+  if (!profile || profile.role !== "student") return null;
+
+  const fallbackName = profile.username?.trim() || "이름 미입력";
+  const { data: created, error } = await supabase
+    .from("students")
+    .insert({ id: profileId, korean_name: fallbackName })
+    .select("id, korean_name, english_name, age, group_type")
+    .single();
+  if (error || !created) return null;
+  return { ...created, profile_id: created.id };
+}
+
 export async function getTeacherRecordByProfileId(
   supabase: AdminClient,
   profileId: string

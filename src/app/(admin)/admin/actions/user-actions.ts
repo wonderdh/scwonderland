@@ -560,25 +560,33 @@ export async function listAllStudents(): Promise<
   const activeIds = await getUserIdsByRole(supabase, "student");
   if (!activeIds.length) return [];
 
+  // profiles + students LEFT JOIN 식 처리 — orphan(profile 만 있는 학생)도 포함해
+  // 반 배정 UI 의 "미배정 학생" 패널에서 누락되지 않게 한다. 이름은 username 폴백.
   const { data: activeProfiles } = await supabase
     .from("profiles")
-    .select("id")
+    .select("id, username")
     .in("id", activeIds)
     .is("deleted_at", null);
-  const filteredIds = (activeProfiles ?? []).map((profile) => profile.id);
-  if (!filteredIds.length) return [];
+  const profiles = activeProfiles ?? [];
+  if (!profiles.length) return [];
 
+  const filteredIds = profiles.map((p) => p.id);
   const { data: students } = await supabase
     .from("students")
     .select("id, korean_name, english_name, age, group_type")
-    .in("id", filteredIds)
-    .order("korean_name");
+    .in("id", filteredIds);
+  const studentMap = new Map((students ?? []).map((s) => [s.id, s]));
 
-  return (students ?? []).map((student) => ({
-    id: student.id,
-    korean_name: student.korean_name ?? null,
-    english_name: student.english_name ?? null,
-    age: student.age ?? null,
-    group_type: student.group_type ?? toGroupLabel(null),
-  }));
+  return profiles
+    .map((profile) => {
+      const s = studentMap.get(profile.id);
+      return {
+        id: profile.id,
+        korean_name: s?.korean_name ?? profile.username ?? null,
+        english_name: s?.english_name ?? null,
+        age: s?.age ?? null,
+        group_type: s?.group_type ?? toGroupLabel(null),
+      };
+    })
+    .sort((a, b) => (a.korean_name ?? "").localeCompare(b.korean_name ?? "", "ko"));
 }

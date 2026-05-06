@@ -6,6 +6,7 @@ import { verifyAdmin, verifyAuthenticated } from "./auth-helpers";
 import { logger } from "@/lib/server/logger";
 import type { ClassWithDetails, ClassStudentRow, ClassTeacherInfo, AdminStudentClassItem } from "@/lib/types";
 import {
+  ensureStudentRecord,
   getStudentRecordByProfileId,
   getStudentsByIds,
   getTeacherRecordByProfileId,
@@ -330,7 +331,8 @@ export async function addStudentToClass(classId: string, studentProfileId: strin
   const auth = await verifyAdmin();
   if ("error" in auth) return { error: auth.error };
   const supabase = createAdminClient();
-  const student = await getStudentRecordByProfileId(supabase, studentProfileId);
+  // ensureStudentRecord: orphan(profiles 만 있고 students 없음) 자동 복구
+  const student = await ensureStudentRecord(supabase, studentProfileId);
   if (!student) return { error: "학생 정보를 찾을 수 없습니다." };
   const { error } = await supabase.from("class_students").insert({
     class_id: classId,
@@ -411,23 +413,30 @@ export async function listStudentsNotInClass(
   const activeProfileIds = await getUserIdsByRole(supabase, "student");
   const { data: activeProfiles } = await supabase
     .from("profiles")
-    .select("id")
+    .select("id, username")
     .in("id", activeProfileIds)
     .is("deleted_at", null);
-  const profileIds = (activeProfiles ?? []).map((profile) => profile.id);
+  const profiles = activeProfiles ?? [];
+  const profileIds = profiles.map((profile) => profile.id);
 
+  // LEFT JOIN 식 처리 — orphan profile 도 포함, username 폴백
   const { data: students } = await supabase
     .from("students")
     .select("id, korean_name, english_name")
     .in("id", profileIds);
-  return (students ?? [])
-    .filter((student) => !assignedStudentIds.has(student.id))
-    .map((student) => ({
-      id: student.id,
-      korean_name: student.korean_name ?? null,
-      english_name: student.english_name ?? null,
-      student_number: null,
-    }));
+  const studentMap = new Map((students ?? []).map((s) => [s.id, s]));
+
+  return profiles
+    .filter((profile) => !assignedStudentIds.has(profile.id))
+    .map((profile) => {
+      const s = studentMap.get(profile.id);
+      return {
+        id: profile.id,
+        korean_name: s?.korean_name ?? profile.username ?? null,
+        english_name: s?.english_name ?? null,
+        student_number: null,
+      };
+    });
 }
 
 export async function batchUpdateClassStudents(
@@ -455,16 +464,21 @@ export async function batchUpdateClassStudents(
   }
 
   if (adds.length) {
+    // ensureStudentRecord 로 orphan 자동 복구. 그래도 실패하면 missing 카운트해서 사용자에게 알림.
     const rows = await Promise.all(
       adds.map(async (item) => {
-        const student = await getStudentRecordByProfileId(supabase, item.profileId);
+        const student = await ensureStudentRecord(supabase, item.profileId);
         return student ? { class_id: item.classId, student_id: student.id } : null;
       })
     );
     const inserts = rows.filter((r): r is NonNullable<typeof r> => r !== null);
+    const skipped = rows.length - inserts.length;
     if (inserts.length) {
       const { error } = await supabase.from("class_students").insert(inserts);
       if (error) return { error: error.message };
+    }
+    if (skipped > 0) {
+      return { error: `${skipped}명의 학생 정보를 찾을 수 없어 배정에 실패했습니다.` };
     }
   }
 
