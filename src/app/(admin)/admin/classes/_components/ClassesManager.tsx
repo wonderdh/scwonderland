@@ -678,11 +678,18 @@ function ClassCard({
       onDragOver={(e) => {
         e.preventDefault();
         e.dataTransfer.dropEffect = "move";
-        onDragOver();
+        if (!isDropTarget) onDragOver();
       }}
-      onDragLeave={() => onDragLeave()}
+      onDragLeave={(e) => {
+        // 자식 요소(span, button)로 커서가 옮겨가도 onDragLeave 가 발화하므로,
+        // 카드 자체를 진짜로 떠난 경우만 leave 처리. 깜빡임 방지.
+        const related = e.relatedTarget as Node | null;
+        if (related && (e.currentTarget as Node).contains(related)) return;
+        onDragLeave();
+      }}
       onDrop={(e) => {
         e.preventDefault();
+        e.stopPropagation();
         onDrop(e);
       }}
     >
