@@ -56,25 +56,29 @@ export async function createStudent(formData: FormData): Promise<{ error?: strin
 
   const profileId = data.user.id;
   const username = email.split("@")[0];
-  const [{ error: profileError }, { error: studentError }] = await Promise.all([
-    supabase.from("profiles").insert({
-      id: profileId,
-      username,
-      role: "student",
-    }),
-    supabase.from("students").insert({
-      id: profileId,
-      korean_name,
-      english_name: english_name || null,
-      age: age !== null && !isNaN(age) ? age : null,
-      group_type,
-    }),
-  ]);
 
-  const firstError = profileError ?? studentError;
-  if (firstError) {
-    logger.error("[createStudent:domain]", firstError.message, { profileId });
-    return { error: firstError.message };
+  // students.id → profiles.id FK 가 있어 profile 을 먼저 commit 한 뒤 student insert.
+  // 과거 Promise.all 병렬 인서트는 race condition 으로 students_profiles_fkey 위반 발생.
+  const { error: profileError } = await supabase.from("profiles").insert({
+    id: profileId,
+    username,
+    role: "student",
+  });
+  if (profileError) {
+    logger.error("[createStudent:profile]", profileError.message, { profileId });
+    return { error: profileError.message };
+  }
+
+  const { error: studentError } = await supabase.from("students").insert({
+    id: profileId,
+    korean_name,
+    english_name: english_name || null,
+    age: age !== null && !isNaN(age) ? age : null,
+    group_type,
+  });
+  if (studentError) {
+    logger.error("[createStudent:student]", studentError.message, { profileId });
+    return { error: studentError.message };
   }
 
   revalidatePath("/admin", "layout");
@@ -116,23 +120,26 @@ export async function createTeacher(formData: FormData): Promise<{ error?: strin
 
   const profileId = data.user.id;
   const username = email.split("@")[0];
-  const [{ error: profileError }, { error: teacherError }] = await Promise.all([
-    supabase.from("profiles").insert({
-      id: profileId,
-      username,
-      role: "teacher",
-    }),
-    supabase.from("teachers").insert({
-      id: profileId,
-      name,
-      teacher_type,
-    }),
-  ]);
 
-  const firstError = profileError ?? teacherError;
-  if (firstError) {
-    logger.error("[createTeacher:domain]", firstError.message, { profileId });
-    return { error: firstError.message };
+  // teachers.id → profiles.id FK 가 있어 profile 을 먼저 commit 한 뒤 teacher insert.
+  const { error: profileError } = await supabase.from("profiles").insert({
+    id: profileId,
+    username,
+    role: "teacher",
+  });
+  if (profileError) {
+    logger.error("[createTeacher:profile]", profileError.message, { profileId });
+    return { error: profileError.message };
+  }
+
+  const { error: teacherError } = await supabase.from("teachers").insert({
+    id: profileId,
+    name,
+    teacher_type,
+  });
+  if (teacherError) {
+    logger.error("[createTeacher:teacher]", teacherError.message, { profileId });
+    return { error: teacherError.message };
   }
 
   revalidatePath("/admin", "layout");
