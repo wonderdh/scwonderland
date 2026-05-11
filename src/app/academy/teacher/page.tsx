@@ -156,7 +156,7 @@ export default async function TeacherMainPage() {
                         {arrowIcon}
                       </Link>
                       <Link
-                        href={`/academy/teacher/textbooks?class=${cls.id}`}
+                        href={`/academy/teacher/homework?class=${cls.id}`}
                         className="text-xs font-medium text-blue-600 hover:text-blue-800 transition-colors ml-auto inline-flex items-center gap-1"
                       >
                         Textbooks
@@ -166,10 +166,10 @@ export default async function TeacherMainPage() {
                   ) : (
                     <>
                       <Link
-                        href={`/academy/teacher/textbooks?class=${cls.id}`}
+                        href={`/academy/teacher/homework?class=${cls.id}`}
                         className="text-xs font-medium text-blue-600 hover:text-blue-800 transition-colors ml-auto inline-flex items-center gap-1"
                       >
-                        교재
+                        숙제
                         {arrowIcon}
                       </Link>
                     </>

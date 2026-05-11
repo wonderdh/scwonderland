@@ -10,6 +10,9 @@
 
 const KST = "Asia/Seoul";
 
+/** 0=일 ~ 6=토 (KST). DB `homework_days` 컬럼의 값과 동일 인덱스. */
+export const KST_DAY_LABELS = ["일", "월", "화", "수", "목", "금", "토"] as const;
+
 const YMD_FORMATTER = new Intl.DateTimeFormat("en-CA", {
   timeZone: KST,
   year: "numeric",

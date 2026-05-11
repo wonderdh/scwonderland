@@ -2486,6 +2486,8 @@ alter table "public"."teachers" add column "is_active" boolean not null default 
 
 alter table "public"."teachers" alter column "created_at" set not null;
 
+alter table "public"."teachers" alter column "teacher_type" drop default;
+
 alter table "public"."teachers" alter column "teacher_type" set data type public.teacher_type using "teacher_type"::text::public.teacher_type;
 
 alter table "public"."teachers" alter column "teacher_type" set default 'korean'::public.teacher_type;

@@ -78,22 +78,16 @@ const koreanLinks: PortalNavLink[] = [
     icon: ICONS.classManage,
   },
   {
-    href: "/academy/teacher/textbooks",
-    label: "교재",
+    href: "/academy/teacher/homework",
+    label: "숙제",
     activeColor: "bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-md",
-    icon: ICONS.textbooks,
+    icon: ICONS.homework,
   },
   {
     href: "/academy/teacher/attendance",
     label: "출결",
     activeColor: "bg-gradient-to-r from-teal-500 to-cyan-600 text-white shadow-md",
     icon: ICONS.attendance,
-  },
-  {
-    href: "/academy/teacher/homework",
-    label: "숙제",
-    activeColor: "bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-md",
-    icon: ICONS.homework,
   },
 ];
 
@@ -117,22 +111,16 @@ const nativeLinks: PortalNavLink[] = [
     icon: ICONS.reports,
   },
   {
-    href: "/academy/teacher/textbooks",
-    label: "Textbooks",
+    href: "/academy/teacher/homework",
+    label: "Homework",
     activeColor: "bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-md",
-    icon: ICONS.textbooks,
+    icon: ICONS.homework,
   },
   {
     href: "/academy/teacher/attendance",
     label: "Attendance",
     activeColor: "bg-gradient-to-r from-teal-500 to-cyan-600 text-white shadow-md",
     icon: ICONS.attendance,
-  },
-  {
-    href: "/academy/teacher/homework",
-    label: "Homework",
-    activeColor: "bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-md",
-    icon: ICONS.homework,
   },
 ];
 

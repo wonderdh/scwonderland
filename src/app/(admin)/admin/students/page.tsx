@@ -19,16 +19,17 @@ import { StudentReportTab } from "./_components/StudentReportTab";
 import { StudentAttendanceTab } from "./_components/StudentAttendanceTab";
 import { StudentBusTab } from "./_components/StudentBusTab";
 import { StudentTimetableTab } from "./_components/StudentTimetableTab";
+import { StudentTextbookTab } from "./_components/StudentTextbookTab";
 import { TrashView } from "../_components/TrashView";
 import { BulkPasswordResetDialog } from "./_components/BulkPasswordResetDialog";
 
-const VALID_TABS: StudentTabId[] = ["basic", "learning", "schedule", "bus"];
+const VALID_TABS: StudentTabId[] = ["basic", "learning", "schedule", "bus", "homework"];
 
 function parseTab(tab: string | undefined): StudentTabId {
   if (tab && VALID_TABS.includes(tab as StudentTabId)) return tab as StudentTabId;
   // Backwards compat: map legacy tab ids to new ones
   if (tab === "info") return "basic";
-  if (tab === "report" || tab === "textbook") return "learning";
+  if (tab === "report") return "learning";
   if (tab === "timetable" || tab === "attendance") return "schedule";
   return "basic";
 }
@@ -116,6 +117,7 @@ export default async function AdminStudentsPage({
                 </div>
               )}
               {currentTab === "bus" && <StudentBusTab studentProfileId={selectedUser.id} />}
+              {currentTab === "homework" && <StudentTextbookTab studentProfileId={selectedUser.id} />}
             </div>
           </>
         ) : null}

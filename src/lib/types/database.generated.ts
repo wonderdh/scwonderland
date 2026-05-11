@@ -7,10 +7,30 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: "14.1"
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
   }
   public: {
     Tables: {
@@ -630,6 +650,67 @@ export type Database = {
           },
         ]
       }
+      class_textbooks: {
+        Row: {
+          assigned_at: string
+          assigned_by: string | null
+          class_id: string
+          homework_days: number[]
+          id: string
+          note: string | null
+          skip_dates: string[]
+          start_date: string | null
+          start_unit: number
+          textbook_id: string
+        }
+        Insert: {
+          assigned_at?: string
+          assigned_by?: string | null
+          class_id: string
+          homework_days?: number[]
+          id?: string
+          note?: string | null
+          skip_dates?: string[]
+          start_date?: string | null
+          start_unit?: number
+          textbook_id: string
+        }
+        Update: {
+          assigned_at?: string
+          assigned_by?: string | null
+          class_id?: string
+          homework_days?: number[]
+          id?: string
+          note?: string | null
+          skip_dates?: string[]
+          start_date?: string | null
+          start_unit?: number
+          textbook_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "class_textbooks_assigned_by_fkey"
+            columns: ["assigned_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "class_textbooks_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "class_textbooks_textbook_id_fkey"
+            columns: ["textbook_id"]
+            isOneToOne: false
+            referencedRelation: "textbooks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       classes: {
         Row: {
           color_index: number | null
@@ -665,6 +746,67 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      homework_unit_progress: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          id: string
+          marked_by: string | null
+          note: string | null
+          status: string
+          student_id: string
+          textbook_id: string
+          unit_number: number
+          updated_at: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          marked_by?: string | null
+          note?: string | null
+          status?: string
+          student_id: string
+          textbook_id: string
+          unit_number: number
+          updated_at?: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          marked_by?: string | null
+          note?: string | null
+          status?: string
+          student_id?: string
+          textbook_id?: string
+          unit_number?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "homework_unit_progress_marked_by_fkey"
+            columns: ["marked_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "homework_unit_progress_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "homework_unit_progress_textbook_id_fkey"
+            columns: ["textbook_id"]
+            isOneToOne: false
+            referencedRelation: "textbooks"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       notices: {
         Row: {
@@ -737,6 +879,33 @@ export type Database = {
         }
         Relationships: []
       }
+      publishers: {
+        Row: {
+          created_at: string
+          homepage_url: string | null
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          homepage_url?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          homepage_url?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       report_cards: {
         Row: {
           author_id: string | null
@@ -794,6 +963,41 @@ export type Database = {
           },
         ]
       }
+      series: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          publisher_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          publisher_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          publisher_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "series_publisher_id_fkey"
+            columns: ["publisher_id"]
+            isOneToOne: false
+            referencedRelation: "publishers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       student_bus_defaults: {
         Row: {
           bus_stop_id: string | null
@@ -845,6 +1049,131 @@ export type Database = {
             columns: ["student_id"]
             isOneToOne: false
             referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      student_textbook_progress: {
+        Row: {
+          completed_at: string | null
+          completed_units: number
+          created_at: string
+          id: string
+          note: string | null
+          started_at: string | null
+          status: string
+          student_id: string
+          textbook_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          completed_units?: number
+          created_at?: string
+          id?: string
+          note?: string | null
+          started_at?: string | null
+          status?: string
+          student_id: string
+          textbook_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          completed_units?: number
+          created_at?: string
+          id?: string
+          note?: string | null
+          started_at?: string | null
+          status?: string
+          student_id?: string
+          textbook_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_textbook_progress_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_textbook_progress_textbook_id_fkey"
+            columns: ["textbook_id"]
+            isOneToOne: false
+            referencedRelation: "textbooks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_textbook_progress_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      student_textbooks: {
+        Row: {
+          assigned_at: string
+          assigned_by: string | null
+          homework_days: number[]
+          id: string
+          note: string | null
+          skip_dates: string[]
+          start_date: string | null
+          start_unit: number
+          student_id: string
+          textbook_id: string
+        }
+        Insert: {
+          assigned_at?: string
+          assigned_by?: string | null
+          homework_days?: number[]
+          id?: string
+          note?: string | null
+          skip_dates?: string[]
+          start_date?: string | null
+          start_unit?: number
+          student_id: string
+          textbook_id: string
+        }
+        Update: {
+          assigned_at?: string
+          assigned_by?: string | null
+          homework_days?: number[]
+          id?: string
+          note?: string | null
+          skip_dates?: string[]
+          start_date?: string | null
+          start_unit?: number
+          student_id?: string
+          textbook_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_textbooks_assigned_by_fkey"
+            columns: ["assigned_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_textbooks_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_textbooks_textbook_id_fkey"
+            columns: ["textbook_id"]
+            isOneToOne: false
+            referencedRelation: "textbooks"
             referencedColumns: ["id"]
           },
         ]
@@ -921,6 +1250,62 @@ export type Database = {
             columns: ["id"]
             isOneToOne: true
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      textbooks: {
+        Row: {
+          category: string
+          cover_image_url: string | null
+          created_at: string
+          id: string
+          is_active: boolean
+          level: string | null
+          publisher: string | null
+          series: string | null
+          series_id: string | null
+          sort_order: number
+          title: string
+          total_units: number
+          updated_at: string
+        }
+        Insert: {
+          category?: string
+          cover_image_url?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          level?: string | null
+          publisher?: string | null
+          series?: string | null
+          series_id?: string | null
+          sort_order?: number
+          title: string
+          total_units: number
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          cover_image_url?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          level?: string | null
+          publisher?: string | null
+          series?: string | null
+          series_id?: string | null
+          sort_order?: number
+          title?: string
+          total_units?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "textbooks_series_id_fkey"
+            columns: ["series_id"]
+            isOneToOne: false
+            referencedRelation: "series"
             referencedColumns: ["id"]
           },
         ]
@@ -1134,6 +1519,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       attendance_status: [
@@ -1153,3 +1541,4 @@ export const Constants = {
     },
   },
 } as const
+

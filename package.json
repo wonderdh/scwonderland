@@ -9,7 +9,10 @@
     "lint": "eslint",
     "type-check": "tsc --noEmit",
     "db:types": "supabase gen types typescript --project-id jxrzhonxnkjpjmzdhyoi > src/lib/types/database.generated.ts",
-    "db:types:local": "supabase gen types typescript --local > src/lib/types/database.generated.ts"
+    "db:types:local": "supabase gen types typescript --local > src/lib/types/database.generated.ts",
+    "db:sync": "bash scripts/sync-full.sh",
+    "db:sync:no-auth": "bash scripts/sync-no-auth.sh",
+    "db:reset-passwords": "node scripts/reset-local-passwords.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.8.0",

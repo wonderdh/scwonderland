@@ -88,9 +88,9 @@ export default async function AdminDashboardPage() {
       Icon: Users,
     },
     {
-      href: "/admin/textbooks",
-      title: "교재 관리",
-      description: "교재 등록, 반/학생 배정, 진도 관리",
+      href: "/admin/homework",
+      title: "숙제 관리",
+      description: "숙제 등록, 반/학생 배정, 진도 관리",
       badge: null,
       borderColor: "hover:border-amber-300",
       badgeColor: "",

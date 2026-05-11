@@ -6,18 +6,20 @@ import type { ClassWithDetails, AcademyPeriod } from "@/lib/types";
 import { ClassesManager } from "./ClassesManager";
 import { ClassesOverview } from "./ClassesOverview";
 import { ClassScheduleManager } from "./ClassScheduleManager";
+import { ClassTextbookView } from "./ClassTextbookView";
 import { PageHeader } from "@/components/navigation/PageHeader";
 
-type TabId = "overview" | "manage" | "schedule";
+type TabId = "overview" | "manage" | "schedule" | "homework";
 
 const TABS: { id: TabId; label: string }[] = [
   { id: "overview", label: "전체 반" },
   { id: "manage", label: "반 관리" },
   { id: "schedule", label: "수업 배정" },
+  { id: "homework", label: "숙제" },
 ];
 
 function parseTab(tab: string | undefined): TabId {
-  if (tab && (["overview", "manage", "schedule"] as string[]).includes(tab))
+  if (tab && (["overview", "manage", "schedule", "homework"] as string[]).includes(tab))
     return tab as TabId;
   return "overview";
 }
@@ -62,7 +64,7 @@ export function ClassesPageClient({
 
   return (
     <>
-      <PageHeader title="반 관리" description="반을 관리하고 담당 선생님·학생·교재를 배정합니다." />
+      <PageHeader title="반 관리" description="반을 관리하고 담당 선생님·학생·숙제를 배정합니다." />
 
       {/* 탭 네비 */}
       <nav className="flex border-b bg-card rounded-t-xl overflow-x-auto mb-0">
@@ -108,6 +110,9 @@ export function ClassesPageClient({
             teachers={teachers}
             periods={periods}
           />
+        )}
+        {currentTab === "homework" && (
+          <ClassTextbookView classes={initialClasses} />
         )}
       </div>
     </>

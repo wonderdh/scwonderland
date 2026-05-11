@@ -1,15 +1,16 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Users, BookOpen, Calendar, Bus } from "lucide-react";
+import { Users, BookOpen, Calendar, Bus, BookMarked } from "lucide-react";
 
-export type StudentTabId = "basic" | "learning" | "schedule" | "bus";
+export type StudentTabId = "basic" | "learning" | "schedule" | "bus" | "homework";
 
 const TABS = [
   { id: "basic", label: "기본 정보", Icon: Users },
   { id: "learning", label: "학습 & 리포트", Icon: BookOpen },
   { id: "schedule", label: "시간표 & 출결", Icon: Calendar },
   { id: "bus", label: "승하차", Icon: Bus },
+  { id: "homework", label: "숙제", Icon: BookMarked },
 ] as const satisfies { id: StudentTabId; label: string; Icon: typeof Users }[];
 
 export function StudentTabNav({

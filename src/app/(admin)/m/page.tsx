@@ -15,6 +15,17 @@ const cards = [
     ),
   },
   {
+    href: "/m/homework",
+    title: "숙제 관리",
+    subtitle: "반별 학생 unit 진도 체크",
+    icon: (
+      <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 3.75h3M3.375 3h17.25c.621 0 1.125.504 1.125 1.125v15.75c0 .621-.504 1.125-1.125 1.125H3.375A1.125 1.125 0 0 1 2.25 19.875V4.125C2.25 3.504 2.754 3 3.375 3Z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 8.25h6" />
+      </svg>
+    ),
+  },
+  {
     href: "/m/bus-change",
     title: "버스 당일변경",
     subtitle: "학생 버스 정류장 임시 변경",

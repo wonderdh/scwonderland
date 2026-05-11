@@ -178,3 +178,76 @@ export {
 export {
   getUpcomingReservations,
 } from "./actions/reservation-actions";
+
+export {
+  listTextbooks,
+  getTextbook,
+  listSeriesLegacy,
+  createTextbook,
+  updateTextbook,
+  deleteTextbook,
+} from "./actions/textbook-actions";
+
+export type { TextbookWithSeries } from "./actions/textbook-actions";
+
+export {
+  listSeries,
+  listAllSeries,
+  getSeries,
+  createSeries,
+  updateSeries,
+  deleteSeries,
+} from "./actions/series-actions";
+
+export type { SeriesWithPublisher } from "./actions/series-actions";
+
+export {
+  listPublishers,
+  listAllPublishers,
+  getPublisher,
+  createPublisher,
+  updatePublisher,
+  deletePublisher,
+} from "./actions/publisher-actions";
+
+export {
+  listClassTextbooks,
+  assignClassTextbook,
+  updateClassTextbookDays,
+  unassignClassTextbook,
+  listStudentTextbooks,
+  assignStudentTextbook,
+  updateStudentTextbookDays,
+  unassignStudentTextbook,
+  listStudentScheduleByMonth,
+} from "./actions/class-textbook-actions";
+
+export type {
+  ClassTextbookWithDetails,
+  StudentTextbookWithDetails,
+} from "./actions/class-textbook-actions";
+
+export type {
+  StudentDayUnits,
+  StudentDayUnit,
+  UnitAssignment,
+} from "@/lib/utils/homework-schedule";
+
+export { getUnitSchedule } from "@/lib/utils/homework-schedule";
+
+export {
+  listUnitProgressByStudent,
+  listUnitProgressByClass,
+  listClassUnitProgressDetailed,
+  markUnit,
+  bulkMarkUnits,
+  clearUnit,
+} from "./actions/homework-unit-actions";
+
+export type {
+  UnitStatus,
+  StudentTextbookUnits,
+  StudentUnitProgressData,
+  ClassUnitOverview,
+  ClassUnitProgressDetailed,
+} from "./actions/homework-unit-actions";
