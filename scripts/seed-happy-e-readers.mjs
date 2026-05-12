@@ -44,9 +44,9 @@ const SERIES_NAME = "Happy e Readers";
 const TOTAL_UNITS = 10;
 const SOURCE_ROOT = "C:\\Users\\wonde\\Downloads\\workbooks";
 
-/** "KA1" → "KA01" */
+/** "KA", 1 → "KA-01" */
 function padLevel(prefix, n) {
-  return `${prefix}${String(n).padStart(2, "0")}`;
+  return `${prefix}-${String(n).padStart(2, "0")}`;
 }
 
 function randId() {
@@ -105,17 +105,25 @@ async function insertBook(seriesId, level, coverUrl) {
   if (error) throw new Error(`insert ${level}: ${error.message}`);
 }
 
-async function migrateKC1Level(existing) {
-  // KC1 already inserted manually with level "KC1". Pad it to "KC01".
-  const stale = existing.find((r) => r.level === "KC1");
-  if (!stale) return false;
-  const { error } = await supabase
-    .from("homework_books")
-    .update({ level: "KC01" })
-    .eq("id", stale.id);
-  if (error) throw error;
-  console.log(`  migrated KC1 → KC01 (${stale.id})`);
-  return true;
+async function migrateLevelsToHyphen(existing) {
+  // 옛 컨벤션 `XX#`, `XX##` → 새 컨벤션 `XX-##` 으로 in-place 정규화.
+  let count = 0;
+  for (const row of existing) {
+    if (!row.level) continue;
+    const m = row.level.match(/^([A-Z0-9]{2})(\d{1,2})$/);
+    if (!m) continue; // 이미 하이픈이거나 패턴 다름 → 손대지 않음
+    const next = `${m[1]}-${m[2].padStart(2, "0")}`;
+    if (next === row.level) continue;
+    const { error } = await supabase
+      .from("homework_books")
+      .update({ level: next })
+      .eq("id", row.id);
+    if (error) throw error;
+    console.log(`  migrated ${row.level} → ${next}`);
+    row.level = next;
+    count++;
+  }
+  return count;
 }
 
 async function main() {
@@ -125,13 +133,11 @@ async function main() {
   const existingBefore = await listExistingLevels(seriesId);
   console.log(`Existing rows: ${existingBefore.length}`);
 
-  if (await migrateKC1Level(existingBefore)) {
-    // Refresh after rename so the dedupe set is accurate.
-    existingBefore.find((r) => r.level === "KC1").level = "KC01";
-  }
+  const migrated = await migrateLevelsToHyphen(existingBefore);
+  if (migrated) console.log(`Migrated ${migrated} legacy level(s).`);
   const existingSet = new Set(existingBefore.map((r) => r.level));
 
-  const prefixes = ["KA", "KB", "KC"];
+  const prefixes = ["KA", "KB", "KC", "1A", "1B", "1C", "2A", "2B", "2C"];
   let added = 0;
   let skipped = 0;
 
