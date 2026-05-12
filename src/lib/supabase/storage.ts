@@ -119,3 +119,45 @@ export function getFileCategory(mimeType: string): FileCategory | null {
   if (ALLOWED_AUDIO_TYPES.includes(mimeType)) return "audio";
   return null;
 }
+
+// ── 이미지 변환 (브라우저 전용) ──
+
+/**
+ * 클라이언트에서 이미지를 WebP 로 변환. 이미 webp 이면 그대로 반환.
+ * 옵션: quality(0~1, 기본 0.85), maxWidth(기본 1600, 그 이상이면 비율 유지 축소).
+ *
+ * 호출은 반드시 브라우저 컨텍스트에서. SSR/Server Action 에서 부르면 throw.
+ */
+export async function convertImageToWebP(
+  file: File,
+  options: { quality?: number; maxWidth?: number } = {}
+): Promise<File> {
+  if (file.type === "image/webp") return file;
+
+  const { quality = 0.85, maxWidth = 1600 } = options;
+  const bitmap = await createImageBitmap(file);
+  const scale = bitmap.width > maxWidth ? maxWidth / bitmap.width : 1;
+  const w = Math.max(1, Math.round(bitmap.width * scale));
+  const h = Math.max(1, Math.round(bitmap.height * scale));
+
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) {
+    bitmap.close();
+    throw new Error("Canvas 2D context 를 사용할 수 없습니다.");
+  }
+  ctx.drawImage(bitmap, 0, 0, w, h);
+  bitmap.close();
+
+  const blob = await new Promise<Blob | null>((resolve) =>
+    canvas.toBlob((b) => resolve(b), "image/webp", quality)
+  );
+  if (!blob) throw new Error("WebP 변환에 실패했습니다.");
+
+  const baseName = file.name.includes(".")
+    ? file.name.substring(0, file.name.lastIndexOf("."))
+    : file.name;
+  return new File([blob], `${baseName}.webp`, { type: "image/webp" });
+}

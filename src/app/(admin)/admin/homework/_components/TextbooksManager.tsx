@@ -12,6 +12,7 @@ import {
   createTextbook,
   updateTextbook,
 } from "../../actions";
+import { convertImageToWebP } from "@/lib/supabase/storage";
 import type { Database } from "@/lib/types/database.generated";
 import type { TextbookWithSeries } from "../../actions";
 
@@ -50,12 +51,21 @@ function TextbookModal({
     }
     const form = e.currentTarget;
     const fd = new FormData(form);
-    if (coverFiles[0]) {
-      fd.set("cover", coverFiles[0]);
-    }
     fd.set("series_id", selectedSeriesId);
+    const rawCover = coverFiles[0];
 
     startTransition(async () => {
+      if (rawCover) {
+        try {
+          const webp = await convertImageToWebP(rawCover);
+          fd.set("cover", webp);
+        } catch (err) {
+          setFormError(
+            err instanceof Error ? err.message : "이미지 변환에 실패했습니다."
+          );
+          return;
+        }
+      }
       let result: { error?: string };
       if (mode === "edit" && initial) {
         result = await updateTextbook(initial.id, fd);
