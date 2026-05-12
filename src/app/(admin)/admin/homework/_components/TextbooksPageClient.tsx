@@ -4,28 +4,32 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { TextbooksManager } from "./TextbooksManager";
 import { SeriesManager } from "./SeriesManager";
-import { HomeworkCheckTab } from "./HomeworkCheckTab";
+import { ClassHomeworkManageTab } from "./ClassHomeworkManageTab";
 import type {
   TextbookWithSeries,
   SeriesWithPublisher,
   ClassUnitProgressDetailed,
+  ClassTextbookWithDetails,
   HomeworkClassPickerOption,
 } from "../../actions";
+import type { Database } from "@/lib/types/database.generated";
 
 type PublisherOption = { id: string; name: string };
 type ClassOption = HomeworkClassPickerOption;
+type TextbookRow = Database["public"]["Tables"]["homework_books"]["Row"];
 
-type TabId = "textbooks" | "series" | "check";
+type TabId = "textbooks" | "series" | "class";
 
 const TABS: { id: TabId; label: string }[] = [
   { id: "textbooks", label: "숙제" },
   { id: "series", label: "시리즈" },
-  { id: "check", label: "반별 체크" },
+  { id: "class", label: "반 숙제 관리" },
 ];
 
 function parseTab(tab: string | null | undefined): TabId {
   if (tab === "series") return "series";
-  if (tab === "check") return "check";
+  // 레거시 "check" URL 호환
+  if (tab === "class" || tab === "check") return "class";
   return "textbooks";
 }
 
@@ -37,6 +41,8 @@ export function TextbooksPageClient({
   checkClasses,
   checkInitialClassId,
   checkInitialData,
+  classInitialAssignments,
+  classAllTextbooks,
 }: {
   initialTextbooks: TextbookWithSeries[];
   activeSeriesList: SeriesWithPublisher[];
@@ -45,6 +51,8 @@ export function TextbooksPageClient({
   checkClasses: ClassOption[];
   checkInitialClassId: string | null;
   checkInitialData: ClassUnitProgressDetailed;
+  classInitialAssignments: ClassTextbookWithDetails[];
+  classAllTextbooks: TextbookRow[];
 }) {
   const searchParams = useSearchParams();
   const currentTab = parseTab(searchParams.get("tab"));
@@ -84,10 +92,12 @@ export function TextbooksPageClient({
           initialPublishers={initialPublishers}
         />
       ) : (
-        <HomeworkCheckTab
+        <ClassHomeworkManageTab
           classes={checkClasses}
           initialClassId={checkInitialClassId}
-          initialData={checkInitialData}
+          initialProgress={checkInitialData}
+          initialAssignments={classInitialAssignments}
+          allTextbooks={classAllTextbooks}
         />
       )}
     </>

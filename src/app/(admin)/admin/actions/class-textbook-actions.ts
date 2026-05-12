@@ -18,8 +18,6 @@ export type ClassTextbookWithDetails = ClassHomeworkBookRow & {
   cover_image_url: string | null;
   total_units: number;
   // Deprecated: 20260515 마이그레이션에서 컬럼 제거됨. 옛 UI 호환용 optional 유지.
-  homework_days?: number[] | null;
-  skip_dates?: string[] | null;
   start_unit?: number | null;
 };
 
@@ -83,7 +81,23 @@ type DaysPayload = {
   note?: string | null;
   /** 숙제 일정 시작일 (YYYY-MM-DD). null 명시 시 schedule 비활성. */
   startDate?: string | null;
+  /** 부여 단위 숙제 요일 (0=일~6=토). undefined 면 변경 안 함. */
+  homeworkDays?: number[];
+  /** 부여 단위 예외일 (YYYY-MM-DD). undefined 면 변경 안 함. */
+  skipDates?: string[];
 };
+
+function normalizeHomeworkDays(days: number[]): number[] {
+  return Array.from(
+    new Set(days.filter((d) => Number.isInteger(d) && d >= 0 && d <= 6))
+  ).sort((a, b) => a - b);
+}
+
+function normalizeSkipDates(dates: string[]): string[] {
+  return Array.from(
+    new Set(dates.filter((d) => typeof d === "string" && ISO_DATE_RE.test(d)))
+  ).sort();
+}
 
 // ── 반별 숙제 ──
 
@@ -96,7 +110,7 @@ export async function listClassTextbooks(
   const { data, error } = await supabase
     .from("class_homework_books")
     .select(
-      "id, class_id, textbook_id, start_date, note, homework_books(title, series, publisher, cover_image_url, total_units)"
+      "id, class_id, textbook_id, start_date, note, homework_days, skip_dates, homework_books(title, series, publisher, cover_image_url, total_units)"
     )
     .eq("class_id", classId)
     .order("id", { ascending: true });
@@ -112,6 +126,8 @@ export async function listClassTextbooks(
       textbook_id: row.textbook_id,
       start_date: row.start_date ?? null,
       note: row.note,
+      homework_days: (row.homework_days as number[] | null) ?? [],
+      skip_dates: (row.skip_dates as string[] | null) ?? [],
       title: tb?.title ?? "",
       series: tb?.series ?? null,
       publisher: tb?.publisher ?? null,
@@ -130,8 +146,44 @@ export async function assignClassTextbook(
   const classId = (formData.get("classId") as string)?.trim();
   const textbookId = (formData.get("textbookId") as string)?.trim();
   const note = (formData.get("note") as string)?.trim() || null;
+  const startDateRaw = (formData.get("startDate") as string | null)?.trim() || null;
+  const homeworkDaysRaw = (formData.get("homeworkDays") as string | null)?.trim() || "";
+  const skipDatesRaw = (formData.get("skipDates") as string | null)?.trim() || "";
 
   if (!classId || !textbookId) return { error: "반과 숙제를 선택해 주세요." };
+
+  let startDate: string | null = null;
+  if (startDateRaw) {
+    const v = validateStartDate(startDateRaw);
+    if (!v.ok) return { error: v.error };
+    startDate = v.value;
+  }
+
+  let homeworkDays: number[] = [];
+  if (homeworkDaysRaw) {
+    try {
+      const parsed = JSON.parse(homeworkDaysRaw);
+      if (!Array.isArray(parsed) || !parsed.every((d) => Number.isInteger(d))) {
+        return { error: "요일 형식이 올바르지 않습니다." };
+      }
+      homeworkDays = normalizeHomeworkDays(parsed as number[]);
+    } catch {
+      return { error: "요일 형식이 올바르지 않습니다." };
+    }
+  }
+
+  let skipDates: string[] = [];
+  if (skipDatesRaw) {
+    try {
+      const parsed = JSON.parse(skipDatesRaw);
+      if (!Array.isArray(parsed) || !parsed.every((d) => typeof d === "string")) {
+        return { error: "예외일 형식이 올바르지 않습니다." };
+      }
+      skipDates = normalizeSkipDates(parsed as string[]);
+    } catch {
+      return { error: "예외일 형식이 올바르지 않습니다." };
+    }
+  }
 
   const supabase = createAdminClient();
   const { data, error } = await supabase
@@ -140,6 +192,9 @@ export async function assignClassTextbook(
       class_id: classId,
       textbook_id: textbookId,
       note,
+      start_date: startDate,
+      homework_days: homeworkDays,
+      skip_dates: skipDates,
     })
     .select("id")
     .single();
@@ -150,6 +205,7 @@ export async function assignClassTextbook(
     }
     return { error: error.message };
   }
+  // trigger tg_class_homework_book_seed_students 가 반의 활성 학생 전원을 자동 시드.
   revalidateAll();
   return { id: data.id };
 }
@@ -174,6 +230,12 @@ export async function updateClassTextbookDays(
       if (!v.ok) return { error: v.error };
       update.start_date = v.value;
     }
+  }
+  if (payload.homeworkDays !== undefined) {
+    update.homework_days = normalizeHomeworkDays(payload.homeworkDays);
+  }
+  if (payload.skipDates !== undefined) {
+    update.skip_dates = normalizeSkipDates(payload.skipDates);
   }
   if (Object.keys(update).length === 0) return {};
 

@@ -29,6 +29,8 @@ export type StudentTextbookUnits = {
   total_units: number;
   source: "class" | "student";
   hasSchedule: boolean;
+  /** 이 부여의 숙제 요일 (0=일~6=토). */
+  homeworkDays: number[];
   units: Array<{
     unitNumber: number;
     status: UnitStatus;
@@ -59,8 +61,6 @@ export type ClassUnitOverview = {
 export type ClassUnitProgressDetailed = {
   students: { id: string; korean_name: string | null; english_name: string | null }[];
   byStudent: Record<string, StudentTextbookUnits[]>;
-  /** 반이 만나는 요일 (class_schedules.day_of_week distinct, 1=월~5=금). */
-  classDays: number[];
   error?: string;
 };
 
@@ -86,21 +86,9 @@ export async function listClassUnitProgressDetailed(
 ): Promise<ClassUnitProgressDetailed> {
   const auth = await verifyAuthenticated();
   if ("error" in auth)
-    return { students: [], byStudent: {}, classDays: [], error: auth.error };
+    return { students: [], byStudent: {}, error: auth.error };
 
   const supabase = createAdminClient();
-
-  // 0. 반이 만나는 요일 — class_schedules.day_of_week distinct (1=월~5=금)
-  const { data: scheduleRows, error: schedErr } = await supabase
-    .from("class_schedules")
-    .select("day_of_week")
-    .eq("class_id", classId);
-  if (schedErr) {
-    logger.error("[listClassUnitProgressDetailed schedules]", schedErr.message);
-  }
-  const classDays = Array.from(
-    new Set((scheduleRows ?? []).map((r) => r.day_of_week as number))
-  ).sort((a, b) => a - b);
 
   // 1. 활성 학생
   const { data: rosterRows, error: rosterErr } = await supabase
@@ -114,7 +102,6 @@ export async function listClassUnitProgressDetailed(
     return {
       students: [],
       byStudent: {},
-      classDays,
       error: rosterErr.message,
     };
   }
@@ -136,14 +123,14 @@ export async function listClassUnitProgressDetailed(
   }));
 
   if (roster.length === 0) {
-    return { students: [], byStudent: {}, classDays };
+    return { students: [], byStudent: {} };
   }
 
-  // 2. 반의 모든 책 (class_homework_books × homework_books)
+  // 2. 반의 모든 책 (class_homework_books × homework_books) — 책마다 homework_days/skip_dates 보유
   const { data: bookRows, error: bookErr } = await supabase
     .from("class_homework_books")
     .select(
-      "id, textbook_id, start_date, homework_books!inner(title, level, total_units, cover_image_url, series, series_id, series_rel:series_id(name))"
+      "id, textbook_id, start_date, homework_days, skip_dates, homework_books!inner(title, level, total_units, cover_image_url, series, series_id, series_rel:series_id(name))"
     )
     .eq("class_id", classId);
 
@@ -152,7 +139,6 @@ export async function listClassUnitProgressDetailed(
     return {
       students,
       byStudent: {},
-      classDays,
       error: bookErr.message,
     };
   }
@@ -165,6 +151,8 @@ export async function listClassUnitProgressDetailed(
     cover_image_url: string | null;
     total_units: number;
     start_date: string | null;
+    homework_days: number[];
+    skip_dates: string[];
   };
   const books: BookMeta[] = (bookRows ?? []).map((row) => {
     const hb = Array.isArray(row.homework_books)
@@ -175,6 +163,12 @@ export async function listClassUnitProgressDetailed(
         ? hb.series_rel[0]
         : hb.series_rel
       : null;
+    const days = Array.from(
+      new Set(((row.homework_days as number[] | null | undefined) ?? []) as number[])
+    ).sort((a, b) => a - b);
+    const skips = Array.from(
+      new Set(((row.skip_dates as string[] | null | undefined) ?? []) as string[])
+    ).sort();
     return {
       chbId: row.id as string,
       title: hb?.title ?? "",
@@ -183,19 +177,21 @@ export async function listClassUnitProgressDetailed(
       cover_image_url: hb?.cover_image_url ?? null,
       total_units: hb?.total_units ?? 0,
       start_date: (row.start_date as string | null) ?? null,
+      homework_days: days,
+      skip_dates: skips,
     };
   });
 
-  // 책별 unit→expectedDate 맵 한 번만 계산 (반 전체 공유)
+  // 책별 unit→expectedDate 맵 한 번만 계산 (책마다 다른 요일/예외일 가능)
   const expectedByBook = new Map<string, Map<number, string>>();
   for (const b of books) {
-    if (!b.start_date || classDays.length === 0 || b.total_units <= 0) continue;
+    if (!b.start_date || b.homework_days.length === 0 || b.total_units <= 0) continue;
     const schedule = getUnitSchedule({
       startDate: b.start_date,
       startUnit: 1,
       totalUnits: b.total_units,
-      homeworkDays: classDays,
-      skipDates: [],
+      homeworkDays: b.homework_days,
+      skipDates: b.skip_dates,
     });
     const m = new Map<number, string>();
     for (const s of schedule) m.set(s.unit, s.date);
@@ -216,7 +212,6 @@ export async function listClassUnitProgressDetailed(
     return {
       students,
       byStudent: {},
-      classDays,
       error: shbErr.message,
     };
   }
@@ -256,7 +251,7 @@ export async function listClassUnitProgressDetailed(
     byStudent[r.student_id] = books.map((b) => {
       const m = progressMap.get(keyOf(r.student_id, b.chbId));
       const exp = expectedByBook.get(b.chbId);
-      const hasSchedule = !!b.start_date && classDays.length > 0;
+      const hasSchedule = !!b.start_date && b.homework_days.length > 0;
       const units = Array.from({ length: b.total_units }, (_, i) => {
         const unitNumber = i + 1;
         const status = m?.get(unitNumber) ?? ("pending" as UnitStatus);
@@ -277,12 +272,13 @@ export async function listClassUnitProgressDetailed(
         total_units: b.total_units,
         source: "class" as const,
         hasSchedule,
+        homeworkDays: b.homework_days,
         units,
       };
     });
   }
 
-  return { students, byStudent, classDays };
+  return { students, byStudent };
 }
 
 export async function listUnitProgressByStudent(
@@ -293,11 +289,12 @@ export async function listUnitProgressByStudent(
 
   const supabase = createAdminClient();
 
-  // 학생의 student_homework_books + class_homework_book(+homework_book, +class) + progress
+  // 학생의 student_homework_books + class_homework_book(+homework_book) + progress
+  // 요일은 class_homework_books.homework_days 사용 (책별로 다를 수 있음)
   const { data: shbRows, error: shbErr } = await supabase
     .from("student_homework_books")
     .select(
-      "id, class_homework_book_id, class_student_id, class_students!inner(student_id, class_id), class_homework_books!inner(id, start_date, homework_books!inner(title, level, total_units, cover_image_url, series, series_id, series_rel:series_id(name))), student_homework_progress(unit_number, status)"
+      "id, class_homework_book_id, class_student_id, class_students!inner(student_id, class_id), class_homework_books!inner(id, start_date, homework_days, skip_dates, homework_books!inner(title, level, total_units, cover_image_url, series, series_id, series_rel:series_id(name))), student_homework_progress(unit_number, status)"
     )
     .eq("class_students.student_id", studentId);
 
@@ -309,43 +306,7 @@ export async function listUnitProgressByStudent(
   type ShbRow = NonNullable<typeof shbRows>[number];
   const rows: ShbRow[] = shbRows ?? [];
 
-  // 각 반의 class_schedules 한 번씩만 fetch
-  const classIds = Array.from(
-    new Set(
-      rows
-        .map((r) => {
-          const cs = Array.isArray(r.class_students)
-            ? r.class_students[0]
-            : r.class_students;
-          return cs?.class_id as string | undefined;
-        })
-        .filter((id): id is string => !!id)
-    )
-  );
-
-  const classDaysMap = new Map<string, number[]>();
-  if (classIds.length > 0) {
-    const { data: scheduleRows, error: schedErr } = await supabase
-      .from("class_schedules")
-      .select("class_id, day_of_week")
-      .in("class_id", classIds);
-    if (schedErr) {
-      logger.error("[listUnitProgressByStudent schedules]", schedErr.message);
-    }
-    for (const s of scheduleRows ?? []) {
-      const cid = s.class_id as string;
-      const dow = s.day_of_week as number;
-      const arr = classDaysMap.get(cid) ?? [];
-      if (!arr.includes(dow)) arr.push(dow);
-      classDaysMap.set(cid, arr);
-    }
-    for (const arr of classDaysMap.values()) arr.sort((a, b) => a - b);
-  }
-
   const textbooks: StudentTextbookUnits[] = rows.map((row) => {
-    const cs = Array.isArray(row.class_students)
-      ? row.class_students[0]
-      : row.class_students;
     const chb = Array.isArray(row.class_homework_books)
       ? row.class_homework_books[0]
       : row.class_homework_books;
@@ -362,16 +323,25 @@ export async function listUnitProgressByStudent(
 
     const startDate = (chb?.start_date as string | null) ?? null;
     const totalUnits = (hb?.total_units as number | undefined) ?? 0;
-    const classDays = classDaysMap.get(cs?.class_id as string) ?? [];
+    const homeworkDays = Array.from(
+      new Set(
+        (((chb as { homework_days?: number[] | null } | null)?.homework_days ?? []) as number[])
+      )
+    ).sort((a, b) => a - b);
+    const skipDates = Array.from(
+      new Set(
+        (((chb as { skip_dates?: string[] | null } | null)?.skip_dates ?? []) as string[])
+      )
+    ).sort();
 
     const expectedByUnit = new Map<number, string>();
-    if (startDate && classDays.length > 0 && totalUnits > 0) {
+    if (startDate && homeworkDays.length > 0 && totalUnits > 0) {
       for (const s of getUnitSchedule({
         startDate,
         startUnit: 1,
         totalUnits,
-        homeworkDays: classDays,
-        skipDates: [],
+        homeworkDays,
+        skipDates,
       })) {
         expectedByUnit.set(s.unit, s.date);
       }
@@ -410,7 +380,8 @@ export async function listUnitProgressByStudent(
       cover_image_url: hb?.cover_image_url ?? null,
       total_units: totalUnits,
       source: "class" as const,
-      hasSchedule: !!startDate && classDays.length > 0,
+      hasSchedule: !!startDate && homeworkDays.length > 0,
+      homeworkDays,
       units,
     };
   });

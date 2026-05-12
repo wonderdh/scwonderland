@@ -503,22 +503,28 @@ export type Database = {
       class_homework_books: {
         Row: {
           class_id: string
+          homework_days: number[]
           id: string
           note: string | null
+          skip_dates: string[]
           start_date: string | null
           textbook_id: string
         }
         Insert: {
           class_id: string
+          homework_days?: number[]
           id?: string
           note?: string | null
+          skip_dates?: string[]
           start_date?: string | null
           textbook_id: string
         }
         Update: {
           class_id?: string
+          homework_days?: number[]
           id?: string
           note?: string | null
+          skip_dates?: string[]
           start_date?: string | null
           textbook_id?: string
         }

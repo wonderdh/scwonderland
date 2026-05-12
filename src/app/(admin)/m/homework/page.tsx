@@ -19,7 +19,7 @@ export default async function MobileHomeworkPage({
 
   const initialData = initialClassId
     ? await listClassUnitProgressDetailed(initialClassId)
-    : { students: [], byStudent: {}, classDays: [] };
+    : { students: [], byStudent: {} };
 
   return (
     <div className="flex flex-col min-h-screen">

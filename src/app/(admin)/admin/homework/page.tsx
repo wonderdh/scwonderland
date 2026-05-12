@@ -5,6 +5,7 @@ import {
   listPublishers,
   listClassesForHomeworkPicker,
   listClassUnitProgressDetailed,
+  listClassTextbooks,
 } from "../actions";
 import { PageHeader } from "@/components/navigation/PageHeader";
 import { TextbooksPageClient } from "./_components/TextbooksPageClient";
@@ -16,7 +17,9 @@ export default async function AdminTextbooksPage({
   searchParams: Promise<{ tab?: string; class?: string }>;
 }) {
   const params = await searchParams;
-  const tab = params.tab ?? "textbooks";
+  // 레거시 "check" URL 도 새 "class" 탭으로 흡수
+  const rawTab = params.tab ?? "textbooks";
+  const tab = rawTab === "check" ? "class" : rawTab;
 
   const [textbooks, activeSeriesList, allSeriesList, activePublishers, classList] =
     await Promise.all([
@@ -29,17 +32,21 @@ export default async function AdminTextbooksPage({
 
   const classOptions = classList;
   const initialClassId =
-    tab === "check"
+    tab === "class"
       ? params.class && classOptions.find((c) => c.id === params.class)
         ? params.class
         : classOptions[0]?.id ?? null
       : null;
 
-  // 체크 탭일 때만 초기 데이터 미리 로드 (다른 탭 진입 시 비용 절감)
+  // 통합 탭일 때만 초기 데이터 미리 로드
   const initialCheckData =
-    tab === "check" && initialClassId
+    tab === "class" && initialClassId
       ? await listClassUnitProgressDetailed(initialClassId)
-      : { students: [], byStudent: {}, classDays: [] };
+      : { students: [], byStudent: {} };
+  const initialAssignments =
+    tab === "class" && initialClassId
+      ? await listClassTextbooks(initialClassId)
+      : [];
 
   return (
     <div className="flex flex-1 min-w-0 flex-col p-6 md:p-8">
@@ -59,6 +66,8 @@ export default async function AdminTextbooksPage({
           checkClasses={classOptions}
           checkInitialClassId={initialClassId}
           checkInitialData={initialCheckData}
+          classInitialAssignments={initialAssignments}
+          classAllTextbooks={textbooks}
         />
       </Suspense>
     </div>
