@@ -222,20 +222,20 @@ function TextbookCard({
     >
       {/* 비활성 배지 */}
       {!textbook.is_active && (
-        <div className="absolute top-2 left-2 z-10 rounded-full bg-slate-400 px-2 py-0.5 text-xs font-semibold text-white">
+        <div className="absolute top-1.5 left-1.5 z-10 rounded-full bg-slate-400 px-1.5 py-0.5 text-[10px] font-semibold text-white">
           비활성
         </div>
       )}
 
       {/* 우상단 메뉴 */}
-      <div className="absolute top-2 right-2 z-10">
+      <div className="absolute top-1.5 right-1.5 z-10">
         <button
           type="button"
           onClick={() => setMenuOpen((o) => !o)}
-          className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/80 text-slate-500 hover:bg-slate-100 shadow-sm"
+          className="flex h-6 w-6 items-center justify-center rounded-md bg-white/85 text-slate-500 hover:bg-slate-100 shadow-sm"
           aria-label="메뉴"
         >
-          <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+          <svg className="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 24 24">
             <circle cx="12" cy="5" r="1.5" />
             <circle cx="12" cy="12" r="1.5" />
             <circle cx="12" cy="19" r="1.5" />
@@ -267,19 +267,19 @@ function TextbookCard({
         )}
       </div>
 
-      {/* Cover */}
-      <div className="flex h-40 items-center justify-center rounded-t-xl bg-slate-100 overflow-hidden">
+      {/* Cover — 책 비율 (3:4) */}
+      <div className="relative flex aspect-[3/4] items-center justify-center rounded-t-xl bg-slate-100 overflow-hidden">
         {textbook.cover_image_url ? (
           <Image
             src={textbook.cover_image_url}
             alt={textbook.title}
-            width={160}
-            height={160}
-            className="h-full w-full object-cover"
+            fill
+            sizes="(max-width: 640px) 33vw, (max-width: 1024px) 20vw, 14vw"
+            className="object-cover"
           />
         ) : (
           <svg
-            className="h-16 w-16 text-slate-300"
+            className="h-10 w-10 text-slate-300"
             fill="none"
             viewBox="0 0 24 24"
             strokeWidth={1}
@@ -294,19 +294,21 @@ function TextbookCard({
         )}
       </div>
 
-      {/* Info — 시리즈(타이틀) + 레벨 한 줄, 그 아래 units 배지 */}
-      <div className="p-3 space-y-1.5">
-        <h3 className="flex items-baseline gap-2 font-semibold text-sm text-slate-900 leading-snug">
-          <span className="truncate">{seriesDisplay ?? textbook.title}</span>
+      {/* Info — level 우선, 시리즈는 작게 보조 */}
+      <div className="px-2 py-1.5">
+        <div className="flex items-baseline justify-between gap-1">
           {textbook.level && (
-            <span className="shrink-0 text-sm font-semibold text-emerald-600">{textbook.level}</span>
+            <span className="truncate text-xs font-semibold text-emerald-600">
+              {textbook.level}
+            </span>
           )}
-        </h3>
-        <div className="flex flex-wrap gap-1">
-          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
-            {textbook.total_units} units
+          <span className="shrink-0 text-[10px] text-slate-400">
+            {textbook.total_units}u
           </span>
         </div>
+        <p className="truncate text-[11px] text-slate-500 leading-tight">
+          {seriesDisplay ?? textbook.title}
+        </p>
       </div>
     </div>
   );
@@ -408,7 +410,7 @@ export function TextbooksManager({
           {searchQuery || seriesFilter ? "검색 결과가 없습니다." : "등록된 숙제가 없습니다. 숙제를 추가하세요."}
         </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-3">
           {filtered.map((textbook) => (
             <TextbookCard
               key={textbook.id}
