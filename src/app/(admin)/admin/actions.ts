@@ -34,6 +34,7 @@ export {
 
 export {
   listClassesWithDetails,
+  listClassesForHomeworkPicker,
   getClassWithStudents,
   getStudentClasses,
   getAllClassStudentsFlat,
@@ -48,6 +49,8 @@ export {
   listStudentsNotInClass,
   listClassesWithStudentIds,
 } from "./actions/class-actions";
+
+export type { HomeworkClassPickerOption } from "./actions/class-actions";
 
 export {
   listNotices,

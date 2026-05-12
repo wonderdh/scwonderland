@@ -18,7 +18,7 @@ import {
 import type { StudentTextbookWithDetails } from "../../actions";
 import type { Database } from "@/lib/types/database.generated";
 
-type TextbookRow = Database["public"]["Tables"]["textbooks"]["Row"] & {
+type TextbookRow = Database["public"]["Tables"]["homework_books"]["Row"] & {
   series_name?: string | null;
 };
 
@@ -211,7 +211,9 @@ export function StudentTextbookTab({
   }
 
   const assignedTextbookIds = new Set(
-    (individualAssignments ?? []).map((a) => a.textbook_id)
+    (individualAssignments ?? [])
+      .map((a) => a.textbook_id)
+      .filter((id): id is string => !!id)
   );
 
   if (isInitialLoad) {
@@ -298,7 +300,7 @@ export function StudentTextbookTab({
                     </span>
                   )}
                   <div className="flex flex-wrap items-center gap-1">
-                    <DayBadges days={a.homework_days} />
+                    <DayBadges days={a.homework_days ?? []} />
                     {a.skip_dates && a.skip_dates.length > 0 && (
                       <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
                         예외 {a.skip_dates.length}일

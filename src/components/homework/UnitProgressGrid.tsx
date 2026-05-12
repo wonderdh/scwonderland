@@ -68,7 +68,7 @@ function statusClasses(
   editable: boolean
 ): string {
   const base =
-    "relative flex flex-col items-center justify-center min-h-12 sm:min-h-14 rounded-md border text-center transition-colors select-none";
+    "relative flex flex-col items-center justify-center min-h-9 sm:min-h-10 py-0.5 rounded-md border text-center transition-colors select-none";
   const interactive = editable
     ? "cursor-pointer active:scale-95"
     : "cursor-default";
@@ -183,13 +183,13 @@ export function UnitProgressGrid({ textbook, units, editable = false, onChange }
       </header>
 
       {/* Grid */}
-      <div className="p-3">
+      <div className="p-2">
         {optimisticUnits.length === 0 ? (
           <p className="py-6 text-center text-xs text-slate-400">
             unit 정보가 없습니다.
           </p>
         ) : (
-          <div className="grid gap-1.5 grid-cols-5 sm:grid-cols-7 md:grid-cols-10">
+          <div className="grid gap-1 grid-cols-7 sm:grid-cols-10 md:grid-cols-[repeat(15,minmax(0,1fr))]">
             {optimisticUnits.map((u) => {
               const cls = statusClasses(u.status, u.expectedDate, today, editable);
               const dateLabel = u.expectedDate ? formatMonthDay(u.expectedDate) : "—";
@@ -201,10 +201,10 @@ export function UnitProgressGrid({ textbook, units, editable = false, onChange }
 
               const inner = (
                 <>
-                  <span className="text-xs sm:text-sm font-semibold leading-none">
+                  <span className="text-[11px] sm:text-xs font-semibold leading-none">
                     U{u.unitNumber}
                   </span>
-                  <span className="mt-0.5 text-[10px] sm:text-[11px] leading-none opacity-90 tabular-nums">
+                  <span className="mt-px text-[9px] sm:text-[10px] leading-none opacity-90 tabular-nums">
                     {dateLabel}
                   </span>
                   {u.status === "completed" && (

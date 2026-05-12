@@ -45,6 +45,67 @@ async function buildClassTeacherMap(
   return result;
 }
 
+export type HomeworkClassPickerOption = {
+  id: string;
+  name: string;
+  teacherNames: string[];
+  studentNames: { ko: string | null; en: string | null }[];
+};
+
+/**
+ * 숙제 관리 페이지의 반 selector 검색용 — 반 이름 + 소속 교사/학생 이름.
+ * 클라이언트에서 substring 매칭으로 반을 검색할 수 있도록 한 번에 묶어 반환.
+ */
+export async function listClassesForHomeworkPicker(): Promise<HomeworkClassPickerOption[]> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return [];
+  const supabase = createAdminClient();
+
+  const { data: classes, error } = await supabase
+    .from("classes")
+    .select("id, name")
+    .order("name");
+  if (error || !classes?.length) {
+    if (error) logger.error("[listClassesForHomeworkPicker]", error.message);
+    return [];
+  }
+
+  const classIds = classes.map((c) => c.id);
+  const teachersByClass = await buildClassTeacherMap(supabase, classIds);
+
+  const { data: rosterRows, error: rosterErr } = await supabase
+    .from("class_students")
+    .select("class_id, students!inner(korean_name, english_name)")
+    .in("class_id", classIds)
+    .eq("is_active", true);
+  if (rosterErr) {
+    logger.error("[listClassesForHomeworkPicker roster]", rosterErr.message);
+  }
+
+  const studentsByClass = new Map<
+    string,
+    { ko: string | null; en: string | null }[]
+  >();
+  for (const row of rosterRows ?? []) {
+    const s = Array.isArray(row.students) ? row.students[0] : row.students;
+    const list = studentsByClass.get(row.class_id as string) ?? [];
+    list.push({
+      ko: (s?.korean_name as string | null) ?? null,
+      en: (s?.english_name as string | null) ?? null,
+    });
+    studentsByClass.set(row.class_id as string, list);
+  }
+
+  return classes.map((c) => ({
+    id: c.id,
+    name: c.name,
+    teacherNames: (teachersByClass.get(c.id) ?? [])
+      .map((t) => t.name ?? "")
+      .filter((n) => n.length > 0),
+    studentNames: studentsByClass.get(c.id) ?? [],
+  }));
+}
+
 export async function listClassesWithDetails(): Promise<ClassWithDetails[]> {
   const auth = await verifyAdmin();
   if ("error" in auth) return [];

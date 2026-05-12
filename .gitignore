@@ -86,3 +86,5 @@ supabase/archive/
 # typecheck/lint 출력 캐시 (로컬 진단용)
 .typecheck-output.txt
 .lint-output.txt
+# Added by code-review-graph
+.code-review-graph/

@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react";
 import type { Database } from "@/lib/types/database.generated";
 
-type TextbookRow = Database["public"]["Tables"]["textbooks"]["Row"];
+type TextbookRow = Database["public"]["Tables"]["homework_books"]["Row"];
 
 /** SeriesLevelPicker accepts either raw rows or the joined `TextbookWithSeries`. */
 export type SeriesLevelPickerTextbook = TextbookRow & {

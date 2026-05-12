@@ -12,7 +12,7 @@ import {
 } from "@/lib/supabase/storage";
 import type { Database } from "@/lib/types/database.generated";
 
-type TextbookRow = Database["public"]["Tables"]["textbooks"]["Row"];
+type TextbookRow = Database["public"]["Tables"]["homework_books"]["Row"];
 
 /** TextbookRow with joined series_name for display. */
 export type TextbookWithSeries = TextbookRow & { series_name: string | null };
@@ -26,7 +26,7 @@ export async function listTextbooks(
   if ("error" in auth) return [];
   const supabase = createAdminClient();
   let query = supabase
-    .from("textbooks")
+    .from("homework_books")
     .select("*, series:series_id(name)")
     .order("is_active", { ascending: false })
     .order("sort_order", { ascending: true })
@@ -53,7 +53,7 @@ export async function getTextbook(
   if ("error" in auth) return null;
   const supabase = createAdminClient();
   const { data, error } = await supabase
-    .from("textbooks")
+    .from("homework_books")
     .select("*")
     .eq("id", id)
     .maybeSingle();
@@ -74,7 +74,7 @@ export async function listSeriesLegacy(): Promise<string[]> {
   if ("error" in auth) return [];
   const supabase = createAdminClient();
   const { data, error } = await supabase
-    .from("textbooks")
+    .from("homework_books")
     .select("series")
     .not("series", "is", null)
     .order("series", { ascending: true });
@@ -141,7 +141,7 @@ export async function createTextbook(
 
   const supabase = createAdminClient();
   const { data, error } = await supabase
-    .from("textbooks")
+    .from("homework_books")
     .insert({ title, series, series_id, level, total_units, sort_order, cover_image_url })
     .select("id")
     .single();
@@ -196,7 +196,7 @@ export async function updateTextbook(
 
     // Delete old cover (best-effort)
     const { data: existing } = await supabase
-      .from("textbooks")
+      .from("homework_books")
       .select("cover_image_url")
       .eq("id", id)
       .maybeSingle();
@@ -221,7 +221,7 @@ export async function updateTextbook(
     cover_image_url = urlData.publicUrl;
   }
 
-  const updatePayload: Database["public"]["Tables"]["textbooks"]["Update"] = {
+  const updatePayload: Database["public"]["Tables"]["homework_books"]["Update"] = {
     title,
     series,
     series_id,
@@ -235,7 +235,7 @@ export async function updateTextbook(
     updatePayload.cover_image_url = cover_image_url;
   }
 
-  const { error } = await supabase.from("textbooks").update(updatePayload).eq("id", id);
+  const { error } = await supabase.from("homework_books").update(updatePayload).eq("id", id);
   if (error) {
     logger.error("[updateTextbook]", error.message);
     return { error: error.message };
@@ -249,7 +249,7 @@ export async function deleteTextbook(id: string): Promise<{ error?: string }> {
   if ("error" in auth) return { error: auth.error };
   const supabase = createAdminClient();
   const { error } = await supabase
-    .from("textbooks")
+    .from("homework_books")
     .update({ is_active: false, updated_at: new Date().toISOString() })
     .eq("id", id);
   if (error) {

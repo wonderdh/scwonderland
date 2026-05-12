@@ -27,7 +27,7 @@ export async function getReportCard(
   if (!student) return null;
   const { data, error } = await supabase
     .from("report_cards")
-    .select("id, student_id, year, month, author_id, content_en, content_ko, reply_ko, reply_en, created_at, updated_at")
+    .select("id, student_id, year, month, teacher_id, content_en, content_ko, reply_ko, reply_en, created_at, updated_at")
     .eq("student_id", student.id)
     .eq("year", year)
     .eq("month", month)
@@ -39,11 +39,11 @@ export async function getReportCard(
   if (!data) return null;
 
   let author_name: string | null = null;
-  if (data.author_id) {
+  if (data.teacher_id) {
     const { data: teacher } = await admin
       .from("teachers")
       .select("name")
-      .eq("id", data.author_id)
+      .eq("id", data.teacher_id)
       .maybeSingle();
     author_name = teacher?.name ?? null;
   }
@@ -72,7 +72,7 @@ export async function listReportCardsByStudent(
   return (data ?? []) as ReportCardListItem[];
 }
 
-/** 리포트카드 본문 작성/수정. 선생 또는 admin만 가능. author_id는 현재 로그인 사용자. */
+/** 리포트카드 본문 작성/수정. 선생 또는 admin만 가능. teacher_id는 현재 로그인 사용자. */
 // @auth-skip: getUser + profiles.role + teachers.teacher_type(native) + 담당반 membership 수동 검증
 export async function upsertReportCard(
   studentProfileId: string,
@@ -148,7 +148,7 @@ export async function upsertReportCard(
       student_id: student.id,
       year: y,
       month: m,
-      author_id: user.id,
+      teacher_id: user.id,
       content_en: trimmedContent,
       content_ko,
       updated_at: new Date().toISOString(),
@@ -165,7 +165,7 @@ export async function upsertReportCard(
 }
 
 /** 리포트카드 삭제. 작성한 선생(native) 또는 admin만 가능. */
-// @auth-skip: getUser + profiles.role + teacher_type(native) + author_id === user.id 수동 검증
+// @auth-skip: getUser + profiles.role + teacher_type(native) + teacher_id === user.id 수동 검증
 export async function deleteReportCard(
   reportCardId: string
 ): Promise<{ error?: string }> {
@@ -191,11 +191,11 @@ export async function deleteReportCard(
     // 본인이 작성한 리포트만 삭제 가능
     const { data: report } = await admin
       .from("report_cards")
-      .select("author_id")
+      .select("teacher_id")
       .eq("id", reportCardId)
       .single();
     if (!report) return { error: "리포트카드를 찾을 수 없습니다." };
-    if (report.author_id !== user.id) {
+    if (report.teacher_id !== user.id) {
       return { error: "본인이 작성한 리포트카드만 삭제할 수 있습니다." };
     }
   }
@@ -402,7 +402,7 @@ export async function translateReportCard(
 
   const { data: row } = await admin
     .from("report_cards")
-    .select("content_en, reply_ko, student_id, author_id")
+    .select("content_en, reply_ko, student_id, teacher_id")
     .eq("id", reportCardId)
     .single();
 
@@ -411,8 +411,8 @@ export async function translateReportCard(
   // 학생·교사 이름 조회 (번역 시 이름 보존)
   const [studentRows, teacherRow] = await Promise.all([
     getStudentsByIds(admin, [row.student_id]),
-    row.author_id
-      ? admin.from("teachers").select("name").eq("id", row.author_id).maybeSingle()
+    row.teacher_id
+      ? admin.from("teachers").select("name").eq("id", row.teacher_id).maybeSingle()
       : Promise.resolve({ data: null }),
   ]);
   const studentRow = studentRows.get(row.student_id);

@@ -18,35 +18,24 @@ import { todayKst, KST_DAY_LABELS } from "@/lib/utils/date-kst";
 import { ymdToKstWeekday } from "@/lib/utils/homework-schedule";
 import { ClassUnitProgressList } from "@/components/homework/ClassUnitProgressList";
 
-// 월~금 only (DB weekday: 1=월 … 5=금)
-const WEEKDAY_LABELS = ["월", "화", "수", "목", "금"];
-const DB_WEEKDAYS = [1, 2, 3, 4, 5];
-
 // ── Schedule Modal ───────────────────────────────────────────────────────────
-// 한국 교사가 반 숙제의 숙제 일정을 설정하는 모달
+// 한국 교사가 반 숙제의 시작일을 설정. 숙제 요일은 class_schedules 에서 derive.
 
 function EditDaysModal({
   assignment,
+  classDays,
   onClose,
   onSaved,
 }: {
   assignment: ClassTextbookWithDetails;
+  classDays: number[];
   onClose: () => void;
   onSaved: () => void;
 }) {
   const [isPending, startTransition] = useTransition();
 
-  const initialDays = new Set(
-    (assignment.homework_days ?? []).filter((d) => d >= 1 && d <= 5)
-  );
-  const [selectedDays, setSelectedDays] = useState<Set<number>>(initialDays);
   const [note, setNote] = useState(assignment.note ?? "");
-  const [skipDates, setSkipDates] = useState<string[]>(
-    assignment.skip_dates ?? []
-  );
-  const [dateDraft, setDateDraft] = useState("");
   const [startDate, setStartDate] = useState(assignment.start_date ?? "");
-  const [startUnit, setStartUnit] = useState(assignment.start_unit ?? 1);
   const [formError, setFormError] = useState<string | null>(null);
 
   const today = todayKst();
@@ -60,25 +49,16 @@ function EditDaysModal({
         })()
       : false;
 
-  function toggleDay(d: number) {
-    setSelectedDays((prev) => {
-      const next = new Set(prev);
-      if (next.has(d)) next.delete(d);
-      else next.add(d);
-      return next;
-    });
-  }
-
   const preview = useMemo(() => {
-    if (!startDate || startDateWeekend || selectedDays.size === 0) return [];
+    if (!startDate || startDateWeekend || classDays.length === 0) return [];
     return getUnitSchedule({
       startDate,
-      startUnit,
+      startUnit: 1,
       totalUnits,
-      homeworkDays: [...selectedDays],
-      skipDates,
+      homeworkDays: classDays,
+      skipDates: [],
     }).slice(0, 7);
-  }, [startDate, startDateWeekend, startUnit, totalUnits, selectedDays, skipDates]);
+  }, [startDate, startDateWeekend, totalUnits, classDays]);
 
   const MONTH_LABELS = [
     "1월", "2월", "3월", "4월", "5월", "6월", "7월", "8월", "9월", "10월", "11월", "12월",
@@ -98,11 +78,8 @@ function EditDaysModal({
     setFormError(null);
     startTransition(async () => {
       const result = await updateClassTextbookDays(assignment.id, {
-        homeworkDays: [...selectedDays],
-        skipDates,
         note: note || null,
         startDate: startDate || null,
-        startUnit,
       });
       if (result.error) {
         setFormError(result.error);
@@ -152,95 +129,24 @@ function EditDaysModal({
 
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1.5">
-              시작 Unit
+              숙제 요일 (반 시간표 기반)
             </label>
-            <input
-              type="number"
-              value={startUnit}
-              min={1}
-              max={totalUnits > 0 ? totalUnits : undefined}
-              onChange={(e) => setStartUnit(Math.max(1, Number(e.target.value)))}
-              disabled={isPending}
-              className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">
-              숙제 요일 (월~금)
-            </label>
-            <div className="flex gap-2">
-              {WEEKDAY_LABELS.map((label, idx) => {
-                const dbDay = DB_WEEKDAYS[idx];
-                return (
-                  <button
-                    key={dbDay}
-                    type="button"
-                    onClick={() => toggleDay(dbDay)}
-                    disabled={isPending}
-                    className={`flex h-9 w-9 items-center justify-center rounded-lg text-sm font-medium border transition-colors ${
-                      selectedDays.has(dbDay)
-                        ? "bg-orange-500 text-white border-orange-500"
-                        : "bg-white text-slate-600 border-slate-300 hover:border-orange-300"
-                    }`}
+            {classDays.length === 0 ? (
+              <p className="text-xs text-slate-500">
+                반에 등록된 수업 요일이 없습니다. 반 시간표를 먼저 설정하세요.
+              </p>
+            ) : (
+              <div className="flex flex-wrap gap-1.5">
+                {classDays.map((d) => (
+                  <span
+                    key={d}
+                    className="inline-flex items-center justify-center rounded-full bg-orange-100 px-2.5 py-0.5 text-xs font-semibold text-orange-700"
                   >
-                    {label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">
-              쉬는 날 (예외)
-            </label>
-            <div className="flex gap-2 items-center">
-              <input
-                type="date"
-                value={dateDraft}
-                onChange={(e) => setDateDraft(e.target.value)}
-                disabled={isPending}
-                className="h-9 rounded-md border border-input bg-background px-3 text-sm"
-              />
-              <button
-                type="button"
-                onClick={() => {
-                  if (dateDraft && !skipDates.includes(dateDraft)) {
-                    setSkipDates([...skipDates, dateDraft].sort());
-                  }
-                  setDateDraft("");
-                }}
-                disabled={isPending || !dateDraft}
-                className="rounded-md bg-slate-100 px-3 py-1.5 text-sm font-medium hover:bg-slate-200 disabled:opacity-50"
-              >
-                추가
-              </button>
-            </div>
-            <div className="flex flex-wrap gap-1.5 mt-2">
-              {skipDates.map((d) => (
-                <span
-                  key={d}
-                  className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700"
-                >
-                  {d}
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setSkipDates(skipDates.filter((x) => x !== d))
-                    }
-                    disabled={isPending}
-                    className="hover:text-amber-900"
-                    aria-label={`${d} 제거`}
-                  >
-                    ×
-                  </button>
-                </span>
-              ))}
-              {skipDates.length === 0 && (
-                <span className="text-xs text-slate-400">쉬는 날 없음</span>
-              )}
-            </div>
+                    {KST_DAY_LABELS[d]}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
 
           <div>
@@ -375,41 +281,29 @@ export function TeacherTextbooksClient({
               숙제 일정 설정
             </h2>
             <span className="text-xs text-slate-400">
-              한국 교사 — 시작 날짜 / Unit / 요일 / 쉬는 날 설정
+              한국 교사 — 시작 날짜 설정 (요일은 반 시간표 기반)
             </span>
           </div>
           <div className="flex flex-wrap gap-2">
-            {classTextbooks.map((ct) => {
-              const dayBadges = (ct.homework_days ?? [])
-                .map((d) => KST_DAY_LABELS[d])
-                .join(",");
-              return (
-                <button
-                  key={ct.id}
-                  type="button"
-                  onClick={() => setEditTarget(ct)}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-orange-200 bg-orange-50 px-3 py-1.5 text-xs font-medium text-orange-800 hover:bg-orange-100 transition-colors"
-                >
-                  <span className="font-semibold">{ct.title}</span>
-                  {ct.start_date && (
-                    <span className="text-orange-600">
-                      {ct.start_date} U{ct.start_unit ?? 1}+
-                    </span>
-                  )}
-                  {dayBadges && (
-                    <span className="rounded bg-white/70 px-1 py-0 text-[10px]">
-                      {dayBadges}
-                    </span>
-                  )}
-                  {ct.skip_dates && ct.skip_dates.length > 0 && (
-                    <span className="rounded bg-amber-100 text-amber-800 px-1 py-0 text-[10px]">
-                      예외 {ct.skip_dates.length}
-                    </span>
-                  )}
-                  <span className="text-orange-500">✎</span>
-                </button>
-              );
-            })}
+            {classTextbooks.map((ct) => (
+              <button
+                key={ct.id}
+                type="button"
+                onClick={() => setEditTarget(ct)}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-orange-200 bg-orange-50 px-3 py-1.5 text-xs font-medium text-orange-800 hover:bg-orange-100 transition-colors"
+              >
+                <span className="font-semibold">{ct.title}</span>
+                {ct.start_date && (
+                  <span className="text-orange-600">시작 {ct.start_date}</span>
+                )}
+                {data.classDays.length > 0 && (
+                  <span className="rounded bg-white/70 px-1 py-0 text-[10px]">
+                    {data.classDays.map((d) => KST_DAY_LABELS[d]).join(",")}
+                  </span>
+                )}
+                <span className="text-orange-500">✎</span>
+              </button>
+            ))}
           </div>
         </section>
       )}
@@ -432,6 +326,7 @@ export function TeacherTextbooksClient({
       {editTarget && (
         <EditDaysModal
           assignment={editTarget}
+          classDays={data.classDays}
           onClose={() => setEditTarget(null)}
           onSaved={() => router.refresh()}
         />

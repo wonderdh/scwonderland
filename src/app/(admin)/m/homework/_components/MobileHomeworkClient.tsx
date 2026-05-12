@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
@@ -9,11 +9,21 @@ import {
 } from "@/app/(admin)/admin/actions";
 import type {
   ClassUnitProgressDetailed,
+  HomeworkClassPickerOption,
   UnitStatus,
 } from "@/app/(admin)/admin/actions";
 import { ClassUnitProgressList } from "@/components/homework/ClassUnitProgressList";
 
-type ClassOption = { id: string; name: string };
+type ClassOption = HomeworkClassPickerOption;
+
+function buildSearchHaystack(c: ClassOption): string {
+  const parts = [
+    c.name,
+    ...c.teacherNames,
+    ...c.studentNames.flatMap((s) => [s.ko ?? "", s.en ?? ""]),
+  ];
+  return parts.join(" ").toLowerCase();
+}
 
 type Props = {
   classes: ClassOption[];
@@ -32,6 +42,22 @@ export function MobileHomeworkClient({
   );
   const [data, setData] = useState<ClassUnitProgressDetailed>(initialData);
   const [isPending, startTransition] = useTransition();
+  const [search, setSearch] = useState("");
+
+  const haystacks = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const c of classes) m.set(c.id, buildSearchHaystack(c));
+    return m;
+  }, [classes]);
+
+  const filteredClasses = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return classes;
+    return classes.filter((c) => {
+      if (c.id === selectedClassId) return true; // 선택된 반은 항상 노출 유지
+      return (haystacks.get(c.id) ?? "").includes(q);
+    });
+  }, [classes, search, selectedClassId, haystacks]);
 
   function handleClassChange(classId: string) {
     setSelectedClassId(classId);
@@ -107,22 +133,33 @@ export function MobileHomeworkClient({
 
   return (
     <div className="space-y-4">
-      {/* 모바일: 반 select dropdown (chips 보다 공간 효율 ↑) */}
-      <div>
-        <label className="block text-xs font-medium text-slate-600 mb-1.5">
+      {/* 모바일: 검색 + 반 select dropdown */}
+      <div className="space-y-2">
+        <label className="block text-xs font-medium text-slate-600">
           반 선택
         </label>
+        <input
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="반 / 학생 한글·영어 / 선생님 검색"
+          className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm placeholder:text-slate-400"
+        />
         <select
           value={selectedClassId ?? ""}
           onChange={(e) => handleClassChange(e.target.value)}
-          disabled={isPending}
+          disabled={isPending || filteredClasses.length === 0}
           className="h-11 w-full rounded-lg border border-input bg-background px-3 text-base disabled:opacity-50"
         >
-          {classes.map((cls) => (
-            <option key={cls.id} value={cls.id}>
-              {cls.name}
-            </option>
-          ))}
+          {filteredClasses.length === 0 ? (
+            <option value="">검색 결과 없음</option>
+          ) : (
+            filteredClasses.map((cls) => (
+              <option key={cls.id} value={cls.id}>
+                {cls.name}
+              </option>
+            ))
+          )}
         </select>
       </div>
 

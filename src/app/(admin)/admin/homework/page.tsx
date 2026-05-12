@@ -3,7 +3,7 @@ import {
   listSeries,
   listAllSeries,
   listPublishers,
-  listClassesWithDetails,
+  listClassesForHomeworkPicker,
   listClassUnitProgressDetailed,
 } from "../actions";
 import { PageHeader } from "@/components/navigation/PageHeader";
@@ -24,10 +24,10 @@ export default async function AdminTextbooksPage({
       listSeries({ activeOnly: true }),
       listAllSeries(),
       listPublishers({ activeOnly: true }),
-      listClassesWithDetails(),
+      listClassesForHomeworkPicker(),
     ]);
 
-  const classOptions = classList.map((c) => ({ id: c.id, name: c.name }));
+  const classOptions = classList;
   const initialClassId =
     tab === "check"
       ? params.class && classOptions.find((c) => c.id === params.class)
@@ -39,7 +39,7 @@ export default async function AdminTextbooksPage({
   const initialCheckData =
     tab === "check" && initialClassId
       ? await listClassUnitProgressDetailed(initialClassId)
-      : { students: [], byStudent: {} };
+      : { students: [], byStudent: {}, classDays: [] };
 
   return (
     <div className="flex flex-1 min-w-0 flex-col p-6 md:p-8">

@@ -9,10 +9,11 @@ import type {
   TextbookWithSeries,
   SeriesWithPublisher,
   ClassUnitProgressDetailed,
+  HomeworkClassPickerOption,
 } from "../../actions";
 
 type PublisherOption = { id: string; name: string };
-type ClassOption = { id: string; name: string };
+type ClassOption = HomeworkClassPickerOption;
 
 type TabId = "textbooks" | "series" | "check";
 

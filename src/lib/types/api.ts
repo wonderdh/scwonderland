@@ -453,7 +453,6 @@ export type ClassTextbook = {
   textbook_level: string | null;
   textbook_category: string;
   total_units: number;
-  assigned_at: string;
 };
 
 export type StudentTextbookProgress = {
@@ -472,7 +471,6 @@ export type StudentTextbookProgress = {
   source_class_name: string | null;
   status: "not_started" | "in_progress" | "completed";
   completed_units: number;
-  assigned_at: string | null;
   started_at: string | null;
   completed_at: string | null;
   note: string | null;

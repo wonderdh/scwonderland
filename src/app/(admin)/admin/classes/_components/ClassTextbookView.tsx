@@ -7,7 +7,7 @@ import type { ClassWithDetails } from "@/lib/types";
 import type { ClassTextbookWithDetails } from "../../actions";
 import type { Database } from "@/lib/types/database.generated";
 
-type TextbookRow = Database["public"]["Tables"]["textbooks"]["Row"];
+type TextbookRow = Database["public"]["Tables"]["homework_books"]["Row"];
 
 export function ClassTextbookView({
   classes,

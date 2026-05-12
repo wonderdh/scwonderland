@@ -3,6 +3,12 @@
     "supabase": {
       "type": "http",
       "url": "https://mcp.supabase.com/mcp"
+    },
+    "code-review-graph": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": ["code-review-graph", "serve"],
+      "cwd": "C:\\scwonderland"
     }
   }
 }

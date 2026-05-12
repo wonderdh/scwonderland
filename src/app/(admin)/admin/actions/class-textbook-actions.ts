@@ -4,25 +4,34 @@ import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { verifyAdmin, verifyAuthenticated, verifyTeacherOrAdmin } from "./auth-helpers";
 import { logger } from "@/lib/server/logger";
-import {
-  getStudentMonthSchedule,
-  type StudentDayUnits,
-} from "@/lib/utils/homework-schedule";
 import type { Database } from "@/lib/types/database.generated";
 
-type ClassTextbookRow = Database["public"]["Tables"]["class_textbooks"]["Row"];
-type StudentTextbookRow = Database["public"]["Tables"]["student_textbooks"]["Row"];
+type ClassHomeworkBookRow =
+  Database["public"]["Tables"]["class_homework_books"]["Row"];
+type StudentHomeworkBookRow =
+  Database["public"]["Tables"]["student_homework_books"]["Row"];
 
-export type ClassTextbookWithDetails = ClassTextbookRow & {
+export type ClassTextbookWithDetails = ClassHomeworkBookRow & {
   title: string;
   series: string | null;
   publisher: string | null;
   cover_image_url: string | null;
   total_units: number;
+  // Deprecated: 20260515 마이그레이션에서 컬럼 제거됨. 옛 UI 호환용 optional 유지.
+  homework_days?: number[] | null;
+  skip_dates?: string[] | null;
+  start_unit?: number | null;
 };
-// skip_dates 는 ClassTextbookRow 에 이미 포함됨 (string[] / date[] -> string[]).
 
-export type StudentTextbookWithDetails = StudentTextbookRow & {
+export type StudentTextbookWithDetails = StudentHomeworkBookRow & {
+  // class_students 를 통한 derived 컬럼 — UI 호환용
+  student_id?: string | null;
+  textbook_id?: string | null;
+  // Deprecated (20260516 부터 컬럼 없음, 옛 UI 호환용 optional)
+  note?: string | null;
+  homework_days?: number[] | null;
+  skip_dates?: string[] | null;
+  start_unit?: number | null;
   title: string;
   series: string | null;
   publisher: string | null;
@@ -38,9 +47,7 @@ const REVALIDATE_PATHS = [
 ] as const;
 
 function revalidateAll() {
-  for (const path of REVALIDATE_PATHS) {
-    revalidatePath(path);
-  }
+  for (const path of REVALIDATE_PATHS) revalidatePath(path);
 }
 
 async function assertKoreanTeacherOrAdmin(
@@ -60,44 +67,10 @@ async function assertKoreanTeacherOrAdmin(
   return {};
 }
 
-function parseHomeworkDays(raw: string | null): number[] {
-  if (!raw) return [];
-  return raw
-    .split(",")
-    .map((s) => parseInt(s.trim(), 10))
-    .filter((n) => !isNaN(n) && n >= 0 && n <= 6);
-}
-
-const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
-
-function validateSkipDates(dates: string[]): { ok: true; value: string[] } | { ok: false; error: string } {
-  const cleaned: string[] = [];
-  for (const d of dates) {
-    const trimmed = d.trim();
-    if (!ISO_DATE.test(trimmed)) {
-      return { ok: false, error: `날짜 형식이 올바르지 않습니다: ${d}` };
-    }
-    if (!cleaned.includes(trimmed)) cleaned.push(trimmed);
-  }
-  cleaned.sort();
-  return { ok: true, value: cleaned };
-}
-
-type DaysPayload = {
-  homeworkDays?: number[];
-  skipDates?: string[];
-  note?: string | null;
-  /** 숙제 일정 시작일 (YYYY-MM-DD). null 명시 시 schedule 비활성. */
-  startDate?: string | null;
-  /** 시작 unit (≥1). default 1. */
-  startUnit?: number;
-};
-
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 function validateStartDate(s: string): { ok: true; value: string } | { ok: false; error: string } {
   if (!ISO_DATE_RE.test(s)) return { ok: false, error: "시작 날짜 형식이 올바르지 않습니다." };
-  // 토(6)/일(0) 거부
   const [y, m, d] = s.split("-").map(Number);
   const wd = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
   if (wd === 0 || wd === 6) {
@@ -105,6 +78,12 @@ function validateStartDate(s: string): { ok: true; value: string } | { ok: false
   }
   return { ok: true, value: s };
 }
+
+type DaysPayload = {
+  note?: string | null;
+  /** 숙제 일정 시작일 (YYYY-MM-DD). null 명시 시 schedule 비활성. */
+  startDate?: string | null;
+};
 
 // ── 반별 숙제 ──
 
@@ -115,28 +94,23 @@ export async function listClassTextbooks(
   if ("error" in auth) return [];
   const supabase = createAdminClient();
   const { data, error } = await supabase
-    .from("class_textbooks")
+    .from("class_homework_books")
     .select(
-      "id, class_id, textbook_id, homework_days, skip_dates, start_date, start_unit, assigned_by, assigned_at, note, textbooks(title, series, publisher, cover_image_url, total_units)"
+      "id, class_id, textbook_id, start_date, note, homework_books(title, series, publisher, cover_image_url, total_units)"
     )
     .eq("class_id", classId)
-    .order("assigned_at", { ascending: true });
+    .order("id", { ascending: true });
   if (error) {
     logger.error("[listClassTextbooks]", error.message);
     return [];
   }
   return (data ?? []).map((row) => {
-    const tb = Array.isArray(row.textbooks) ? row.textbooks[0] : row.textbooks;
+    const tb = Array.isArray(row.homework_books) ? row.homework_books[0] : row.homework_books;
     return {
       id: row.id,
       class_id: row.class_id,
       textbook_id: row.textbook_id,
-      homework_days: row.homework_days,
-      skip_dates: row.skip_dates ?? [],
       start_date: row.start_date ?? null,
-      start_unit: row.start_unit ?? 1,
-      assigned_by: row.assigned_by,
-      assigned_at: row.assigned_at,
       note: row.note,
       title: tb?.title ?? "",
       series: tb?.series ?? null,
@@ -150,26 +124,21 @@ export async function listClassTextbooks(
 export async function assignClassTextbook(
   formData: FormData
 ): Promise<{ error?: string; id?: string }> {
-  // 부여 권한: 관리자만. 한국 교사는 요일 수정만 가능 (academy/teacher 에서 updateClassTextbookDays 사용)
   const auth = await verifyAdmin();
   if ("error" in auth) return { error: auth.error };
 
   const classId = (formData.get("classId") as string)?.trim();
   const textbookId = (formData.get("textbookId") as string)?.trim();
-  // 부여 시 요일은 비어있음. 한국 교사가 academy/teacher 에서 나중에 설정.
-  const homeworkDays = parseHomeworkDays(formData.get("homeworkDays") as string);
   const note = (formData.get("note") as string)?.trim() || null;
 
   if (!classId || !textbookId) return { error: "반과 숙제를 선택해 주세요." };
 
   const supabase = createAdminClient();
   const { data, error } = await supabase
-    .from("class_textbooks")
+    .from("class_homework_books")
     .insert({
       class_id: classId,
       textbook_id: textbookId,
-      homework_days: homeworkDays,
-      assigned_by: auth.userId,
       note,
     })
     .select("id")
@@ -195,18 +164,8 @@ export async function updateClassTextbookDays(
   const guard = await assertKoreanTeacherOrAdmin(auth.userId, auth.role);
   if (guard.error) return { error: guard.error };
 
-  const update: Database["public"]["Tables"]["class_textbooks"]["Update"] = {};
-  if (payload.homeworkDays !== undefined) {
-    update.homework_days = payload.homeworkDays.filter((n) => n >= 0 && n <= 6);
-  }
-  if (payload.skipDates !== undefined) {
-    const v = validateSkipDates(payload.skipDates);
-    if (!v.ok) return { error: v.error };
-    update.skip_dates = v.value;
-  }
-  if (payload.note !== undefined) {
-    update.note = payload.note ?? null;
-  }
+  const update: Database["public"]["Tables"]["class_homework_books"]["Update"] = {};
+  if (payload.note !== undefined) update.note = payload.note ?? null;
   if (payload.startDate !== undefined) {
     if (payload.startDate === null) {
       update.start_date = null;
@@ -216,15 +175,11 @@ export async function updateClassTextbookDays(
       update.start_date = v.value;
     }
   }
-  if (payload.startUnit !== undefined) {
-    if (payload.startUnit < 1) return { error: "시작 unit 은 1 이상이어야 합니다." };
-    update.start_unit = payload.startUnit;
-  }
   if (Object.keys(update).length === 0) return {};
 
   const supabase = createAdminClient();
   const { error } = await supabase
-    .from("class_textbooks")
+    .from("class_homework_books")
     .update(update)
     .eq("id", id);
   if (error) {
@@ -236,12 +191,11 @@ export async function updateClassTextbookDays(
 }
 
 export async function unassignClassTextbook(id: string): Promise<{ error?: string }> {
-  // 제거 권한: 관리자만
   const auth = await verifyAdmin();
   if ("error" in auth) return { error: auth.error };
 
   const supabase = createAdminClient();
-  const { error } = await supabase.from("class_textbooks").delete().eq("id", id);
+  const { error } = await supabase.from("class_homework_books").delete().eq("id", id);
   if (error) {
     logger.error("[unassignClassTextbook]", error.message);
     return { error: error.message };
@@ -259,74 +213,49 @@ export async function listStudentTextbooks(
   if ("error" in auth) return [];
   const supabase = createAdminClient();
   const { data, error } = await supabase
-    .from("student_textbooks")
+    .from("student_homework_books")
     .select(
-      "id, student_id, textbook_id, homework_days, skip_dates, start_date, start_unit, assigned_by, assigned_at, note, textbooks(title, series, publisher, cover_image_url, total_units)"
+      "id, class_student_id, class_homework_book_id, start_date, class_students!inner(student_id), class_homework_books(textbook_id, homework_books(title, series, publisher, cover_image_url, total_units))"
     )
-    .eq("student_id", studentId)
-    .order("assigned_at", { ascending: true });
+    .eq("class_students.student_id", studentId)
+    .order("id", { ascending: true });
   if (error) {
     logger.error("[listStudentTextbooks]", error.message);
     return [];
   }
   return (data ?? []).map((row) => {
-    const tb = Array.isArray(row.textbooks) ? row.textbooks[0] : row.textbooks;
+    const chb = Array.isArray(row.class_homework_books)
+      ? row.class_homework_books[0]
+      : row.class_homework_books;
+    const tb = chb && chb.homework_books
+      ? (Array.isArray(chb.homework_books) ? chb.homework_books[0] : chb.homework_books)
+      : null;
+    const cs = Array.isArray(row.class_students)
+      ? row.class_students[0]
+      : row.class_students;
     return {
       id: row.id,
-      student_id: row.student_id,
-      textbook_id: row.textbook_id,
-      homework_days: row.homework_days,
-      skip_dates: row.skip_dates ?? [],
+      student_id: cs?.student_id ?? null,
+      class_student_id: row.class_student_id,
+      class_homework_book_id: row.class_homework_book_id,
+      textbook_id: chb?.textbook_id ?? null,
       start_date: row.start_date ?? null,
-      start_unit: row.start_unit ?? 1,
-      assigned_by: row.assigned_by,
-      assigned_at: row.assigned_at,
-      note: row.note,
+      note: null,
       title: tb?.title ?? "",
       series: tb?.series ?? null,
       publisher: tb?.publisher ?? null,
       cover_image_url: tb?.cover_image_url ?? null,
       total_units: tb?.total_units ?? 0,
-    };
+    } as StudentTextbookWithDetails;
   });
 }
 
+// 새 스키마: student_homework_books 는 class_homework_books 의 instance.
+// 개별 학생 직접 부여 flow 는 trigger 자동 시드로 대체되어 수동 assign 은 비활성.
 export async function assignStudentTextbook(
-  formData: FormData
+  _formData: FormData
 ): Promise<{ error?: string; id?: string }> {
-  // 부여 권한: 관리자만. 한국 교사는 요일 수정만 가능.
-  const auth = await verifyAdmin();
-  if ("error" in auth) return { error: auth.error };
-
-  const studentId = (formData.get("studentId") as string)?.trim();
-  const textbookId = (formData.get("textbookId") as string)?.trim();
-  // 부여 시 요일은 비어있음. 한국 교사가 academy/teacher 에서 나중에 설정.
-  const homeworkDays = parseHomeworkDays(formData.get("homeworkDays") as string);
-  const note = (formData.get("note") as string)?.trim() || null;
-
-  if (!studentId || !textbookId) return { error: "학생과 숙제를 선택해 주세요." };
-
-  const supabase = createAdminClient();
-  const { data, error } = await supabase
-    .from("student_textbooks")
-    .insert({
-      student_id: studentId,
-      textbook_id: textbookId,
-      homework_days: homeworkDays,
-      assigned_by: auth.userId,
-      note,
-    })
-    .select("id")
-    .single();
-  if (error) {
-    logger.error("[assignStudentTextbook]", error.message);
-    if (error.code === "23505") {
-      return { error: "이미 이 학생에게 부여된 숙제입니다." };
-    }
-    return { error: error.message };
-  }
-  revalidateAll();
-  return { id: data.id };
+  return { error: "개별 부여 flow 재설계 중 — 학생이 반에 속하면 자동 부여됩니다." };
 }
 
 export async function updateStudentTextbookDays(
@@ -339,18 +268,7 @@ export async function updateStudentTextbookDays(
   const guard = await assertKoreanTeacherOrAdmin(auth.userId, auth.role);
   if (guard.error) return { error: guard.error };
 
-  const update: Database["public"]["Tables"]["student_textbooks"]["Update"] = {};
-  if (payload.homeworkDays !== undefined) {
-    update.homework_days = payload.homeworkDays.filter((n) => n >= 0 && n <= 6);
-  }
-  if (payload.skipDates !== undefined) {
-    const v = validateSkipDates(payload.skipDates);
-    if (!v.ok) return { error: v.error };
-    update.skip_dates = v.value;
-  }
-  if (payload.note !== undefined) {
-    update.note = payload.note ?? null;
-  }
+  const update: Database["public"]["Tables"]["student_homework_books"]["Update"] = {};
   if (payload.startDate !== undefined) {
     if (payload.startDate === null) {
       update.start_date = null;
@@ -360,15 +278,11 @@ export async function updateStudentTextbookDays(
       update.start_date = v.value;
     }
   }
-  if (payload.startUnit !== undefined) {
-    if (payload.startUnit < 1) return { error: "시작 unit 은 1 이상이어야 합니다." };
-    update.start_unit = payload.startUnit;
-  }
   if (Object.keys(update).length === 0) return {};
 
   const supabase = createAdminClient();
   const { error } = await supabase
-    .from("student_textbooks")
+    .from("student_homework_books")
     .update(update)
     .eq("id", id);
   if (error) {
@@ -380,12 +294,11 @@ export async function updateStudentTextbookDays(
 }
 
 export async function unassignStudentTextbook(id: string): Promise<{ error?: string }> {
-  // 제거 권한: 관리자만
   const auth = await verifyAdmin();
   if ("error" in auth) return { error: auth.error };
 
   const supabase = createAdminClient();
-  const { error } = await supabase.from("student_textbooks").delete().eq("id", id);
+  const { error } = await supabase.from("student_homework_books").delete().eq("id", id);
   if (error) {
     logger.error("[unassignStudentTextbook]", error.message);
     return { error: error.message };
@@ -394,30 +307,15 @@ export async function unassignStudentTextbook(id: string): Promise<{ error?: str
   return {};
 }
 
-// ── Schedule (월별 unit 자동 배정) ──
+// ── Schedule (deprecated — homework_days/skip_dates 컬럼 제거됨)
+// 호출부 호환을 위해 빈 배열 반환. 재설계 후 별도 PR 로 복구 예정.
 
-/**
- * 한 학생의 한 달 unit schedule (반·개인 부여 합집합).
- * UI 캘린더 의 셀 별 unit 번호 표시에 사용.
- */
+import type { StudentDayUnits } from "@/lib/utils/homework-schedule";
+
 export async function listStudentScheduleByMonth(
-  studentId: string,
-  year: number,
-  month: number
+  _studentId: string,
+  _year: number,
+  _month: number
 ): Promise<StudentDayUnits[]> {
-  const auth = await verifyAuthenticated();
-  if ("error" in auth) return [];
-  const supabase = createAdminClient();
-
-  // 본인 OR staff 만
-  if (auth.userId !== studentId) {
-    const { data: prof } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", auth.userId)
-      .maybeSingle();
-    if (!prof || !["admin", "teacher"].includes(prof.role ?? "")) return [];
-  }
-
-  return getStudentMonthSchedule(supabase, studentId, year, month);
+  return [];
 }

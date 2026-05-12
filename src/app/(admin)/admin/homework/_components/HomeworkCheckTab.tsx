@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition, startTransition as reactStartTransition } from "react";
+import { useEffect, useMemo, useState, useTransition, startTransition as reactStartTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import {
@@ -9,11 +9,21 @@ import {
 } from "@/app/(admin)/admin/actions";
 import type {
   ClassUnitProgressDetailed,
+  HomeworkClassPickerOption,
   UnitStatus,
 } from "@/app/(admin)/admin/actions";
 import { ClassUnitProgressList } from "@/components/homework/ClassUnitProgressList";
 
-type ClassOption = { id: string; name: string };
+type ClassOption = HomeworkClassPickerOption;
+
+function buildSearchHaystack(c: ClassOption): string {
+  const parts = [
+    c.name,
+    ...c.teacherNames,
+    ...c.studentNames.flatMap((s) => [s.ko ?? "", s.en ?? ""]),
+  ];
+  return parts.join(" ").toLowerCase();
+}
 
 type Props = {
   classes: ClassOption[];
@@ -33,6 +43,22 @@ export function HomeworkCheckTab({
   );
   const [data, setData] = useState<ClassUnitProgressDetailed>(initialData);
   const [isPending, startTransition] = useTransition();
+  const [search, setSearch] = useState("");
+
+  const haystacks = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const c of classes) m.set(c.id, buildSearchHaystack(c));
+    return m;
+  }, [classes]);
+
+  const filteredClasses = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return classes;
+    return classes.filter((c) => {
+      if (c.id === selectedClassId) return true; // 현재 선택된 반은 항상 노출
+      return (haystacks.get(c.id) ?? "").includes(q);
+    });
+  }, [classes, search, selectedClassId, haystacks]);
 
   function handleClassChange(classId: string) {
     setSelectedClassId(classId);
@@ -121,23 +147,36 @@ export function HomeworkCheckTab({
 
   return (
     <div className="space-y-5">
-      {/* 반 selector */}
-      <div className="flex flex-wrap items-center gap-2">
-        {classes.map((cls) => (
-          <button
-            key={cls.id}
-            type="button"
-            onClick={() => handleClassChange(cls.id)}
-            disabled={isPending}
-            className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors border ${
-              cls.id === selectedClassId
-                ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                : "bg-white text-slate-700 border-slate-200 hover:border-primary/50 hover:text-primary"
-            } disabled:opacity-50`}
-          >
-            {cls.name}
-          </button>
-        ))}
+      {/* 검색 + 반 selector */}
+      <div className="space-y-2">
+        <input
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="반 이름 / 학생 한글·영어 이름 / 선생님 이름으로 검색"
+          className="h-9 w-full max-w-md rounded-md border border-slate-200 bg-white px-3 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/30"
+        />
+        {filteredClasses.length === 0 ? (
+          <p className="text-xs text-slate-500">검색 결과가 없습니다.</p>
+        ) : (
+          <div className="flex flex-wrap items-center gap-2">
+            {filteredClasses.map((cls) => (
+              <button
+                key={cls.id}
+                type="button"
+                onClick={() => handleClassChange(cls.id)}
+                disabled={isPending}
+                className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors border ${
+                  cls.id === selectedClassId
+                    ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                    : "bg-white text-slate-700 border-slate-200 hover:border-primary/50 hover:text-primary"
+                } disabled:opacity-50`}
+              >
+                {cls.name}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <ClassUnitProgressList

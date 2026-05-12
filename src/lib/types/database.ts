@@ -7,7 +7,7 @@ export type ReportCard = {
   student_profile_id: string;
   year: number;
   month: number;
-  author_id: string | null;
+  teacher_id: string | null;
   author_name?: string | null;
   content_en: string | null;
   content_ko: string | null;
