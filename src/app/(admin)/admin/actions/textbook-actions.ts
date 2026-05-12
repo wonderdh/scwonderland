@@ -25,11 +25,13 @@ export async function listTextbooks(
   const auth = await verifyAuthenticated();
   if ("error" in auth) return [];
   const supabase = createAdminClient();
+  // 정렬: 활성 우선 → 시리즈 이름 → level(0-pad 컨벤션이라 알파벳 정렬로 자연순) → 타이틀
   let query = supabase
     .from("homework_books")
     .select("*, series:series_id(name)")
     .order("is_active", { ascending: false })
-    .order("sort_order", { ascending: true })
+    .order("name", { referencedTable: "series", ascending: true, nullsFirst: false })
+    .order("level", { ascending: true, nullsFirst: false })
     .order("title", { ascending: true });
   if (opts?.activeOnly) {
     query = query.eq("is_active", true);
