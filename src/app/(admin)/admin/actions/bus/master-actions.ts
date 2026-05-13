@@ -10,6 +10,7 @@ import type {
   BusStopDayAssignment,
   BusStopSchedule,
 } from "@/lib/types";
+import type { Database } from "@/lib/types/database.generated";
 
 // ── 호차 CRUD ──
 
@@ -140,7 +141,7 @@ export async function updateBusTimeSlot(
   const trimmed = label.trim();
   if (!trimmed) return { error: "시간대 이름을 입력해 주세요." };
 
-  const patch: Record<string, unknown> = {
+  const patch: Database["public"]["Tables"]["bus_time_slots"]["Update"] = {
     label: trimmed,
     time,
     updated_at: new Date().toISOString(),
@@ -235,7 +236,7 @@ export async function updateBusStop(
   const trimmed = name.trim();
   if (!trimmed) return { error: "정류장 이름을 입력해 주세요." };
 
-  const updateData: Record<string, unknown> = { name: trimmed, updated_at: new Date().toISOString() };
+  const updateData: Database["public"]["Tables"]["bus_stops"]["Update"] = { name: trimmed, updated_at: new Date().toISOString() };
   if (sortOrder !== undefined) updateData.sort_order = sortOrder;
 
   const { error } = await supabase.from("bus_stops").update(updateData).eq("id", id);

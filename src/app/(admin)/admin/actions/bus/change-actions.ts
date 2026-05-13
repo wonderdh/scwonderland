@@ -7,6 +7,7 @@ import { logger } from "@/lib/server/logger";
 import { todayKst } from "@/lib/utils/date-kst";
 import type { BusChangeType, StudentSubmittableChangeType } from "@/lib/bus/state";
 import type { BusChangeRequest } from "@/lib/types";
+import type { Database } from "@/lib/types/database.generated";
 
 // ── 변경 요청 관리 ──
 
@@ -366,7 +367,7 @@ export async function approveChangeRequest(
   if ("error" in auth) return { error: auth.error };
   const supabase = createAdminClient();
 
-  const updateData: Record<string, unknown> = {
+  const updateData: Database["public"]["Tables"]["bus_change_requests"]["Update"] = {
     status: "approved",
     reviewed_by: reviewerId,
     reviewed_at: new Date().toISOString(),
@@ -584,9 +585,8 @@ export async function createAdminBusChange(
       .eq("student_id", studentProfileId);
     if (classStudents?.length) {
       await supabase.from("attendance").upsert(
-        classStudents.map((cs) => ({
+        classStudents.map(() => ({
           student_id: studentProfileId,
-          class_id: cs.class_id,
           attendance_date: requestDate,
           status: "absent" as const,
           note: "버스 결석 자동 등록",
@@ -650,9 +650,8 @@ export async function updateAdminBusChange(
       .eq("student_id", existing.student_id);
     if (classStudents?.length) {
       await supabase.from("attendance").upsert(
-        classStudents.map((cs) => ({
+        classStudents.map(() => ({
           student_id: existing.student_id,
-          class_id: cs.class_id,
           attendance_date: existing.request_date,
           status: "absent" as const,
           note: "버스 결석 자동 등록",

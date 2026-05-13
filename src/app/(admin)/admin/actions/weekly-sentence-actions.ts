@@ -8,6 +8,7 @@ import { logger } from "@/lib/server/logger";
 import { computeAutoWeekNumber } from "@/lib/utils/weekly-sentence-week";
 import { SHEET_LEVEL_MAP } from "@/lib/constants/weekly-sentence";
 import type { WeeklySentence, WeeklySentenceConfig } from "@/lib/types";
+import type { Database } from "@/lib/types/database.generated";
 // xlsx는 default export가 없으므로 bulk import 함수에서만 동적 import로 사용
 
 // ── Public (팝업용) ──
@@ -216,7 +217,7 @@ export async function updateWeeklySentenceConfig(
 
   const { getCurrentSunday } = await import("@/lib/utils/weekly-sentence-week");
 
-  const updateData: Record<string, unknown> = {
+  const updateData: Database["public"]["Tables"]["weekly_sentence_config"]["Update"] = {
     mode,
     manual_week: mode === "manual" ? (manualWeek ?? null) : null,
     updated_at: new Date().toISOString(),

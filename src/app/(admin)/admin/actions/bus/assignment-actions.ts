@@ -176,14 +176,41 @@ export async function upsertStudentBusDefault(
   return {};
 }
 
+// student_bus_defaults 는 composite PK (student_id, bus_time_slot_id, direction, day_of_week)
+// 라서 단일 id 컬럼 없음. 기존 호출 시그니처 유지하면서 composite key 직렬화 문자열로 동작.
+// 직렬화 포맷: `${student_id}|${bus_time_slot_id}|${direction}|${day_of_week}`
+function parseDefaultKey(key: string): {
+  student_id: string;
+  bus_time_slot_id: string;
+  direction: "pickup" | "dropoff";
+  day_of_week: number;
+} | null {
+  const parts = key.split("|");
+  if (parts.length !== 4) return null;
+  const day = Number.parseInt(parts[3], 10);
+  if (!Number.isFinite(day)) return null;
+  if (parts[2] !== "pickup" && parts[2] !== "dropoff") return null;
+  return {
+    student_id: parts[0],
+    bus_time_slot_id: parts[1],
+    direction: parts[2],
+    day_of_week: day,
+  };
+}
+
 export async function deleteStudentBusDefault(id: string): Promise<{ error?: string }> {
   const auth = await verifyAdmin();
   if ("error" in auth) return { error: auth.error };
+  const parsed = parseDefaultKey(id);
+  if (!parsed) return { error: "잘못된 키 형식입니다." };
   const supabase = createAdminClient();
   const { error } = await supabase
     .from("student_bus_defaults")
     .delete()
-    .eq("id", id);
+    .eq("student_id", parsed.student_id)
+    .eq("bus_time_slot_id", parsed.bus_time_slot_id)
+    .eq("direction", parsed.direction)
+    .eq("day_of_week", parsed.day_of_week);
   if (error) {
     logger.error("[deleteStudentBusDefault]", error.message);
     return { error: error.message };
@@ -196,13 +223,20 @@ export async function deleteStudentBusDefaults(ids: string[]): Promise<{ error?:
   const auth = await verifyAdmin();
   if ("error" in auth) return { error: auth.error };
   const supabase = createAdminClient();
-  const { error } = await supabase
-    .from("student_bus_defaults")
-    .delete()
-    .in("id", ids);
-  if (error) {
-    logger.error("[deleteStudentBusDefaults]", error.message);
-    return { error: error.message };
+  for (const id of ids) {
+    const parsed = parseDefaultKey(id);
+    if (!parsed) continue;
+    const { error } = await supabase
+      .from("student_bus_defaults")
+      .delete()
+      .eq("student_id", parsed.student_id)
+      .eq("bus_time_slot_id", parsed.bus_time_slot_id)
+      .eq("direction", parsed.direction)
+      .eq("day_of_week", parsed.day_of_week);
+    if (error) {
+      logger.error("[deleteStudentBusDefaults]", error.message);
+      return { error: error.message };
+    }
   }
   return {};
 }
