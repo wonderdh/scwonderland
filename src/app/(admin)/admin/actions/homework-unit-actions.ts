@@ -247,18 +247,18 @@ export async function listClassUnitProgressDetailed(
     progressMap.set(k, m);
   }
 
-  // 4. byStudent 조립 — 학생마다 반의 모든 책 노출. start_unit 부터 total_units 까지만 표시.
+  // 4. byStudent 조립 — 학생마다 반의 모든 책 노출. 항상 unit 1 ~ total_units 전체 표시.
+  //    start_unit 이전 unit 은 getUnitSchedule 가 시작일에서 역산해 expectedDate 를 채워준다.
   const byStudent: Record<string, StudentTextbookUnits[]> = {};
   for (const r of roster) {
     byStudent[r.student_id] = books.map((b) => {
       const m = progressMap.get(keyOf(r.student_id, b.chbId));
       const exp = expectedByBook.get(b.chbId);
       const hasSchedule = !!b.start_date && b.homework_days.length > 0;
-      const firstUnit = Math.max(1, b.start_unit);
       const lastUnit = b.total_units;
-      const unitsCount = Math.max(0, lastUnit - firstUnit + 1);
+      const unitsCount = Math.max(0, lastUnit);
       const units = Array.from({ length: unitsCount }, (_, i) => {
-        const unitNumber = firstUnit + i;
+        const unitNumber = i + 1;
         const status = m?.get(unitNumber) ?? ("pending" as UnitStatus);
         return {
           unitNumber,
@@ -367,11 +367,11 @@ export async function listUnitProgressByStudent(
       }
     }
 
-    const firstUnit = Math.max(1, startUnit);
-    const lastUnit = totalUnits;
-    const unitsCount = Math.max(0, lastUnit - firstUnit + 1);
+    // 항상 unit 1 ~ total_units 전체 표시. start_unit 이전 unit 의 expectedDate 는
+    // getUnitSchedule 가 시작일에서 역산해 채워준다.
+    const unitsCount = Math.max(0, totalUnits);
     const units = Array.from({ length: unitsCount }, (_, i) => {
-      const unitNumber = firstUnit + i;
+      const unitNumber = i + 1;
       return {
         unitNumber,
         status: statusByUnit.get(unitNumber) ?? ("pending" as UnitStatus),

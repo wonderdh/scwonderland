@@ -27,9 +27,15 @@ import type {
 import type { TeacherOption } from "@/lib/types";
 import { ClassUnitProgressList } from "@/components/homework/ClassUnitProgressList";
 import { KST_DAY_LABELS } from "@/lib/utils/date-kst";
+import { GROUP_TYPE_TO_LABEL } from "@/lib/constants/class";
 import { AssignClassHomeworkModal } from "./AssignClassHomeworkModal";
 import { EditClassHomeworkModal } from "./EditClassHomeworkModal";
 import type { Database } from "@/lib/types/database.generated";
+
+const GROUP_FILTERS: { value: string; label: string }[] = [
+  { value: "kindergarten", label: GROUP_TYPE_TO_LABEL.kindergarten },
+  { value: "afternoon", label: GROUP_TYPE_TO_LABEL.afternoon },
+];
 
 type TextbookRow = Database["public"]["Tables"]["homework_books"]["Row"];
 type ClassOption = HomeworkClassPickerOption;
@@ -90,6 +96,7 @@ export function ClassHomeworkManageTab({
   const [koreanTeacherId, setKoreanTeacherId] = useState<string | null>(null);
   const [nativeTeacherId, setNativeTeacherId] = useState<string | null>(null);
   const [selectedDays, setSelectedDays] = useState<Set<number>>(() => new Set());
+  const [selectedGroups, setSelectedGroups] = useState<Set<string>>(() => new Set());
   const [assignOpen, setAssignOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<ClassTextbookWithDetails | null>(null);
   const [removeTarget, setRemoveTarget] = useState<ClassTextbookWithDetails | null>(null);
@@ -120,7 +127,8 @@ export function ClassHomeworkManageTab({
       q.length > 0 ||
       koreanTeacherId !== null ||
       nativeTeacherId !== null ||
-      selectedDays.size > 0;
+      selectedDays.size > 0 ||
+      selectedGroups.size > 0;
     if (!hasFilter) return classes;
     return classes.filter((c) => {
       if (c.id === selectedClassId) return true;
@@ -128,6 +136,8 @@ export function ClassHomeworkManageTab({
       if (koreanTeacherId && !c.teacherIds.includes(koreanTeacherId)) return false;
       if (nativeTeacherId && !c.teacherIds.includes(nativeTeacherId)) return false;
       if (selectedDays.size > 0 && !c.daysOfWeek.some((d) => selectedDays.has(d)))
+        return false;
+      if (selectedGroups.size > 0 && !(c.groupType && selectedGroups.has(c.groupType)))
         return false;
       return true;
     });
@@ -139,6 +149,7 @@ export function ClassHomeworkManageTab({
     koreanTeacherId,
     nativeTeacherId,
     selectedDays,
+    selectedGroups,
   ]);
 
   function toggleDay(day: number) {
@@ -146,6 +157,15 @@ export function ClassHomeworkManageTab({
       const next = new Set(prev);
       if (next.has(day)) next.delete(day);
       else next.add(day);
+      return next;
+    });
+  }
+
+  function toggleGroup(group: string) {
+    setSelectedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(group)) next.delete(group);
+      else next.add(group);
       return next;
     });
   }
@@ -280,6 +300,28 @@ export function ClassHomeworkManageTab({
           nativeTeachers.length > 0 ||
           availableDays.length > 0) && (
           <div className="space-y-2 rounded-lg border border-slate-200 bg-slate-50/50 p-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="shrink-0 text-xs font-semibold text-slate-500 w-16">
+                반 구분
+              </span>
+              {GROUP_FILTERS.map((g) => {
+                const active = selectedGroups.has(g.value);
+                return (
+                  <button
+                    key={g.value}
+                    type="button"
+                    onClick={() => toggleGroup(g.value)}
+                    className={`px-3 py-1 rounded-full text-xs font-medium transition-colors border ${
+                      active
+                        ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                        : "bg-white text-slate-700 border-slate-200 hover:border-primary/50 hover:text-primary"
+                    }`}
+                  >
+                    {g.label}
+                  </button>
+                );
+              })}
+            </div>
             {koreanTeachers.length > 0 && (
               <div className="flex flex-wrap items-center gap-2">
                 <span className="shrink-0 text-xs font-semibold text-slate-500 w-16">

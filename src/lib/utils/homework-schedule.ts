@@ -73,6 +73,13 @@ function nextDay(ymdStr: string): string {
   return `${next.getUTCFullYear()}-${String(next.getUTCMonth() + 1).padStart(2, "0")}-${String(next.getUTCDate()).padStart(2, "0")}`;
 }
 
+/** YYYY-MM-DD 의 전날을 YYYY-MM-DD 로 반환 (KST 안전). */
+function prevDay(ymdStr: string): string {
+  const [y, m, d] = ymdStr.split("-").map(Number);
+  const prev = new Date(Date.UTC(y, m - 1, d - 1));
+  return `${prev.getUTCFullYear()}-${String(prev.getUTCMonth() + 1).padStart(2, "0")}-${String(prev.getUTCDate()).padStart(2, "0")}`;
+}
+
 function ymdCompare(a: string, b: string): number {
   return a < b ? -1 : a > b ? 1 : 0;
 }
@@ -106,10 +113,32 @@ export function getUnitSchedule(params: {
 
   const daySet = new Set(homeworkDays);
   const skipSet = new Set(skipDates ?? []);
+  const MAX_ITER = 730;
 
+  // 1) startUnit 이전 unit 들: startDate 에서 하루씩 뒤로 가며 역산.
+  if (startUnit > 1) {
+    const backward: UnitAssignment[] = [];
+    let curDate = prevDay(startDate);
+    let curUnit = startUnit - 1;
+    for (let i = 0; i < MAX_ITER && curUnit >= 1; i++) {
+      const weekday = ymdToKstWeekday(curDate);
+      if (daySet.has(weekday) && !skipSet.has(curDate)) {
+        const inRange =
+          (!fromDate || ymdCompare(curDate, fromDate) >= 0) &&
+          (!toDate || ymdCompare(curDate, toDate) <= 0);
+        if (inRange) backward.push({ date: curDate, unit: curUnit });
+        curUnit--;
+      }
+      curDate = prevDay(curDate);
+    }
+    // 작은 unit → 큰 unit 순으로 정렬해 result 에 먼저 넣는다.
+    backward.sort((a, b) => a.unit - b.unit);
+    result.push(...backward);
+  }
+
+  // 2) startUnit 이후 unit 들: startDate 에서 하루씩 앞으로.
   let currentDate = startDate;
   let currentUnit = startUnit;
-  const MAX_ITER = 730;
 
   for (let i = 0; i < MAX_ITER; i++) {
     if (currentUnit > totalUnits) break;

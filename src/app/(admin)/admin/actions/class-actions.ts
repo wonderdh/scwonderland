@@ -47,6 +47,7 @@ async function buildClassTeacherMap(
 export type HomeworkClassPickerOption = {
   id: string;
   name: string;
+  groupType: string | null;
   teacherIds: string[];
   teacherNames: string[];
   daysOfWeek: number[];
@@ -64,7 +65,7 @@ export async function listClassesForHomeworkPicker(): Promise<HomeworkClassPicke
 
   const { data: classes, error } = await supabase
     .from("classes")
-    .select("id, name, days_of_week")
+    .select("id, name, group_type, days_of_week")
     .order("name");
   if (error || !classes?.length) {
     if (error) logger.error("[listClassesForHomeworkPicker]", error.message);
@@ -102,6 +103,7 @@ export async function listClassesForHomeworkPicker(): Promise<HomeworkClassPicke
     return {
       id: c.id,
       name: c.name,
+      groupType: (c.group_type as string | null) ?? null,
       teacherIds: classTeachers.map((t) => t.profile_id),
       teacherNames: classTeachers
         .map((t) => t.name ?? "")
