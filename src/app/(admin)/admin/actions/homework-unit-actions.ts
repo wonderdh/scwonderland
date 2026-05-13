@@ -126,11 +126,11 @@ export async function listClassUnitProgressDetailed(
     return { students: [], byStudent: {} };
   }
 
-  // 2. 반의 모든 책 (class_homework_books × homework_books) — 책마다 homework_days/skip_dates 보유
+  // 2. 반의 모든 책 (class_homework_books × homework_books) — 책마다 homework_days/skip_dates/start_unit 보유
   const { data: bookRows, error: bookErr } = await supabase
     .from("class_homework_books")
     .select(
-      "id, textbook_id, start_date, homework_days, skip_dates, homework_books!inner(title, level, total_units, cover_image_url, series, series_id, series_rel:series_id(name))"
+      "id, textbook_id, start_date, homework_days, skip_dates, start_unit, homework_books!inner(title, level, total_units, cover_image_url, series, series_id, series_rel:series_id(name))"
     )
     .eq("class_id", classId);
 
@@ -153,6 +153,7 @@ export async function listClassUnitProgressDetailed(
     start_date: string | null;
     homework_days: number[];
     skip_dates: string[];
+    start_unit: number;
   };
   const books: BookMeta[] = (bookRows ?? []).map((row) => {
     const hb = Array.isArray(row.homework_books)
@@ -179,16 +180,17 @@ export async function listClassUnitProgressDetailed(
       start_date: (row.start_date as string | null) ?? null,
       homework_days: days,
       skip_dates: skips,
+      start_unit: (row.start_unit as number | null) ?? 1,
     };
   });
 
-  // 책별 unit→expectedDate 맵 한 번만 계산 (책마다 다른 요일/예외일 가능)
+  // 책별 unit→expectedDate 맵 한 번만 계산 (책마다 다른 요일/예외일/start_unit 가능)
   const expectedByBook = new Map<string, Map<number, string>>();
   for (const b of books) {
     if (!b.start_date || b.homework_days.length === 0 || b.total_units <= 0) continue;
     const schedule = getUnitSchedule({
       startDate: b.start_date,
-      startUnit: 1,
+      startUnit: b.start_unit,
       totalUnits: b.total_units,
       homeworkDays: b.homework_days,
       skipDates: b.skip_dates,
@@ -245,15 +247,18 @@ export async function listClassUnitProgressDetailed(
     progressMap.set(k, m);
   }
 
-  // 4. byStudent 조립 — 학생마다 반의 모든 책 노출
+  // 4. byStudent 조립 — 학생마다 반의 모든 책 노출. start_unit 부터 total_units 까지만 표시.
   const byStudent: Record<string, StudentTextbookUnits[]> = {};
   for (const r of roster) {
     byStudent[r.student_id] = books.map((b) => {
       const m = progressMap.get(keyOf(r.student_id, b.chbId));
       const exp = expectedByBook.get(b.chbId);
       const hasSchedule = !!b.start_date && b.homework_days.length > 0;
-      const units = Array.from({ length: b.total_units }, (_, i) => {
-        const unitNumber = i + 1;
+      const firstUnit = Math.max(1, b.start_unit);
+      const lastUnit = b.total_units;
+      const unitsCount = Math.max(0, lastUnit - firstUnit + 1);
+      const units = Array.from({ length: unitsCount }, (_, i) => {
+        const unitNumber = firstUnit + i;
         const status = m?.get(unitNumber) ?? ("pending" as UnitStatus);
         return {
           unitNumber,
@@ -294,7 +299,7 @@ export async function listUnitProgressByStudent(
   const { data: shbRows, error: shbErr } = await supabase
     .from("student_homework_books")
     .select(
-      "id, class_homework_book_id, class_student_id, class_students!inner(student_id, class_id), class_homework_books!inner(id, start_date, homework_days, skip_dates, homework_books!inner(title, level, total_units, cover_image_url, series, series_id, series_rel:series_id(name))), student_homework_progress(unit_number, status)"
+      "id, class_homework_book_id, class_student_id, class_students!inner(student_id, class_id), class_homework_books!inner(id, start_date, homework_days, skip_dates, start_unit, homework_books!inner(title, level, total_units, cover_image_url, series, series_id, series_rel:series_id(name))), student_homework_progress(unit_number, status)"
     )
     .eq("class_students.student_id", studentId);
 
@@ -323,6 +328,7 @@ export async function listUnitProgressByStudent(
 
     const startDate = (chb?.start_date as string | null) ?? null;
     const totalUnits = (hb?.total_units as number | undefined) ?? 0;
+    const startUnit = (((chb as { start_unit?: number | null } | null)?.start_unit) as number | null) ?? 1;
     const homeworkDays = Array.from(
       new Set(
         (((chb as { homework_days?: number[] | null } | null)?.homework_days ?? []) as number[])
@@ -338,7 +344,7 @@ export async function listUnitProgressByStudent(
     if (startDate && homeworkDays.length > 0 && totalUnits > 0) {
       for (const s of getUnitSchedule({
         startDate,
-        startUnit: 1,
+        startUnit,
         totalUnits,
         homeworkDays,
         skipDates,
@@ -361,8 +367,11 @@ export async function listUnitProgressByStudent(
       }
     }
 
-    const units = Array.from({ length: totalUnits }, (_, i) => {
-      const unitNumber = i + 1;
+    const firstUnit = Math.max(1, startUnit);
+    const lastUnit = totalUnits;
+    const unitsCount = Math.max(0, lastUnit - firstUnit + 1);
+    const units = Array.from({ length: unitsCount }, (_, i) => {
+      const unitNumber = firstUnit + i;
       return {
         unitNumber,
         status: statusByUnit.get(unitNumber) ?? ("pending" as UnitStatus),

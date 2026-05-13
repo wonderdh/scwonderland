@@ -27,6 +27,7 @@ export function EditClassHomeworkModal({ assignment, onClose, onSaved }: Props) 
   const [isPending, startTransition] = useTransition();
   const [startDate, setStartDate] = useState(assignment.start_date ?? "");
   const [note, setNote] = useState(assignment.note ?? "");
+  const [startUnit, setStartUnit] = useState(String(assignment.start_unit ?? 1));
   const [homeworkDays, setHomeworkDays] = useState<number[]>(
     (assignment.homework_days ?? []).slice().sort((a, b) => a - b)
   );
@@ -34,6 +35,8 @@ export function EditClassHomeworkModal({ assignment, onClose, onSaved }: Props) 
     (assignment.skip_dates ?? []).slice().sort()
   );
   const [formError, setFormError] = useState<string | null>(null);
+
+  const maxUnit = assignment.total_units ?? 1;
 
   function toggleDay(day: number) {
     setHomeworkDays((prev) =>
@@ -45,10 +48,20 @@ export function EditClassHomeworkModal({ assignment, onClose, onSaved }: Props) 
 
   function handleSubmit() {
     setFormError(null);
+    const startUnitNum = Number.parseInt(startUnit, 10);
+    if (!Number.isFinite(startUnitNum) || startUnitNum < 1) {
+      setFormError("시작 unit 은 1 이상의 정수여야 합니다.");
+      return;
+    }
+    if (maxUnit > 0 && startUnitNum > maxUnit) {
+      setFormError(`시작 unit 은 ${maxUnit} 이하여야 합니다.`);
+      return;
+    }
     startTransition(async () => {
       const result = await updateClassTextbookDays(assignment.id, {
         note: note.trim() === "" ? null : note.trim(),
         startDate: startDate === "" ? null : startDate,
+        startUnit: startUnitNum,
         homeworkDays,
         skipDates,
       });
@@ -77,7 +90,7 @@ export function EditClassHomeworkModal({ assignment, onClose, onSaved }: Props) 
         <p className="text-xs text-slate-500 mb-4 truncate">{assignment.title}</p>
 
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1.5">
                 시작일
@@ -92,12 +105,29 @@ export function EditClassHomeworkModal({ assignment, onClose, onSaved }: Props) 
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                시작 unit
+              </label>
+              <Input
+                type="number"
+                min={1}
+                max={maxUnit > 0 ? maxUnit : undefined}
+                value={startUnit}
+                onChange={(e) => setStartUnit(e.target.value)}
+                disabled={isPending}
+                className="h-10"
+              />
+              {maxUnit > 0 && (
+                <p className="text-xs text-slate-400 mt-1">/ 총 {maxUnit} unit</p>
+              )}
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">
                 메모
               </label>
               <Input
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
-                placeholder="메모 (선택)"
+                placeholder="선택"
                 disabled={isPending}
                 className="h-10"
               />

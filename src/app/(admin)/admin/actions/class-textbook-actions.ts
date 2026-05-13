@@ -17,8 +17,6 @@ export type ClassTextbookWithDetails = ClassHomeworkBookRow & {
   publisher: string | null;
   cover_image_url: string | null;
   total_units: number;
-  // Deprecated: 20260515 마이그레이션에서 컬럼 제거됨. 옛 UI 호환용 optional 유지.
-  start_unit?: number | null;
 };
 
 export type StudentTextbookWithDetails = StudentHomeworkBookRow & {
@@ -85,6 +83,8 @@ type DaysPayload = {
   homeworkDays?: number[];
   /** 부여 단위 예외일 (YYYY-MM-DD). undefined 면 변경 안 함. */
   skipDates?: string[];
+  /** 시작 unit (1-based). undefined 면 변경 안 함. */
+  startUnit?: number;
 };
 
 function normalizeHomeworkDays(days: number[]): number[] {
@@ -110,7 +110,7 @@ export async function listClassTextbooks(
   const { data, error } = await supabase
     .from("class_homework_books")
     .select(
-      "id, class_id, textbook_id, start_date, note, homework_days, skip_dates, homework_books(title, series, publisher, cover_image_url, total_units)"
+      "id, class_id, textbook_id, start_date, note, homework_days, skip_dates, start_unit, homework_books(title, series, publisher, cover_image_url, total_units)"
     )
     .eq("class_id", classId)
     .order("id", { ascending: true });
@@ -128,6 +128,7 @@ export async function listClassTextbooks(
       note: row.note,
       homework_days: (row.homework_days as number[] | null) ?? [],
       skip_dates: (row.skip_dates as string[] | null) ?? [],
+      start_unit: row.start_unit ?? 1,
       title: tb?.title ?? "",
       series: tb?.series ?? null,
       publisher: tb?.publisher ?? null,
@@ -149,8 +150,18 @@ export async function assignClassTextbook(
   const startDateRaw = (formData.get("startDate") as string | null)?.trim() || null;
   const homeworkDaysRaw = (formData.get("homeworkDays") as string | null)?.trim() || "";
   const skipDatesRaw = (formData.get("skipDates") as string | null)?.trim() || "";
+  const startUnitRaw = (formData.get("startUnit") as string | null)?.trim() || "";
 
   if (!classId || !textbookId) return { error: "반과 숙제를 선택해 주세요." };
+
+  let startUnit = 1;
+  if (startUnitRaw) {
+    const parsed = Number.parseInt(startUnitRaw, 10);
+    if (!Number.isFinite(parsed) || parsed < 1) {
+      return { error: "시작 unit 은 1 이상의 정수여야 합니다." };
+    }
+    startUnit = parsed;
+  }
 
   let startDate: string | null = null;
   if (startDateRaw) {
@@ -195,6 +206,7 @@ export async function assignClassTextbook(
       start_date: startDate,
       homework_days: homeworkDays,
       skip_dates: skipDates,
+      start_unit: startUnit,
     })
     .select("id")
     .single();
@@ -236,6 +248,12 @@ export async function updateClassTextbookDays(
   }
   if (payload.skipDates !== undefined) {
     update.skip_dates = normalizeSkipDates(payload.skipDates);
+  }
+  if (payload.startUnit !== undefined) {
+    if (!Number.isFinite(payload.startUnit) || payload.startUnit < 1) {
+      return { error: "시작 unit 은 1 이상의 정수여야 합니다." };
+    }
+    update.start_unit = Math.floor(payload.startUnit);
   }
   if (Object.keys(update).length === 0) return {};
 

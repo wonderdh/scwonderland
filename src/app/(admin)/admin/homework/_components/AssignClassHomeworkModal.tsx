@@ -41,9 +41,13 @@ export function AssignClassHomeworkModal({
   const [selectedTextbookId, setSelectedTextbookId] = useState("");
   const [note, setNote] = useState("");
   const [startDate, setStartDate] = useState("");
+  const [startUnit, setStartUnit] = useState("1");
   const [homeworkDays, setHomeworkDays] = useState<number[]>([]);
   const [skipDates, setSkipDates] = useState<string[]>([]);
   const [formError, setFormError] = useState<string | null>(null);
+
+  const selectedTextbook = textbooks.find((t) => t.id === selectedTextbookId);
+  const maxUnit = selectedTextbook?.total_units ?? 1;
 
   function toggleDay(day: number) {
     setHomeworkDays((prev) =>
@@ -59,12 +63,22 @@ export function AssignClassHomeworkModal({
       setFormError("숙제를 선택해 주세요.");
       return;
     }
+    const startUnitNum = Number.parseInt(startUnit, 10);
+    if (!Number.isFinite(startUnitNum) || startUnitNum < 1) {
+      setFormError("시작 unit 은 1 이상의 정수여야 합니다.");
+      return;
+    }
+    if (selectedTextbook && startUnitNum > selectedTextbook.total_units) {
+      setFormError(`시작 unit 은 ${selectedTextbook.total_units} 이하여야 합니다.`);
+      return;
+    }
 
     const fd = new FormData();
     fd.set("classId", classId);
     fd.set("textbookId", selectedTextbookId);
     fd.set("note", note);
     if (startDate) fd.set("startDate", startDate);
+    fd.set("startUnit", String(startUnitNum));
     fd.set("homeworkDays", JSON.stringify(homeworkDays));
     fd.set("skipDates", JSON.stringify(skipDates));
 
@@ -105,7 +119,7 @@ export function AssignClassHomeworkModal({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1.5">
                 시작일
@@ -120,12 +134,31 @@ export function AssignClassHomeworkModal({
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                시작 unit
+              </label>
+              <Input
+                type="number"
+                min={1}
+                max={maxUnit}
+                value={startUnit}
+                onChange={(e) => setStartUnit(e.target.value)}
+                disabled={isPending}
+                className="h-10"
+              />
+              {selectedTextbook && (
+                <p className="text-xs text-slate-400 mt-1">
+                  / 총 {selectedTextbook.total_units} unit
+                </p>
+              )}
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">
                 메모
               </label>
               <Input
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
-                placeholder="메모 (선택)"
+                placeholder="선택"
                 disabled={isPending}
                 className="h-10"
               />

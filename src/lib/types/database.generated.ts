@@ -519,6 +519,7 @@ export type Database = {
           note: string | null
           skip_dates: string[]
           start_date: string | null
+          start_unit: number
           textbook_id: string
         }
         Insert: {
@@ -528,6 +529,7 @@ export type Database = {
           note?: string | null
           skip_dates?: string[]
           start_date?: string | null
+          start_unit?: number
           textbook_id: string
         }
         Update: {
@@ -537,6 +539,7 @@ export type Database = {
           note?: string | null
           skip_dates?: string[]
           start_date?: string | null
+          start_unit?: number
           textbook_id?: string
         }
         Relationships: [
