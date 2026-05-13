@@ -1,12 +1,27 @@
 import type { NextConfig } from "next";
+import os from "node:os";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 const supabaseHostname = supabaseUrl
   ? new URL(supabaseUrl).hostname
   : "";
 
+/** 현재 머신의 IPv4 LAN 주소를 전부 수집 (dev 서버에서만 사용). */
+function getLanIPv4Addresses(): string[] {
+  const nets = os.networkInterfaces();
+  const out: string[] = [];
+  for (const ifaces of Object.values(nets)) {
+    for (const net of ifaces ?? []) {
+      if (net.family === "IPv4" && !net.internal) out.push(net.address);
+    }
+  }
+  return out;
+}
+
 const nextConfig: NextConfig = {
-  allowedDevOrigins: ["192.168.45.127"],
+  // LAN 의 다른 PC 에서 dev 서버 접근 허용. 머신의 모든 IPv4 인터페이스를 자동 등록.
+  // IP 가 바뀌어도 dev 서버 재시작 시 자동 갱신.
+  allowedDevOrigins: getLanIPv4Addresses(),
   images: {
     remotePatterns: [
       {

@@ -249,7 +249,7 @@ export async function getTeacherAssignmentCounts(userId: string): Promise<{ clas
 
   const [{ count: classCount }, { count: scheduleCount }] = await Promise.all([
     supabase.from("class_teachers").select("*", { count: "exact", head: true }).eq("teacher_id", teacher.id),
-    supabase.from("class_schedules").select("*", { count: "exact", head: true }).eq("teacher_id", teacher.id),
+    supabase.from("class_schedules").select("*", { count: "exact", head: true }).eq("class_teacher_id", teacher.id),
   ]);
 
   return { classCount: classCount ?? 0, scheduleCount: scheduleCount ?? 0 };
@@ -290,7 +290,7 @@ export async function deleteUserById(formData: FormData): Promise<{ error?: stri
 
   if (teacher) {
     await supabase.from("class_teachers").delete().eq("teacher_id", teacher.id);
-    await supabase.from("class_schedules").delete().eq("teacher_id", teacher.id);
+    await supabase.from("class_schedules").delete().eq("class_teacher_id", teacher.id);
   }
 
   if (student) {
@@ -301,7 +301,7 @@ export async function deleteUserById(formData: FormData): Promise<{ error?: stri
       supabase.from("attendance").delete().eq("student_id", student.id),
       supabase.from("bus_change_requests").delete().eq("student_id", student.id),
       supabase.from("bus_check_records").delete().eq("student_id", student.id),
-      supabase.from("report_cards").delete().eq("student_id", student.id),
+      // report_cards: class_students CASCADE 로 자동 삭제됨
     ]);
   }
 

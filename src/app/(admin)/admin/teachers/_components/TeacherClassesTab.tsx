@@ -5,7 +5,7 @@ import type { ClassWithDetails, ClassStudentRow } from "@/lib/types";
 import { useCallback, useEffect, useState } from "react";
 import { LoadingState } from "@/components/feedback/LoadingState";
 import { TeacherBadges } from "@/components/badges/TeacherBadges";
-import { GROUP_ORDER, type GroupKey } from "@/lib/constants/class";
+import { GROUP_ORDER, GROUP_TYPE_TO_LABEL, type GroupKey } from "@/lib/constants/class";
 
 const GROUP_STYLE: Record<GroupKey, { icon: string; label: string; headerBg: string; headerText: string }> = {
   유치부: { icon: "🌅", label: "유치부", headerBg: "bg-amber-100", headerText: "text-amber-800" },
@@ -26,10 +26,10 @@ export function TeacherClassesTab({
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  const nonAfterschool = myClasses.filter((c) => c.group_label !== "방과후");
+  const nonAfterschool = myClasses.filter((c) => GROUP_TYPE_TO_LABEL[c.group_type ?? ""] !== "방과후");
   const grouped = GROUP_ORDER.reduce<Record<GroupKey, ClassWithDetails[]>>(
     (acc, g) => {
-      acc[g] = nonAfterschool.filter((c) => (c.group_label ?? "") === g);
+      acc[g] = nonAfterschool.filter((c) => (GROUP_TYPE_TO_LABEL[c.group_type ?? ""] ?? "") === g);
       return acc;
     },
     { 유치부: [], 오후반: [], "": [] }

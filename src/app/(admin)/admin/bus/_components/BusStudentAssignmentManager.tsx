@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ConfirmDialog } from "@/components/overlays/ConfirmDialog";
 import type { BusNumber, BusTimeSlot, BusStop, BusDefaultAssignment, BusStopDayAssignment } from "@/lib/types";
+import { GROUP_TYPE_TO_LABEL } from "@/lib/constants/class";
 import {
   getBulkBusDefaults,
   saveBulkBusDefaults,
@@ -32,7 +33,7 @@ type StudentItem = {
   korean_name: string | null;
   english_name: string | null;
   age?: number | null;
-  group_label?: string | null;
+  group_type?: string | null;
 };
 
 export function BusStudentAssignmentManager({
@@ -190,7 +191,7 @@ export function BusStudentAssignmentManager({
   const filterStudent = (s: StudentItem) => {
     if (assignedIds.has(s.profile_id)) return false;
     if (otherSlotAssignedIds.has(s.profile_id)) return false;
-    if (groupFilter !== "전체" && s.group_label !== groupFilter) return false;
+    if (groupFilter !== "전체" && (GROUP_TYPE_TO_LABEL[s.group_type ?? ""] ?? "") !== groupFilter) return false;
     if (search) {
       const q = search.toLowerCase();
       return s.korean_name?.toLowerCase().includes(q) || s.english_name?.toLowerCase().includes(q);
@@ -203,7 +204,7 @@ export function BusStudentAssignmentManager({
   const otherSlotFiltered = otherSlotAssigned.filter((a) => {
     const student = allStudents.find((s) => s.profile_id === a.student_profile_id);
     if (!student) return false;
-    if (groupFilter !== "전체" && student.group_label !== groupFilter) return false;
+    if (groupFilter !== "전체" && (GROUP_TYPE_TO_LABEL[student.group_type ?? ""] ?? "") !== groupFilter) return false;
     if (search) {
       const q = search.toLowerCase();
       return student.korean_name?.toLowerCase().includes(q) || student.english_name?.toLowerCase().includes(q);

@@ -257,6 +257,14 @@ export function GroupTimetableGrid({
     return map;
   }, [data]);
 
+  const daysByClass = useMemo(() => {
+    const map = new Map<string, number[]>();
+    for (const cls of data.classes) {
+      map.set(cls.id, cls.days_of_week);
+    }
+    return map;
+  }, [data.classes]);
+
   const sortedTeachers = useMemo(
     () => [...data.teachers].sort((a, b) => a.name.localeCompare(b.name)),
     [data.teachers],
@@ -439,6 +447,7 @@ export function GroupTimetableGrid({
                 </td>
                 {data.classes.map((cls) => {
                   const mergedCells = mergedData.get(`${cls.id}_${period.id}`) ?? [];
+                  const allowedDays = daysByClass.get(cls.id) ?? [1, 2, 3, 4, 5];
                   return (
                     <td key={cls.id} className="py-0 px-0 border-r last:border-r-0 align-top">
                       <PeriodDayGrid
@@ -452,6 +461,7 @@ export function GroupTimetableGrid({
                         loading={loading || saving}
                         teacherColorMap={teacherColorMap}
                         teacherNameMap={teacherNameMap}
+                        allowedDays={allowedDays}
                       />
                     </td>
                   );
@@ -487,6 +497,7 @@ function PeriodDayGrid({
   loading,
   teacherColorMap,
   teacherNameMap,
+  allowedDays,
 }: {
   classId: string;
   periodId: string;
@@ -498,6 +509,7 @@ function PeriodDayGrid({
   loading: boolean;
   teacherColorMap: Map<string, { bg: string; text: string }>;
   teacherNameMap: Map<string, string>;
+  allowedDays: number[];
 }) {
   const rows: React.ReactNode[] = [];
   let dayIndex = 1;
@@ -505,10 +517,21 @@ function PeriodDayGrid({
   for (const cell of mergedCells) {
     if (cell === null) {
       const day = dayIndex;
+      const isAllowedDay = allowedDays.includes(day);
       const pendingKey = `${classId}|${periodId}|${day}`;
       const pending = pendingChanges.get(pendingKey);
 
-      if (pending) {
+      if (!isAllowedDay) {
+        rows.push(
+          <div
+            key={day}
+            className="w-full px-2 py-1 text-sm border-b last:border-b-0 bg-slate-100 cursor-not-allowed opacity-50"
+            style={{ height: "24px" }}
+          >
+            <span className="text-slate-400">—</span>
+          </div>,
+        );
+      } else if (pending) {
         const firstId = pending.teacherIds[0];
         const color = firstId ? teacherColorMap.get(firstId) : undefined;
         const bgText = color ? `${color.bg} ${color.text}` : "bg-emerald-100 text-emerald-700";
@@ -542,7 +565,24 @@ function PeriodDayGrid({
       dayIndex++;
     } else {
       const height = cell.span * 24;
+      const isAllowedDay = allowedDays.includes(cell.startDay);
       const isPendingDelete = cell.scheduleIds.every((id) => pendingDeletes.has(id));
+
+      if (!isAllowedDay) {
+        for (let d = cell.startDay; d < cell.startDay + cell.span; d++) {
+          rows.push(
+            <div
+              key={d}
+              className="w-full px-2 py-1 text-sm border-b last:border-b-0 bg-slate-100 cursor-not-allowed opacity-50"
+              style={{ height: "24px" }}
+            >
+              <span className="text-slate-400">—</span>
+            </div>,
+          );
+        }
+        dayIndex += cell.span;
+        continue;
+      }
 
       if (isPendingDelete) {
         for (let d = cell.startDay; d < cell.startDay + cell.span; d++) {
@@ -658,10 +698,21 @@ function PeriodDayGrid({
 
   while (dayIndex <= 5) {
     const day = dayIndex;
+    const isAllowedDay = allowedDays.includes(day);
     const pendingKey = `${classId}|${periodId}|${day}`;
     const pending = pendingChanges.get(pendingKey);
 
-    if (pending) {
+    if (!isAllowedDay) {
+      rows.push(
+        <div
+          key={day}
+          className="w-full px-2 py-1 text-sm border-b last:border-b-0 bg-slate-100 cursor-not-allowed opacity-50"
+          style={{ height: "24px" }}
+        >
+          <span className="text-slate-400">—</span>
+        </div>,
+      );
+    } else if (pending) {
       const firstId = pending.teacherIds[0];
       const color = firstId ? teacherColorMap.get(firstId) : undefined;
       const bgText = color ? `${color.bg} ${color.text}` : "bg-emerald-100 text-emerald-700";

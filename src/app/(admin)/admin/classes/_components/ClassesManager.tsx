@@ -15,22 +15,11 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { formatStudentName } from "@/lib/utils/student-name";
 import { ConfirmDialog } from "@/components/overlays/ConfirmDialog";
-import { CLASS_COLOR_PALETTE } from "@/lib/constants/class";
+import { CLASS_COLOR_PALETTE, GROUP_TYPE_TO_LABEL } from "@/lib/constants/class";
 import { getAgeColor } from "@/lib/ui/student-age-colors";
 import { TeacherBadges } from "@/components/badges/TeacherBadges";
-import { GROUP_ORDER } from "@/lib/constants/class";
 import { sortStudentsByAgeAndName } from "@/lib/utils/student-sort";
-
-const MANAGE_GROUP_STYLE: Record<string, {
-  icon: string;
-  sectionBg: string;
-  sectionText: string;
-  countBg: string;
-}> = {
-  유치부: { icon: "🌅", sectionBg: "bg-amber-100", sectionText: "text-amber-800", countBg: "bg-amber-200 text-amber-800" },
-  오후반: { icon: "☁️", sectionBg: "bg-sky-100", sectionText: "text-sky-800", countBg: "bg-sky-200 text-sky-800" },
-  "": { icon: "📋", sectionBg: "bg-slate-100", sectionText: "text-slate-600", countBg: "bg-slate-200 text-slate-600" },
-};
+import type { SubTab } from "./ClassesPageClient";
 
 type StudentInfo = {
   id: string;
@@ -84,15 +73,18 @@ export function ClassesManager({
   teachers,
   allClassStudents,
   allStudents,
+  subTab,
+  onSubTabChange,
 }: {
   initialClasses: ClassWithDetails[];
   teachers: TeacherOption[];
   allClassStudents: FlatClassStudent[];
   allStudents: StudentInfo[];
+  subTab: SubTab;
+  onSubTabChange: (sub: SubTab) => void;
 }) {
   const router = useRouter();
   const [search, setSearch] = useState("");
-  const [groupFilter, setGroupFilter] = useState("all");
   const [teacherFilter, setTeacherFilter] = useState("");
   const [activeOnly, setActiveOnly] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
@@ -109,7 +101,6 @@ export function ClassesManager({
   const hasPendingStudentChanges = pendingAdds.size > 0 || pendingRemoves.size > 0;
 
   const [rightSearch, setRightSearch] = useState("");
-  const [rightGroupFilter, setRightGroupFilter] = useState<"all" | "유치부" | "오후반">("all");
 
   const [dropTargetClassId, setDropTargetClassId] = useState<string | null>(null);
 
@@ -158,18 +149,19 @@ export function ClassesManager({
   }, [effectiveClassStudents, initialClasses]);
 
   const filteredClasses = useMemo(() => {
-    const nonAfterschool = initialClasses.filter((c) => c.group_label !== "방과후");
-    let result =
-      groupFilter === "all"
-        ? nonAfterschool
-        : nonAfterschool.filter((c) => (c.group_label ?? "") === groupFilter);
+    const targetLabel = subTab === "kindergarten" ? "유치부" : "오후반";
+    const nonAfterschool = initialClasses.filter((c) => GROUP_TYPE_TO_LABEL[c.group_type ?? ""] !== "방과후");
+    let result = nonAfterschool.filter(
+      (c) => (GROUP_TYPE_TO_LABEL[c.group_type ?? ""] ?? "") === targetLabel
+    );
     if (activeOnly) result = result.filter((c) => c.schedule_count > 0);
     if (teacherFilter) result = result.filter((c) => c.teachers.some((t) => t.profile_id === teacherFilter));
     if (!search.trim()) return result;
     const q = search.trim().toLowerCase();
     return result.filter((c) => {
       if (c.name.toLowerCase().includes(q)) return true;
-      if (c.group_label && c.group_label.toLowerCase().includes(q)) return true;
+      const gl = GROUP_TYPE_TO_LABEL[c.group_type ?? ""];
+      if (gl && gl.toLowerCase().includes(q)) return true;
       const students = studentsByClassId[c.id] ?? [];
       return students.some(
         (s) =>
@@ -177,30 +169,14 @@ export function ClassesManager({
           (s.english_name && s.english_name.toLowerCase().includes(q))
       );
     });
-  }, [initialClasses, search, groupFilter, teacherFilter, activeOnly, studentsByClassId]);
-
-  const groupedFilteredClasses = useMemo(() => {
-    const map = new Map<string, ClassWithDetails[]>([
-      ["유치부", []],
-      ["오후반", []],
-      ["", []],
-    ]);
-    for (const c of filteredClasses) {
-      const key = c.group_label ?? "";
-      map.get(key)!.push(c);
-    }
-    return map;
-  }, [filteredClasses]);
+  }, [initialClasses, search, subTab, teacherFilter, activeOnly, studentsByClassId]);
 
   const filteredRightStudents = useMemo(() => {
+    const target = subTab === "kindergarten" ? "유치부" : "오후반";
     let unassigned = allStudents.filter(
       (s) => !studentClassMap[s.id] || studentClassMap[s.id].length === 0
     );
-    if (rightGroupFilter === "유치부") {
-      unassigned = unassigned.filter((s) => s.group_type === "유치부");
-    } else if (rightGroupFilter === "오후반") {
-      unassigned = unassigned.filter((s) => s.group_type === "오후반");
-    }
+    unassigned = unassigned.filter((s) => s.group_type === target);
     if (rightSearch.trim()) {
       const q = rightSearch.trim().toLowerCase();
       unassigned = unassigned.filter(
@@ -210,7 +186,7 @@ export function ClassesManager({
       );
     }
     return sortStudentsByAgeAndName(unassigned);
-  }, [allStudents, studentClassMap, rightSearch, rightGroupFilter]);
+  }, [allStudents, studentClassMap, rightSearch, subTab]);
 
   useEffect(() => {
     if (notification) {
@@ -320,6 +296,32 @@ export function ClassesManager({
         </div>
       )}
 
+      {/* sub-tab nav */}
+      <nav className="flex border-b">
+        <button
+          type="button"
+          onClick={() => onSubTabChange("kindergarten")}
+          className={`px-5 py-3 text-base font-medium ${
+            subTab === "kindergarten"
+              ? "text-amber-700 border-b-2 border-amber-500 bg-amber-50"
+              : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+          }`}
+        >
+          🌅 유치부 관리
+        </button>
+        <button
+          type="button"
+          onClick={() => onSubTabChange("afternoon")}
+          className={`px-5 py-3 text-base font-medium ${
+            subTab === "afternoon"
+              ? "text-sky-700 border-b-2 border-sky-500 bg-sky-50"
+              : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+          }`}
+        >
+          ☁️ 오후반 관리
+        </button>
+      </nav>
+
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold text-foreground">반 목록</h2>
         <button
@@ -345,16 +347,6 @@ export function ClassesManager({
                 onChange={(e) => setSearch(e.target.value)}
                 className="flex-1 min-w-0 rounded-lg border border-input px-3 py-1.5 text-sm text-foreground placeholder-muted-foreground bg-background"
               />
-              <select
-                value={groupFilter}
-                onChange={(e) => setGroupFilter(e.target.value)}
-                className="rounded-lg border border-input px-2.5 py-1.5 text-sm text-foreground bg-background shrink-0"
-              >
-                <option value="all">전체</option>
-                <option value="유치부">🌅 유치부</option>
-                <option value="오후반">☁️ 오후반</option>
-                <option value="">미지정</option>
-              </select>
               <select
                 value={teacherFilter}
                 onChange={(e) => setTeacherFilter(e.target.value)}
@@ -396,49 +388,32 @@ export function ClassesManager({
           <div className="space-y-2 max-h-[calc(100vh-240px)] overflow-y-auto pr-1">
             {filteredClasses.length === 0 ? (
               <div className="rounded-xl border bg-muted/30 p-8 text-center text-sm text-muted-foreground">
-                {search.trim() || groupFilter !== "all" || teacherFilter || activeOnly ? "검색 결과가 없습니다." : "등록된 반이 없습니다. 반 추가로 생성하세요."}
+                {search.trim() || teacherFilter || activeOnly ? "검색 결과가 없습니다." : "등록된 반이 없습니다. 반 추가로 생성하세요."}
               </div>
             ) : (
-              GROUP_ORDER.map((group) => {
-                const groupClasses = groupedFilteredClasses.get(group) ?? [];
-                if (groupClasses.length === 0) return null;
-                const style = MANAGE_GROUP_STYLE[group];
-                const label = group || "미지정";
-                return (
-                  <div key={group} className="space-y-2">
-                    <div className={`flex items-center gap-2 rounded-lg px-3 py-1.5 ${style.sectionBg}`}>
-                      <span className="text-sm leading-none">{style.icon}</span>
-                      <span className={`text-xs font-semibold ${style.sectionText}`}>{label}</span>
-                      <span className={`ml-auto rounded-full px-2 py-0.5 text-xs font-medium ${style.countBg}`}>
-                        {groupClasses.length}개
-                      </span>
-                    </div>
-                    <div className="space-y-3 pl-1">
-                      {groupClasses.map((c) => (
-                        <ClassCard
-                          key={c.id}
-                          classRow={c}
-                          students={studentsByClassId[c.id] ?? []}
-                          onEdit={() => setEditClass(c)}
-                          onDelete={async () => {
-                            setDeleteTarget(c);
-                            setDeleteTargetCounts(null);
-                            setDeleteTargetLoading(true);
-                            const counts = await getClassLinkedCounts(c.id);
-                            setDeleteTargetLoading(false);
-                            setDeleteTargetCounts(counts);
-                          }}
-                          onRemoveStudent={(row) => handleRemoveStudentPending(row)}
-                          isDropTarget={dropTargetClassId === c.id}
-                          onDragOver={() => setDropTargetClassId(c.id)}
-                          onDragLeave={() => setDropTargetClassId(null)}
-                          onDrop={(e) => handleDropStudentToCard(c.id, e)}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                );
-              })
+              <div className="space-y-3">
+                {filteredClasses.map((c) => (
+                  <ClassCard
+                    key={c.id}
+                    classRow={c}
+                    students={studentsByClassId[c.id] ?? []}
+                    onEdit={() => setEditClass(c)}
+                    onDelete={async () => {
+                      setDeleteTarget(c);
+                      setDeleteTargetCounts(null);
+                      setDeleteTargetLoading(true);
+                      const counts = await getClassLinkedCounts(c.id);
+                      setDeleteTargetLoading(false);
+                      setDeleteTargetCounts(counts);
+                    }}
+                    onRemoveStudent={(row) => handleRemoveStudentPending(row)}
+                    isDropTarget={dropTargetClassId === c.id}
+                    onDragOver={() => setDropTargetClassId(c.id)}
+                    onDragLeave={() => setDropTargetClassId(null)}
+                    onDrop={(e) => handleDropStudentToCard(c.id, e)}
+                  />
+                ))}
+              </div>
             )}
           </div>
         </div>
@@ -456,23 +431,6 @@ export function ClassesManager({
               <div className="flex items-center justify-between">
                 <h3 className="font-semibold text-foreground">미배정 학생</h3>
                 <span className="text-xs text-muted-foreground">{filteredRightStudents.length}명</span>
-              </div>
-
-              <div className="flex gap-1">
-                {(["all", "유치부", "오후반"] as const).map((f) => (
-                  <button
-                    key={f}
-                    type="button"
-                    onClick={() => setRightGroupFilter(f)}
-                    className={`flex-1 rounded-md px-2 py-1 text-xs font-medium transition-colors ${
-                      rightGroupFilter === f
-                        ? "bg-slate-700 text-white"
-                        : "bg-muted text-muted-foreground hover:bg-muted/80"
-                    }`}
-                  >
-                    {f === "all" ? "전체" : f === "유치부" ? "🌅 유치부" : "☁️ 오후반"}
-                  </button>
-                ))}
               </div>
 
               {hasPendingStudentChanges && (
@@ -519,63 +477,18 @@ export function ClassesManager({
                       {rightSearch.trim() ? "검색 결과가 없습니다." : "등록된 학생이 없습니다."}
                     </p>
                   </div>
-                ) : rightGroupFilter === "오후반" ? (
+                ) : subTab === "afternoon" ? (
                   <div className="space-y-0.5">
                     {filteredRightStudents.map((s) => (
                       <UnassignedStudentItem key={s.id} s={s} showAgeBadge={false} />
                     ))}
                   </div>
                 ) : (
-                  (() => {
-                    const yuchibuStudents = filteredRightStudents.filter((s) => s.group_type === "유치부");
-                    const ohubanStudents = filteredRightStudents.filter((s) => s.group_type === "오후반");
-                    const etcStudents = filteredRightStudents.filter((s) => s.group_type !== "유치부" && s.group_type !== "오후반");
-                    return (
-                      <div className="space-y-2">
-                        {yuchibuStudents.length > 0 && (
-                          <div>
-                            {rightGroupFilter === "all" && (
-                              <div className="flex items-center gap-1.5 px-2 py-1 mb-1">
-                                <span className="text-xs font-semibold text-amber-700">🌅 유치부</span>
-                                <span className="text-xs text-amber-600">({yuchibuStudents.length}명)</span>
-                              </div>
-                            )}
-                            <div className="space-y-0.5">
-                              {yuchibuStudents.map((s) => (
-                                <UnassignedStudentItem key={s.id} s={s} showAgeBadge={false} />
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                        {rightGroupFilter === "all" && ohubanStudents.length > 0 && (
-                          <div>
-                            <div className="flex items-center gap-1.5 px-2 py-1 mb-1">
-                              <span className="text-xs font-semibold text-sky-700">☁️ 오후반</span>
-                              <span className="text-xs text-sky-600">({ohubanStudents.length}명)</span>
-                            </div>
-                            <div className="space-y-0.5">
-                              {ohubanStudents.map((s) => (
-                                <UnassignedStudentItem key={s.id} s={s} showAgeBadge={false} />
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                        {rightGroupFilter === "all" && etcStudents.length > 0 && (
-                          <div>
-                            <div className="flex items-center gap-1.5 px-2 py-1 mb-1">
-                              <span className="text-xs font-semibold text-slate-500">📋 미분류</span>
-                              <span className="text-xs text-slate-400">({etcStudents.length}명)</span>
-                            </div>
-                            <div className="space-y-0.5">
-                              {etcStudents.map((s) => (
-                                <UnassignedStudentItem key={s.id} s={s} showAgeBadge={false} />
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })()
+                  <div className="space-y-0.5">
+                    {filteredRightStudents.map((s) => (
+                      <UnassignedStudentItem key={s.id} s={s} showAgeBadge={true} />
+                    ))}
+                  </div>
                 )}
               </div>
             </div>
@@ -586,6 +499,7 @@ export function ClassesManager({
       {createOpen && (
         <AddClassModal
           teachers={teachers}
+          defaultGroupLabel={subTab === "kindergarten" ? "유치부" : "오후반"}
           onClose={() => setCreateOpen(false)}
           onSuccess={() => {
             setCreateOpen(false);
@@ -767,20 +681,27 @@ function ClassCard({
 
 function AddClassModal({
   teachers,
+  defaultGroupLabel,
   onClose,
   onSuccess,
 }: {
   teachers: TeacherOption[];
+  defaultGroupLabel: string;
   onClose: () => void;
   onSuccess: () => void;
 }) {
   const [name, setName] = useState("");
-  const [groupLabel, setGroupLabel] = useState("");
+  const [groupLabel, setGroupLabel] = useState(defaultGroupLabel);
   const [colorIndex, setColorIndex] = useState<number | null>(null);
   const [selectedTeacherIds, setSelectedTeacherIds] = useState<string[]>([]);
   const [teacherSearch, setTeacherSearch] = useState("");
+  const [daysOfWeek, setDaysOfWeek] = useState<number[]>([1, 2, 3, 4, 5]);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (groupLabel === "유치부") setDaysOfWeek([1, 2, 3, 4, 5]);
+  }, [groupLabel]);
 
   const toggleTeacher = (id: string) => {
     setSelectedTeacherIds((prev) =>
@@ -796,9 +717,10 @@ function AddClassModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (daysOfWeek.length === 0) return;
     setPending(true);
     setError(null);
-    const result = await createClass(name.trim(), selectedTeacherIds, groupLabel, colorIndex);
+    const result = await createClass(name.trim(), selectedTeacherIds, groupLabel, colorIndex, daysOfWeek);
     setPending(false);
     if (result?.error) {
       setError(result.error);
@@ -838,10 +760,50 @@ function AddClassModal({
               onChange={(e) => setGroupLabel(e.target.value)}
               className="w-full rounded-lg border border-input px-3 py-2 text-foreground bg-background"
             >
-              <option value="">미지정</option>
               <option value="유치부">유치부</option>
               <option value="오후반">오후반</option>
             </select>
+          </div>
+        </div>
+        <div>
+          <label className="mb-2 block text-sm font-medium text-foreground">
+            요일{" "}
+            <span className="text-muted-foreground font-normal">
+              {groupLabel === "유치부" ? "(월~금 고정)" : "(최소 1개)"}
+            </span>
+          </label>
+          <div className="flex gap-2">
+            {[
+              { val: 1, label: "월" },
+              { val: 2, label: "화" },
+              { val: 3, label: "수" },
+              { val: 4, label: "목" },
+              { val: 5, label: "금" },
+            ].map((d) => (
+              <label
+                key={d.val}
+                className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm cursor-pointer ${
+                  daysOfWeek.includes(d.val)
+                    ? "border-emerald-400 bg-emerald-50 text-emerald-700"
+                    : "border-slate-200 bg-white text-slate-600"
+                } ${groupLabel === "유치부" ? "opacity-60 cursor-not-allowed" : ""}`}
+              >
+                <input
+                  type="checkbox"
+                  checked={daysOfWeek.includes(d.val)}
+                  disabled={groupLabel === "유치부"}
+                  onChange={() => {
+                    setDaysOfWeek((prev) =>
+                      prev.includes(d.val)
+                        ? prev.filter((v) => v !== d.val)
+                        : [...prev, d.val].sort()
+                    );
+                  }}
+                  className="sr-only"
+                />
+                {d.label}
+              </label>
+            ))}
           </div>
         </div>
         <div>
@@ -921,7 +883,7 @@ function AddClassModal({
           </button>
           <button
             type="submit"
-            disabled={pending}
+            disabled={pending || daysOfWeek.length === 0}
             className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500 disabled:opacity-50"
           >
             {pending ? "저장 중…" : "저장"}
@@ -944,14 +906,19 @@ function EditClassModal({
   onSuccess: () => void;
 }) {
   const [name, setName] = useState(classRow.name);
-  const [groupLabel, setGroupLabel] = useState(classRow.group_label ?? "");
+  const [groupLabel, setGroupLabel] = useState(GROUP_TYPE_TO_LABEL[classRow.group_type ?? ""] ?? "유치부");
   const [colorIndex, setColorIndex] = useState<number | null>(classRow.color_index ?? null);
   const [selectedTeacherIds, setSelectedTeacherIds] = useState<string[]>(
     classRow.teachers.map((t) => t.profile_id)
   );
   const [teacherSearch, setTeacherSearch] = useState("");
+  const [daysOfWeek, setDaysOfWeek] = useState<number[]>(classRow.days_of_week ?? [1, 2, 3, 4, 5]);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (groupLabel === "유치부") setDaysOfWeek([1, 2, 3, 4, 5]);
+  }, [groupLabel]);
 
   const toggleTeacher = (id: string) => {
     setSelectedTeacherIds((prev) =>
@@ -965,8 +932,14 @@ function EditClassModal({
     return teachers.filter((t) => t.name.toLowerCase().includes(q));
   }, [teachers, teacherSearch]);
 
+  const removedDays = useMemo(() => {
+    const initialDays = classRow.days_of_week ?? [1, 2, 3, 4, 5];
+    return initialDays.filter((d) => !daysOfWeek.includes(d));
+  }, [classRow.days_of_week, daysOfWeek]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (daysOfWeek.length === 0) return;
     setPending(true);
     setError(null);
     const result = await updateClass(
@@ -975,6 +948,7 @@ function EditClassModal({
       selectedTeacherIds,
       groupLabel,
       colorIndex,
+      daysOfWeek,
     );
     setPending(false);
     if (result?.error) {
@@ -984,9 +958,16 @@ function EditClassModal({
     onSuccess();
   };
 
+  const dayLabels: Record<number, string> = { 1: "월", 2: "화", 3: "수", 4: "목", 5: "금" };
+
   return (
     <Modal title="반 수정" onClose={onClose}>
       <form onSubmit={handleSubmit} className="space-y-4">
+        {removedDays.length > 0 && (
+          <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-sm text-amber-700">
+            ⚠ 선택 해제한 요일({removedDays.map((d) => dayLabels[d]).join(", ")})의 수업 배정도 함께 삭제됩니다.
+          </div>
+        )}
         {error && (
           <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">
             {error}
@@ -1014,10 +995,50 @@ function EditClassModal({
               onChange={(e) => setGroupLabel(e.target.value)}
               className="w-full rounded-lg border border-input px-3 py-2 text-foreground bg-background"
             >
-              <option value="">미지정</option>
               <option value="유치부">유치부</option>
               <option value="오후반">오후반</option>
             </select>
+          </div>
+        </div>
+        <div>
+          <label className="mb-2 block text-sm font-medium text-foreground">
+            요일{" "}
+            <span className="text-muted-foreground font-normal">
+              {groupLabel === "유치부" ? "(월~금 고정)" : "(최소 1개)"}
+            </span>
+          </label>
+          <div className="flex gap-2">
+            {[
+              { val: 1, label: "월" },
+              { val: 2, label: "화" },
+              { val: 3, label: "수" },
+              { val: 4, label: "목" },
+              { val: 5, label: "금" },
+            ].map((d) => (
+              <label
+                key={d.val}
+                className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm cursor-pointer ${
+                  daysOfWeek.includes(d.val)
+                    ? "border-emerald-400 bg-emerald-50 text-emerald-700"
+                    : "border-slate-200 bg-white text-slate-600"
+                } ${groupLabel === "유치부" ? "opacity-60 cursor-not-allowed" : ""}`}
+              >
+                <input
+                  type="checkbox"
+                  checked={daysOfWeek.includes(d.val)}
+                  disabled={groupLabel === "유치부"}
+                  onChange={() => {
+                    setDaysOfWeek((prev) =>
+                      prev.includes(d.val)
+                        ? prev.filter((v) => v !== d.val)
+                        : [...prev, d.val].sort()
+                    );
+                  }}
+                  className="sr-only"
+                />
+                {d.label}
+              </label>
+            ))}
           </div>
         </div>
         <div>
@@ -1094,7 +1115,7 @@ function EditClassModal({
           </button>
           <button
             type="submit"
-            disabled={pending}
+            disabled={pending || daysOfWeek.length === 0}
             className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500 disabled:opacity-50"
           >
             {pending ? "저장 중…" : "저장"}

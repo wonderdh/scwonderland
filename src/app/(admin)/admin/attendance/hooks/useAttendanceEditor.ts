@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 import { getClassStudentsWithAttendance, bulkRecordAttendance } from "@/app/(admin)/admin/actions";
 import type { ClassWithDetails, StudentWithAttendance } from "@/lib/types";
+import { GROUP_TYPE_TO_LABEL } from "@/lib/constants/class";
 
 export type GroupFilter = "유치부" | "오후반";
 
@@ -24,7 +25,7 @@ export function useAttendanceEditor(initialClasses: ClassWithDetails[], today: s
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const filteredClasses = initialClasses.filter((c) => c.group_label === groupFilter);
+  const filteredClasses = initialClasses.filter((c) => (GROUP_TYPE_TO_LABEL[c.group_type ?? ""] ?? "") === groupFilter);
 
   // 그룹 변경 시 현재 선택 반이 해당 그룹에 없으면 처리
   useEffect(() => {

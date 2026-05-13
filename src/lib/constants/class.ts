@@ -2,6 +2,18 @@
 export const GROUP_ORDER = ["유치부", "오후반", ""] as const;
 export type GroupKey = (typeof GROUP_ORDER)[number];
 
+// group_type → 한글 라벨 (클라이언트 컴포넌트용)
+export const GROUP_TYPE_TO_LABEL: Record<string, string> = {
+  kindergarten: "유치부",
+  afternoon: "오후반",
+  afterschool: "방과후",
+};
+export const GROUP_LABEL_TO_TYPE: Record<string, string> = {
+  유치부: "kindergarten",
+  오후반: "afternoon",
+  방과후: "afterschool",
+};
+
 // IMPORTANT: All strings must be complete Tailwind class names (no dynamic concat) for purging to work.
 export const CLASS_COLOR_PALETTE: { bg: string; text: string; border: string }[] = [
   { bg: "bg-blue-100",    text: "text-blue-800",    border: "border-blue-300"    },

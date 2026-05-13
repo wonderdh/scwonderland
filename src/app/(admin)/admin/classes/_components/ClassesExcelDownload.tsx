@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import type { ClassWithDetails } from "@/lib/types";
+import { GROUP_TYPE_TO_LABEL } from "@/lib/constants/class";
 
 // CLASS_COLOR_PALETTE -100/-800 계열 ARGB
 const PALETTE_ARGB: { bg: string; text: string; lightBg: string }[] = [
@@ -42,11 +43,11 @@ async function buildWorkbook(
   const ExcelJS = (await import("exceljs")).default;
   const wb = new ExcelJS.Workbook();
 
-  const nonAfterClasses = classes.filter((c) => c.group_label !== "방과후");
+  const nonAfterClasses = classes.filter((c) => GROUP_TYPE_TO_LABEL[c.group_type ?? ""] !== "방과후");
   const groups: { name: string; classes: ClassWithDetails[] }[] = [
     { name: "Sheet1", classes: nonAfterClasses },
-    { name: "Sheet2", classes: nonAfterClasses.filter((c) => c.group_label === "유치부") },
-    { name: "Sheet3", classes: nonAfterClasses.filter((c) => c.group_label === "오후반") },
+    { name: "Sheet2", classes: nonAfterClasses.filter((c) => GROUP_TYPE_TO_LABEL[c.group_type ?? ""] === "유치부") },
+    { name: "Sheet3", classes: nonAfterClasses.filter((c) => GROUP_TYPE_TO_LABEL[c.group_type ?? ""] === "오후반") },
   ];
 
   for (const { name, classes: sheetClasses } of groups) {

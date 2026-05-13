@@ -15,6 +15,20 @@ import { getStudentRecordByProfileId, getStudentsByIds, getTeacherRecordByProfil
 import { translateText } from "@/lib/server/translate";
 import { logger } from "@/lib/server/logger";
 
+/** student profile id → class_students.id 변환 헬퍼. 한 학생은 동시에 한 반에만 소속됨. */
+async function resolveClassStudentId(
+  supabase: ReturnType<typeof createAdminClient>,
+  studentProfileId: string
+): Promise<string | null> {
+  const { data } = await supabase
+    .from("class_students")
+    .select("id")
+    .eq("student_id", studentProfileId)
+    .limit(1)
+    .maybeSingle();
+  return data?.id ?? null;
+}
+
 /** 선택한 학생·년·월의 리포트카드 1건 조회 (없으면 null). admin/선생/해당 학생만 조회 가능(RLS). */
 export async function getReportCard(
   studentProfileId: string,
@@ -23,12 +37,12 @@ export async function getReportCard(
 ): Promise<ReportCard | null> {
   const supabase = await createClient();
   const admin = createAdminClient();
-  const student = await getStudentRecordByProfileId(admin, studentProfileId);
-  if (!student) return null;
+  const classStudentId = await resolveClassStudentId(admin, studentProfileId);
+  if (!classStudentId) return null;
   const { data, error } = await supabase
     .from("report_cards")
-    .select("id, student_id, year, month, teacher_id, content_en, content_ko, reply_ko, reply_en, created_at, updated_at")
-    .eq("student_id", student.id)
+    .select("id, class_student_id, year, month, class_teacher_id, content_en, content_ko, reply_ko, reply_en, created_at, updated_at")
+    .eq("class_student_id", classStudentId)
     .eq("year", year)
     .eq("month", month)
     .maybeSingle();
@@ -39,16 +53,18 @@ export async function getReportCard(
   if (!data) return null;
 
   let author_name: string | null = null;
-  if (data.teacher_id) {
+  // TODO: 작성자 의미 검증 — DB 변경으로 class_teacher_id 는 "담임" 의미가 되었으나
+  // 본 코드는 원래 "작성자" 비교를 의도. 의도 불일치하면 written_by 컬럼 도입 별 plan.
+  if (data.class_teacher_id) {
     const { data: teacher } = await admin
       .from("teachers")
       .select("name")
-      .eq("id", data.teacher_id)
+      .eq("id", data.class_teacher_id)
       .maybeSingle();
     author_name = teacher?.name ?? null;
   }
 
-  return { ...data, student_profile_id: student.profile_id, author_name } as ReportCard;
+  return { ...data, student_profile_id: studentProfileId, author_name } as ReportCard;
 }
 
 /** 해당 학생의 리포트카드 목록 (년·월 내림차순). admin/선생/해당 학생만 조회 가능(RLS). */
@@ -57,12 +73,12 @@ export async function listReportCardsByStudent(
 ): Promise<ReportCardListItem[]> {
   const supabase = await createClient();
   const admin = createAdminClient();
-  const student = await getStudentRecordByProfileId(admin, studentProfileId);
-  if (!student) return [];
+  const classStudentId = await resolveClassStudentId(admin, studentProfileId);
+  if (!classStudentId) return [];
   const { data, error } = await supabase
     .from("report_cards")
     .select("id, year, month")
-    .eq("student_id", student.id)
+    .eq("class_student_id", classStudentId)
     .order("year", { ascending: false })
     .order("month", { ascending: false });
   if (error) {
@@ -132,6 +148,9 @@ export async function upsertReportCard(
     return { error: "년도 또는 월이 올바르지 않습니다." };
   }
 
+  const classStudentId = await resolveClassStudentId(admin, studentProfileId);
+  if (!classStudentId) return { error: "학생의 반 정보를 찾을 수 없습니다." };
+
   const trimmedContent = content.trim() || null;
 
   // 원어민 교사 저장 시 한국어 자동 번역 (DeepL Free).
@@ -143,17 +162,19 @@ export async function upsertReportCard(
     content_ko = await translateText(trimmedContent, "ko", names);
   }
 
+  // TODO: 작성자 의미 검증 — DB 변경으로 class_teacher_id 는 "담임" 의미가 되었으나
+  // 본 코드는 원래 "작성자(user.id)" 저장을 의도. 의도 불일치하면 written_by 컬럼 도입 별 plan.
   const { error } = await supabase.from("report_cards").upsert(
     {
-      student_id: student.id,
+      class_student_id: classStudentId,
       year: y,
       month: m,
-      teacher_id: user.id,
+      class_teacher_id: user.id,
       content_en: trimmedContent,
       content_ko,
       updated_at: new Date().toISOString(),
     },
-    { onConflict: "student_id,year,month" }
+    { onConflict: "class_student_id,year,month" }
   );
   if (error) {
     logger.error("[upsertReportCard]", error.message, { studentProfileId, year, month });
@@ -189,13 +210,15 @@ export async function deleteReportCard(
       return { error: "삭제 권한이 없습니다." };
     }
     // 본인이 작성한 리포트만 삭제 가능
+    // TODO: 작성자 의미 검증 — DB 변경으로 class_teacher_id 는 "담임" 의미가 되었으나
+    // 본 코드는 원래 "작성자" 비교를 의도. 의도 불일치하면 written_by 컬럼 도입 별 plan.
     const { data: report } = await admin
       .from("report_cards")
-      .select("teacher_id")
+      .select("class_teacher_id")
       .eq("id", reportCardId)
       .single();
     if (!report) return { error: "리포트카드를 찾을 수 없습니다." };
-    if (report.teacher_id !== user.id) {
+    if (report.class_teacher_id !== user.id) {
       return { error: "본인이 작성한 리포트카드만 삭제할 수 있습니다." };
     }
   }
@@ -229,24 +252,32 @@ export async function updateReportCardReply(
 
   const { data: row } = await supabase
     .from("report_cards")
-    .select("id, student_id, content_en")
+    .select("id, class_student_id, content_en")
     .eq("id", reportCardId)
     .single();
   if (!row) return { error: "리포트카드를 찾을 수 없습니다." };
   const admin = createAdminClient();
-  const studentRows = await getStudentsByIds(admin, [row.student_id]);
-  const student = studentRows.get(row.student_id);
-  if (!student || student.profile_id !== user.id) return { error: "본인 리포트카드만 답글을 달 수 있습니다." };
+  // class_student_id → student_id → profile_id 로 소유권 확인
+  const { data: classMember } = await admin
+    .from("class_students")
+    .select("student_id")
+    .eq("id", row.class_student_id)
+    .maybeSingle();
+  if (!classMember || classMember.student_id !== user.id) return { error: "본인 리포트카드만 답글을 달 수 있습니다." };
   if (row.content_en == null || row.content_en === "") {
     return { error: "본문이 작성된 후에 답글을 남길 수 있습니다." };
   }
+
+  // 학생 이름 조회 (번역 시 이름 보존)
+  const studentRows = await getStudentsByIds(admin, [classMember.student_id]);
+  const student = studentRows.get(classMember.student_id);
 
   const trimmedReply = reply.trim() || null;
 
   // 번역 옵션: 한국어 답글 → 영어 (답글 삭제 시에는 null)
   let reply_en: string | null = null;
   if (trimmedReply && translateToEnglish) {
-    const names = [student.english_name, student.korean_name].filter(Boolean) as string[];
+    const names = [student?.english_name, student?.korean_name].filter(Boolean) as string[];
     reply_en = await translateText(trimmedReply, "en", names);
   }
 
@@ -254,7 +285,7 @@ export async function updateReportCardReply(
     .from("report_cards")
     .update({ reply_ko: trimmedReply, reply_en, updated_at: new Date().toISOString() })
     .eq("id", reportCardId)
-    .eq("student_id", row.student_id);
+    .eq("class_student_id", row.class_student_id);
   if (error) {
     logger.error("[updateReportCardReply]", error.message, { reportCardId });
     return { error: error.message };
@@ -274,25 +305,23 @@ export async function listAllClassesReportStatus(
   const admin = createAdminClient();
   const [{ data: classes, error: classError }, { data: memberships, error: membershipError }, { data: cards, error: cardError }] = await Promise.all([
     admin.from("classes").select("id, name, group_type").neq("group_type", "afterschool").order("name"),
-    admin.from("class_students").select("class_id, student_id"),
-    admin.from("report_cards").select("student_id").eq("year", year).eq("month", month),
+    admin.from("class_students").select("id, class_id, student_id"),
+    admin.from("report_cards").select("class_student_id").eq("year", year).eq("month", month),
   ]);
   if (classError || membershipError || cardError) {
     logger.error("[listAllClassesReportStatus]", classError?.message ?? membershipError?.message ?? cardError?.message ?? "unknown");
     return [];
   }
 
-  const writtenStudentIds = new Set((cards ?? []).map((card) => card.student_id as string));
+  const writtenClassStudentIds = new Set((cards ?? []).map((card) => card.class_student_id as string));
   return (classes ?? []).map((classRow) => {
-    const classStudentIds = (memberships ?? [])
-      .filter((membership) => membership.class_id === classRow.id)
-      .map((membership) => membership.student_id as string);
-    const uniqueStudentIds = [...new Set(classStudentIds)];
-    const written = uniqueStudentIds.filter((studentId) => writtenStudentIds.has(studentId)).length;
+    const classMembers = (memberships ?? []).filter((membership) => membership.class_id === classRow.id);
+    const uniqueClassStudentIds = [...new Set(classMembers.map((m) => m.id as string))];
+    const written = uniqueClassStudentIds.filter((csId) => writtenClassStudentIds.has(csId)).length;
     return {
       classId: classRow.id,
       className: classRow.name,
-      total: uniqueStudentIds.length,
+      total: uniqueClassStudentIds.length,
       written,
     };
   });
@@ -311,7 +340,7 @@ export async function listUntranslatedReports(
   // 1. 리포트카드 조회 (content_en 있는 것만)
   const { data: cards, error } = await admin
     .from("report_cards")
-    .select("id, content_en, content_ko, reply_ko, reply_en, student_id")
+    .select("id, content_en, content_ko, reply_ko, reply_en, class_student_id")
     .eq("year", year)
     .eq("month", month)
     .not("content_en", "is", null);
@@ -321,38 +350,44 @@ export async function listUntranslatedReports(
     return [];
   }
 
-  const studentIds = cards.map((c) => c.student_id);
-  const students = await getStudentsByIds(admin, studentIds);
+  const classStudentIds = cards.map((c) => c.class_student_id);
 
-  // 3. 반 이름 조회 (class_students + classes, 방과후 제외)
+  // 2. class_students → student_id + class 이름 조회
   const { data: classMemberships } = await admin
     .from("class_students")
-    .select("student_id, classes(name, group_type)")
-    .in("student_id", studentIds);
+    .select("id, student_id, classes(name, group_type)")
+    .in("id", classStudentIds);
 
-  // 4. 코드에서 조인
-  const studentMap = new Map(
-    [...students.values()].map((s) => [s.id, s.korean_name ?? "—"])
-  );
-
-  // 방과후 제외, 학생당 본반은 1개이므로 첫 번째 비방과후 항목만 사용
-  const classMap = new Map<string, string>();
+  // class_student_id → student_id 매핑
+  const csToStudentId = new Map<string, string>();
+  // class_student_id → class_name 매핑 (방과후 제외)
+  const csToClassName = new Map<string, string>();
   for (const m of classMemberships ?? []) {
+    csToStudentId.set(m.id, m.student_id);
     const cls = m.classes as unknown as { name: string; group_type: string } | null;
-    if (cls?.group_type !== "afterschool" && !classMap.has(m.student_id)) {
-      classMap.set(m.student_id, cls?.name ?? "—");
+    if (cls?.group_type !== "afterschool") {
+      csToClassName.set(m.id, cls?.name ?? "—");
     }
   }
 
-  return cards.map((card) => ({
-    id: card.id,
-    student_name: studentMap.get(card.student_id) ?? "—",
-    class_name: classMap.get(card.student_id) ?? "—",
-    content_en: card.content_en,
-    content_ko: card.content_ko,
-    reply_ko: card.reply_ko,
-    reply_en: card.reply_en,
-  }));
+  const studentIds = [...new Set(csToStudentId.values())];
+  const students = await getStudentsByIds(admin, studentIds);
+  const studentNameMap = new Map(
+    [...students.values()].map((s) => [s.id, s.korean_name ?? "—"])
+  );
+
+  return cards.map((card) => {
+    const studentId = csToStudentId.get(card.class_student_id);
+    return {
+      id: card.id,
+      student_name: studentId ? (studentNameMap.get(studentId) ?? "—") : "—",
+      class_name: csToClassName.get(card.class_student_id) ?? "—",
+      content_en: card.content_en,
+      content_ko: card.content_ko,
+      reply_ko: card.reply_ko,
+      reply_en: card.reply_en,
+    };
+  });
 }
 
 /** 번역된 JSON을 받아 content_ko / reply_en 일괄 저장. 관리자 전용. */
@@ -372,7 +407,7 @@ export async function importTranslations(
   await Promise.all(
     records.map(async (rec) => {
       if (!rec.id) return;
-      const patch: Record<string, string> = { updated_at: new Date().toISOString() };
+      const patch: { updated_at: string; content_ko?: string; reply_en?: string } = { updated_at: new Date().toISOString() };
       if (rec.content_ko) patch.content_ko = rec.content_ko;
       if (rec.reply_en) patch.reply_en = rec.reply_en;
       if (Object.keys(patch).length === 1) return; // updated_at만이면 skip
@@ -402,20 +437,29 @@ export async function translateReportCard(
 
   const { data: row } = await admin
     .from("report_cards")
-    .select("content_en, reply_ko, student_id, teacher_id")
+    .select("content_en, reply_ko, class_student_id, class_teacher_id")
     .eq("id", reportCardId)
     .single();
 
   if (!row) return { error: "리포트카드를 찾을 수 없습니다." };
 
+  // class_student_id → student_id 조회
+  const { data: classMember } = await admin
+    .from("class_students")
+    .select("student_id")
+    .eq("id", row.class_student_id)
+    .maybeSingle();
+
   // 학생·교사 이름 조회 (번역 시 이름 보존)
   const [studentRows, teacherRow] = await Promise.all([
-    getStudentsByIds(admin, [row.student_id]),
-    row.teacher_id
-      ? admin.from("teachers").select("name").eq("id", row.teacher_id).maybeSingle()
+    classMember ? getStudentsByIds(admin, [classMember.student_id]) : Promise.resolve(new Map()),
+    // TODO: 작성자 의미 검증 — DB 변경으로 class_teacher_id 는 "담임" 의미가 되었으나
+    // 본 코드는 원래 "작성자" 이름을 번역 보존 목적으로 조회. 의도 불일치하면 written_by 컬럼 도입 별 plan.
+    row.class_teacher_id
+      ? admin.from("teachers").select("name").eq("id", row.class_teacher_id).maybeSingle()
       : Promise.resolve({ data: null }),
   ]);
-  const studentRow = studentRows.get(row.student_id);
+  const studentRow = classMember ? studentRows.get(classMember.student_id) : undefined;
   const studentNames = [
     studentRow?.english_name,
     studentRow?.korean_name,

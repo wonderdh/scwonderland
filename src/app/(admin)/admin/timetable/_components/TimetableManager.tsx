@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { ConfirmDialog } from "@/components/overlays/ConfirmDialog";
 import { FormGroup } from "@/components/forms/FormGroup";
 import type { AcademyPeriod } from "@/lib/types";
+import { GROUP_TYPE_TO_LABEL } from "@/lib/constants/class";
 import {
   createAcademyPeriod,
   updateAcademyPeriod,
@@ -100,12 +101,13 @@ export function TimetableManager({
   const ungrouped: AcademyPeriod[] = [];
 
   for (const period of academyPeriods) {
-    if (period.group_label) {
-      const existing = groupMap.get(period.group_label);
+    const label = GROUP_TYPE_TO_LABEL[period.group_type] ?? "";
+    if (label) {
+      const existing = groupMap.get(label);
       if (existing) {
         existing.push(period);
       } else {
-        groupMap.set(period.group_label, [period]);
+        groupMap.set(label, [period]);
       }
     } else {
       ungrouped.push(period);
@@ -202,7 +204,7 @@ export function TimetableManager({
                 setEditName(period.name);
                 setEditStartTime(formatTime(period.start_time));
                 setEditEndTime(formatTime(period.end_time));
-                setEditGroupLabel(period.group_label ?? "");
+                setEditGroupLabel(GROUP_TYPE_TO_LABEL[period.group_type] ?? "");
               }}
             >
               수정

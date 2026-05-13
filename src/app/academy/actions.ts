@@ -247,18 +247,31 @@ export async function getClassReportStatus(
     .in("id", studentIds);
   const studentMap = new Map((students ?? []).map((studentRow) => [studentRow.id, studentRow]));
 
-  // 리포트카드 조회 (report_cards.student_id = students.id)
+  // class_students.id 목록 조회 (student_id → class_student_id 매핑)
+  const { data: classStudentRows } = await admin
+    .from("class_students")
+    .select("id, student_id")
+    .in("student_id", studentIds)
+    .eq("class_id", classId);
+  const studentIdToClassStudentId = new Map(
+    (classStudentRows ?? []).map((cs) => [cs.student_id, cs.id])
+  );
+  const classStudentIds = [...studentIdToClassStudentId.values()];
+
+  // 리포트카드 조회 (report_cards.class_student_id 기반)
   const { data: reports } = await admin
     .from("report_cards")
-    .select("id, student_id, content_en, reply_ko")
-    .in("student_id", studentIds)
+    .select("id, class_student_id, content_en, reply_ko")
+    .in("class_student_id", classStudentIds)
     .eq("year", year)
     .eq("month", month);
-  const reportMap = new Map((reports ?? []).map((r) => [r.student_id, r]));
+  // class_student_id → report 매핑
+  const reportByClassStudentId = new Map((reports ?? []).map((r) => [r.class_student_id, r]));
 
   return studentIds.map((sid) => {
     const s = studentMap.get(sid);
-    const r = reportMap.get(sid);
+    const csId = studentIdToClassStudentId.get(sid);
+    const r = csId ? reportByClassStudentId.get(csId) : undefined;
     return {
       student_profile_id: sid,  // students.id IS the profile_id (shared PK)
       korean_name: s?.korean_name ?? null,

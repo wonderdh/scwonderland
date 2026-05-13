@@ -7,10 +7,30 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: "14.1"
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
   }
   public: {
     Tables: {
@@ -18,11 +38,8 @@ export type Database = {
         Row: {
           created_at: string
           end_time: string
-          group_label: string | null
           group_type: Database["public"]["Enums"]["class_group"]
-          has_dropoff: boolean
           id: string
-          is_active: boolean
           name: string
           sort_order: number
           start_time: string
@@ -31,11 +48,8 @@ export type Database = {
         Insert: {
           created_at?: string
           end_time: string
-          group_label?: string | null
           group_type: Database["public"]["Enums"]["class_group"]
-          has_dropoff?: boolean
           id?: string
-          is_active?: boolean
           name: string
           sort_order?: number
           start_time: string
@@ -44,11 +58,8 @@ export type Database = {
         Update: {
           created_at?: string
           end_time?: string
-          group_label?: string | null
           group_type?: Database["public"]["Enums"]["class_group"]
-          has_dropoff?: boolean
           id?: string
-          is_active?: boolean
           name?: string
           sort_order?: number
           start_time?: string
@@ -549,31 +560,31 @@ export type Database = {
         Row: {
           academy_period_id: string
           class_id: string
+          class_teacher_id: string | null
           created_at: string
           day_of_week: number
           id: string
           label: string | null
-          teacher_id: string | null
           updated_at: string
         }
         Insert: {
           academy_period_id: string
           class_id: string
+          class_teacher_id?: string | null
           created_at?: string
           day_of_week: number
           id?: string
           label?: string | null
-          teacher_id?: string | null
           updated_at?: string
         }
         Update: {
           academy_period_id?: string
           class_id?: string
+          class_teacher_id?: string | null
           created_at?: string
           day_of_week?: number
           id?: string
           label?: string | null
-          teacher_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -592,8 +603,8 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "class_schedules_teacher_id_fkey"
-            columns: ["teacher_id"]
+            foreignKeyName: "class_schedules_class_teacher_id_fkey"
+            columns: ["class_teacher_id"]
             isOneToOne: false
             referencedRelation: "teachers"
             referencedColumns: ["id"]
@@ -679,8 +690,7 @@ export type Database = {
         Row: {
           color_index: number | null
           created_at: string
-          english_name: string | null
-          group_label: string | null
+          days_of_week: number[]
           group_type: Database["public"]["Enums"]["class_group"]
           id: string
           is_active: boolean
@@ -690,8 +700,7 @@ export type Database = {
         Insert: {
           color_index?: number | null
           created_at?: string
-          english_name?: string | null
-          group_label?: string | null
+          days_of_week?: number[]
           group_type: Database["public"]["Enums"]["class_group"]
           id?: string
           is_active?: boolean
@@ -701,8 +710,7 @@ export type Database = {
         Update: {
           color_index?: number | null
           created_at?: string
-          english_name?: string | null
-          group_label?: string | null
+          days_of_week?: number[]
           group_type?: Database["public"]["Enums"]["class_group"]
           id?: string
           is_active?: boolean
@@ -867,6 +875,8 @@ export type Database = {
       }
       report_cards: {
         Row: {
+          class_student_id: string
+          class_teacher_id: string | null
           content_en: string | null
           content_ko: string | null
           created_at: string
@@ -874,12 +884,12 @@ export type Database = {
           month: number
           reply_en: string | null
           reply_ko: string | null
-          student_id: string
-          teacher_id: string | null
           updated_at: string
           year: number
         }
         Insert: {
+          class_student_id: string
+          class_teacher_id?: string | null
           content_en?: string | null
           content_ko?: string | null
           created_at?: string
@@ -887,12 +897,12 @@ export type Database = {
           month: number
           reply_en?: string | null
           reply_ko?: string | null
-          student_id: string
-          teacher_id?: string | null
           updated_at?: string
           year: number
         }
         Update: {
+          class_student_id?: string
+          class_teacher_id?: string | null
           content_en?: string | null
           content_ko?: string | null
           created_at?: string
@@ -900,24 +910,22 @@ export type Database = {
           month?: number
           reply_en?: string | null
           reply_ko?: string | null
-          student_id?: string
-          teacher_id?: string | null
           updated_at?: string
           year?: number
         }
         Relationships: [
           {
-            foreignKeyName: "report_cards_student_id_fkey"
-            columns: ["student_id"]
+            foreignKeyName: "report_cards_class_student_id_fkey"
+            columns: ["class_student_id"]
             isOneToOne: false
-            referencedRelation: "students"
+            referencedRelation: "class_students"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "report_cards_teacher_id_fkey"
-            columns: ["teacher_id"]
+            foreignKeyName: "report_cards_class_teacher_id_fkey"
+            columns: ["class_teacher_id"]
             isOneToOne: false
-            referencedRelation: "teachers"
+            referencedRelation: "class_teachers"
             referencedColumns: ["id"]
           },
         ]
@@ -1365,6 +1373,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       attendance_status: [
@@ -1384,3 +1395,4 @@ export const Constants = {
     },
   },
 } as const
+

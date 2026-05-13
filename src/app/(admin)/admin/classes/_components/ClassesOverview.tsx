@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import type { ClassWithDetails, TeacherOption } from "@/lib/types";
 import { TeacherBadges } from "@/components/badges/TeacherBadges";
-import { GROUP_ORDER, type GroupKey } from "@/lib/constants/class";
+import { GROUP_ORDER, GROUP_TYPE_TO_LABEL, type GroupKey } from "@/lib/constants/class";
 import { ClassesExcelDownload } from "./ClassesExcelDownload";
 import { formatStudentName } from "@/lib/utils/student-name";
 
@@ -66,7 +66,7 @@ export function ClassesOverview({
 
   // 방과후 반 제외 (방과후 관리 페이지에서 별도 관리)
   const filteredOutClasses = useMemo(
-    () => classes.filter((c) => c.group_label !== "방과후"),
+    () => classes.filter((c) => GROUP_TYPE_TO_LABEL[c.group_type ?? ""] !== "방과후"),
     [classes],
   );
 
@@ -84,14 +84,14 @@ export function ClassesOverview({
     let filtered =
       groupFilter === "all"
         ? filteredOutClasses
-        : filteredOutClasses.filter((c) => (c.group_label ?? "") === groupFilter);
+        : filteredOutClasses.filter((c) => (GROUP_TYPE_TO_LABEL[c.group_type ?? ""] ?? "") === groupFilter);
     if (teacherFilter) {
       filtered = filtered.filter((c) => c.teachers.some((t) => t.profile_id === teacherFilter));
     }
     const map = new Map<GroupKey, ClassWithDetails[]>();
     for (const g of GROUP_ORDER) map.set(g, []);
     for (const c of filtered) {
-      const key = (c.group_label ?? "") as GroupKey;
+      const key = (GROUP_TYPE_TO_LABEL[c.group_type ?? ""] ?? "") as GroupKey;
       map.get(key)!.push(c);
     }
     return map;
@@ -109,7 +109,7 @@ export function ClassesOverview({
 
   // 드롭다운 옵션: 실제 존재하는 그룹만
   const existingGroups = GROUP_ORDER.filter((g) =>
-    filteredOutClasses.some((c) => (c.group_label ?? "") === g)
+    filteredOutClasses.some((c) => (GROUP_TYPE_TO_LABEL[c.group_type ?? ""] ?? "") === g)
   );
 
   return (
@@ -123,7 +123,7 @@ export function ClassesOverview({
         >
           <option value="all">전체 ({filteredOutClasses.length}개 반)</option>
           {existingGroups.map((g) => {
-            const count = filteredOutClasses.filter((c) => (c.group_label ?? "") === g).length;
+            const count = filteredOutClasses.filter((c) => (GROUP_TYPE_TO_LABEL[c.group_type ?? ""] ?? "") === g).length;
             return (
               <option key={g} value={g}>
                 {GROUP_STYLE[g].icon} {GROUP_STYLE[g].label} ({count}개 반)

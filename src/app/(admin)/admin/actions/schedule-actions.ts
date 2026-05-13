@@ -14,11 +14,11 @@ import type {
 
 const DAY_RANGE = [1, 2, 3, 4, 5];
 
-const GROUP_TYPE_MAP: Record<string, string> = {
+const GROUP_TYPE_MAP = {
   "유치부": "kindergarten",
   "오후반": "afternoon",
   "방과후": "afterschool",
-};
+} as const satisfies Record<string, "kindergarten" | "afternoon" | "afterschool">;
 
 // ── 그룹별 시간표 그리드 ──
 export async function getGroupTimetableGrid(
@@ -28,17 +28,16 @@ export async function getGroupTimetableGrid(
   if ("error" in auth) return { periods: [], classes: [], cells: {}, teachers: [], textbooks: [] };
 
   const supabase = createAdminClient();
-  const groupType = GROUP_TYPE_MAP[groupLabel];
+  const groupType = GROUP_TYPE_MAP[groupLabel as keyof typeof GROUP_TYPE_MAP];
 
-  // 1. 해당 그룹의 교시 (group_label OR group_type 매칭)
+  // 1. 해당 그룹의 교시 (group_type 매칭)
   let periodsQuery = supabase
     .from("academy_periods")
     .select("id, name, start_time, end_time")
-    .eq("is_active", true)
     .order("start_time");
   periodsQuery = groupType
-    ? periodsQuery.or(`group_label.eq.${groupLabel},group_type.eq.${groupType}`)
-    : periodsQuery.eq("group_label", groupLabel);
+    ? periodsQuery.eq("group_type", groupType)
+    : periodsQuery;
 
   const { data: periods } = await periodsQuery;
   if (!periods?.length) return { periods: [], classes: [], cells: {}, teachers: [], textbooks: [] };
@@ -48,18 +47,22 @@ export async function getGroupTimetableGrid(
   // 2. 해당 그룹의 반
   let classesQuery = supabase
     .from("classes")
-    .select("id, name, english_name")
+    .select("id, name, days_of_week")
     .order("name");
   classesQuery = groupType
-    ? classesQuery.or(`group_label.eq.${groupLabel},group_type.eq.${groupType}`)
-    : classesQuery.eq("group_label", groupLabel);
+    ? classesQuery.eq("group_type", groupType)
+    : classesQuery;
   const { data: classRows } = await classesQuery;
-  const classes = (classRows ?? []) as { id: string; name: string; english_name: string | null }[];
+  const classes = (classRows ?? []).map((c) => ({
+    id: c.id,
+    name: c.name,
+    days_of_week: (c.days_of_week as number[] | null) ?? [1, 2, 3, 4, 5],
+  }));
 
   // 3. 수업 시간표 (반 배정. 신 스키마는 학생 개인 배정 컬럼 없음)
   const { data: schedules } = await supabase
     .from("class_schedules")
-    .select("id, class_id, academy_period_id, day_of_week, teacher_id, label")
+    .select("id, class_id, academy_period_id, day_of_week, class_teacher_id, label")
     .in("academy_period_id", periodIds);
 
   // 4. 활성 교사
@@ -79,12 +82,12 @@ export async function getGroupTimetableGrid(
   // 5. 셀 맵 (textbooks 도메인 제거)
   const cells: GroupTimetableData["cells"] = {};
   for (const s of schedules ?? []) {
-    const teacher = s.teacher_id ? teacherMap.get(s.teacher_id) : null;
+    const teacher = s.class_teacher_id ? teacherMap.get(s.class_teacher_id) : null;
     const key = `${s.class_id}_${s.academy_period_id}_${s.day_of_week}`;
     const entry: CellEntry = {
       scheduleId: s.id,
       label: s.label ?? null,
-      teacherId: s.teacher_id ?? null,
+      teacherId: s.class_teacher_id ?? null,
       teacherName: teacher?.name ?? null,
       teacherType: (teacher?.teacher_type ?? "korean") as "korean" | "native",
       textbookId: null,
@@ -134,7 +137,7 @@ export async function addSingleClassSchedule(
     const { data: conflict } = await supabase
       .from("class_schedules")
       .select("id, class_id")
-      .eq("teacher_id", teacherProfileId)
+      .eq("class_teacher_id", teacherProfileId)
       .eq("academy_period_id", academyPeriodId)
       .eq("day_of_week", dayOfWeek)
       .neq("class_id", classId)
@@ -150,21 +153,21 @@ export async function addSingleClassSchedule(
     }
   }
 
-  // 기존 행 조회 (teacher_id 까지 매칭해 복수 교사 슬롯 충돌 방지)
+  // 기존 행 조회 (class_teacher_id 까지 매칭해 복수 교사 슬롯 충돌 방지)
   let query = supabase
     .from("class_schedules")
     .select("id")
     .eq("academy_period_id", academyPeriodId)
     .eq("day_of_week", dayOfWeek)
     .eq("class_id", classId);
-  if (teacherProfileId) query = query.eq("teacher_id", teacherProfileId);
+  if (teacherProfileId) query = query.eq("class_teacher_id", teacherProfileId);
   const { data: existing } = await query.maybeSingle();
 
   if (existing) {
     const { error } = await supabase
       .from("class_schedules")
       .update({
-        teacher_id: teacherProfileId || null,
+        class_teacher_id: teacherProfileId || null,
         label: label || null,
       })
       .eq("id", existing.id);
@@ -177,7 +180,7 @@ export async function addSingleClassSchedule(
       class_id: classId,
       academy_period_id: academyPeriodId,
       day_of_week: dayOfWeek,
-      teacher_id: teacherProfileId || null,
+      class_teacher_id: teacherProfileId || null,
       label: label || null,
     });
     if (error) {
@@ -213,7 +216,7 @@ export async function setClassScheduleSlot(
       const { data: conflict } = await supabase
         .from("class_schedules")
         .select("id, class_id")
-        .eq("teacher_id", a.teacherProfileId)
+        .eq("class_teacher_id", a.teacherProfileId)
         .eq("academy_period_id", academyPeriodId)
         .eq("day_of_week", dayOfWeek)
         .neq("class_id", classId)
@@ -249,7 +252,7 @@ export async function setClassScheduleSlot(
       class_id: classId,
       academy_period_id: academyPeriodId,
       day_of_week: dayOfWeek,
-      teacher_id: a.teacherProfileId ?? null,
+      class_teacher_id: a.teacherProfileId ?? null,
       label: a.label ?? null,
     }));
     const { error: insError } = await supabase.from("class_schedules").insert(rows);
@@ -273,7 +276,7 @@ export async function listClassSchedules(
   const supabase = createAdminClient();
   const { data: schedules, error } = await supabase
     .from("class_schedules")
-    .select("id, class_id, academy_period_id, day_of_week, teacher_id, label")
+    .select("id, class_id, academy_period_id, day_of_week, class_teacher_id, label")
     .eq("class_id", classId);
 
   if (error || !schedules?.length) return [];
@@ -286,7 +289,7 @@ export async function listClassSchedules(
   const periodMap = new Map((periods ?? []).map((p) => [p.id, p]));
 
   const teacherIds = [...new Set(
-    schedules.map((s) => s.teacher_id).filter((v): v is string => v !== null),
+    schedules.map((s) => s.class_teacher_id).filter((v): v is string => v !== null),
   )];
   let teacherMap = new Map<string, { id: string; name: string; teacher_type: string }>();
   if (teacherIds.length > 0) {
@@ -300,14 +303,14 @@ export async function listClassSchedules(
   return schedules
     .map((s) => {
       const period = periodMap.get(s.academy_period_id);
-      const teacher = s.teacher_id ? teacherMap.get(s.teacher_id) : null;
+      const teacher = s.class_teacher_id ? teacherMap.get(s.class_teacher_id) : null;
       return {
         id: s.id,
         class_id: s.class_id,
         student_profile_id: null,
         academy_period_id: s.academy_period_id,
         day_of_week: s.day_of_week,
-        teacher_profile_id: s.teacher_id,
+        teacher_profile_id: s.class_teacher_id,
         label: s.label ?? null,
         textbook_id: null,
         period_name: period?.name ?? "",
@@ -345,7 +348,7 @@ export async function addClassScheduleBatch(
     class_id: classId,
     academy_period_id: academyPeriodId,
     day_of_week: dow,
-    teacher_id: teacherProfileId || null,
+    class_teacher_id: teacherProfileId || null,
     label: label || null,
   }));
 
@@ -440,7 +443,7 @@ export async function getStudentTimetable(
 
   const { data: classSchedules } = await supabase
     .from("class_schedules")
-    .select("id, class_id, academy_period_id, day_of_week, teacher_id, label")
+    .select("id, class_id, academy_period_id, day_of_week, class_teacher_id, label")
     .in("class_id", allClassIds);
 
   const filteredSchedules = (classSchedules ?? []).filter((s) => {
@@ -454,15 +457,14 @@ export async function getStudentTimetable(
   // 5. period + teacher
   const periodIds = [...new Set(filteredSchedules.map((s) => s.academy_period_id))];
   const teacherIds = [...new Set(
-    filteredSchedules.map((s) => s.teacher_id).filter((v): v is string => v !== null),
+    filteredSchedules.map((s) => s.class_teacher_id).filter((v): v is string => v !== null),
   )];
 
   const [{ data: periods }, { data: teachers }] = await Promise.all([
     supabase
       .from("academy_periods")
       .select("id, name, start_time, end_time")
-      .in("id", periodIds)
-      .eq("is_active", true),
+      .in("id", periodIds),
     teacherIds.length > 0
       ? supabase
           .from("teachers")
@@ -486,13 +488,13 @@ export async function getStudentTimetable(
         (s) => s.academy_period_id === period.id && s.day_of_week === day,
       );
       if (schedule) {
-        const teacher = schedule.teacher_id ? teacherMap.get(schedule.teacher_id) : null;
+        const teacher = schedule.class_teacher_id ? teacherMap.get(schedule.class_teacher_id) : null;
         cells[day] = {
           schedule_id: schedule.id,
           class_id: schedule.class_id,
           class_name: classMap.get(schedule.class_id) ?? "",
           label: schedule.label ?? null,
-          teacher_profile_id: schedule.teacher_id ?? null,
+          teacher_profile_id: schedule.class_teacher_id ?? null,
           teacher_name: teacher?.name ?? null,
           teacher_type: (teacher?.teacher_type ?? "korean") as "korean" | "native",
           textbook_id: null,
@@ -514,7 +516,7 @@ export async function getStudentTimetable(
 
 // ── 학생 개인 배정 편집 데이터 (신 스키마에서 폐지) ──
 type StudentTimetableEditData = {
-  periods: { id: string; name: string; start_time: string; end_time: string; group_label: string | null }[];
+  periods: { id: string; name: string; start_time: string; end_time: string }[];
   cells: Record<string, {
     scheduleId: string;
     label: string | null;

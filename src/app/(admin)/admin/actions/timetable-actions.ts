@@ -17,7 +17,6 @@ export async function listAcademyPeriods(): Promise<AcademyPeriod[]> {
   const { data, error } = await supabase
     .from("academy_periods")
     .select("*")
-    .eq("is_active", true)
     .order("start_time");
   if (error) {
     logger.error("[listAcademyPeriods]", error.message);
@@ -48,9 +47,7 @@ export async function createAcademyPeriod(
       name: trimmed,
       start_time: startTime,
       end_time: endTime,
-      has_dropoff: false,
       group_type: groupType,
-      group_label: groupLabel?.trim() || null,
     })
     .select("id")
     .single();
@@ -84,8 +81,7 @@ export async function updateAcademyPeriod(
       name: trimmed,
       start_time: startTime,
       end_time: endTime,
-      has_dropoff: false,
-      group_label: groupLabel?.trim() || null,
+      group_type: toGroupType(groupLabel) ?? "afternoon",
       updated_at: new Date().toISOString(),
     })
     .eq("id", id);
@@ -104,7 +100,7 @@ export async function deleteAcademyPeriod(id: string): Promise<{ error?: string 
   const supabase = createAdminClient();
   const { error } = await supabase
     .from("academy_periods")
-    .update({ is_active: false, updated_at: new Date().toISOString() })
+    .delete()
     .eq("id", id);
   if (error) {
     logger.error("[deleteAcademyPeriod]", error.message);

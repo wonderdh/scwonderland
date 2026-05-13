@@ -20,7 +20,6 @@ async function getAfterschoolPeriodIds(
     .from("academy_periods")
     .select("id")
     .eq("group_type", "afterschool")
-    .eq("is_active", true)
     .order("sort_order", { ascending: true })
     .order("start_time", { ascending: true });
   return {
@@ -49,7 +48,7 @@ export async function getOrCreateAfterschoolClass(): Promise<{ id: string; name:
   // 없으면 자동 생성
   const { data: created, error } = await supabase
     .from("classes")
-    .insert({ name: "방과후", group_type: "afterschool", group_label: "방과후" })
+    .insert({ name: "방과후", group_type: "afterschool" })
     .select("id, name")
     .single();
 

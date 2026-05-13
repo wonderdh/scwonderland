@@ -12,7 +12,6 @@ import {
   getTeacherRecordByProfileId,
   getTeachersByIds,
   getUserIdsByRole,
-  toGroupLabel,
   toGroupType,
 } from "@/lib/server/domain-helpers";
 
@@ -113,7 +112,7 @@ export async function listClassesWithDetails(): Promise<ClassWithDetails[]> {
 
   const { data: classes, error } = await supabase
     .from("classes")
-    .select("id, name, group_type, group_label, color_index, created_at, updated_at")
+    .select("id, name, group_type, color_index, days_of_week, created_at, updated_at")
     .order("name");
   if (error || !classes?.length) {
     if (error) logger.error("[listClassesWithDetails]", error.message);
@@ -139,8 +138,9 @@ export async function listClassesWithDetails(): Promise<ClassWithDetails[]> {
   return classes.map((item) => ({
     id: item.id,
     name: item.name,
-    group_label: (item.group_label ?? toGroupLabel(item.group_type) ?? null) as ClassWithDetails["group_label"],
+    group_type: item.group_type,
     color_index: item.color_index ?? null,
+    days_of_week: (item.days_of_week as number[] | null) ?? [1, 2, 3, 4, 5],
     teachers: teachersByClass.get(item.id) ?? [],
     student_count: studentCountByClass[item.id] ?? 0,
     schedule_count: scheduleCountByClass[item.id] ?? 0,
@@ -158,7 +158,7 @@ export async function getClassWithStudents(
 
   const { data: classRow, error } = await supabase
     .from("classes")
-    .select("id, name, group_type, group_label, color_index, created_at, updated_at")
+    .select("id, name, group_type, color_index, days_of_week, created_at, updated_at")
     .eq("id", classId)
     .single();
   if (error || !classRow) return { class: null, students: [] };
@@ -180,8 +180,9 @@ export async function getClassWithStudents(
     class: {
       id: classRow.id,
       name: classRow.name,
-      group_label: (classRow.group_label ?? toGroupLabel(classRow.group_type) ?? null) as ClassWithDetails["group_label"],
+      group_type: classRow.group_type,
       color_index: classRow.color_index ?? null,
+      days_of_week: (classRow.days_of_week as number[] | null) ?? [1, 2, 3, 4, 5],
       teachers,
       student_count: studentCount ?? 0,
       schedule_count: 0,
@@ -269,7 +270,8 @@ export async function createClass(
   name: string,
   teacherProfileIds: string[],
   groupLabel?: string,
-  colorIndex?: number | null
+  colorIndex?: number | null,
+  daysOfWeek?: number[]
 ): Promise<{ error?: string; id?: string }> {
   const auth = await verifyAdmin();
   if ("error" in auth) return { error: auth.error };
@@ -278,13 +280,21 @@ export async function createClass(
   if (!normalizedName) return { error: "반 이름을 입력해 주세요." };
 
   const groupType = toGroupType(groupLabel ?? null);
+  const isKindergarten = (groupType ?? "kindergarten") === "kindergarten";
+  const finalDays = isKindergarten
+    ? [1, 2, 3, 4, 5]
+    : (daysOfWeek && daysOfWeek.length > 0 ? [...daysOfWeek].sort() : null);
+  if (!finalDays || finalDays.length === 0) {
+    return { error: "요일을 하나 이상 선택해 주세요." };
+  }
+
   const { data, error } = await supabase
     .from("classes")
     .insert({
       name: normalizedName,
       group_type: groupType ?? "kindergarten",
-      group_label: groupLabel ?? toGroupLabel(groupType ?? "kindergarten"),
       color_index: colorIndex ?? null,
+      days_of_week: finalDays,
     })
     .select("id")
     .single();
@@ -304,15 +314,14 @@ export async function createClass(
   const { data: periods } = await supabase
     .from("academy_periods")
     .select("id")
-    .eq("group_type", groupType ?? "kindergarten")
-    .eq("is_active", true);
+    .eq("group_type", groupType ?? "kindergarten");
   if (periods?.length) {
     const rows = periods.flatMap((period) =>
-      [1, 2, 3, 4, 5].map((day) => ({
+      finalDays.map((day) => ({
         class_id: data.id,
         academy_period_id: period.id,
         day_of_week: day,
-        teacher_id: null,
+        class_teacher_id: null,
         label: null,
       }))
     );
@@ -328,7 +337,8 @@ export async function updateClass(
   name: string,
   teacherProfileIds: string[],
   groupLabel?: string,
-  colorIndex?: number | null
+  colorIndex?: number | null,
+  daysOfWeek?: number[]
 ): Promise<{ error?: string }> {
   const auth = await verifyAdmin();
   if ("error" in auth) return { error: auth.error };
@@ -337,13 +347,37 @@ export async function updateClass(
   if (!normalizedName) return { error: "반 이름을 입력해 주세요." };
 
   const groupType = toGroupType(groupLabel ?? null);
+  const isKindergarten = (groupType ?? "kindergarten") === "kindergarten";
+  const finalDays = isKindergarten
+    ? [1, 2, 3, 4, 5]
+    : (daysOfWeek && daysOfWeek.length > 0 ? [...daysOfWeek].sort() : null);
+  if (!finalDays || finalDays.length === 0) {
+    return { error: "요일을 하나 이상 선택해 주세요." };
+  }
+
+  const { data: current } = await supabase
+    .from("classes")
+    .select("days_of_week, group_type")
+    .eq("id", classId)
+    .single();
+  const currentDays = (current?.days_of_week as number[] | null) ?? [1, 2, 3, 4, 5];
+  const removedDays = currentDays.filter((d) => !finalDays.includes(d));
+
+  if (removedDays.length > 0) {
+    await supabase
+      .from("class_schedules")
+      .delete()
+      .eq("class_id", classId)
+      .in("day_of_week", removedDays);
+  }
+
   const { error } = await supabase
     .from("classes")
     .update({
       name: normalizedName,
       group_type: groupType ?? "kindergarten",
-      group_label: groupLabel ?? toGroupLabel(groupType ?? "kindergarten"),
       color_index: colorIndex ?? null,
+      days_of_week: finalDays,
       updated_at: new Date().toISOString(),
     })
     .eq("id", classId);
@@ -362,6 +396,7 @@ export async function updateClass(
   }
 
   revalidatePath("/admin/classes");
+  revalidatePath("/admin/timetable");
   return {};
 }
 
@@ -556,7 +591,7 @@ export async function listClassesWithStudentIds(): Promise<
 
   const { data: classes } = await supabase
     .from("classes")
-    .select("id, name, group_type, group_label, color_index")
+    .select("id, name, group_type, color_index")
     .neq("group_type", "afterschool")
     .order("name");
   if (!classes?.length) return [];

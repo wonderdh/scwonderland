@@ -14,7 +14,8 @@ import {
 } from "../../actions";
 import { LoadingState } from "@/components/feedback/LoadingState";
 import { Spinner } from "@/components/feedback/Spinner";
-import { GROUP_ORDER } from "@/lib/constants/class";
+import { GROUP_ORDER, GROUP_TYPE_TO_LABEL } from "@/lib/constants/class";
+import type { SubTab } from "./ClassesPageClient";
 
 const DAY_LABELS = ["월", "화", "수", "목", "금"];
 
@@ -73,14 +74,17 @@ export function ClassScheduleManager({
   classes,
   teachers,
   periods,
+  subTab,
+  onSubTabChange,
 }: {
   classes: ClassWithDetails[];
   teachers: TeacherOption[];
   periods: AcademyPeriod[];
+  subTab: SubTab;
+  onSubTabChange: (sub: SubTab) => void;
 }) {
   const router = useRouter();
   const [search, setSearch] = useState("");
-  const [groupFilter, setGroupFilter] = useState("all");
   const [teacherFilter, setTeacherFilter] = useState("");
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -104,27 +108,28 @@ export function ClassScheduleManager({
   // Filter periods by group of selected class
   const classPeriods = useMemo(() => {
     if (!selectedClass) return [];
-    const gl = selectedClass.group_label ?? "";
+    const gl = GROUP_TYPE_TO_LABEL[selectedClass.group_type ?? ""] ?? "";
     return periods
-      .filter((p) => p.group_label === gl && p.is_active)
+      .filter((p) => GROUP_TYPE_TO_LABEL[p.group_type] === gl)
       .sort((a, b) => a.start_time.localeCompare(b.start_time));
   }, [selectedClass, periods]);
 
   const filteredClasses = useMemo(() => {
-    const nonAfterschool = classes.filter((c) => c.group_label !== "방과후");
-    let result =
-      groupFilter === "all"
-        ? nonAfterschool
-        : nonAfterschool.filter((c) => (c.group_label ?? "") === groupFilter);
+    const targetLabel = subTab === "kindergarten" ? "유치부" : "오후반";
+    const nonAfterschool = classes.filter((c) => GROUP_TYPE_TO_LABEL[c.group_type ?? ""] !== "방과후");
+    let result = nonAfterschool.filter(
+      (c) =>
+        GROUP_TYPE_TO_LABEL[c.group_type ?? ""] !== "방과후" &&
+        GROUP_TYPE_TO_LABEL[c.group_type ?? ""] === targetLabel
+    );
     if (teacherFilter) result = result.filter((c) => c.teachers.some((t) => t.profile_id === teacherFilter));
     if (!search.trim()) return result;
     const q = search.trim().toLowerCase();
-    return result.filter(
-      (c) =>
-        c.name.toLowerCase().includes(q) ||
-        (c.group_label && c.group_label.toLowerCase().includes(q)),
-    );
-  }, [classes, search, groupFilter, teacherFilter]);
+    return result.filter((c) => {
+      const gl = GROUP_TYPE_TO_LABEL[c.group_type ?? ""];
+      return c.name.toLowerCase().includes(q) || (gl && gl.toLowerCase().includes(q));
+    });
+  }, [classes, search, subTab, teacherFilter]);
 
   const groupedFilteredClasses = useMemo(() => {
     const map = new Map<string, ClassWithDetails[]>([
@@ -133,7 +138,7 @@ export function ClassScheduleManager({
       ["", []],
     ]);
     for (const c of filteredClasses) {
-      map.get(c.group_label ?? "")!.push(c);
+      map.get(GROUP_TYPE_TO_LABEL[c.group_type ?? ""] ?? "")!.push(c);
     }
     return map;
   }, [filteredClasses]);
@@ -174,6 +179,13 @@ export function ClassScheduleManager({
       loadSchedules(selectedClassId);
     }
   }, [selectedClassId, loadSchedules]);
+
+  // sub-tab 변경 시 반 선택 초기화
+  useEffect(() => {
+    setSelectedClassId(null);
+    setPendingChanges(new Map());
+    setPendingDeletes(new Set());
+  }, [subTab]);
 
   function handleSelectClass(classId: string) {
     setSelectedClassId(classId);
@@ -261,6 +273,32 @@ export function ClassScheduleManager({
 
   return (
     <div className="space-y-6">
+      {/* sub-tab nav */}
+      <nav className="flex border-b">
+        <button
+          type="button"
+          onClick={() => onSubTabChange("kindergarten")}
+          className={`px-5 py-3 text-base font-medium ${
+            subTab === "kindergarten"
+              ? "text-amber-700 border-b-2 border-amber-500 bg-amber-50"
+              : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+          }`}
+        >
+          🌅 유치부
+        </button>
+        <button
+          type="button"
+          onClick={() => onSubTabChange("afternoon")}
+          className={`px-5 py-3 text-base font-medium ${
+            subTab === "afternoon"
+              ? "text-sky-700 border-b-2 border-sky-500 bg-sky-50"
+              : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+          }`}
+        >
+          ☁️ 오후반
+        </button>
+      </nav>
+
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
         {/* 왼쪽: 반 목록 */}
         <div className="space-y-2">
@@ -272,16 +310,6 @@ export function ClassScheduleManager({
               onChange={(e) => setSearch(e.target.value)}
               className="flex-1 min-w-0 rounded-lg border border-input px-3 py-2 text-sm bg-background"
             />
-            <select
-              value={groupFilter}
-              onChange={(e) => setGroupFilter(e.target.value)}
-              className="rounded-lg border border-input px-2.5 py-2 text-sm text-foreground bg-background shrink-0"
-            >
-              <option value="all">전체</option>
-              <option value="유치부">유치부</option>
-              <option value="오후반">오후반</option>
-              <option value="">미지정</option>
-            </select>
           </div>
           <select
             value={teacherFilter}
@@ -513,6 +541,15 @@ export function ClassScheduleManager({
                             </div>
                           </td>
                           {[1, 2, 3, 4, 5].map((day) => {
+                            const isAllowedDay = (selectedClass.days_of_week ?? [1, 2, 3, 4, 5]).includes(day);
+                            if (!isAllowedDay) {
+                              return (
+                                <td key={day} className="py-2 px-2 text-center align-middle border-r last:border-r-0 bg-slate-100">
+                                  <span className="text-xs text-slate-300">—</span>
+                                </td>
+                              );
+                            }
+
                             const cellKey = `${period.id}_${day}`;
                             const pendingKey = `${period.id}|${day}`;
                             const existing = existingCells.get(cellKey);

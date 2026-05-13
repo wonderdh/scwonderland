@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import type { ClassWithDetails, AcademyPeriod } from "@/lib/types";
 import { ClassesManager } from "./ClassesManager";
 import { ClassesOverview } from "./ClassesOverview";
@@ -9,6 +9,7 @@ import { ClassScheduleManager } from "./ClassScheduleManager";
 import { PageHeader } from "@/components/navigation/PageHeader";
 
 type TabId = "overview" | "manage" | "schedule";
+export type SubTab = "kindergarten" | "afternoon";
 
 const TABS: { id: TabId; label: string }[] = [
   { id: "overview", label: "전체 반" },
@@ -20,6 +21,11 @@ function parseTab(tab: string | undefined): TabId {
   if (tab && (["overview", "manage", "schedule"] as string[]).includes(tab))
     return tab as TabId;
   return "overview";
+}
+
+function parseSub(sub: string | undefined): SubTab {
+  if (sub === "kindergarten" || sub === "afternoon") return sub;
+  return "kindergarten";
 }
 
 type TeacherOption = {
@@ -57,8 +63,14 @@ export function ClassesPageClient({
   allStudents: StudentInfo[];
   periods: AcademyPeriod[];
 }) {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const currentTab = parseTab(searchParams.get("tab") ?? undefined);
+  const currentSub = parseSub(searchParams.get("sub") ?? undefined);
+
+  const handleSubTabChange = (sub: SubTab) => {
+    router.replace(`/admin/classes?tab=${currentTab}&sub=${sub}`);
+  };
 
   return (
     <>
@@ -100,6 +112,8 @@ export function ClassesPageClient({
             teachers={teachers}
             allClassStudents={allClassStudents}
             allStudents={allStudents}
+            subTab={currentSub}
+            onSubTabChange={handleSubTabChange}
           />
         )}
         {currentTab === "schedule" && (
@@ -107,6 +121,8 @@ export function ClassesPageClient({
             classes={initialClasses}
             teachers={teachers}
             periods={periods}
+            subTab={currentSub}
+            onSubTabChange={handleSubTabChange}
           />
         )}
       </div>

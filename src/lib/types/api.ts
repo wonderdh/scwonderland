@@ -38,8 +38,9 @@ export type ClassTeacherInfo = {
 export type ClassWithDetails = {
   id: string;
   name: string;
-  group_label: "유치부" | "방과후" | "오후반" | null;
+  group_type: "kindergarten" | "afternoon" | "afterschool";
   color_index: number | null;
+  days_of_week: number[];
   teachers: ClassTeacherInfo[];
   student_count: number;
   schedule_count: number;
@@ -578,7 +579,7 @@ export type CellEntry = {
 
 export type GroupTimetableData = {
   periods: { id: string; name: string; start_time: string; end_time: string }[];
-  classes: { id: string; name: string; english_name: string | null }[];
+  classes: { id: string; name: string; days_of_week: number[] }[];
   /** key: `${classId}_${periodId}_${dayOfWeek}`, 슬롯당 복수 교사 지원 */
   cells: Record<string, CellEntry[]>;
   teachers: { id: string; name: string; teacher_type: "korean" | "native" }[];

@@ -15,7 +15,7 @@ import type { StopBusMaps } from "./_helpers";
 // ── 전체 활성 학생 명단 (배정 UI용) ──
 
 export async function listAllActiveStudentNames(): Promise<
-  { profile_id: string; korean_name: string | null; english_name: string | null; age: number | null; group_label: string | null }[]
+  { profile_id: string; korean_name: string | null; english_name: string | null; age: number | null; group_type: string | null }[]
 > {
   const auth = await verifyAuthenticated();
   if ("error" in auth) return [];
@@ -30,18 +30,18 @@ export async function listAllActiveStudentNames(): Promise<
     return [];
   }
 
-  // group_label 조회: class_students → classes.group_label
+  // group_type 조회: class_students → classes.group_type
   const studentIds = (data ?? []).map((s) => s.id);
   const groupMap = new Map<string, string>();
   if (studentIds.length) {
     const { data: classLinks } = await supabase
       .from("class_students")
-      .select("student_id, classes!inner(group_label)")
+      .select("student_id, classes!inner(group_type)")
       .in("student_id", studentIds);
     for (const link of classLinks ?? []) {
-      const gl = (link.classes as unknown as { group_label: string | null })?.group_label;
-      if (gl && !groupMap.has(link.student_id)) {
-        groupMap.set(link.student_id, gl);
+      const gt = (link.classes as unknown as { group_type: string | null })?.group_type;
+      if (gt && !groupMap.has(link.student_id)) {
+        groupMap.set(link.student_id, gt);
       }
     }
   }
@@ -51,7 +51,7 @@ export async function listAllActiveStudentNames(): Promise<
     korean_name: s.korean_name,
     english_name: s.english_name,
     age: s.age ?? null,
-    group_label: groupMap.get(s.id) ?? null,
+    group_type: groupMap.get(s.id) ?? null,
   }));
 }
 

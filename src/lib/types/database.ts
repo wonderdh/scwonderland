@@ -4,10 +4,12 @@
 
 export type ReportCard = {
   id: string;
+  /** 호출자가 기대하는 student profile id (students.id = profiles.id). report-actions 내부에서 변환 후 세팅. */
   student_profile_id: string;
   year: number;
   month: number;
-  teacher_id: string | null;
+  /** DB 컬럼명은 class_teacher_id ("담임" 의미). 작성자 의미 검증 필요 — written_by 컬럼 도입 plan 참조. */
+  class_teacher_id: string | null;
   author_name?: string | null;
   content_en: string | null;
   content_ko: string | null;
@@ -64,9 +66,8 @@ export type AcademyPeriod = {
   name: string;
   start_time: string;
   end_time: string;
-  has_dropoff: boolean;
-  group_label: "유치부" | "방과후" | "오후반" | null;
-  is_active: boolean;
+  group_type: "kindergarten" | "afternoon" | "afterschool";
+  sort_order: number;
   created_at: string;
   updated_at: string;
 };
