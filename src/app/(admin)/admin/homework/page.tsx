@@ -6,6 +6,7 @@ import {
   listClassesForHomeworkPicker,
   listClassUnitProgressDetailed,
   listClassTextbooks,
+  listTeachersForSelect,
 } from "../actions";
 import { PageHeader } from "@/components/navigation/PageHeader";
 import { TextbooksPageClient } from "./_components/TextbooksPageClient";
@@ -21,13 +22,14 @@ export default async function AdminTextbooksPage({
   const rawTab = params.tab ?? "textbooks";
   const tab = rawTab === "check" ? "class" : rawTab;
 
-  const [textbooks, activeSeriesList, allSeriesList, activePublishers, classList] =
+  const [textbooks, activeSeriesList, allSeriesList, activePublishers, classList, teachers] =
     await Promise.all([
       listTextbooks(),
       listSeries({ activeOnly: true }),
       listAllSeries(),
       listPublishers({ activeOnly: true }),
       listClassesForHomeworkPicker(),
+      listTeachersForSelect(),
     ]);
 
   const classOptions = classList;
@@ -68,6 +70,7 @@ export default async function AdminTextbooksPage({
           checkInitialData={initialCheckData}
           classInitialAssignments={initialAssignments}
           classAllTextbooks={textbooks}
+          teachers={teachers}
         />
       </Suspense>
     </div>

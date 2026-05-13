@@ -12,6 +12,7 @@ import type {
   ClassTextbookWithDetails,
   HomeworkClassPickerOption,
 } from "../../actions";
+import type { TeacherOption } from "@/lib/types";
 import type { Database } from "@/lib/types/database.generated";
 
 type PublisherOption = { id: string; name: string };
@@ -43,6 +44,7 @@ export function TextbooksPageClient({
   checkInitialData,
   classInitialAssignments,
   classAllTextbooks,
+  teachers,
 }: {
   initialTextbooks: TextbookWithSeries[];
   activeSeriesList: SeriesWithPublisher[];
@@ -53,6 +55,7 @@ export function TextbooksPageClient({
   checkInitialData: ClassUnitProgressDetailed;
   classInitialAssignments: ClassTextbookWithDetails[];
   classAllTextbooks: TextbookRow[];
+  teachers: TeacherOption[];
 }) {
   const searchParams = useSearchParams();
   const currentTab = parseTab(searchParams.get("tab"));
@@ -98,6 +101,7 @@ export function TextbooksPageClient({
           initialProgress={checkInitialData}
           initialAssignments={classInitialAssignments}
           allTextbooks={classAllTextbooks}
+          teachers={teachers}
         />
       )}
     </>

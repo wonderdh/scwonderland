@@ -47,7 +47,9 @@ async function buildClassTeacherMap(
 export type HomeworkClassPickerOption = {
   id: string;
   name: string;
+  teacherIds: string[];
   teacherNames: string[];
+  daysOfWeek: number[];
   studentNames: { ko: string | null; en: string | null }[];
 };
 
@@ -62,7 +64,7 @@ export async function listClassesForHomeworkPicker(): Promise<HomeworkClassPicke
 
   const { data: classes, error } = await supabase
     .from("classes")
-    .select("id, name")
+    .select("id, name, days_of_week")
     .order("name");
   if (error || !classes?.length) {
     if (error) logger.error("[listClassesForHomeworkPicker]", error.message);
@@ -95,14 +97,19 @@ export async function listClassesForHomeworkPicker(): Promise<HomeworkClassPicke
     studentsByClass.set(row.class_id as string, list);
   }
 
-  return classes.map((c) => ({
-    id: c.id,
-    name: c.name,
-    teacherNames: (teachersByClass.get(c.id) ?? [])
-      .map((t) => t.name ?? "")
-      .filter((n) => n.length > 0),
-    studentNames: studentsByClass.get(c.id) ?? [],
-  }));
+  return classes.map((c) => {
+    const classTeachers = teachersByClass.get(c.id) ?? [];
+    return {
+      id: c.id,
+      name: c.name,
+      teacherIds: classTeachers.map((t) => t.profile_id),
+      teacherNames: classTeachers
+        .map((t) => t.name ?? "")
+        .filter((n) => n.length > 0),
+      daysOfWeek: (c.days_of_week as number[] | null) ?? [1, 2, 3, 4, 5],
+      studentNames: studentsByClass.get(c.id) ?? [],
+    };
+  });
 }
 
 export async function listClassesWithDetails(): Promise<ClassWithDetails[]> {

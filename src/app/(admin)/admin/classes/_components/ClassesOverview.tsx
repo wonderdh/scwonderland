@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import type { ClassWithDetails, TeacherOption } from "@/lib/types";
 import { TeacherBadges } from "@/components/badges/TeacherBadges";
 import { GROUP_ORDER, GROUP_TYPE_TO_LABEL, type GroupKey } from "@/lib/constants/class";
+import { KST_DAY_LABELS } from "@/lib/utils/date-kst";
 import { ClassesExcelDownload } from "./ClassesExcelDownload";
 import { formatStudentName } from "@/lib/utils/student-name";
 
@@ -59,7 +60,9 @@ export function ClassesOverview({
   teachers: TeacherOption[];
 }) {
   const [groupFilter, setGroupFilter] = useState("all");
-  const [teacherFilter, setTeacherFilter] = useState("");
+  const [koreanTeacherId, setKoreanTeacherId] = useState<string | null>(null);
+  const [nativeTeacherId, setNativeTeacherId] = useState<string | null>(null);
+  const [selectedDays, setSelectedDays] = useState<Set<number>>(() => new Set());
 
   const nativeTeachers = teachers.filter((t) => t.teacher_type === "native");
   const koreanTeachers = teachers.filter((t) => t.teacher_type === "korean");
@@ -69,6 +72,21 @@ export function ClassesOverview({
     () => classes.filter((c) => GROUP_TYPE_TO_LABEL[c.group_type ?? ""] !== "방과후"),
     [classes],
   );
+
+  const availableDays = useMemo(() => {
+    const set = new Set<number>();
+    for (const c of filteredOutClasses) for (const d of c.days_of_week) set.add(d);
+    return [...set].sort((a, b) => a - b);
+  }, [filteredOutClasses]);
+
+  function toggleDay(day: number) {
+    setSelectedDays((prev) => {
+      const next = new Set(prev);
+      if (next.has(day)) next.delete(day);
+      else next.add(day);
+      return next;
+    });
+  }
 
   const studentsByClass = useMemo(() => {
     const map = new Map<string, FlatClassStudent[]>();
@@ -85,8 +103,20 @@ export function ClassesOverview({
       groupFilter === "all"
         ? filteredOutClasses
         : filteredOutClasses.filter((c) => (GROUP_TYPE_TO_LABEL[c.group_type ?? ""] ?? "") === groupFilter);
-    if (teacherFilter) {
-      filtered = filtered.filter((c) => c.teachers.some((t) => t.profile_id === teacherFilter));
+    if (koreanTeacherId) {
+      filtered = filtered.filter((c) =>
+        c.teachers.some((t) => t.profile_id === koreanTeacherId),
+      );
+    }
+    if (nativeTeacherId) {
+      filtered = filtered.filter((c) =>
+        c.teachers.some((t) => t.profile_id === nativeTeacherId),
+      );
+    }
+    if (selectedDays.size > 0) {
+      filtered = filtered.filter((c) =>
+        c.days_of_week.some((d) => selectedDays.has(d)),
+      );
     }
     const map = new Map<GroupKey, ClassWithDetails[]>();
     for (const g of GROUP_ORDER) map.set(g, []);
@@ -95,7 +125,7 @@ export function ClassesOverview({
       map.get(key)!.push(c);
     }
     return map;
-  }, [filteredOutClasses, groupFilter, teacherFilter]);
+  }, [filteredOutClasses, groupFilter, koreanTeacherId, nativeTeacherId, selectedDays]);
 
   const activeGroups = GROUP_ORDER.filter((g) => (grouped.get(g) ?? []).length > 0);
 
@@ -115,44 +145,127 @@ export function ClassesOverview({
   return (
     <div className="space-y-6">
       {/* 필터 + 다운로드 */}
-      <div className="flex items-center gap-3 flex-wrap">
-        <select
-          value={groupFilter}
-          onChange={(e) => setGroupFilter(e.target.value)}
-          className="rounded-lg border border-input px-3 py-1.5 text-sm text-foreground bg-background"
-        >
-          <option value="all">전체 ({filteredOutClasses.length}개 반)</option>
-          {existingGroups.map((g) => {
-            const count = filteredOutClasses.filter((c) => (GROUP_TYPE_TO_LABEL[c.group_type ?? ""] ?? "") === g).length;
-            return (
-              <option key={g} value={g}>
-                {GROUP_STYLE[g].icon} {GROUP_STYLE[g].label} ({count}개 반)
-              </option>
-            );
-          })}
-        </select>
-        <select
-          value={teacherFilter}
-          onChange={(e) => setTeacherFilter(e.target.value)}
-          className="rounded-lg border border-input px-3 py-1.5 text-sm text-foreground bg-background"
-        >
-          <option value="">선생님 전체</option>
-          {nativeTeachers.length > 0 && (
-            <optgroup label="원어민">
-              {nativeTeachers.map((t) => (
-                <option key={t.id} value={t.id}>{t.name}</option>
-              ))}
-            </optgroup>
-          )}
+      <div className="flex items-start gap-3">
+        <div className="flex-1 space-y-2 rounded-lg border border-slate-200 bg-slate-50/50 p-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="shrink-0 text-xs font-semibold text-slate-500 w-16">
+              그룹
+            </span>
+            <button
+              type="button"
+              onClick={() => setGroupFilter("all")}
+              className={`px-3 py-1 rounded-full text-xs font-medium transition-colors border ${
+                groupFilter === "all"
+                  ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                  : "bg-white text-slate-700 border-slate-200 hover:border-primary/50 hover:text-primary"
+              }`}
+            >
+              전체 ({filteredOutClasses.length})
+            </button>
+            {existingGroups.map((g) => {
+              const count = filteredOutClasses.filter(
+                (c) => (GROUP_TYPE_TO_LABEL[c.group_type ?? ""] ?? "") === g,
+              ).length;
+              const active = groupFilter === g;
+              return (
+                <button
+                  key={g}
+                  type="button"
+                  onClick={() => setGroupFilter(g)}
+                  className={`px-3 py-1 rounded-full text-xs font-medium transition-colors border ${
+                    active
+                      ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                      : "bg-white text-slate-700 border-slate-200 hover:border-primary/50 hover:text-primary"
+                  }`}
+                >
+                  {GROUP_STYLE[g].icon} {GROUP_STYLE[g].label} ({count})
+                </button>
+              );
+            })}
+          </div>
           {koreanTeachers.length > 0 && (
-            <optgroup label="한국인">
-              {koreanTeachers.map((t) => (
-                <option key={t.id} value={t.id}>{t.name}</option>
-              ))}
-            </optgroup>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="shrink-0 text-xs font-semibold text-slate-500 w-16">
+                한국 선생님
+              </span>
+              {koreanTeachers.map((t) => {
+                const active = koreanTeacherId === t.id;
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => setKoreanTeacherId(active ? null : t.id)}
+                    className={`px-3 py-1 rounded-full text-xs font-medium transition-colors border ${
+                      active
+                        ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                        : "bg-white text-slate-700 border-slate-200 hover:border-primary/50 hover:text-primary"
+                    }`}
+                  >
+                    {t.name}
+                  </button>
+                );
+              })}
+            </div>
           )}
-        </select>
-        <div className="ml-auto">
+          {nativeTeachers.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="shrink-0 text-xs font-semibold text-slate-500 w-16">
+                원어민
+              </span>
+              {nativeTeachers.map((t) => {
+                const active = nativeTeacherId === t.id;
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => setNativeTeacherId(active ? null : t.id)}
+                    className={`px-3 py-1 rounded-full text-xs font-medium transition-colors border ${
+                      active
+                        ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                        : "bg-white text-slate-700 border-slate-200 hover:border-primary/50 hover:text-primary"
+                    }`}
+                  >
+                    {t.name}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          {availableDays.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="shrink-0 text-xs font-semibold text-slate-500 w-16">
+                요일
+              </span>
+              {availableDays.map((d) => {
+                const active = selectedDays.has(d);
+                return (
+                  <button
+                    key={d}
+                    type="button"
+                    onClick={() => toggleDay(d)}
+                    className={`min-w-[36px] px-3 py-1 rounded-full text-xs font-medium transition-colors border ${
+                      active
+                        ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                        : "bg-white text-slate-700 border-slate-200 hover:border-primary/50 hover:text-primary"
+                    }`}
+                  >
+                    {KST_DAY_LABELS[d]}
+                  </button>
+                );
+              })}
+              {selectedDays.size > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedDays(new Set())}
+                  className="ml-1 text-xs text-slate-400 hover:text-slate-600 underline-offset-2 hover:underline"
+                >
+                  초기화
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+        <div className="shrink-0 pt-1">
           <ClassesExcelDownload classes={classes} allClassStudents={allClassStudents} />
         </div>
       </div>

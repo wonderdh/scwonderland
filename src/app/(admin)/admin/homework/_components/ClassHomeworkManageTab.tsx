@@ -24,6 +24,7 @@ import type {
   HomeworkClassPickerOption,
   UnitStatus,
 } from "@/app/(admin)/admin/actions";
+import type { TeacherOption } from "@/lib/types";
 import { ClassUnitProgressList } from "@/components/homework/ClassUnitProgressList";
 import { KST_DAY_LABELS } from "@/lib/utils/date-kst";
 import { AssignClassHomeworkModal } from "./AssignClassHomeworkModal";
@@ -68,6 +69,7 @@ type Props = {
   initialProgress: ClassUnitProgressDetailed;
   initialAssignments: ClassTextbookWithDetails[];
   allTextbooks: TextbookRow[];
+  teachers: TeacherOption[];
 };
 
 export function ClassHomeworkManageTab({
@@ -76,6 +78,7 @@ export function ClassHomeworkManageTab({
   initialProgress,
   initialAssignments,
   allTextbooks,
+  teachers,
 }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -84,9 +87,26 @@ export function ClassHomeworkManageTab({
   const [assignments, setAssignments] = useState<ClassTextbookWithDetails[]>(initialAssignments);
   const [isPending, startTransition] = useTransition();
   const [search, setSearch] = useState("");
+  const [koreanTeacherId, setKoreanTeacherId] = useState<string | null>(null);
+  const [nativeTeacherId, setNativeTeacherId] = useState<string | null>(null);
+  const [selectedDays, setSelectedDays] = useState<Set<number>>(() => new Set());
   const [assignOpen, setAssignOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<ClassTextbookWithDetails | null>(null);
   const [removeTarget, setRemoveTarget] = useState<ClassTextbookWithDetails | null>(null);
+
+  const koreanTeachers = useMemo(
+    () => teachers.filter((t) => t.teacher_type === "korean"),
+    [teachers]
+  );
+  const nativeTeachers = useMemo(
+    () => teachers.filter((t) => t.teacher_type === "native"),
+    [teachers]
+  );
+  const availableDays = useMemo(() => {
+    const set = new Set<number>();
+    for (const c of classes) for (const d of c.daysOfWeek) set.add(d);
+    return [...set].sort((a, b) => a - b);
+  }, [classes]);
 
   const haystacks = useMemo(() => {
     const m = new Map<string, string>();
@@ -96,12 +116,39 @@ export function ClassHomeworkManageTab({
 
   const filteredClasses = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return classes;
+    const hasFilter =
+      q.length > 0 ||
+      koreanTeacherId !== null ||
+      nativeTeacherId !== null ||
+      selectedDays.size > 0;
+    if (!hasFilter) return classes;
     return classes.filter((c) => {
       if (c.id === selectedClassId) return true;
-      return (haystacks.get(c.id) ?? "").includes(q);
+      if (q && !(haystacks.get(c.id) ?? "").includes(q)) return false;
+      if (koreanTeacherId && !c.teacherIds.includes(koreanTeacherId)) return false;
+      if (nativeTeacherId && !c.teacherIds.includes(nativeTeacherId)) return false;
+      if (selectedDays.size > 0 && !c.daysOfWeek.some((d) => selectedDays.has(d)))
+        return false;
+      return true;
     });
-  }, [classes, search, selectedClassId, haystacks]);
+  }, [
+    classes,
+    search,
+    selectedClassId,
+    haystacks,
+    koreanTeacherId,
+    nativeTeacherId,
+    selectedDays,
+  ]);
+
+  function toggleDay(day: number) {
+    setSelectedDays((prev) => {
+      const next = new Set(prev);
+      if (next.has(day)) next.delete(day);
+      else next.add(day);
+      return next;
+    });
+  }
 
   const selectedClass = useMemo(
     () => classes.find((c) => c.id === selectedClassId) ?? null,
@@ -221,7 +268,7 @@ export function ClassHomeworkManageTab({
   return (
     <div className="space-y-6">
       {/* 반 검색 + selector */}
-      <div className="space-y-2">
+      <div className="space-y-3">
         <input
           type="search"
           value={search}
@@ -229,6 +276,97 @@ export function ClassHomeworkManageTab({
           placeholder="반 이름 / 학생 한글·영어 이름 / 선생님 이름으로 검색"
           className="h-9 w-full max-w-md rounded-md border border-slate-200 bg-white px-3 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/30"
         />
+        {(koreanTeachers.length > 0 ||
+          nativeTeachers.length > 0 ||
+          availableDays.length > 0) && (
+          <div className="space-y-2 rounded-lg border border-slate-200 bg-slate-50/50 p-3">
+            {koreanTeachers.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="shrink-0 text-xs font-semibold text-slate-500 w-16">
+                  한국 선생님
+                </span>
+                {koreanTeachers.map((t) => {
+                  const active = koreanTeacherId === t.id;
+                  return (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() =>
+                        setKoreanTeacherId(active ? null : t.id)
+                      }
+                      className={`px-3 py-1 rounded-full text-xs font-medium transition-colors border ${
+                        active
+                          ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                          : "bg-white text-slate-700 border-slate-200 hover:border-primary/50 hover:text-primary"
+                      }`}
+                    >
+                      {t.name}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            {nativeTeachers.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="shrink-0 text-xs font-semibold text-slate-500 w-16">
+                  원어민
+                </span>
+                {nativeTeachers.map((t) => {
+                  const active = nativeTeacherId === t.id;
+                  return (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() =>
+                        setNativeTeacherId(active ? null : t.id)
+                      }
+                      className={`px-3 py-1 rounded-full text-xs font-medium transition-colors border ${
+                        active
+                          ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                          : "bg-white text-slate-700 border-slate-200 hover:border-primary/50 hover:text-primary"
+                      }`}
+                    >
+                      {t.name}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            {availableDays.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="shrink-0 text-xs font-semibold text-slate-500 w-16">
+                  요일
+                </span>
+                {availableDays.map((d) => {
+                  const active = selectedDays.has(d);
+                  return (
+                    <button
+                      key={d}
+                      type="button"
+                      onClick={() => toggleDay(d)}
+                      className={`min-w-[36px] px-3 py-1 rounded-full text-xs font-medium transition-colors border ${
+                        active
+                          ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                          : "bg-white text-slate-700 border-slate-200 hover:border-primary/50 hover:text-primary"
+                      }`}
+                    >
+                      {KST_DAY_LABELS[d]}
+                    </button>
+                  );
+                })}
+                {selectedDays.size > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedDays(new Set())}
+                    className="ml-1 text-xs text-slate-400 hover:text-slate-600 underline-offset-2 hover:underline"
+                  >
+                    초기화
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
         {filteredClasses.length === 0 ? (
           <p className="text-xs text-slate-500">검색 결과가 없습니다.</p>
         ) : (
