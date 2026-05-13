@@ -66,14 +66,21 @@ ALTER TABLE public.report_cards
 
 DROP INDEX IF EXISTS public.idx_report_cards_author;
 
--- 4-3. 컬럼 rename
+-- 4-3. rename 이전 — 어떤 반에도 등록된 적 없는 학생의 성적표(orphan) 제거.
+--      이렇게 안 하면 backfill UPDATE 가 매칭 못한 row 의 값을 그대로 두고
+--      → 신규 FK(class_students.id 참조) 추가 시 위반으로 실패함.
+DELETE FROM public.report_cards rc
+ WHERE NOT EXISTS (
+   SELECT 1 FROM public.class_students cs WHERE cs.student_id = rc.student_id
+ );
+
+-- 4-4. 컬럼 rename
 ALTER TABLE public.report_cards
   RENAME COLUMN student_id TO class_student_id;
 ALTER TABLE public.report_cards
   RENAME COLUMN teacher_id TO class_teacher_id;
 
--- 4-4. backfill — 기존 데이터의 컬럼 값을 새 FK 대상에 맞춰 변환
---   (다른 환경 신규 적용 시: 학생당 class_students 1행 가정. 매칭 안 되는 행은 NULL.)
+-- 4-5. backfill — student_id → class_students.id 변환
 UPDATE public.report_cards rc
    SET class_student_id = cs.id
   FROM (
@@ -91,8 +98,14 @@ UPDATE public.report_cards rc
    AND ct.teacher_id = rc.class_teacher_id
    AND rc.class_teacher_id IS NOT NULL;
 
--- 4-5. 매핑 실패한 orphan 행 제거 (NOT NULL 강제 위해)
-DELETE FROM public.report_cards WHERE class_student_id IS NULL;
+-- backfill 못한 teacher_id 는 NULL 처리 (FK 는 SET NULL 정책이라 NULL 허용)
+UPDATE public.report_cards
+   SET class_teacher_id = NULL
+ WHERE class_teacher_id IS NOT NULL
+   AND NOT EXISTS (
+     SELECT 1 FROM public.class_teachers ct
+      WHERE ct.id = report_cards.class_teacher_id
+   );
 
 -- 4-6. NOT NULL + FK + UNIQUE 재정의
 ALTER TABLE public.report_cards
