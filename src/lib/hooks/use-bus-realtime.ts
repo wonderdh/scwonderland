@@ -23,9 +23,14 @@ export function useBusRealtime(
   useEffect(() => {
     if (!date || !enabled) return;
     const supabase = createClient();
+    // realtime-js v2.105+ 는 같은 topic 의 channel 을 재사용한다. StrictMode
+    // 더블 이펙트나 빠른 재마운트 시 cleanup 의 removeChannel 이 끝나기 전에
+    // 다음 effect 가 같은 topic 으로 .channel() 을 호출하면 이미 subscribe 된
+    // 기존 채널을 반환받아 .on() 호출이 실패한다. 마운트별 유니크 suffix 로 회피.
+    const uid = Math.random().toString(36).slice(2, 10);
 
     const checkChannel = supabase
-      .channel(`bus-checks-${date}`)
+      .channel(`bus-checks-${date}-${uid}`)
       .on(
         "postgres_changes",
         {
@@ -43,7 +48,7 @@ export function useBusRealtime(
       .subscribe();
 
     const changeChannel = supabase
-      .channel(`bus-changes-${date}`)
+      .channel(`bus-changes-${date}-${uid}`)
       .on(
         "postgres_changes",
         {
