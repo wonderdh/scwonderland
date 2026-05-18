@@ -725,47 +725,38 @@ export type Database = {
       homework_books: {
         Row: {
           category: string
-          cover_image_url: string | null
           created_at: string
           id: string
           is_active: boolean
           level: string | null
           publisher: string | null
-          series: string | null
           series_id: string | null
           sort_order: number
           title: string
-          total_units: number
           updated_at: string
         }
         Insert: {
           category?: string
-          cover_image_url?: string | null
           created_at?: string
           id?: string
           is_active?: boolean
           level?: string | null
           publisher?: string | null
-          series?: string | null
           series_id?: string | null
           sort_order?: number
           title: string
-          total_units: number
           updated_at?: string
         }
         Update: {
           category?: string
-          cover_image_url?: string | null
           created_at?: string
           id?: string
           is_active?: boolean
           level?: string | null
           publisher?: string | null
-          series?: string | null
           series_id?: string | null
           sort_order?: number
           title?: string
-          total_units?: number
           updated_at?: string
         }
         Relationships: [
@@ -935,27 +926,33 @@ export type Database = {
       }
       series: {
         Row: {
+          cover_image_url: string | null
           created_at: string
           id: string
           is_active: boolean
           name: string
           publisher_id: string | null
+          total_units: number
           updated_at: string
         }
         Insert: {
+          cover_image_url?: string | null
           created_at?: string
           id?: string
           is_active?: boolean
           name: string
           publisher_id?: string | null
+          total_units?: number
           updated_at?: string
         }
         Update: {
+          cover_image_url?: string | null
           created_at?: string
           id?: string
           is_active?: boolean
           name?: string
           publisher_id?: string | null
+          total_units?: number
           updated_at?: string
         }
         Relationships: [

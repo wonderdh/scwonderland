@@ -110,7 +110,7 @@ export async function listClassTextbooks(
   const { data, error } = await supabase
     .from("class_homework_books")
     .select(
-      "id, class_id, textbook_id, start_date, note, homework_days, skip_dates, start_unit, homework_books(title, series, publisher, cover_image_url, total_units)"
+      "id, class_id, textbook_id, start_date, note, homework_days, skip_dates, start_unit, homework_books(title, publisher, series_rel:series_id(name, total_units, cover_image_url))"
     )
     .eq("class_id", classId)
     .order("id", { ascending: true });
@@ -120,6 +120,11 @@ export async function listClassTextbooks(
   }
   return (data ?? []).map((row) => {
     const tb = Array.isArray(row.homework_books) ? row.homework_books[0] : row.homework_books;
+    const sr = tb?.series_rel
+      ? Array.isArray(tb.series_rel)
+        ? tb.series_rel[0]
+        : tb.series_rel
+      : null;
     return {
       id: row.id,
       class_id: row.class_id,
@@ -130,10 +135,10 @@ export async function listClassTextbooks(
       skip_dates: (row.skip_dates as string[] | null) ?? [],
       start_unit: row.start_unit ?? 1,
       title: tb?.title ?? "",
-      series: tb?.series ?? null,
+      series: sr?.name ?? null,
       publisher: tb?.publisher ?? null,
-      cover_image_url: tb?.cover_image_url ?? null,
-      total_units: tb?.total_units ?? 0,
+      cover_image_url: sr?.cover_image_url ?? null,
+      total_units: sr?.total_units ?? 0,
     };
   });
 }
@@ -295,7 +300,7 @@ export async function listStudentTextbooks(
   const { data, error } = await supabase
     .from("student_homework_books")
     .select(
-      "id, class_student_id, class_homework_book_id, start_date, class_students!inner(student_id), class_homework_books(textbook_id, homework_books(title, series, publisher, cover_image_url, total_units))"
+      "id, class_student_id, class_homework_book_id, start_date, class_students!inner(student_id), class_homework_books(textbook_id, homework_books(title, publisher, series_rel:series_id(name, total_units, cover_image_url)))"
     )
     .eq("class_students.student_id", studentId)
     .order("id", { ascending: true });
@@ -310,6 +315,11 @@ export async function listStudentTextbooks(
     const tb = chb && chb.homework_books
       ? (Array.isArray(chb.homework_books) ? chb.homework_books[0] : chb.homework_books)
       : null;
+    const sr = tb?.series_rel
+      ? Array.isArray(tb.series_rel)
+        ? tb.series_rel[0]
+        : tb.series_rel
+      : null;
     const cs = Array.isArray(row.class_students)
       ? row.class_students[0]
       : row.class_students;
@@ -322,10 +332,10 @@ export async function listStudentTextbooks(
       start_date: row.start_date ?? null,
       note: null,
       title: tb?.title ?? "",
-      series: tb?.series ?? null,
+      series: sr?.name ?? null,
       publisher: tb?.publisher ?? null,
-      cover_image_url: tb?.cover_image_url ?? null,
-      total_units: tb?.total_units ?? 0,
+      cover_image_url: sr?.cover_image_url ?? null,
+      total_units: sr?.total_units ?? 0,
     } as StudentTextbookWithDetails;
   });
 }

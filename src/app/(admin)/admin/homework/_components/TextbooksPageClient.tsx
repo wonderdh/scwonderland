@@ -2,42 +2,37 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { TextbooksManager } from "./TextbooksManager";
-import { SeriesManager } from "./SeriesManager";
+import { SeriesCardsManager } from "./SeriesCardsManager";
 import { ClassHomeworkManageTab } from "./ClassHomeworkManageTab";
 import type {
   TextbookWithSeries,
   SeriesWithPublisher,
+  SeriesLevelRow,
   ClassUnitProgressDetailed,
   ClassTextbookWithDetails,
   HomeworkClassPickerOption,
 } from "../../actions";
 import type { TeacherOption } from "@/lib/types";
-import type { Database } from "@/lib/types/database.generated";
 
 type PublisherOption = { id: string; name: string };
 type ClassOption = HomeworkClassPickerOption;
-type TextbookRow = Database["public"]["Tables"]["homework_books"]["Row"];
 
-type TabId = "textbooks" | "series" | "class";
+type TabId = "textbooks" | "class";
 
 const TABS: { id: TabId; label: string }[] = [
   { id: "textbooks", label: "숙제" },
-  { id: "series", label: "시리즈" },
   { id: "class", label: "반 숙제 관리" },
 ];
 
 function parseTab(tab: string | null | undefined): TabId {
-  if (tab === "series") return "series";
-  // 레거시 "check" URL 호환
+  // 레거시 "check" / "series" URL 호환
   if (tab === "class" || tab === "check") return "class";
   return "textbooks";
 }
 
 export function TextbooksPageClient({
-  initialTextbooks,
-  activeSeriesList,
   allSeriesList,
+  levelsBySeries,
   initialPublishers,
   checkClasses,
   checkInitialClassId,
@@ -46,15 +41,14 @@ export function TextbooksPageClient({
   classAllTextbooks,
   teachers,
 }: {
-  initialTextbooks: TextbookWithSeries[];
-  activeSeriesList: SeriesWithPublisher[];
   allSeriesList: SeriesWithPublisher[];
+  levelsBySeries: Record<string, SeriesLevelRow[]>;
   initialPublishers?: PublisherOption[];
   checkClasses: ClassOption[];
   checkInitialClassId: string | null;
   checkInitialData: ClassUnitProgressDetailed;
   classInitialAssignments: ClassTextbookWithDetails[];
-  classAllTextbooks: TextbookRow[];
+  classAllTextbooks: TextbookWithSeries[];
   teachers: TeacherOption[];
 }) {
   const searchParams = useSearchParams();
@@ -85,13 +79,9 @@ export function TextbooksPageClient({
 
       {/* Tab content */}
       {currentTab === "textbooks" ? (
-        <TextbooksManager
-          initialTextbooks={initialTextbooks}
-          seriesList={activeSeriesList}
-        />
-      ) : currentTab === "series" ? (
-        <SeriesManager
+        <SeriesCardsManager
           initialSeries={allSeriesList}
+          initialLevelsBySeries={levelsBySeries}
           initialPublishers={initialPublishers}
         />
       ) : (

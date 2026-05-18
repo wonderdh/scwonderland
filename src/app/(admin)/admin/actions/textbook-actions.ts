@@ -4,31 +4,34 @@ import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { verifyAdmin, verifyAuthenticated } from "./auth-helpers";
 import { logger } from "@/lib/server/logger";
-import {
-  STORAGE_BUCKETS,
-  generateStoragePath,
-  extractStoragePath,
-  validateFile,
-} from "@/lib/supabase/storage";
 import type { Database } from "@/lib/types/database.generated";
 
 type TextbookRow = Database["public"]["Tables"]["homework_books"]["Row"];
 
-/** TextbookRow with joined series_name for display. */
-export type TextbookWithSeries = TextbookRow & { series_name: string | null };
+/**
+ * 시리즈 + 시리즈-레벨 조인. `homework_books` row 는 "시리즈 × 레벨" 인스턴스.
+ * series.total_units / series.cover_image_url 가 owner — flatten 해서 노출한다.
+ */
+export type TextbookWithSeries = TextbookRow & {
+  series_name: string | null;
+  total_units: number;
+  cover_image_url: string | null;
+};
 
 const REVALIDATE_PATH = "/admin/homework";
 
+/** 활성 (또는 전체) 레벨 목록 + 시리즈 조인. SeriesLevelPicker 등에서 사용. */
 export async function listTextbooks(
   opts?: { activeOnly?: boolean }
 ): Promise<TextbookWithSeries[]> {
   const auth = await verifyAuthenticated();
   if ("error" in auth) return [];
   const supabase = createAdminClient();
-  // 정렬: 활성 우선 → 시리즈 이름 → level(0-pad 컨벤션이라 알파벳 정렬로 자연순) → 타이틀
   let query = supabase
     .from("homework_books")
-    .select("*, series:series_id(name)")
+    .select(
+      "*, series:series_id(name, total_units, cover_image_url)"
+    )
     .order("is_active", { ascending: false })
     .order("name", { referencedTable: "series", ascending: true, nullsFirst: false })
     .order("level", { ascending: true, nullsFirst: false })
@@ -41,16 +44,20 @@ export async function listTextbooks(
     logger.error("[listTextbooks]", error.message);
     return [];
   }
-  // Flatten nested series join into series_name field
   return (data ?? []).map((row) => {
-    const { series: seriesJoin, ...rest } = row as typeof row & { series: { name: string } | null };
-    return { ...rest, series_name: seriesJoin?.name ?? null } as TextbookWithSeries;
+    const { series, ...rest } = row as typeof row & {
+      series: { name: string; total_units: number; cover_image_url: string | null } | null;
+    };
+    return {
+      ...rest,
+      series_name: series?.name ?? null,
+      total_units: series?.total_units ?? 0,
+      cover_image_url: series?.cover_image_url ?? null,
+    } as TextbookWithSeries;
   });
 }
 
-export async function getTextbook(
-  id: string
-): Promise<TextbookRow | null> {
+export async function getTextbook(id: string): Promise<TextbookRow | null> {
   const auth = await verifyAuthenticated();
   if ("error" in auth) return null;
   const supabase = createAdminClient();
@@ -66,196 +73,114 @@ export async function getTextbook(
   return data ?? null;
 }
 
-/**
- * @deprecated series-actions.ts 의 listSeries() 를 사용하세요.
- * 이 함수는 textbooks.series text 컬럼의 distinct 값만 반환합니다.
- * 하위 호환용으로 보존됩니다.
- */
-export async function listSeriesLegacy(): Promise<string[]> {
-  const auth = await verifyAuthenticated();
-  if ("error" in auth) return [];
-  const supabase = createAdminClient();
-  const { data, error } = await supabase
-    .from("homework_books")
-    .select("series")
-    .not("series", "is", null)
-    .order("series", { ascending: true });
-  if (error) {
-    logger.error("[listSeriesLegacy]", error.message);
-    return [];
-  }
-  const unique = [...new Set((data ?? []).map((row) => row.series as string))];
-  return unique;
-}
+// ─────────────────────────────────────────────────────────────────────────────
+// Series-level helpers — homework_books row 는 "시리즈 + 레벨" 인스턴스.
+// 표지 / total_units / 시리즈명은 series 에서 owner-managed.
+// ─────────────────────────────────────────────────────────────────────────────
 
-export async function createTextbook(
-  formData: FormData
-): Promise<{ error?: string; id?: string }> {
+/** 시리즈에 새 레벨 추가. */
+export async function createSeriesLevel(args: {
+  seriesId: string;
+  level: string | null;
+  sortOrder?: number;
+}): Promise<{ error?: string; id?: string }> {
   const auth = await verifyAdmin();
   if ("error" in auth) return { error: auth.error };
 
-  const level = (formData.get("level") as string)?.trim() || null;
-  const totalUnitsRaw = formData.get("total_units");
-  const total_units = totalUnitsRaw ? parseInt(totalUnitsRaw as string, 10) : 0;
-  if (!total_units || total_units <= 0) return { error: "총 단원 수를 입력해 주세요." };
-
-  const sortOrderRaw = formData.get("sort_order");
-  const sort_order = sortOrderRaw ? parseInt(sortOrderRaw as string, 10) : 0;
-
-  // series_id (new FK) + series text (legacy backward compat). Title falls back to series.name.
-  const series_id = (formData.get("series_id") as string)?.trim() || null;
-  let series = (formData.get("series") as string)?.trim() || null;
-  let title = (formData.get("title") as string)?.trim() || "";
-
-  if (series_id) {
-    const supabaseLookup = createAdminClient();
-    const { data: seriesRow } = await supabaseLookup
-      .from("series")
-      .select("name")
-      .eq("id", series_id)
-      .maybeSingle();
-    if (seriesRow) {
-      series = seriesRow.name;
-      if (!title) title = seriesRow.name;
-    }
-  }
-  if (!title) return { error: "시리즈를 선택해 주세요." };
-
-  let cover_image_url: string | null = null;
-  const coverFile = formData.get("cover") as File | null;
-  if (coverFile && coverFile.size > 0) {
-    const validation = validateFile(coverFile, "image");
-    if (!validation.valid) return { error: validation.error };
-    const supabase = createAdminClient();
-    const storagePath = generateStoragePath(coverFile.name, "covers");
-    const { error: uploadError } = await supabase.storage
-      .from(STORAGE_BUCKETS.TEXTBOOK_COVERS)
-      .upload(storagePath, coverFile, { contentType: coverFile.type, upsert: false });
-    if (uploadError) {
-      logger.error("[createTextbook] cover upload", uploadError.message);
-      return { error: "표지 업로드에 실패했습니다." };
-    }
-    const { data: urlData } = supabase.storage
-      .from(STORAGE_BUCKETS.TEXTBOOK_COVERS)
-      .getPublicUrl(storagePath);
-    cover_image_url = urlData.publicUrl;
-  }
+  const seriesId = args.seriesId?.trim();
+  if (!seriesId) return { error: "시리즈를 선택해 주세요." };
 
   const supabase = createAdminClient();
+  const { data: seriesRow } = await supabase
+    .from("series")
+    .select("name")
+    .eq("id", seriesId)
+    .maybeSingle();
+  if (!seriesRow) return { error: "시리즈를 찾을 수 없습니다." };
+
+  const level = args.level?.trim() || null;
+  const sort_order =
+    typeof args.sortOrder === "number" && Number.isFinite(args.sortOrder)
+      ? Math.floor(args.sortOrder)
+      : 0;
+  // title 컬럼은 NOT NULL — 일단 시리즈명으로 시드 (UI 노출은 series.name 사용)
+  const title = seriesRow.name;
+
   const { data, error } = await supabase
     .from("homework_books")
-    .insert({ title, series, series_id, level, total_units, sort_order, cover_image_url })
+    .insert({ title, series_id: seriesId, level, sort_order })
     .select("id")
     .single();
   if (error) {
-    logger.error("[createTextbook]", error.message);
+    logger.error("[createSeriesLevel]", error.message);
     return { error: error.message };
   }
   revalidatePath(REVALIDATE_PATH);
   return { id: data.id };
 }
 
-export async function updateTextbook(
+/** 시리즈-레벨 수정. level, sort_order, is_active. */
+export async function updateSeriesLevel(
   id: string,
-  formData: FormData
+  patch: { level?: string | null; sortOrder?: number; isActive?: boolean }
 ): Promise<{ error?: string }> {
   const auth = await verifyAdmin();
   if ("error" in auth) return { error: auth.error };
 
-  const level = (formData.get("level") as string)?.trim() || null;
-  const totalUnitsRaw = formData.get("total_units");
-  const total_units = totalUnitsRaw ? parseInt(totalUnitsRaw as string, 10) : 0;
-  if (!total_units || total_units <= 0) return { error: "총 단원 수를 입력해 주세요." };
-  const sortOrderRaw = formData.get("sort_order");
-  const sort_order = sortOrderRaw ? parseInt(sortOrderRaw as string, 10) : 0;
-  const is_active = formData.get("is_active") !== "false";
-
-  // series_id (new FK) + series text (legacy backward compat). Title falls back to series.name.
-  const series_id = (formData.get("series_id") as string)?.trim() || null;
-  let series = (formData.get("series") as string)?.trim() || null;
-  let title = (formData.get("title") as string)?.trim() || "";
-
-  const supabase = createAdminClient();
-
-  if (series_id) {
-    const { data: seriesRow } = await supabase
-      .from("series")
-      .select("name")
-      .eq("id", series_id)
-      .maybeSingle();
-    if (seriesRow) {
-      series = seriesRow.name;
-      if (!title) title = seriesRow.name;
-    }
-  }
-  if (!title) return { error: "시리즈를 선택해 주세요." };
-
-  let cover_image_url: string | undefined;
-  const coverFile = formData.get("cover") as File | null;
-  if (coverFile && coverFile.size > 0) {
-    const validation = validateFile(coverFile, "image");
-    if (!validation.valid) return { error: validation.error };
-
-    // Delete old cover (best-effort)
-    const { data: existing } = await supabase
-      .from("homework_books")
-      .select("cover_image_url")
-      .eq("id", id)
-      .maybeSingle();
-    if (existing?.cover_image_url) {
-      const oldPath = extractStoragePath(existing.cover_image_url, STORAGE_BUCKETS.TEXTBOOK_COVERS);
-      if (oldPath) {
-        await supabase.storage.from(STORAGE_BUCKETS.TEXTBOOK_COVERS).remove([oldPath]);
-      }
-    }
-
-    const storagePath = generateStoragePath(coverFile.name, "covers");
-    const { error: uploadError } = await supabase.storage
-      .from(STORAGE_BUCKETS.TEXTBOOK_COVERS)
-      .upload(storagePath, coverFile, { contentType: coverFile.type, upsert: false });
-    if (uploadError) {
-      logger.error("[updateTextbook] cover upload", uploadError.message);
-      return { error: "표지 업로드에 실패했습니다." };
-    }
-    const { data: urlData } = supabase.storage
-      .from(STORAGE_BUCKETS.TEXTBOOK_COVERS)
-      .getPublicUrl(storagePath);
-    cover_image_url = urlData.publicUrl;
-  }
-
   const updatePayload: Database["public"]["Tables"]["homework_books"]["Update"] = {
-    title,
-    series,
-    series_id,
-    level,
-    total_units,
-    sort_order,
-    is_active,
     updated_at: new Date().toISOString(),
   };
-  if (cover_image_url !== undefined) {
-    updatePayload.cover_image_url = cover_image_url;
+  if (patch.level !== undefined) {
+    updatePayload.level = patch.level?.trim() || null;
+  }
+  if (patch.sortOrder !== undefined) {
+    if (!Number.isFinite(patch.sortOrder)) {
+      return { error: "정렬 순서가 올바르지 않습니다." };
+    }
+    updatePayload.sort_order = Math.floor(patch.sortOrder);
+  }
+  if (patch.isActive !== undefined) {
+    updatePayload.is_active = patch.isActive;
   }
 
-  const { error } = await supabase.from("homework_books").update(updatePayload).eq("id", id);
+  const supabase = createAdminClient();
+  const { error } = await supabase
+    .from("homework_books")
+    .update(updatePayload)
+    .eq("id", id);
   if (error) {
-    logger.error("[updateTextbook]", error.message);
+    logger.error("[updateSeriesLevel]", error.message);
     return { error: error.message };
   }
   revalidatePath(REVALIDATE_PATH);
   return {};
 }
 
-export async function deleteTextbook(id: string): Promise<{ error?: string }> {
+/** 시리즈-레벨 hard delete. 반에 부여돼 사용 중이면 차단. */
+export async function deleteSeriesLevel(
+  id: string
+): Promise<{ error?: string }> {
   const auth = await verifyAdmin();
   if ("error" in auth) return { error: auth.error };
+
   const supabase = createAdminClient();
-  const { error } = await supabase
-    .from("homework_books")
-    .update({ is_active: false, updated_at: new Date().toISOString() })
-    .eq("id", id);
+
+  const { data: usage, error: usageErr } = await supabase
+    .from("class_homework_books")
+    .select("id")
+    .eq("textbook_id", id)
+    .limit(1);
+  if (usageErr) {
+    logger.error("[deleteSeriesLevel usage]", usageErr.message);
+    return { error: usageErr.message };
+  }
+  if (usage && usage.length > 0) {
+    return { error: "반에 부여돼 사용 중인 레벨입니다. 먼저 반 부여를 해제하세요." };
+  }
+
+  const { error } = await supabase.from("homework_books").delete().eq("id", id);
   if (error) {
-    logger.error("[deleteTextbook]", error.message);
+    logger.error("[deleteSeriesLevel]", error.message);
     return { error: error.message };
   }
   revalidatePath(REVALIDATE_PATH);

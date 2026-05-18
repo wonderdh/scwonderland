@@ -185,10 +185,9 @@ export {
 export {
   listTextbooks,
   getTextbook,
-  listSeriesLegacy,
-  createTextbook,
-  updateTextbook,
-  deleteTextbook,
+  createSeriesLevel,
+  updateSeriesLevel,
+  deleteSeriesLevel,
 } from "./actions/textbook-actions";
 
 export type { TextbookWithSeries } from "./actions/textbook-actions";
@@ -200,9 +199,11 @@ export {
   createSeries,
   updateSeries,
   deleteSeries,
+  listSeriesLevels,
+  listLevelsBySeries,
 } from "./actions/series-actions";
 
-export type { SeriesWithPublisher } from "./actions/series-actions";
+export type { SeriesWithPublisher, SeriesLevelRow } from "./actions/series-actions";
 
 export {
   listPublishers,

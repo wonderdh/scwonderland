@@ -130,7 +130,7 @@ export async function listClassUnitProgressDetailed(
   const { data: bookRows, error: bookErr } = await supabase
     .from("class_homework_books")
     .select(
-      "id, textbook_id, start_date, homework_days, skip_dates, start_unit, homework_books!inner(title, level, total_units, cover_image_url, series, series_id, series_rel:series_id(name))"
+      "id, textbook_id, start_date, homework_days, skip_dates, start_unit, homework_books!inner(title, level, series_id, series_rel:series_id(name, total_units, cover_image_url))"
     )
     .eq("class_id", classId);
 
@@ -173,10 +173,10 @@ export async function listClassUnitProgressDetailed(
     return {
       chbId: row.id as string,
       title: hb?.title ?? "",
-      series_name: seriesRel?.name ?? hb?.series ?? null,
+      series_name: seriesRel?.name ?? null,
       level: hb?.level ?? null,
-      cover_image_url: hb?.cover_image_url ?? null,
-      total_units: hb?.total_units ?? 0,
+      cover_image_url: seriesRel?.cover_image_url ?? null,
+      total_units: seriesRel?.total_units ?? 0,
       start_date: (row.start_date as string | null) ?? null,
       homework_days: days,
       skip_dates: skips,
@@ -299,7 +299,7 @@ export async function listUnitProgressByStudent(
   const { data: shbRows, error: shbErr } = await supabase
     .from("student_homework_books")
     .select(
-      "id, class_homework_book_id, class_student_id, class_students!inner(student_id, class_id), class_homework_books!inner(id, start_date, homework_days, skip_dates, start_unit, homework_books!inner(title, level, total_units, cover_image_url, series, series_id, series_rel:series_id(name))), student_homework_progress(unit_number, status)"
+      "id, class_homework_book_id, class_student_id, class_students!inner(student_id, class_id), class_homework_books!inner(id, start_date, homework_days, skip_dates, start_unit, homework_books!inner(title, level, series_id, series_rel:series_id(name, total_units, cover_image_url))), student_homework_progress(unit_number, status)"
     )
     .eq("class_students.student_id", studentId);
 
@@ -327,7 +327,7 @@ export async function listUnitProgressByStudent(
       : null;
 
     const startDate = (chb?.start_date as string | null) ?? null;
-    const totalUnits = (hb?.total_units as number | undefined) ?? 0;
+    const totalUnits = (seriesRel?.total_units as number | undefined) ?? 0;
     const startUnit = (((chb as { start_unit?: number | null } | null)?.start_unit) as number | null) ?? 1;
     const homeworkDays = Array.from(
       new Set(
@@ -384,9 +384,9 @@ export async function listUnitProgressByStudent(
     return {
       id: chb?.id as string,
       title: hb?.title ?? "",
-      series_name: seriesRel?.name ?? hb?.series ?? null,
+      series_name: seriesRel?.name ?? null,
       level: hb?.level ?? null,
-      cover_image_url: hb?.cover_image_url ?? null,
+      cover_image_url: seriesRel?.cover_image_url ?? null,
       total_units: totalUnits,
       source: "class" as const,
       hasSchedule: !!startDate && homeworkDays.length > 0,

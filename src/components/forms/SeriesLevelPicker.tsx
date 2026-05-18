@@ -33,10 +33,8 @@ export function SeriesLevelPicker({
     for (const tb of textbooks) {
       if (!tb.is_active) continue;
       const key = tb.series_id ?? NONE_SERIES_KEY;
-      // Prefer joined series_name, fall back to legacy `series` text column.
-      const resolvedName = tb.series_name ?? tb.series ?? null;
       const name = tb.series_id
-        ? (resolvedName ?? "(이름 없음)")
+        ? (tb.series_name ?? "(이름 없음)")
         : "(시리즈 없음)";
       if (!map.has(key)) map.set(key, { name, books: [] });
       map.get(key)!.books.push(tb);

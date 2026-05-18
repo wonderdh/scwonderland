@@ -23,6 +23,7 @@ import type {
   ClassTextbookWithDetails,
   HomeworkClassPickerOption,
   UnitStatus,
+  TextbookWithSeries,
 } from "@/app/(admin)/admin/actions";
 import type { TeacherOption } from "@/lib/types";
 import { ClassUnitProgressList } from "@/components/homework/ClassUnitProgressList";
@@ -30,14 +31,11 @@ import { KST_DAY_LABELS } from "@/lib/utils/date-kst";
 import { GROUP_TYPE_TO_LABEL } from "@/lib/constants/class";
 import { AssignClassHomeworkModal } from "./AssignClassHomeworkModal";
 import { EditClassHomeworkModal } from "./EditClassHomeworkModal";
-import type { Database } from "@/lib/types/database.generated";
 
 const GROUP_FILTERS: { value: string; label: string }[] = [
   { value: "kindergarten", label: GROUP_TYPE_TO_LABEL.kindergarten },
   { value: "afternoon", label: GROUP_TYPE_TO_LABEL.afternoon },
 ];
-
-type TextbookRow = Database["public"]["Tables"]["homework_books"]["Row"];
 type ClassOption = HomeworkClassPickerOption;
 
 function buildSearchHaystack(c: ClassOption): string {
@@ -74,7 +72,7 @@ type Props = {
   initialClassId: string | null;
   initialProgress: ClassUnitProgressDetailed;
   initialAssignments: ClassTextbookWithDetails[];
-  allTextbooks: TextbookRow[];
+  allTextbooks: TextbookWithSeries[];
   teachers: TeacherOption[];
 };
 

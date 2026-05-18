@@ -6,17 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SeriesLevelPicker } from "@/components/forms/SeriesLevelPicker";
 import { assignClassTextbook } from "@/app/(admin)/admin/actions";
+import type { TextbookWithSeries } from "@/app/(admin)/admin/actions";
 import { KST_DAY_LABELS } from "@/lib/utils/date-kst";
 import { SkipDatesEditor } from "./SkipDatesEditor";
-import type { Database } from "@/lib/types/database.generated";
-
-type TextbookRow = Database["public"]["Tables"]["homework_books"]["Row"] & {
-  series_name?: string | null;
-};
 
 type Props = {
   classId: string;
-  textbooks: TextbookRow[];
+  textbooks: TextbookWithSeries[];
   assignedTextbookIds: Set<string>;
   onClose: () => void;
   onSaved: () => void;
