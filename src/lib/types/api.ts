@@ -41,6 +41,13 @@ export type ClassWithDetails = {
   group_type: "kindergarten" | "afternoon" | "afterschool";
   color_index: number | null;
   days_of_week: number[];
+  period_id: string | null;
+  period: {
+    id: string;
+    name: string;
+    start_time: string;
+    end_time: string;
+  } | null;
   teachers: ClassTeacherInfo[];
   student_count: number;
   schedule_count: number;

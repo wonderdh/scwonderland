@@ -112,6 +112,7 @@ export function ClassesPageClient({
             teachers={teachers}
             allClassStudents={allClassStudents}
             allStudents={allStudents}
+            periods={periods}
             subTab={currentSub}
             onSubTabChange={handleSubTabChange}
           />

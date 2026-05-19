@@ -52,7 +52,42 @@ export type HomeworkClassPickerOption = {
   teacherNames: string[];
   daysOfWeek: number[];
   studentNames: { ko: string | null; en: string | null }[];
+  /** academy_periods FK — 유치부=1st Period, 오후반=admin 지정, 방과후=NULL. */
+  periodId: string | null;
+  /** academy_periods.name (e.g. "2:50", "1st Period"). */
+  periodLabel: string | null;
+  /** academy_periods.start_time (HH:MM:SS). 칩 정렬용. */
+  periodStartTime: string | null;
 };
+
+/** 유치부 1st Period id 를 1회 조회해 캐시. createClass / updateClass 에서 kindergarten override 용. */
+async function getKindergartenFirstPeriodId(
+  supabase: ReturnType<typeof createAdminClient>
+): Promise<string | null> {
+  const { data } = await supabase
+    .from("academy_periods")
+    .select("id")
+    .eq("group_type", "kindergarten")
+    .eq("name", "1st Period")
+    .maybeSingle();
+  return data?.id ?? null;
+}
+
+/** group_type 별 period_id 결정 규칙 — UI 가 잘못된 값을 보내도 서버가 강제. */
+async function resolvePeriodIdForClass(
+  supabase: ReturnType<typeof createAdminClient>,
+  groupType: "kindergarten" | "afternoon" | "afterschool",
+  requestedPeriodId: string | null | undefined
+): Promise<string | null> {
+  if (groupType === "kindergarten") {
+    // 유치부는 항상 1st Period 로 강제 (admin 도 못 바꿈).
+    return await getKindergartenFirstPeriodId(supabase);
+  }
+  if (groupType === "afterschool") return null;
+  // afternoon — admin picker 값 그대로 (NULL 허용)
+  const trimmed = requestedPeriodId?.trim();
+  return trimmed ? trimmed : null;
+}
 
 /**
  * 숙제 관리 페이지의 반 selector 검색용 — 반 이름 + 소속 교사/학생 이름.
@@ -65,7 +100,9 @@ export async function listClassesForHomeworkPicker(): Promise<HomeworkClassPicke
 
   const { data: classes, error } = await supabase
     .from("classes")
-    .select("id, name, group_type, days_of_week")
+    .select(
+      "id, name, group_type, days_of_week, period_id, period:period_id(id, name, start_time)"
+    )
     .order("name");
   if (error || !classes?.length) {
     if (error) logger.error("[listClassesForHomeworkPicker]", error.message);
@@ -100,6 +137,7 @@ export async function listClassesForHomeworkPicker(): Promise<HomeworkClassPicke
 
   return classes.map((c) => {
     const classTeachers = teachersByClass.get(c.id) ?? [];
+    const period = Array.isArray(c.period) ? c.period[0] : c.period;
     return {
       id: c.id,
       name: c.name,
@@ -110,6 +148,9 @@ export async function listClassesForHomeworkPicker(): Promise<HomeworkClassPicke
         .filter((n) => n.length > 0),
       daysOfWeek: (c.days_of_week as number[] | null) ?? [1, 2, 3, 4, 5],
       studentNames: studentsByClass.get(c.id) ?? [],
+      periodId: (c.period_id as string | null) ?? null,
+      periodLabel: period?.name ?? null,
+      periodStartTime: period?.start_time ?? null,
     };
   });
 }
@@ -121,7 +162,9 @@ export async function listClassesWithDetails(): Promise<ClassWithDetails[]> {
 
   const { data: classes, error } = await supabase
     .from("classes")
-    .select("id, name, group_type, color_index, days_of_week, created_at, updated_at")
+    .select(
+      "id, name, group_type, color_index, days_of_week, period_id, period:period_id(id, name, start_time, end_time), created_at, updated_at"
+    )
     .order("name");
   if (error || !classes?.length) {
     if (error) logger.error("[listClassesWithDetails]", error.message);
@@ -144,18 +187,30 @@ export async function listClassesWithDetails(): Promise<ClassWithDetails[]> {
     return acc;
   }, {} as Record<string, number>);
 
-  return classes.map((item) => ({
-    id: item.id,
-    name: item.name,
-    group_type: item.group_type,
-    color_index: item.color_index ?? null,
-    days_of_week: (item.days_of_week as number[] | null) ?? [1, 2, 3, 4, 5],
-    teachers: teachersByClass.get(item.id) ?? [],
-    student_count: studentCountByClass[item.id] ?? 0,
-    schedule_count: scheduleCountByClass[item.id] ?? 0,
-    created_at: item.created_at,
-    updated_at: item.updated_at,
-  }));
+  return classes.map((item) => {
+    const period = Array.isArray(item.period) ? item.period[0] : item.period;
+    return {
+      id: item.id,
+      name: item.name,
+      group_type: item.group_type,
+      color_index: item.color_index ?? null,
+      days_of_week: (item.days_of_week as number[] | null) ?? [1, 2, 3, 4, 5],
+      period_id: (item.period_id as string | null) ?? null,
+      period: period
+        ? {
+            id: period.id,
+            name: period.name,
+            start_time: period.start_time,
+            end_time: period.end_time,
+          }
+        : null,
+      teachers: teachersByClass.get(item.id) ?? [],
+      student_count: studentCountByClass[item.id] ?? 0,
+      schedule_count: scheduleCountByClass[item.id] ?? 0,
+      created_at: item.created_at,
+      updated_at: item.updated_at,
+    };
+  });
 }
 
 export async function getClassWithStudents(
@@ -167,7 +222,9 @@ export async function getClassWithStudents(
 
   const { data: classRow, error } = await supabase
     .from("classes")
-    .select("id, name, group_type, color_index, days_of_week, created_at, updated_at")
+    .select(
+      "id, name, group_type, color_index, days_of_week, period_id, period:period_id(id, name, start_time, end_time), created_at, updated_at"
+    )
     .eq("id", classId)
     .single();
   if (error || !classRow) return { class: null, students: [] };
@@ -185,6 +242,7 @@ export async function getClassWithStudents(
   const studentIds = (rows ?? []).map((row) => row.student_id);
   const studentsById = await getStudentsByIds(supabase, studentIds);
 
+  const period = Array.isArray(classRow.period) ? classRow.period[0] : classRow.period;
   return {
     class: {
       id: classRow.id,
@@ -192,6 +250,15 @@ export async function getClassWithStudents(
       group_type: classRow.group_type,
       color_index: classRow.color_index ?? null,
       days_of_week: (classRow.days_of_week as number[] | null) ?? [1, 2, 3, 4, 5],
+      period_id: (classRow.period_id as string | null) ?? null,
+      period: period
+        ? {
+            id: period.id,
+            name: period.name,
+            start_time: period.start_time,
+            end_time: period.end_time,
+          }
+        : null,
       teachers,
       student_count: studentCount ?? 0,
       schedule_count: 0,
@@ -280,7 +347,8 @@ export async function createClass(
   teacherProfileIds: string[],
   groupLabel?: string,
   colorIndex?: number | null,
-  daysOfWeek?: number[]
+  daysOfWeek?: number[],
+  periodId?: string | null
 ): Promise<{ error?: string; id?: string }> {
   const auth = await verifyAdmin();
   if ("error" in auth) return { error: auth.error };
@@ -297,6 +365,12 @@ export async function createClass(
     return { error: "요일을 하나 이상 선택해 주세요." };
   }
 
+  const resolvedPeriodId = await resolvePeriodIdForClass(
+    supabase,
+    (groupType ?? "kindergarten") as "kindergarten" | "afternoon" | "afterschool",
+    periodId ?? null
+  );
+
   const { data, error } = await supabase
     .from("classes")
     .insert({
@@ -304,6 +378,7 @@ export async function createClass(
       group_type: groupType ?? "kindergarten",
       color_index: colorIndex ?? null,
       days_of_week: finalDays,
+      period_id: resolvedPeriodId,
     })
     .select("id")
     .single();
@@ -347,7 +422,8 @@ export async function updateClass(
   teacherProfileIds: string[],
   groupLabel?: string,
   colorIndex?: number | null,
-  daysOfWeek?: number[]
+  daysOfWeek?: number[],
+  periodId?: string | null
 ): Promise<{ error?: string }> {
   const auth = await verifyAdmin();
   if ("error" in auth) return { error: auth.error };
@@ -363,6 +439,12 @@ export async function updateClass(
   if (!finalDays || finalDays.length === 0) {
     return { error: "요일을 하나 이상 선택해 주세요." };
   }
+
+  const resolvedPeriodId = await resolvePeriodIdForClass(
+    supabase,
+    (groupType ?? "kindergarten") as "kindergarten" | "afternoon" | "afterschool",
+    periodId ?? null
+  );
 
   const { data: current } = await supabase
     .from("classes")
@@ -387,6 +469,7 @@ export async function updateClass(
       group_type: groupType ?? "kindergarten",
       color_index: colorIndex ?? null,
       days_of_week: finalDays,
+      period_id: resolvedPeriodId,
       updated_at: new Date().toISOString(),
     })
     .eq("id", classId);

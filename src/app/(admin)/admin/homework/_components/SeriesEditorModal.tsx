@@ -166,16 +166,26 @@ export function SeriesEditorModal({
             </FormGroup>
 
             <div className="flex flex-1 flex-col gap-3">
-              <FormGroup label="시리즈 이름" required>
-                <Input
-                  name="name"
-                  defaultValue={initial?.name ?? ""}
-                  placeholder="예: Let's Go, 나기창"
-                  required
-                  disabled={isPending}
-                  className="h-10"
-                />
-              </FormGroup>
+              {isEdit ? (
+                <FormGroup label="시리즈 이름">
+                  {/* 시리즈 이름은 카드 단위 정체성 — 한 번 정해지면 수정 불가 */}
+                  <div className="flex h-10 items-center rounded-md border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700">
+                    {initial?.name}
+                  </div>
+                  <input type="hidden" name="name" value={initial?.name ?? ""} />
+                </FormGroup>
+              ) : (
+                <FormGroup label="시리즈 이름" required>
+                  <Input
+                    name="name"
+                    defaultValue=""
+                    placeholder="예: Let's Go, 나기창"
+                    required
+                    disabled={isPending}
+                    className="h-10"
+                  />
+                </FormGroup>
+              )}
 
               <FormGroup label="총 단원 수" required>
                 <Input

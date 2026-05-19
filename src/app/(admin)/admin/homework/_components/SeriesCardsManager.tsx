@@ -3,7 +3,6 @@
 import { useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { ConfirmDialog } from "@/components/overlays/ConfirmDialog";
 import { PublishersDialog } from "./PublishersDialog";
 import { SeriesCard } from "./SeriesCard";
@@ -61,14 +60,22 @@ export function SeriesCardsManager({
     return [...map.entries()].map(([id, name]) => ({ id, name }));
   }, [seriesList]);
 
+  const seriesOptions = useMemo(() => {
+    return [...seriesList]
+      .filter((s) =>
+        publisherFilter ? s.publisher?.id === publisherFilter : true
+      )
+      .sort((a, b) => a.name.localeCompare(b.name, "ko"))
+      .map((s) => ({ id: s.id, name: s.name }));
+  }, [seriesList, publisherFilter]);
+
   const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
     return seriesList.filter((s) => {
-      const matchSearch = q ? s.name.toLowerCase().includes(q) : true;
+      const matchSeries = search ? s.id === search : true;
       const matchPublisher = publisherFilter
         ? s.publisher?.id === publisherFilter
         : true;
-      return matchSearch && matchPublisher;
+      return matchSeries && matchPublisher;
     });
   }, [seriesList, search, publisherFilter]);
 
@@ -133,12 +140,18 @@ export function SeriesCardsManager({
             ))}
           </select>
         )}
-        <Input
-          placeholder="시리즈명 검색..."
+        <select
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="max-w-56 h-9"
-        />
+          className="h-9 max-w-56 rounded-md border border-input bg-background px-3 text-sm"
+        >
+          <option value="">시리즈 전체</option>
+          {seriesOptions.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.name}
+            </option>
+          ))}
+        </select>
         <div className="ml-auto flex items-center gap-2">
           <Button variant="outline" onClick={() => setPublishersOpen(true)}>
             + 출판사

@@ -7,30 +7,10 @@ export type Json =
   | Json[]
 
 export type Database = {
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "14.1"
   }
   public: {
     Tables: {
@@ -697,7 +677,9 @@ export type Database = {
           group_type: Database["public"]["Enums"]["class_group"]
           id: string
           is_active: boolean
+          lunch_group: string | null
           name: string
+          period_id: string | null
           updated_at: string
         }
         Insert: {
@@ -707,7 +689,9 @@ export type Database = {
           group_type: Database["public"]["Enums"]["class_group"]
           id?: string
           is_active?: boolean
+          lunch_group?: string | null
           name: string
+          period_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -717,10 +701,20 @@ export type Database = {
           group_type?: Database["public"]["Enums"]["class_group"]
           id?: string
           is_active?: boolean
+          lunch_group?: string | null
           name?: string
+          period_id?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "classes_period_id_fkey"
+            columns: ["period_id"]
+            isOneToOne: false
+            referencedRelation: "academy_periods"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       homework_books: {
         Row: {
@@ -765,6 +759,103 @@ export type Database = {
             columns: ["series_id"]
             isOneToOne: false
             referencedRelation: "series"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lunch_class_order_anchors: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          effective_from: string
+          first_class_id: string
+          id: string
+          lunch_group: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          effective_from: string
+          first_class_id: string
+          id?: string
+          lunch_group: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          effective_from?: string
+          first_class_id?: string
+          id?: string
+          lunch_group?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lunch_class_order_anchors_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lunch_class_order_anchors_first_class_id_fkey"
+            columns: ["first_class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lunch_leader_anchors: {
+        Row: {
+          class_id: string
+          created_at: string
+          created_by: string | null
+          effective_from: string
+          id: string
+          leader_student_id: string
+          updated_at: string
+        }
+        Insert: {
+          class_id: string
+          created_at?: string
+          created_by?: string | null
+          effective_from: string
+          id?: string
+          leader_student_id: string
+          updated_at?: string
+        }
+        Update: {
+          class_id?: string
+          created_at?: string
+          created_by?: string | null
+          effective_from?: string
+          id?: string
+          leader_student_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lunch_leader_anchors_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lunch_leader_anchors_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lunch_leader_anchors_leader_student_id_fkey"
+            columns: ["leader_student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
             referencedColumns: ["id"]
           },
         ]
@@ -1373,9 +1464,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
       attendance_status: [
@@ -1395,4 +1483,3 @@ export const Constants = {
     },
   },
 } as const
-

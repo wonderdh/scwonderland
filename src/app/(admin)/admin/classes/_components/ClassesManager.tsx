@@ -9,7 +9,7 @@ import {
   listStudentsNotInClass,
   updateClass,
 } from "../../actions";
-import type { ClassWithDetails, ClassStudentRow, TeacherOption } from "@/lib/types";
+import type { ClassWithDetails, ClassStudentRow, TeacherOption, AcademyPeriod } from "@/lib/types";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -73,6 +73,7 @@ export function ClassesManager({
   teachers,
   allClassStudents,
   allStudents,
+  periods,
   subTab,
   onSubTabChange,
 }: {
@@ -80,6 +81,7 @@ export function ClassesManager({
   teachers: TeacherOption[];
   allClassStudents: FlatClassStudent[];
   allStudents: StudentInfo[];
+  periods: AcademyPeriod[];
   subTab: SubTab;
   onSubTabChange: (sub: SubTab) => void;
 }) {
@@ -499,6 +501,7 @@ export function ClassesManager({
       {createOpen && (
         <AddClassModal
           teachers={teachers}
+          periods={periods}
           defaultGroupLabel={subTab === "kindergarten" ? "유치부" : "오후반"}
           onClose={() => setCreateOpen(false)}
           onSuccess={() => {
@@ -512,6 +515,7 @@ export function ClassesManager({
         <EditClassModal
           classRow={editClass}
           teachers={teachers}
+          periods={periods}
           onClose={() => setEditClass(null)}
           onSuccess={() => {
             setEditClass(null);
@@ -681,11 +685,13 @@ function ClassCard({
 
 function AddClassModal({
   teachers,
+  periods,
   defaultGroupLabel,
   onClose,
   onSuccess,
 }: {
   teachers: TeacherOption[];
+  periods: AcademyPeriod[];
   defaultGroupLabel: string;
   onClose: () => void;
   onSuccess: () => void;
@@ -696,11 +702,30 @@ function AddClassModal({
   const [selectedTeacherIds, setSelectedTeacherIds] = useState<string[]>([]);
   const [teacherSearch, setTeacherSearch] = useState("");
   const [daysOfWeek, setDaysOfWeek] = useState<number[]>([1, 2, 3, 4, 5]);
+  const [periodId, setPeriodId] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const afternoonPeriods = useMemo(
+    () =>
+      [...periods]
+        .filter((p) => p.group_type === "afternoon")
+        .sort((a, b) => a.start_time.localeCompare(b.start_time)),
+    [periods]
+  );
+  const kindergartenFirstPeriod = useMemo(
+    () =>
+      periods.find(
+        (p) => p.group_type === "kindergarten" && p.name === "1st Period"
+      ) ?? null,
+    [periods]
+  );
+
   useEffect(() => {
-    if (groupLabel === "유치부") setDaysOfWeek([1, 2, 3, 4, 5]);
+    if (groupLabel === "유치부") {
+      setDaysOfWeek([1, 2, 3, 4, 5]);
+      setPeriodId(null); // 서버가 1교시로 override
+    }
   }, [groupLabel]);
 
   const toggleTeacher = (id: string) => {
@@ -720,7 +745,14 @@ function AddClassModal({
     if (daysOfWeek.length === 0) return;
     setPending(true);
     setError(null);
-    const result = await createClass(name.trim(), selectedTeacherIds, groupLabel, colorIndex, daysOfWeek);
+    const result = await createClass(
+      name.trim(),
+      selectedTeacherIds,
+      groupLabel,
+      colorIndex,
+      daysOfWeek,
+      periodId
+    );
     setPending(false);
     if (result?.error) {
       setError(result.error);
@@ -764,6 +796,31 @@ function AddClassModal({
               <option value="오후반">오후반</option>
             </select>
           </div>
+        </div>
+        <div>
+          <label className="mb-1 block text-sm font-medium text-foreground">
+            시작 시간
+          </label>
+          {groupLabel === "유치부" ? (
+            <div className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+              {kindergartenFirstPeriod
+                ? `1교시 (${kindergartenFirstPeriod.start_time.slice(0, 5)}~${kindergartenFirstPeriod.end_time.slice(0, 5)}) — 고정`
+                : "1교시 — 자동 할당"}
+            </div>
+          ) : (
+            <select
+              value={periodId ?? ""}
+              onChange={(e) => setPeriodId(e.target.value || null)}
+              className="w-full rounded-lg border border-input px-3 py-2 text-foreground bg-background"
+            >
+              <option value="">(선택 안 함)</option>
+              {afternoonPeriods.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name} ({p.start_time.slice(0, 5)}~{p.end_time.slice(0, 5)})
+                </option>
+              ))}
+            </select>
+          )}
         </div>
         <div>
           <label className="mb-2 block text-sm font-medium text-foreground">
@@ -897,11 +954,13 @@ function AddClassModal({
 function EditClassModal({
   classRow,
   teachers,
+  periods,
   onClose,
   onSuccess,
 }: {
   classRow: ClassWithDetails;
   teachers: TeacherOption[];
+  periods: AcademyPeriod[];
   onClose: () => void;
   onSuccess: () => void;
 }) {
@@ -913,11 +972,30 @@ function EditClassModal({
   );
   const [teacherSearch, setTeacherSearch] = useState("");
   const [daysOfWeek, setDaysOfWeek] = useState<number[]>(classRow.days_of_week ?? [1, 2, 3, 4, 5]);
+  const [periodId, setPeriodId] = useState<string | null>(classRow.period_id ?? null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const afternoonPeriods = useMemo(
+    () =>
+      [...periods]
+        .filter((p) => p.group_type === "afternoon")
+        .sort((a, b) => a.start_time.localeCompare(b.start_time)),
+    [periods]
+  );
+  const kindergartenFirstPeriod = useMemo(
+    () =>
+      periods.find(
+        (p) => p.group_type === "kindergarten" && p.name === "1st Period"
+      ) ?? null,
+    [periods]
+  );
+
   useEffect(() => {
-    if (groupLabel === "유치부") setDaysOfWeek([1, 2, 3, 4, 5]);
+    if (groupLabel === "유치부") {
+      setDaysOfWeek([1, 2, 3, 4, 5]);
+      setPeriodId(null); // 서버가 1교시로 override
+    }
   }, [groupLabel]);
 
   const toggleTeacher = (id: string) => {
@@ -949,6 +1027,7 @@ function EditClassModal({
       groupLabel,
       colorIndex,
       daysOfWeek,
+      periodId,
     );
     setPending(false);
     if (result?.error) {
@@ -999,6 +1078,31 @@ function EditClassModal({
               <option value="오후반">오후반</option>
             </select>
           </div>
+        </div>
+        <div>
+          <label className="mb-1 block text-sm font-medium text-foreground">
+            시작 시간
+          </label>
+          {groupLabel === "유치부" ? (
+            <div className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+              {kindergartenFirstPeriod
+                ? `1교시 (${kindergartenFirstPeriod.start_time.slice(0, 5)}~${kindergartenFirstPeriod.end_time.slice(0, 5)}) — 고정`
+                : "1교시 — 자동 할당"}
+            </div>
+          ) : (
+            <select
+              value={periodId ?? ""}
+              onChange={(e) => setPeriodId(e.target.value || null)}
+              className="w-full rounded-lg border border-input px-3 py-2 text-foreground bg-background"
+            >
+              <option value="">(선택 안 함)</option>
+              {afternoonPeriods.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name} ({p.start_time.slice(0, 5)}~{p.end_time.slice(0, 5)})
+                </option>
+              ))}
+            </select>
+          )}
         </div>
         <div>
           <label className="mb-2 block text-sm font-medium text-foreground">

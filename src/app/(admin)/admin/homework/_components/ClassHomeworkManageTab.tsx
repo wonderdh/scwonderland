@@ -94,7 +94,12 @@ export function ClassHomeworkManageTab({
   const [koreanTeacherId, setKoreanTeacherId] = useState<string | null>(null);
   const [nativeTeacherId, setNativeTeacherId] = useState<string | null>(null);
   const [selectedDays, setSelectedDays] = useState<Set<number>>(() => new Set());
-  const [selectedGroups, setSelectedGroups] = useState<Set<string>>(() => new Set());
+  const [selectedGroups, setSelectedGroups] = useState<Set<string>>(
+    () => new Set(["afternoon"])
+  );
+  const [selectedPeriods, setSelectedPeriods] = useState<Set<string>>(
+    () => new Set()
+  );
   const [assignOpen, setAssignOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<ClassTextbookWithDetails | null>(null);
   const [removeTarget, setRemoveTarget] = useState<ClassTextbookWithDetails | null>(null);
@@ -113,6 +118,23 @@ export function ClassHomeworkManageTab({
     return [...set].sort((a, b) => a - b);
   }, [classes]);
 
+  // 오후반에서 실제 쓰이는 period (id, label, startTime) — 시작시간 ASC.
+  const availablePeriods = useMemo(() => {
+    const map = new Map<string, { id: string; label: string; startTime: string }>();
+    for (const c of classes) {
+      if (c.groupType !== "afternoon") continue;
+      if (!c.periodId || !c.periodLabel || !c.periodStartTime) continue;
+      if (!map.has(c.periodId)) {
+        map.set(c.periodId, {
+          id: c.periodId,
+          label: c.periodLabel,
+          startTime: c.periodStartTime,
+        });
+      }
+    }
+    return [...map.values()].sort((a, b) => a.startTime.localeCompare(b.startTime));
+  }, [classes]);
+
   const haystacks = useMemo(() => {
     const m = new Map<string, string>();
     for (const c of classes) m.set(c.id, buildSearchHaystack(c));
@@ -126,7 +148,8 @@ export function ClassHomeworkManageTab({
       koreanTeacherId !== null ||
       nativeTeacherId !== null ||
       selectedDays.size > 0 ||
-      selectedGroups.size > 0;
+      selectedGroups.size > 0 ||
+      selectedPeriods.size > 0;
     if (!hasFilter) return classes;
     return classes.filter((c) => {
       if (c.id === selectedClassId) return true;
@@ -136,6 +159,8 @@ export function ClassHomeworkManageTab({
       if (selectedDays.size > 0 && !c.daysOfWeek.some((d) => selectedDays.has(d)))
         return false;
       if (selectedGroups.size > 0 && !(c.groupType && selectedGroups.has(c.groupType)))
+        return false;
+      if (selectedPeriods.size > 0 && !(c.periodId && selectedPeriods.has(c.periodId)))
         return false;
       return true;
     });
@@ -148,6 +173,7 @@ export function ClassHomeworkManageTab({
     nativeTeacherId,
     selectedDays,
     selectedGroups,
+    selectedPeriods,
   ]);
 
   function toggleDay(day: number) {
@@ -164,6 +190,15 @@ export function ClassHomeworkManageTab({
       const next = new Set(prev);
       if (next.has(group)) next.delete(group);
       else next.add(group);
+      return next;
+    });
+  }
+
+  function togglePeriod(periodId: string) {
+    setSelectedPeriods((prev) => {
+      const next = new Set(prev);
+      if (next.has(periodId)) next.delete(periodId);
+      else next.add(periodId);
       return next;
     });
   }
@@ -296,7 +331,8 @@ export function ClassHomeworkManageTab({
         />
         {(koreanTeachers.length > 0 ||
           nativeTeachers.length > 0 ||
-          availableDays.length > 0) && (
+          availableDays.length > 0 ||
+          availablePeriods.length > 0) && (
           <div className="space-y-2 rounded-lg border border-slate-200 bg-slate-50/50 p-3">
             <div className="flex flex-wrap items-center gap-2">
               <span className="shrink-0 text-xs font-semibold text-slate-500 w-16">
@@ -370,6 +406,39 @@ export function ClassHomeworkManageTab({
                     </button>
                   );
                 })}
+              </div>
+            )}
+            {availablePeriods.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="shrink-0 text-xs font-semibold text-slate-500 w-16">
+                  시작 시간
+                </span>
+                {availablePeriods.map((p) => {
+                  const active = selectedPeriods.has(p.id);
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => togglePeriod(p.id)}
+                      className={`px-3 py-1 rounded-full text-xs font-medium transition-colors border ${
+                        active
+                          ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                          : "bg-white text-slate-700 border-slate-200 hover:border-primary/50 hover:text-primary"
+                      }`}
+                    >
+                      {p.label}
+                    </button>
+                  );
+                })}
+                {selectedPeriods.size > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedPeriods(new Set())}
+                    className="ml-1 text-xs text-slate-400 hover:text-slate-600 underline-offset-2 hover:underline"
+                  >
+                    초기화
+                  </button>
+                )}
               </div>
             )}
             {availableDays.length > 0 && (
