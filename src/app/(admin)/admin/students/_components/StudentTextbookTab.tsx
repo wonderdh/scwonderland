@@ -291,14 +291,18 @@ export function StudentTextbookTab({
 
                 {/* Info */}
                 <div className="min-w-0 flex-1 space-y-1">
-                  <p className="text-sm font-semibold text-slate-900 truncate">
-                    {a.title}
-                  </p>
-                  {a.series && (
-                    <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-700">
-                      {a.series}
-                    </span>
-                  )}
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {a.series && (
+                      <span className="inline-block rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-700">
+                        {a.series}
+                      </span>
+                    )}
+                    {a.level && (
+                      <span className="inline-block rounded-full bg-violet-100 px-2 py-0.5 text-xs font-semibold text-violet-700">
+                        {a.level}
+                      </span>
+                    )}
+                  </div>
                   <div className="flex flex-wrap items-center gap-1">
                     <DayBadges days={a.homework_days ?? []} />
                     {a.skip_dates && a.skip_dates.length > 0 && (

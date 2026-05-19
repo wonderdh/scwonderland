@@ -13,6 +13,7 @@ type StudentHomeworkBookRow =
 
 export type ClassTextbookWithDetails = ClassHomeworkBookRow & {
   title: string;
+  level: string | null;
   series: string | null;
   publisher: string | null;
   cover_image_url: string | null;
@@ -29,6 +30,7 @@ export type StudentTextbookWithDetails = StudentHomeworkBookRow & {
   skip_dates?: string[] | null;
   start_unit?: number | null;
   title: string;
+  level: string | null;
   series: string | null;
   publisher: string | null;
   cover_image_url: string | null;
@@ -110,7 +112,7 @@ export async function listClassTextbooks(
   const { data, error } = await supabase
     .from("class_homework_books")
     .select(
-      "id, class_id, textbook_id, start_date, note, homework_days, skip_dates, start_unit, homework_books(title, publisher, series_rel:series_id(name, total_units, cover_image_url))"
+      "id, class_id, textbook_id, start_date, note, homework_days, skip_dates, start_unit, homework_books(title, level, publisher, series_rel:series_id(name, total_units, cover_image_url))"
     )
     .eq("class_id", classId)
     .order("id", { ascending: true });
@@ -135,6 +137,7 @@ export async function listClassTextbooks(
       skip_dates: (row.skip_dates as string[] | null) ?? [],
       start_unit: row.start_unit ?? 1,
       title: tb?.title ?? "",
+      level: tb?.level ?? null,
       series: sr?.name ?? null,
       publisher: tb?.publisher ?? null,
       cover_image_url: sr?.cover_image_url ?? null,
@@ -300,7 +303,7 @@ export async function listStudentTextbooks(
   const { data, error } = await supabase
     .from("student_homework_books")
     .select(
-      "id, class_student_id, class_homework_book_id, start_date, class_students!inner(student_id), class_homework_books(textbook_id, homework_books(title, publisher, series_rel:series_id(name, total_units, cover_image_url)))"
+      "id, class_student_id, class_homework_book_id, start_date, class_students!inner(student_id), class_homework_books(textbook_id, homework_books(title, level, publisher, series_rel:series_id(name, total_units, cover_image_url)))"
     )
     .eq("class_students.student_id", studentId)
     .order("id", { ascending: true });
@@ -332,6 +335,7 @@ export async function listStudentTextbooks(
       start_date: row.start_date ?? null,
       note: null,
       title: tb?.title ?? "",
+      level: tb?.level ?? null,
       series: sr?.name ?? null,
       publisher: tb?.publisher ?? null,
       cover_image_url: sr?.cover_image_url ?? null,

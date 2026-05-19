@@ -103,10 +103,18 @@ function EditDaysModal({
         className="w-full max-w-sm rounded-xl bg-white p-6 shadow-xl overflow-y-auto max-h-[90vh]"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center gap-2 mb-1">
-          <h2 className="text-lg font-semibold text-slate-900">
-            {assignment.title} — 숙제 제출
-          </h2>
+        <div className="flex flex-wrap items-center gap-1.5 mb-1">
+          {assignment.series && (
+            <span className="inline-block rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-700">
+              {assignment.series}
+            </span>
+          )}
+          {assignment.level && (
+            <span className="inline-block rounded-full bg-violet-100 px-2 py-0.5 text-xs font-semibold text-violet-700">
+              {assignment.level}
+            </span>
+          )}
+          <h2 className="text-lg font-semibold text-slate-900">— 숙제 제출</h2>
         </div>
         <p className="text-sm text-slate-500 mb-4">숙제 일정 설정</p>
 
@@ -296,7 +304,16 @@ export function TeacherTextbooksClient({
                   onClick={() => setEditTarget(ct)}
                   className="inline-flex items-center gap-1.5 rounded-lg border border-orange-200 bg-orange-50 px-3 py-1.5 text-xs font-medium text-orange-800 hover:bg-orange-100 transition-colors"
                 >
-                  <span className="font-semibold">{ct.title}</span>
+                  {ct.series && (
+                    <span className="rounded-full bg-blue-100 px-1.5 py-0.5 text-[10px] font-semibold text-blue-700">
+                      {ct.series}
+                    </span>
+                  )}
+                  {ct.level && (
+                    <span className="rounded-full bg-violet-100 px-1.5 py-0.5 text-[10px] font-semibold text-violet-700">
+                      {ct.level}
+                    </span>
+                  )}
                   {ct.start_date && (
                     <span className="text-orange-600">시작 {ct.start_date}</span>
                   )}

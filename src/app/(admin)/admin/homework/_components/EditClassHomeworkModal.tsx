@@ -87,7 +87,18 @@ export function EditClassHomeworkModal({ assignment, onClose, onSaved }: Props) 
         <h2 className="text-lg font-semibold text-slate-900 mb-1">
           숙제 수정
         </h2>
-        <p className="text-xs text-slate-500 mb-4 truncate">{assignment.title}</p>
+        <div className="flex flex-wrap items-center gap-1.5 mb-4">
+          {assignment.series && (
+            <span className="inline-block rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-700">
+              {assignment.series}
+            </span>
+          )}
+          {assignment.level && (
+            <span className="inline-block rounded-full bg-violet-100 px-2 py-0.5 text-xs font-semibold text-violet-700">
+              {assignment.level}
+            </span>
+          )}
+        </div>
 
         <div className="space-y-4">
           <div className="grid grid-cols-3 gap-3">
