@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ConfirmDialog } from "@/components/overlays/ConfirmDialog";
+import { Modal } from "@/components/overlays/Modal";
 import { SeriesLevelPicker } from "@/components/forms/SeriesLevelPicker";
 import { KST_DAY_LABELS } from "@/lib/utils/date-kst";
 import {
@@ -87,21 +88,15 @@ function AssignModal({
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-      onClick={onClose}
-    >
-      <div
-        className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h2 className="text-lg font-semibold text-slate-900 mb-4">
+    <Modal open onClose={onClose}>
+      <div className="p-6">
+        <h2 className="mb-4 text-lg font-semibold text-slate-900">
           개인 숙제 부여
         </h2>
 
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">
+            <label className="mb-1.5 block text-sm font-medium text-slate-700">
               숙제 선택 <span className="text-red-500">*</span>
             </label>
             <SeriesLevelPicker
@@ -114,7 +109,7 @@ function AssignModal({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">
+            <label className="mb-1.5 block text-sm font-medium text-slate-700">
               메모
             </label>
             <Input
@@ -131,7 +126,7 @@ function AssignModal({
           </p>
 
           {formError && (
-            <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">
+            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
               {formError}
             </p>
           )}
@@ -155,7 +150,7 @@ function AssignModal({
           </div>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }
 

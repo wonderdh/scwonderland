@@ -1,6 +1,8 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { AlertTriangle } from "lucide-react";
+import { Modal } from "./Modal";
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -11,8 +13,8 @@ interface ConfirmDialogProps {
   variant?: "danger" | "primary";
   /**
    * Convenience flag — when true, forces the danger styling (red confirm button
-   * + warning icon). Equivalent to `variant="danger"`. Kept optional so existing
-   * callers using `variant` still work.
+   * + warning icon). Equivalent to `variant="danger"`. Kept for API compat with
+   * existing callsites.
    */
   danger?: boolean;
   /**
@@ -39,29 +41,35 @@ export function ConfirmDialog({
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
-  if (!open) return null;
+  const cancelRef = useRef<HTMLButtonElement>(null);
+
+  // Default focus on the cancel button (safe action) when dialog opens
+  useEffect(() => {
+    if (open) {
+      // defer one tick so FocusScope has trapped focus first
+      const id = setTimeout(() => cancelRef.current?.focus(), 0);
+      return () => clearTimeout(id);
+    }
+  }, [open]);
 
   const isDanger = danger ?? variant === "danger";
 
   const confirmClass = isDanger
-    ? "inline-flex items-center justify-center gap-2 rounded-lg bg-red-600 px-5 py-3 text-base font-semibold text-white hover:bg-red-700 disabled:opacity-50"
-    : "inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-5 py-3 text-base font-semibold text-white hover:bg-blue-700 disabled:opacity-50";
+    ? "inline-flex items-center justify-center gap-2 rounded-lg bg-red-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+    : "inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50";
 
   const cancelClass =
     "inline-flex items-center justify-center rounded-lg bg-slate-100 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-200 disabled:opacity-50";
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-      onClick={onCancel}
-    >
-      <div
-        className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <Modal open={open} onClose={onCancel} size="sm">
+      <div className="p-6">
         <div className="flex items-start gap-3">
           {isDanger ? (
-            <AlertTriangle className="mt-0.5 h-6 w-6 shrink-0 text-red-600" aria-hidden="true" />
+            <AlertTriangle
+              className="mt-0.5 h-6 w-6 shrink-0 text-red-600"
+              aria-hidden="true"
+            />
           ) : null}
           <div className="min-w-0 flex-1">
             <h3 className="text-xl font-semibold text-slate-900">{title}</h3>
@@ -84,6 +92,7 @@ export function ConfirmDialog({
 
         <div className="mt-6 flex justify-end gap-2">
           <button
+            ref={cancelRef}
             type="button"
             onClick={onCancel}
             disabled={disabled}
@@ -101,6 +110,6 @@ export function ConfirmDialog({
           </button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

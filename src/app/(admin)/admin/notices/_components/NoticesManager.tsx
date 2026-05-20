@@ -13,6 +13,7 @@ import { Check, Clock, Pin } from "lucide-react";
 import { PageHeader } from "@/components/navigation/PageHeader";
 import { FormGroup } from "@/components/forms/FormGroup";
 import { ConfirmDialog } from "@/components/overlays/ConfirmDialog";
+import { Modal } from "@/components/overlays/Modal";
 
 export function NoticesManager({
   initialNotices,
@@ -268,9 +269,8 @@ function NoticeFormModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} aria-hidden />
-      <div className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-xl border border-slate-200 bg-white p-5 shadow-xl">
+    <Modal open onClose={onClose}>
+      <div className="max-h-[90vh] overflow-y-auto p-5">
         <div className="mb-4 flex items-center justify-between">
           <h3 className="text-lg font-semibold text-slate-800">{title}</h3>
           <button
@@ -378,6 +378,6 @@ function NoticeFormModal({
           </div>
         </form>
       </div>
-    </div>
+    </Modal>
   );
 }

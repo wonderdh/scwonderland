@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FormGroup } from "@/components/forms/FormGroup";
+import { Modal } from "@/components/overlays/Modal";
 import { listPublishers, createPublisher } from "@/app/(admin)/admin/actions";
 
 type PublisherOption = { id: string; name: string };
@@ -45,15 +46,9 @@ function NewPublisherModal({
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-      onClick={onClose}
-    >
-      <div
-        className="w-full max-w-sm rounded-xl bg-white p-6 shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h2 className="text-lg font-semibold text-slate-900 mb-4">새 출판사 추가</h2>
+    <Modal open onClose={onClose} size="sm">
+      <div className="p-6">
+        <h2 className="mb-4 text-lg font-semibold text-slate-900">새 출판사 추가</h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           <FormGroup label="출판사 이름" required>
             <Input
@@ -75,7 +70,7 @@ function NewPublisherModal({
             />
           </FormGroup>
           {formError && (
-            <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">
+            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
               {formError}
             </p>
           )}
@@ -89,7 +84,7 @@ function NewPublisherModal({
           </div>
         </form>
       </div>
-    </div>
+    </Modal>
   );
 }
 

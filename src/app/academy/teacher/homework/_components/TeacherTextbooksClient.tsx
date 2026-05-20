@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Modal } from "@/components/overlays/Modal";
 import {
   updateClassTextbookDays,
   getUnitSchedule,
@@ -95,14 +96,8 @@ function EditDaysModal({
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-      onClick={onClose}
-    >
-      <div
-        className="w-full max-w-sm rounded-xl bg-white p-6 shadow-xl overflow-y-auto max-h-[90vh]"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <Modal open onClose={onClose} size="sm">
+      <div className="overflow-y-auto max-h-[90vh] p-6">
         <div className="flex flex-wrap items-center gap-1.5 mb-1">
           {assignment.series && (
             <span className="inline-block rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-700">
@@ -212,7 +207,7 @@ function EditDaysModal({
           </div>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }
 

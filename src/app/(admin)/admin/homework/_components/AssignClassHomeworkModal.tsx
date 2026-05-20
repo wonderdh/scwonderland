@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Modal } from "@/components/overlays/Modal";
 import { SeriesLevelPicker } from "@/components/forms/SeriesLevelPicker";
 import { assignClassTextbook } from "@/app/(admin)/admin/actions";
 import type { TextbookWithSeries } from "@/app/(admin)/admin/actions";
@@ -65,7 +66,9 @@ export function AssignClassHomeworkModal({
       return;
     }
     if (selectedTextbook && startUnitNum > selectedTextbook.total_units) {
-      setFormError(`시작 unit 은 ${selectedTextbook.total_units} 이하여야 합니다.`);
+      setFormError(
+        `시작 unit 은 ${selectedTextbook.total_units} 이하여야 합니다.`
+      );
       return;
     }
 
@@ -91,19 +94,13 @@ export function AssignClassHomeworkModal({
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-      onClick={onClose}
-    >
-      <div
-        className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h2 className="text-lg font-semibold text-slate-900 mb-4">숙제 부여</h2>
+    <Modal open onClose={onClose}>
+      <div className="p-6">
+        <h2 className="mb-4 text-lg font-semibold text-slate-900">숙제 부여</h2>
 
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">
+            <label className="mb-1.5 block text-sm font-medium text-slate-700">
               숙제 선택 <span className="text-red-500">*</span>
             </label>
             <SeriesLevelPicker
@@ -117,7 +114,7 @@ export function AssignClassHomeworkModal({
 
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">
+              <label className="mb-1.5 block text-sm font-medium text-slate-700">
                 시작일
               </label>
               <Input
@@ -129,7 +126,7 @@ export function AssignClassHomeworkModal({
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">
+              <label className="mb-1.5 block text-sm font-medium text-slate-700">
                 시작 unit
               </label>
               <Input
@@ -142,13 +139,13 @@ export function AssignClassHomeworkModal({
                 className="h-10"
               />
               {selectedTextbook && (
-                <p className="text-xs text-slate-400 mt-1">
+                <p className="mt-1 text-xs text-slate-400">
                   / 총 {selectedTextbook.total_units} unit
                 </p>
               )}
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">
+              <label className="mb-1.5 block text-sm font-medium text-slate-700">
                 메모
               </label>
               <Input
@@ -162,7 +159,7 @@ export function AssignClassHomeworkModal({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">
+            <label className="mb-1.5 block text-sm font-medium text-slate-700">
               숙제 요일
             </label>
             <div className="flex items-center gap-2">
@@ -174,10 +171,10 @@ export function AssignClassHomeworkModal({
                     type="button"
                     onClick={() => toggleDay(d.idx)}
                     disabled={isPending}
-                    className={`h-9 w-9 rounded-full text-sm font-medium transition-colors border ${
+                    className={`h-9 w-9 rounded-full border text-sm font-medium transition-colors ${
                       on
-                        ? "bg-orange-500 text-white border-orange-500"
-                        : "bg-white text-slate-500 border-slate-200 hover:border-orange-300"
+                        ? "border-orange-500 bg-orange-500 text-white"
+                        : "border-slate-200 bg-white text-slate-500 hover:border-orange-300"
                     } disabled:opacity-50`}
                   >
                     {d.label}
@@ -186,14 +183,14 @@ export function AssignClassHomeworkModal({
               })}
             </div>
             {homeworkDays.length === 0 && (
-              <p className="text-xs text-amber-600 mt-1">
+              <p className="mt-1 text-xs text-amber-600">
                 요일 미지정 시 진도 스케줄이 비활성됩니다.
               </p>
             )}
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">
+            <label className="mb-1.5 block text-sm font-medium text-slate-700">
               예외일 (휴일/스킵)
             </label>
             <SkipDatesEditor
@@ -208,7 +205,7 @@ export function AssignClassHomeworkModal({
           </p>
 
           {formError && (
-            <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">
+            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
               {formError}
             </p>
           )}
@@ -228,6 +225,6 @@ export function AssignClassHomeworkModal({
           </div>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

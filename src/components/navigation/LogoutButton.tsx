@@ -3,7 +3,7 @@
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { createPortal } from "react-dom";
+import { Modal } from "@/components/overlays/Modal";
 
 type LogoutLabels = {
   button?: string;
@@ -58,46 +58,38 @@ export function LogoutButton({
         <span>{L.button}</span>
       </button>
 
-      {showConfirm && createPortal(
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div
-            className="absolute inset-0 bg-black/40"
-            onClick={() => setShowConfirm(false)}
-            aria-hidden
-          />
-          <div className="relative w-full max-w-xs rounded-xl border bg-card p-5 shadow-xl animate-in fade-in-0 zoom-in-95">
-            <div className="flex flex-col items-center text-center gap-3">
-              <div className="flex size-12 items-center justify-center rounded-full bg-red-100 text-red-600">
-                <svg className="size-6" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9" />
-                </svg>
-              </div>
-              <div>
-                <h3 className="text-base font-semibold text-foreground">{L.title}</h3>
-                <p className="mt-1 text-sm text-muted-foreground">{L.message}</p>
-              </div>
-              <div className="flex gap-2 w-full mt-1">
-                <button
-                  type="button"
-                  onClick={() => setShowConfirm(false)}
-                  className="flex-1 rounded-lg bg-secondary px-4 py-2.5 text-sm font-medium text-secondary-foreground hover:bg-secondary/80 transition-colors cursor-pointer"
-                >
-                  {L.cancel}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleLogout}
-                  disabled={loggingOut}
-                  className="flex-1 rounded-lg bg-red-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50 transition-colors cursor-pointer"
-                >
-                  {loggingOut ? L.confirming : L.confirm}
-                </button>
-              </div>
+      <Modal open={showConfirm} onClose={() => setShowConfirm(false)} size="sm">
+        <div className="p-5">
+          <div className="flex flex-col items-center gap-3 text-center">
+            <div className="flex size-12 items-center justify-center rounded-full bg-red-100 text-red-600">
+              <svg className="size-6" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9" />
+              </svg>
+            </div>
+            <div>
+              <h3 className="text-base font-semibold text-foreground">{L.title}</h3>
+              <p className="mt-1 text-sm text-muted-foreground">{L.message}</p>
+            </div>
+            <div className="mt-1 flex w-full gap-2">
+              <button
+                type="button"
+                onClick={() => setShowConfirm(false)}
+                className="flex-1 cursor-pointer rounded-lg bg-secondary px-4 py-2.5 text-sm font-medium text-secondary-foreground transition-colors hover:bg-secondary/80"
+              >
+                {L.cancel}
+              </button>
+              <button
+                type="button"
+                onClick={handleLogout}
+                disabled={loggingOut}
+                className="flex-1 cursor-pointer rounded-lg bg-red-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:opacity-50"
+              >
+                {loggingOut ? L.confirming : L.confirm}
+              </button>
             </div>
           </div>
-        </div>,
-        document.body
-      )}
+        </div>
+      </Modal>
     </>
   );
 }

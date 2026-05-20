@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Modal } from "@/components/overlays/Modal";
 import { updateClassTextbookDays } from "@/app/(admin)/admin/actions";
 import type { ClassTextbookWithDetails } from "@/app/(admin)/admin/actions";
 import { KST_DAY_LABELS } from "@/lib/utils/date-kst";
@@ -76,18 +77,10 @@ export function EditClassHomeworkModal({ assignment, onClose, onSaved }: Props) 
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-      onClick={onClose}
-    >
-      <div
-        className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h2 className="text-lg font-semibold text-slate-900 mb-1">
-          숙제 수정
-        </h2>
-        <div className="flex flex-wrap items-center gap-1.5 mb-4">
+    <Modal open onClose={onClose}>
+      <div className="p-6">
+        <h2 className="mb-1 text-lg font-semibold text-slate-900">숙제 수정</h2>
+        <div className="mb-4 flex flex-wrap items-center gap-1.5">
           {assignment.series && (
             <span className="inline-block rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-700">
               {assignment.series}
@@ -103,7 +96,7 @@ export function EditClassHomeworkModal({ assignment, onClose, onSaved }: Props) 
         <div className="space-y-4">
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">
+              <label className="mb-1.5 block text-sm font-medium text-slate-700">
                 시작일
               </label>
               <Input
@@ -115,7 +108,7 @@ export function EditClassHomeworkModal({ assignment, onClose, onSaved }: Props) 
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">
+              <label className="mb-1.5 block text-sm font-medium text-slate-700">
                 시작 unit
               </label>
               <Input
@@ -128,11 +121,11 @@ export function EditClassHomeworkModal({ assignment, onClose, onSaved }: Props) 
                 className="h-10"
               />
               {maxUnit > 0 && (
-                <p className="text-xs text-slate-400 mt-1">/ 총 {maxUnit} unit</p>
+                <p className="mt-1 text-xs text-slate-400">/ 총 {maxUnit} unit</p>
               )}
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">
+              <label className="mb-1.5 block text-sm font-medium text-slate-700">
                 메모
               </label>
               <Input
@@ -146,7 +139,7 @@ export function EditClassHomeworkModal({ assignment, onClose, onSaved }: Props) 
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">
+            <label className="mb-1.5 block text-sm font-medium text-slate-700">
               숙제 요일
             </label>
             <div className="flex items-center gap-2">
@@ -158,10 +151,10 @@ export function EditClassHomeworkModal({ assignment, onClose, onSaved }: Props) 
                     type="button"
                     onClick={() => toggleDay(d.idx)}
                     disabled={isPending}
-                    className={`h-9 w-9 rounded-full text-sm font-medium transition-colors border ${
+                    className={`h-9 w-9 rounded-full border text-sm font-medium transition-colors ${
                       on
-                        ? "bg-orange-500 text-white border-orange-500"
-                        : "bg-white text-slate-500 border-slate-200 hover:border-orange-300"
+                        ? "border-orange-500 bg-orange-500 text-white"
+                        : "border-slate-200 bg-white text-slate-500 hover:border-orange-300"
                     } disabled:opacity-50`}
                   >
                     {d.label}
@@ -170,14 +163,14 @@ export function EditClassHomeworkModal({ assignment, onClose, onSaved }: Props) 
               })}
             </div>
             {homeworkDays.length === 0 && (
-              <p className="text-xs text-amber-600 mt-1">
+              <p className="mt-1 text-xs text-amber-600">
                 요일 미지정 — 진도 스케줄이 비활성됩니다.
               </p>
             )}
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">
+            <label className="mb-1.5 block text-sm font-medium text-slate-700">
               예외일 (휴일/스킵)
             </label>
             <SkipDatesEditor
@@ -188,7 +181,7 @@ export function EditClassHomeworkModal({ assignment, onClose, onSaved }: Props) 
           </div>
 
           {formError && (
-            <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">
+            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
               {formError}
             </p>
           )}
@@ -208,6 +201,6 @@ export function EditClassHomeworkModal({ assignment, onClose, onSaved }: Props) 
           </div>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

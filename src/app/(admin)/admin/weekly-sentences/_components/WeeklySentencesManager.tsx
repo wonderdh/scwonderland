@@ -4,6 +4,7 @@ import { useState, useTransition, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Pencil, Upload } from "lucide-react";
+import { Modal } from "@/components/overlays/Modal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { LoadingState } from "@/components/feedback/LoadingState";
@@ -374,15 +375,9 @@ export function WeeklySentencesManager({
       </div>
 
       {/* 편집 모달 */}
-      {editTarget && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
-          onClick={() => setEditTarget(null)}
-        >
-          <div
-            className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl"
-            onClick={(e) => e.stopPropagation()}
-          >
+      <Modal open={!!editTarget} onClose={() => setEditTarget(null)}>
+        {editTarget && (
+          <div className="p-6">
             <h3 className="mb-4 text-lg font-semibold text-slate-800">
               Week {editTarget.weekNumber} ·{" "}
               {WEEKLY_SENTENCE_LEVELS.find((l) => l.level === editTarget.level)
@@ -452,8 +447,8 @@ export function WeeklySentencesManager({
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </Modal>
 
       <ConfirmDialog
         open={deleteTargetId !== null}

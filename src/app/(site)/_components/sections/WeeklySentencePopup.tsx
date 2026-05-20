@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { todayKst } from "@/lib/utils/date-kst";
 import { WEEKLY_SENTENCE_LEVELS } from "@/lib/constants/weekly-sentence";
+import { Modal } from "@/components/overlays/Modal";
 
 const DISMISS_KEY = "wonderland.weekly-sentence-dismissed";
 
@@ -44,17 +45,8 @@ export function WeeklySentencePopup({ data }: Props) {
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
-      onClick={close}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="weekly-sentence-title"
-    >
-      <div
-        className="w-full max-w-lg animate-in fade-in zoom-in-95 rounded-2xl bg-white p-5 shadow-2xl sm:max-w-3xl sm:p-10"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <Modal open onClose={close} size="lg">
+      <div className="animate-in fade-in zoom-in-95 rounded-2xl p-5 sm:p-10">
         {/* 헤더 */}
         <div className="mb-4 flex items-center justify-between sm:mb-8">
           <div>
@@ -153,6 +145,6 @@ export function WeeklySentencePopup({ data }: Props) {
           </button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

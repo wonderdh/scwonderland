@@ -15,6 +15,7 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { formatStudentName } from "@/lib/utils/student-name";
 import { ConfirmDialog } from "@/components/overlays/ConfirmDialog";
+import { Modal } from "@/components/overlays/Modal";
 import { CLASS_COLOR_PALETTE, GROUP_TYPE_TO_LABEL } from "@/lib/constants/class";
 import { getAgeColor } from "@/lib/ui/student-age-colors";
 import { TeacherBadges } from "@/components/badges/TeacherBadges";
@@ -762,7 +763,7 @@ function AddClassModal({
   };
 
   return (
-    <Modal title="반 추가" onClose={onClose}>
+    <ClassModal title="반 추가" onClose={onClose}>
       <form onSubmit={handleSubmit} className="space-y-4">
         {error && (
           <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">
@@ -947,7 +948,7 @@ function AddClassModal({
           </button>
         </div>
       </form>
-    </Modal>
+    </ClassModal>
   );
 }
 
@@ -1040,7 +1041,7 @@ function EditClassModal({
   const dayLabels: Record<number, string> = { 1: "월", 2: "화", 3: "수", 4: "목", 5: "금" };
 
   return (
-    <Modal title="반 수정" onClose={onClose}>
+    <ClassModal title="반 수정" onClose={onClose}>
       <form onSubmit={handleSubmit} className="space-y-4">
         {removedDays.length > 0 && (
           <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-sm text-amber-700">
@@ -1226,7 +1227,7 @@ function EditClassModal({
           </button>
         </div>
       </form>
-    </Modal>
+    </ClassModal>
   );
 }
 
@@ -1286,7 +1287,7 @@ function AddStudentModal({
   };
 
   return (
-    <Modal title="학생 추가" onClose={onClose}>
+    <ClassModal title="학생 추가" onClose={onClose}>
       {loading ? (
         <p className="py-4 text-center text-sm text-muted-foreground">불러오는 중…</p>
       ) : options.length === 0 ? (
@@ -1351,11 +1352,11 @@ function AddStudentModal({
           </div>
         </form>
       )}
-    </Modal>
+    </ClassModal>
   );
 }
 
-function Modal({
+function ClassModal({
   title,
   onClose,
   children,
@@ -1365,13 +1366,8 @@ function Modal({
   children: React.ReactNode;
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div
-        className="absolute inset-0 bg-black/40"
-        onClick={onClose}
-        aria-hidden
-      />
-      <div className="relative w-full max-w-md rounded-xl border bg-card p-5 shadow-xl">
+    <Modal open onClose={onClose}>
+      <div className="p-5">
         <div className="mb-4 flex items-center justify-between">
           <h3 className="text-lg font-semibold text-foreground">{title}</h3>
           <button
@@ -1397,6 +1393,6 @@ function Modal({
         </div>
         {children}
       </div>
-    </div>
+    </Modal>
   );
 }

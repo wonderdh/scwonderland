@@ -53,15 +53,15 @@ export async function getReportCard(
   if (!data) return null;
 
   let author_name: string | null = null;
-  // TODO: 작성자 의미 검증 — DB 변경으로 class_teacher_id 는 "담임" 의미가 되었으나
-  // 본 코드는 원래 "작성자" 비교를 의도. 의도 불일치하면 written_by 컬럼 도입 별 plan.
+  // class_teacher_id → class_teachers(id) → teachers(id) → name
   if (data.class_teacher_id) {
-    const { data: teacher } = await admin
-      .from("teachers")
-      .select("name")
+    const { data: ct } = await admin
+      .from("class_teachers")
+      .select("teachers(name)")
       .eq("id", data.class_teacher_id)
       .maybeSingle();
-    author_name = teacher?.name ?? null;
+    const teacherJoin = ct?.teachers as { name: string } | null;
+    author_name = teacherJoin?.name ?? null;
   }
 
   return { ...data, student_profile_id: studentProfileId, author_name } as ReportCard;
@@ -162,14 +162,36 @@ export async function upsertReportCard(
     content_ko = await translateText(trimmedContent, "ko", names);
   }
 
-  // TODO: 작성자 의미 검증 — DB 변경으로 class_teacher_id 는 "담임" 의미가 되었으나
-  // 본 코드는 원래 "작성자(user.id)" 저장을 의도. 의도 불일치하면 written_by 컬럼 도입 별 plan.
-  const { error } = await supabase.from("report_cards").upsert(
+  // class_teacher_id 는 class_teachers(id) 를 참조. 작성 교사의 class_teachers 행 조회.
+  // admin 이 작성하는 경우 teacher record 없으면 null 저장 (FK SET NULL 허용).
+  let classTeacherId: string | null = null;
+  if (isTeacher) {
+    const teacher = await getTeacherRecordByProfileId(admin, user.id);
+    if (teacher) {
+      // class_student → class_id 먼저 조회. 못 찾으면 class_teachers 매핑 자체 skip
+      // (빈 문자열 `?? ""` 로 .eq() 호출하면 PostgREST 가 invalid UUID 422 반환).
+      const { data: csRow } = await admin
+        .from("class_students")
+        .select("class_id")
+        .eq("id", classStudentId)
+        .maybeSingle();
+      if (csRow?.class_id) {
+        const { data: ctRow } = await admin
+          .from("class_teachers")
+          .select("id")
+          .eq("teacher_id", teacher.id)
+          .eq("class_id", csRow.class_id)
+          .maybeSingle();
+        classTeacherId = ctRow?.id ?? null;
+      }
+    }
+  }
+  const { error } = await admin.from("report_cards").upsert(
     {
       class_student_id: classStudentId,
       year: y,
       month: m,
-      class_teacher_id: user.id,
+      class_teacher_id: classTeacherId,
       content_en: trimmedContent,
       content_ko,
       updated_at: new Date().toISOString(),
@@ -209,17 +231,24 @@ export async function deleteReportCard(
     if (teacher?.teacher_type !== "native") {
       return { error: "삭제 권한이 없습니다." };
     }
-    // 본인이 작성한 리포트만 삭제 가능
-    // TODO: 작성자 의미 검증 — DB 변경으로 class_teacher_id 는 "담임" 의미가 되었으나
-    // 본 코드는 원래 "작성자" 비교를 의도. 의도 불일치하면 written_by 컬럼 도입 별 plan.
+    // 본인이 작성한 리포트만 삭제 가능.
+    // class_teacher_id 는 class_teachers(id) 참조 — 프로필 UUID 직접 비교 불가.
+    // teacher record → class_teachers rows 로 소유권 확인.
     const { data: report } = await admin
       .from("report_cards")
       .select("class_teacher_id")
       .eq("id", reportCardId)
       .single();
     if (!report) return { error: "리포트카드를 찾을 수 없습니다." };
-    if (report.class_teacher_id !== user.id) {
-      return { error: "본인이 작성한 리포트카드만 삭제할 수 있습니다." };
+    if (report.class_teacher_id !== null) {
+      const { data: ctRows } = await admin
+        .from("class_teachers")
+        .select("id")
+        .eq("teacher_id", teacher.id);
+      const ownedIds = new Set((ctRows ?? []).map((r) => r.id));
+      if (!ownedIds.has(report.class_teacher_id)) {
+        return { error: "본인이 작성한 리포트카드만 삭제할 수 있습니다." };
+      }
     }
   }
 
@@ -453,17 +482,16 @@ export async function translateReportCard(
   // 학생·교사 이름 조회 (번역 시 이름 보존)
   const [studentRows, teacherRow] = await Promise.all([
     classMember ? getStudentsByIds(admin, [classMember.student_id]) : Promise.resolve(new Map()),
-    // TODO: 작성자 의미 검증 — DB 변경으로 class_teacher_id 는 "담임" 의미가 되었으나
-    // 본 코드는 원래 "작성자" 이름을 번역 보존 목적으로 조회. 의도 불일치하면 written_by 컬럼 도입 별 plan.
+    // class_teacher_id → class_teachers(id) → teachers(name) で作者名取得 (번역 시 이름 보존)
     row.class_teacher_id
-      ? admin.from("teachers").select("name").eq("id", row.class_teacher_id).maybeSingle()
+      ? admin.from("class_teachers").select("teachers(name)").eq("id", row.class_teacher_id).maybeSingle()
       : Promise.resolve({ data: null }),
   ]);
   const studentRow = classMember ? studentRows.get(classMember.student_id) : undefined;
   const studentNames = [
     studentRow?.english_name,
     studentRow?.korean_name,
-    teacherRow.data?.name,
+    teacherRow.data?.teachers?.name,
   ].filter(Boolean) as string[];
 
   if (target === "content") {

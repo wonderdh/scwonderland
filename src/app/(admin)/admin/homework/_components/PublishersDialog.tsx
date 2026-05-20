@@ -6,6 +6,7 @@ import { ExternalLink, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FormGroup } from "@/components/forms/FormGroup";
+import { Modal } from "@/components/overlays/Modal";
 import {
   listAllPublishers,
   createPublisher,
@@ -201,8 +202,6 @@ export function PublishersDialog({ open, onOpenChange }: Props) {
     onOpenChange(next);
   };
 
-  if (!open) return null;
-
   const handleDeactivate = (publisher: PublisherRow) => {
     startTransition(async () => {
       const result = await deletePublisher(publisher.id);
@@ -236,88 +235,80 @@ export function PublishersDialog({ open, onOpenChange }: Props) {
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-      onClick={() => handleOpenChange(false)}
-    >
-      <div
-        className="w-full max-w-2xl max-h-[80vh] flex flex-col rounded-xl bg-white shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b shrink-0">
-          <h2 className="text-xl font-semibold text-slate-900">출판사 관리</h2>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 w-8 p-0"
-            onClick={() => handleOpenChange(false)}
-          >
-            <X className="h-4 w-4" />
-            <span className="sr-only">닫기</span>
-          </Button>
-        </div>
-
-        {/* Body */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-4">
-          {/* Add button / form */}
-          {showAddForm ? (
-            <PublisherForm
-              onSaved={() => {
-                setShowAddForm(false);
-                refetch();
-              }}
-              onCancel={() => setShowAddForm(false)}
-            />
-          ) : (
-            <div className="flex justify-end">
-              <Button size="sm" onClick={() => setShowAddForm(true)}>
-                + 출판사 추가
-              </Button>
-            </div>
-          )}
-
-          {/* Stats */}
-          <p className="text-sm text-slate-500">
-            총 {publishers.length}개 출판사 (활성{" "}
-            {publishers.filter((p) => p.is_active).length}개)
-          </p>
-
-          {/* List */}
-          {publishers.length === 0 ? (
-            <div className="rounded-xl border border-dashed bg-slate-50/50 p-10 text-center text-sm text-slate-400">
-              등록된 출판사가 없습니다. 출판사를 추가하세요.
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {publishers.map((publisher) =>
-                editTarget?.id === publisher.id ? (
-                  <PublisherForm
-                    key={publisher.id}
-                    initial={publisher}
-                    onSaved={() => {
-                      setEditTarget(null);
-                      refetch();
-                    }}
-                    onCancel={() => setEditTarget(null)}
-                  />
-                ) : (
-                  <PublisherRowItem
-                    key={publisher.id}
-                    publisher={publisher}
-                    onEdit={() => {
-                      setShowAddForm(false);
-                      setEditTarget(publisher);
-                    }}
-                    onDeactivate={() => handleDeactivate(publisher)}
-                    onActivate={() => handleActivate(publisher)}
-                  />
-                )
-              )}
-            </div>
-          )}
-        </div>
+    <Modal open onClose={() => handleOpenChange(false)} size="lg">
+      {/* Header */}
+      <div className="flex items-center justify-between border-b px-6 py-4 shrink-0">
+        <h2 className="text-xl font-semibold text-slate-900">출판사 관리</h2>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-8 w-8 p-0"
+          onClick={() => handleOpenChange(false)}
+        >
+          <X className="h-4 w-4" />
+          <span className="sr-only">닫기</span>
+        </Button>
       </div>
-    </div>
+
+      {/* Body */}
+      <div className="max-h-[70vh] flex-1 space-y-4 overflow-y-auto p-6">
+        {/* Add button / form */}
+        {showAddForm ? (
+          <PublisherForm
+            onSaved={() => {
+              setShowAddForm(false);
+              refetch();
+            }}
+            onCancel={() => setShowAddForm(false)}
+          />
+        ) : (
+          <div className="flex justify-end">
+            <Button size="sm" onClick={() => setShowAddForm(true)}>
+              + 출판사 추가
+            </Button>
+          </div>
+        )}
+
+        {/* Stats */}
+        <p className="text-sm text-slate-500">
+          총 {publishers.length}개 출판사 (활성{" "}
+          {publishers.filter((p) => p.is_active).length}개)
+        </p>
+
+        {/* List */}
+        {publishers.length === 0 ? (
+          <div className="rounded-xl border border-dashed bg-slate-50/50 p-10 text-center text-sm text-slate-400">
+            등록된 출판사가 없습니다. 출판사를 추가하세요.
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {publishers.map((publisher) =>
+              editTarget?.id === publisher.id ? (
+                <PublisherForm
+                  key={publisher.id}
+                  initial={publisher}
+                  onSaved={() => {
+                    setEditTarget(null);
+                    refetch();
+                  }}
+                  onCancel={() => setEditTarget(null)}
+                />
+              ) : (
+                <PublisherRowItem
+                  key={publisher.id}
+                  publisher={publisher}
+                  onEdit={() => {
+                    setShowAddForm(false);
+                    setEditTarget(publisher);
+                  }}
+                  onDeactivate={() => handleDeactivate(publisher)}
+                  onActivate={() => handleActivate(publisher)}
+                />
+              )
+            )}
+          </div>
+        )}
+      </div>
+    </Modal>
   );
 }

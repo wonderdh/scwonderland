@@ -77,7 +77,7 @@ export function AdminSidebar({
                 const base =
                   "h-12 px-3 rounded-lg flex items-center gap-3 text-base transition-colors";
                 const activeCls =
-                  "bg-orange-50 text-orange-700 font-semibold border-l-4 border-orange-500 pl-2";
+                  "bg-sidebar-accent text-sidebar-accent-foreground font-semibold border-l-4 border-sidebar-primary pl-2";
                 const inactiveCls =
                   "text-sidebar-foreground/80 hover:bg-slate-100 hover:text-sidebar-foreground";
                 return (

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Modal } from "@/components/overlays/Modal";
 import type { UserWithProfile } from "@/lib/types";
 import { bulkResetStudentPasswords, listClassesWithStudentIds } from "../../actions";
 
@@ -215,14 +216,8 @@ export function BulkPasswordResetDialog({
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-      onClick={handleClose}
-    >
-      <div
-        className="w-full max-w-2xl rounded-xl bg-white shadow-xl flex flex-col max-h-[80vh]"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <Modal open onClose={handleClose} size="lg">
+      <div className="flex max-h-[80vh] flex-col">
         <div className="px-6 py-4 border-b border-slate-200">
           <h3 className="text-base font-semibold text-slate-900">비밀번호 일괄생성</h3>
           <p className="mt-0.5 text-sm text-slate-500">
@@ -304,6 +299,6 @@ export function BulkPasswordResetDialog({
           )}
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }
