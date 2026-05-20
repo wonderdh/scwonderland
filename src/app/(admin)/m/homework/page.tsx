@@ -2,6 +2,7 @@ import Link from "next/link";
 import {
   listClassesForHomeworkPicker,
   listClassUnitProgressDetailed,
+  listTeachersForSelect,
 } from "@/app/(admin)/admin/actions";
 import { MobileHomeworkClient } from "./_components/MobileHomeworkClient";
 
@@ -10,7 +11,10 @@ export default async function MobileHomeworkPage({
 }: {
   searchParams: Promise<{ class?: string }>;
 }) {
-  const classOptions = await listClassesForHomeworkPicker();
+  const [classOptions, teachers] = await Promise.all([
+    listClassesForHomeworkPicker(),
+    listTeachersForSelect(),
+  ]);
   const params = await searchParams;
   const initialClassId =
     params.class && classOptions.find((c) => c.id === params.class)
@@ -50,6 +54,7 @@ export default async function MobileHomeworkPage({
           classes={classOptions}
           initialClassId={initialClassId}
           initialData={initialData}
+          teachers={teachers}
         />
       </div>
     </div>

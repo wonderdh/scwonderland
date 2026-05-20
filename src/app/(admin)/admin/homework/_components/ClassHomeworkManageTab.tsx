@@ -38,6 +38,17 @@ const GROUP_FILTERS: { value: string; label: string }[] = [
 ];
 type ClassOption = HomeworkClassPickerOption;
 
+function defaultPeriodId(classes: ClassOption[]): string | null {
+  for (const c of classes) {
+    if (c.groupType !== "afternoon") continue;
+    if (!c.periodId || !c.periodLabel || !c.periodStartTime) continue;
+    if (c.periodLabel.includes("2:50") || c.periodStartTime.startsWith("14:50")) {
+      return c.periodId;
+    }
+  }
+  return null;
+}
+
 function buildSearchHaystack(c: ClassOption): string {
   const parts = [
     c.name,
@@ -98,7 +109,10 @@ export function ClassHomeworkManageTab({
     () => new Set(["afternoon"])
   );
   const [selectedPeriods, setSelectedPeriods] = useState<Set<string>>(
-    () => new Set()
+    () => {
+      const id = defaultPeriodId(classes);
+      return id ? new Set([id]) : new Set();
+    }
   );
   const [assignOpen, setAssignOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<ClassTextbookWithDetails | null>(null);
