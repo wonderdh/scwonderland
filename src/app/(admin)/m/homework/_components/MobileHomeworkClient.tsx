@@ -190,19 +190,23 @@ export function MobileHomeworkClient({
   }
 
   async function handleSaveUnits(
-    studentId: string,
-    textbookId: string,
-    changes: { unitNumber: number; status: UnitStatus }[]
+    allChanges: {
+      studentId: string;
+      textbookId: string;
+      changes: { unitNumber: number; status: UnitStatus }[];
+    }[]
   ) {
     const results = await Promise.all(
-      changes.map(async ({ unitNumber, status }) => {
-        const fd = new FormData();
-        fd.set("studentId", studentId);
-        fd.set("textbookId", textbookId);
-        fd.set("unitNumber", String(unitNumber));
-        fd.set("status", status);
-        return markUnit(fd);
-      })
+      allChanges.flatMap(({ studentId, textbookId, changes }) =>
+        changes.map(async ({ unitNumber, status }) => {
+          const fd = new FormData();
+          fd.set("studentId", studentId);
+          fd.set("textbookId", textbookId);
+          fd.set("unitNumber", String(unitNumber));
+          fd.set("status", status);
+          return markUnit(fd);
+        })
+      )
     );
     const firstError = results.find((r) => r.error)?.error;
     if (firstError) {
@@ -211,24 +215,27 @@ export function MobileHomeworkClient({
       throw new Error(firstError);
     }
     setData((prev) => {
-      const list = prev.byStudent[studentId];
-      if (!list) return prev;
-      const nextList = list.map((tb) => {
-        if (tb.id !== textbookId) return tb;
-        return {
-          ...tb,
-          units: tb.units.map((u) => {
-            const change = changes.find((c) => c.unitNumber === u.unitNumber);
-            if (!change) return u;
-            return {
-              ...u,
-              status: change.status,
-              completedAt: change.status === "completed" ? new Date().toISOString() : null,
-            };
-          }),
-        };
-      });
-      return { ...prev, byStudent: { ...prev.byStudent, [studentId]: nextList } };
+      const newByStudent = { ...prev.byStudent };
+      for (const { studentId, textbookId, changes } of allChanges) {
+        const list = newByStudent[studentId];
+        if (!list) continue;
+        newByStudent[studentId] = list.map((tb) => {
+          if (tb.id !== textbookId) return tb;
+          return {
+            ...tb,
+            units: tb.units.map((u) => {
+              const change = changes.find((c) => c.unitNumber === u.unitNumber);
+              if (!change) return u;
+              return {
+                ...u,
+                status: change.status,
+                completedAt: change.status === "completed" ? new Date().toISOString() : null,
+              };
+            }),
+          };
+        });
+      }
+      return { ...prev, byStudent: newByStudent };
     });
   }
 

@@ -3,18 +3,18 @@
 /**
  * UnitProgressGrid — 한 책의 unit 진도 grid.
  *
- * - editable=false: read-only (교사/학생 페이지).
- * - editable=true: 셀 클릭으로 로컬 상태만 변경, "저장" 버튼 클릭 시 onSave 배치 호출.
+ * - editable=false: read-only.
+ * - editable=true: 셀 클릭 → onUnitClick(unitNumber) 콜백만 호출 (state 없음).
+ *   저장 로직은 부모(ClassUnitProgressList)가 담당.
  *
  * 색상 규칙:
  * - completed:                       emerald 배경 (✓)
  * - missed:                          red 배경 (✗)
  * - pending + 예정일 < today:        red 테두리 점선 (overdue)
  * - pending + 예정일 == today:       amber 배경
- * - pending + 예정일 미래/없음:      slate 배경 (보통)
+ * - pending + 예정일 미래/없음:      slate 배경
  */
 
-import { useEffect, useState } from "react";
 import Image from "next/image";
 import { todayKst } from "@/lib/utils/date-kst";
 import type { UnitStatus } from "@/app/(admin)/admin/actions/homework-unit-actions";
@@ -22,7 +22,6 @@ import type { UnitStatus } from "@/app/(admin)/admin/actions/homework-unit-actio
 export type UnitGridUnit = {
   unitNumber: number;
   status: UnitStatus;
-  /** YYYY-MM-DD or null (schedule 미입력 시) */
   expectedDate: string | null;
   completedAt: string | null;
   note: string | null;
@@ -42,13 +41,10 @@ type Props = {
   textbook: UnitGridTextbook;
   units: UnitGridUnit[];
   editable?: boolean;
-  onSave?: (changes: { unitNumber: number; status: UnitStatus }[]) => Promise<void>;
-};
-
-const NEXT_STATUS: Record<UnitStatus, UnitStatus> = {
-  pending: "completed",
-  completed: "missed",
-  missed: "pending",
+  /** 미저장 변경이 있는 unitNumber 집합 — orange dot 표시용 */
+  dirtyNumbers?: Set<number>;
+  /** 셀 클릭 시 호출 (동기). state 관리는 부모 책임. */
+  onUnitClick?: (unitNumber: number) => void;
 };
 
 function formatMonthDay(ymd: string): string {
@@ -64,9 +60,7 @@ function statusClasses(
 ): string {
   const base =
     "relative flex flex-col items-center justify-center min-h-9 sm:min-h-10 py-0.5 rounded-md border text-center transition-colors select-none";
-  const interactive = editable
-    ? "cursor-pointer active:scale-95"
-    : "cursor-default";
+  const interactive = editable ? "cursor-pointer active:scale-95" : "cursor-default";
 
   if (status === "completed") {
     return `${base} ${interactive} bg-emerald-500 text-white border-emerald-600 hover:bg-emerald-600`;
@@ -85,70 +79,21 @@ function statusClasses(
   return `${base} ${interactive} bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100`;
 }
 
-export function UnitProgressGrid({ textbook, units, editable = false, onSave }: Props) {
-  const [localUnits, setLocalUnits] = useState<UnitGridUnit[]>(units);
-  const [pendingChanges, setPendingChanges] = useState<Map<number, UnitStatus>>(new Map());
-  const [isSaving, setIsSaving] = useState(false);
-
-  // 부모가 units 를 갱신하면 (저장 후 또는 반 전환) 로컬 상태 동기화
-  useEffect(() => {
-    setLocalUnits(units);
-    setPendingChanges(new Map());
-  }, [units]);
-
+export function UnitProgressGrid({
+  textbook,
+  units,
+  editable = false,
+  dirtyNumbers,
+  onUnitClick,
+}: Props) {
   const today = todayKst();
-  const completedCount = localUnits.filter((u) => u.status === "completed").length;
-
-  function handleClick(unitNumber: number) {
-    if (!editable || isSaving) return;
-    const current = localUnits.find((u) => u.unitNumber === unitNumber);
-    if (!current) return;
-    const nextStatus = NEXT_STATUS[current.status];
-
-    setLocalUnits((prev) =>
-      prev.map((u) => (u.unitNumber === unitNumber ? { ...u, status: nextStatus } : u))
-    );
-    setPendingChanges((prev) => {
-      const next = new Map(prev);
-      const original = units.find((u) => u.unitNumber === unitNumber);
-      if (original && original.status === nextStatus) {
-        next.delete(unitNumber);
-      } else {
-        next.set(unitNumber, nextStatus);
-      }
-      return next;
-    });
-  }
-
-  function handleCancel() {
-    setLocalUnits(units);
-    setPendingChanges(new Map());
-  }
-
-  async function handleSave() {
-    if (!onSave || pendingChanges.size === 0 || isSaving) return;
-    const changes = [...pendingChanges.entries()].map(([unitNumber, status]) => ({
-      unitNumber,
-      status,
-    }));
-    setIsSaving(true);
-    try {
-      await onSave(changes);
-      // 성공 시 부모가 units prop 갱신 → useEffect 가 pendingChanges 초기화
-    } catch {
-      // 에러는 onSave 에서 toast 처리, pendingChanges 유지 (재시도 가능)
-    } finally {
-      setIsSaving(false);
-    }
-  }
-
+  const completedCount = units.filter((u) => u.status === "completed").length;
   const displayTitle = textbook.series_name ?? textbook.title;
 
   return (
     <section className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
       {/* Header */}
       <header className="flex items-start gap-3 border-b border-slate-200 bg-slate-50/50 px-4 py-3">
-        {/* Cover */}
         <div className="h-14 w-10 shrink-0 overflow-hidden rounded-md bg-slate-100">
           {textbook.cover_image_url ? (
             <Image
@@ -177,11 +122,8 @@ export function UnitProgressGrid({ textbook, units, editable = false, onSave }: 
           )}
         </div>
 
-        {/* Title + level */}
         <div className="min-w-0 flex-1">
-          <h3 className="truncate text-sm font-semibold text-slate-900">
-            {displayTitle}
-          </h3>
+          <h3 className="truncate text-sm font-semibold text-slate-900">{displayTitle}</h3>
           {textbook.level && (
             <p className="truncate text-xs text-slate-500 mt-0.5">{textbook.level}</p>
           )}
@@ -190,7 +132,6 @@ export function UnitProgressGrid({ textbook, units, editable = false, onSave }: 
           )}
         </div>
 
-        {/* Stats */}
         <div className="shrink-0 text-right">
           <p className="text-[11px] text-slate-500">완료</p>
           <p className="text-sm font-semibold text-emerald-700 tabular-nums">
@@ -201,18 +142,18 @@ export function UnitProgressGrid({ textbook, units, editable = false, onSave }: 
 
       {/* Grid */}
       <div className="p-2">
-        {localUnits.length === 0 ? (
+        {units.length === 0 ? (
           <p className="py-6 text-center text-xs text-slate-400">unit 정보가 없습니다.</p>
         ) : (
           <div className="grid gap-1 grid-cols-7 sm:grid-cols-10 md:grid-cols-[repeat(15,minmax(0,1fr))]">
-            {localUnits.map((u) => {
+            {units.map((u) => {
               const cls = statusClasses(u.status, u.expectedDate, today, editable);
               const dateLabel = u.expectedDate ? formatMonthDay(u.expectedDate) : "—";
               const isOverdue =
                 u.status === "pending" &&
                 u.expectedDate !== null &&
                 u.expectedDate < today;
-              const isDirty = pendingChanges.has(u.unitNumber);
+              const isDirty = dirtyNumbers?.has(u.unitNumber) ?? false;
               const ariaLabel = `Unit ${u.unitNumber}: ${u.status}${u.expectedDate ? ` (예상 ${dateLabel})` : ""}`;
 
               const inner = (
@@ -231,17 +172,11 @@ export function UnitProgressGrid({ textbook, units, editable = false, onSave }: 
                       strokeWidth={3}
                       stroke="currentColor"
                     >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="m4.5 12.75 6 6 9-13.5"
-                      />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
                     </svg>
                   )}
                   {u.status === "missed" && (
-                    <span className="absolute top-0.5 right-1 text-xs font-bold leading-none">
-                      ✕
-                    </span>
+                    <span className="absolute top-0.5 right-1 text-xs font-bold leading-none">✕</span>
                   )}
                   {isOverdue && (
                     <span className="absolute -top-0.5 -right-0.5 inline-flex h-1.5 w-1.5 rounded-full bg-red-500" />
@@ -257,9 +192,8 @@ export function UnitProgressGrid({ textbook, units, editable = false, onSave }: 
                   <button
                     key={u.unitNumber}
                     type="button"
-                    onClick={() => handleClick(u.unitNumber)}
-                    disabled={isSaving}
-                    className={`${cls} disabled:opacity-70`}
+                    onClick={() => onUnitClick?.(u.unitNumber)}
+                    className={cls}
                     aria-label={ariaLabel}
                     title={ariaLabel}
                   >
@@ -268,12 +202,7 @@ export function UnitProgressGrid({ textbook, units, editable = false, onSave }: 
                 );
               }
               return (
-                <div
-                  key={u.unitNumber}
-                  className={cls}
-                  aria-label={ariaLabel}
-                  title={ariaLabel}
-                >
+                <div key={u.unitNumber} className={cls} aria-label={ariaLabel} title={ariaLabel}>
                   {inner}
                 </div>
               );
@@ -281,33 +210,6 @@ export function UnitProgressGrid({ textbook, units, editable = false, onSave }: 
           </div>
         )}
       </div>
-
-      {/* 저장 바 — 변경사항 있을 때만 노출 */}
-      {editable && pendingChanges.size > 0 && (
-        <div className="flex items-center justify-between gap-3 border-t border-orange-200 bg-orange-50 px-4 py-2">
-          <span className="text-xs text-orange-700">
-            {pendingChanges.size}건 변경됨 (미저장)
-          </span>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={handleCancel}
-              disabled={isSaving}
-              className="px-3 py-1 rounded-md text-xs text-slate-600 hover:bg-slate-100 border border-slate-200 bg-white transition-colors disabled:opacity-50"
-            >
-              취소
-            </button>
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={isSaving}
-              className="px-3 py-1 rounded-md text-xs font-medium text-white bg-primary hover:bg-primary/90 border border-primary transition-colors disabled:opacity-50"
-            >
-              {isSaving ? "저장 중…" : "저장"}
-            </button>
-          </div>
-        </div>
-      )}
     </section>
   );
 }
