@@ -235,7 +235,7 @@ export function PublishersDialog({ open, onOpenChange }: Props) {
   };
 
   return (
-    <Modal open onClose={() => handleOpenChange(false)} size="lg">
+    <Modal open={open} onClose={() => handleOpenChange(false)} size="lg">
       {/* Header */}
       <div className="flex items-center justify-between border-b px-6 py-4 shrink-0">
         <h2 className="text-xl font-semibold text-slate-900">출판사 관리</h2>
