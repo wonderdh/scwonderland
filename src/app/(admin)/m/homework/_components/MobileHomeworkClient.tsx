@@ -189,49 +189,46 @@ export function MobileHomeworkClient({
     setData(next);
   }
 
-  async function handleMarkUnit(
+  async function handleSaveUnits(
     studentId: string,
     textbookId: string,
-    unitNumber: number,
-    nextStatus: UnitStatus
+    changes: { unitNumber: number; status: UnitStatus }[]
   ) {
-    const fd = new FormData();
-    fd.set("studentId", studentId);
-    fd.set("textbookId", textbookId);
-    fd.set("unitNumber", String(unitNumber));
-    fd.set("status", nextStatus);
-    const result = await markUnit(fd);
-    if (result.error) {
-      toast.error(result.error);
+    const results = await Promise.all(
+      changes.map(async ({ unitNumber, status }) => {
+        const fd = new FormData();
+        fd.set("studentId", studentId);
+        fd.set("textbookId", textbookId);
+        fd.set("unitNumber", String(unitNumber));
+        fd.set("status", status);
+        return markUnit(fd);
+      })
+    );
+    const firstError = results.find((r) => r.error)?.error;
+    if (firstError) {
+      toast.error(firstError);
       await reloadCurrentClass();
-      throw new Error(result.error);
+      throw new Error(firstError);
     }
     setData((prev) => {
       const list = prev.byStudent[studentId];
       if (!list) return prev;
-      const nextList = list.map((tb) =>
-        tb.id === textbookId
-          ? {
-              ...tb,
-              units: tb.units.map((u) =>
-                u.unitNumber === unitNumber
-                  ? {
-                      ...u,
-                      status: nextStatus,
-                      completedAt:
-                        nextStatus === "completed"
-                          ? new Date().toISOString()
-                          : null,
-                    }
-                  : u
-              ),
-            }
-          : tb
-      );
-      return {
-        ...prev,
-        byStudent: { ...prev.byStudent, [studentId]: nextList },
-      };
+      const nextList = list.map((tb) => {
+        if (tb.id !== textbookId) return tb;
+        return {
+          ...tb,
+          units: tb.units.map((u) => {
+            const change = changes.find((c) => c.unitNumber === u.unitNumber);
+            if (!change) return u;
+            return {
+              ...u,
+              status: change.status,
+              completedAt: change.status === "completed" ? new Date().toISOString() : null,
+            };
+          }),
+        };
+      });
+      return { ...prev, byStudent: { ...prev.byStudent, [studentId]: nextList } };
     });
   }
 
@@ -436,7 +433,7 @@ export function MobileHomeworkClient({
         students={data.students}
         byStudent={data.byStudent}
         editable={true}
-        onMark={handleMarkUnit}
+        onSave={handleSaveUnits}
         loading={isPending}
       />
     </div>

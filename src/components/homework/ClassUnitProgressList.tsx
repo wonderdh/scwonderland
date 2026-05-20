@@ -1,25 +1,5 @@
 "use client";
 
-/**
- * ClassUnitProgressList — 반의 모든 학생 × 모든 책 unit grid 를 한 화면에 표시.
- *
- * 공유 컴포넌트 — 세 곳에서 사용:
- * - admin: /admin/homework?tab=check (editable=true)
- * - teacher: /academy/teacher/homework (editable=false, read-only)
- * - admin mobile: /m/homework (editable=true)
- *
- * 책임:
- * - 학생별 collapsible 카드 (헤더에 진도 N/M + %)
- * - "모두 펼치기/접기" 컨트롤
- * - 색상 가이드 (editable 모드에서만)
- * - 빈 상태 처리
- *
- * 책임 밖:
- * - 반 selector (각 호출 측)
- * - 데이터 fetch (각 호출 측)
- * - URL 라우팅 (각 호출 측)
- */
-
 import { useState } from "react";
 import type {
   ClassUnitProgressDetailed,
@@ -32,34 +12,20 @@ type Props = {
   students: ClassUnitProgressDetailed["students"];
   byStudent: ClassUnitProgressDetailed["byStudent"];
   editable?: boolean;
-  /** editable=true 일 때 필요. onChange 가 throw 하면 useOptimistic 자동 revert. */
-  onMark?: (
+  onSave?: (
     studentId: string,
     textbookId: string,
-    unitNumber: number,
-    nextStatus: UnitStatus
+    changes: { unitNumber: number; status: UnitStatus }[]
   ) => Promise<void>;
-  /** 외부 트랜지션 진행 중 표시. */
   loading?: boolean;
-  /** 학생 0명일 때 노출할 메시지. */
   emptyMessage?: string;
 };
-
-function summarize(list: StudentTextbookUnits[]) {
-  let total = 0;
-  let completed = 0;
-  for (const tb of list) {
-    total += tb.total_units;
-    completed += tb.units.filter((u) => u.status === "completed").length;
-  }
-  return { total, completed };
-}
 
 export function ClassUnitProgressList({
   students,
   byStudent,
   editable = false,
-  onMark,
+  onSave,
   loading = false,
   emptyMessage = "이 반에 등록된 학생이 없습니다.",
 }: Props) {
@@ -107,7 +73,7 @@ export function ClassUnitProgressList({
             <span className="font-semibold text-emerald-700">완료</span> →{" "}
             <span className="font-semibold text-red-600">결손</span> →{" "}
             <span className="font-semibold">미완료</span>. 빨강 점선 = 예정일
-            지남, amber = 오늘 예정.
+            지남, amber = 오늘 예정. 변경 후 책 하단 <span className="font-semibold">저장</span> 버튼으로 일괄 저장.
           </div>
         ) : (
           <div className="rounded-lg bg-slate-50 border border-slate-200 px-3 py-2 text-xs text-slate-700 flex-1 min-w-0">
@@ -139,8 +105,6 @@ export function ClassUnitProgressList({
         {students.map((student) => {
           const list = byStudent[student.id] ?? [];
           const isCollapsed = collapsed.has(student.id);
-          const { total, completed } = summarize(list);
-          const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
 
           return (
             <section
@@ -150,44 +114,27 @@ export function ClassUnitProgressList({
               <button
                 type="button"
                 onClick={() => toggle(student.id)}
-                className="w-full flex items-center justify-between gap-3 bg-slate-50/60 hover:bg-slate-100 px-4 py-3 border-b border-slate-200 transition-colors text-left"
+                className="w-full flex items-center gap-3 bg-slate-50/60 hover:bg-slate-100 px-4 py-3 border-b border-slate-200 transition-colors text-left"
               >
-                <div className="flex items-center gap-3 min-w-0">
-                  <span
-                    className={`text-slate-500 transition-transform shrink-0 ${
-                      isCollapsed ? "" : "rotate-90"
-                    }`}
-                  >
-                    ▶
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-slate-900 truncate">
-                      {student.korean_name ?? student.id.slice(0, 6)}
-                      {student.english_name && (
-                        <span className="ml-1.5 text-xs font-normal text-slate-500">
-                          ({student.english_name})
-                        </span>
-                      )}
-                    </p>
-                    <p className="text-[11px] text-slate-500 mt-0.5">
-                      {list.length}권 부여 · 진도 {completed}/{total} ({pct}%)
-                    </p>
-                  </div>
-                </div>
-
-                <div className="w-24 sm:w-32 shrink-0">
-                  <div className="h-2 w-full rounded-full bg-slate-200 overflow-hidden">
-                    <div
-                      className={`h-full rounded-full transition-all ${
-                        pct >= 100
-                          ? "bg-emerald-500"
-                          : pct > 0
-                            ? "bg-blue-500"
-                            : "bg-slate-300"
-                      }`}
-                      style={{ width: `${pct}%` }}
-                    />
-                  </div>
+                <span
+                  className={`text-slate-500 transition-transform shrink-0 ${
+                    isCollapsed ? "" : "rotate-90"
+                  }`}
+                >
+                  ▶
+                </span>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-slate-900 truncate">
+                    {student.korean_name ?? student.id.slice(0, 6)}
+                    {student.english_name && (
+                      <span className="ml-1.5 text-xs font-normal text-slate-500">
+                        ({student.english_name})
+                      </span>
+                    )}
+                  </p>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    {list.length}권 부여
+                  </p>
                 </div>
               </button>
 
@@ -204,15 +151,9 @@ export function ClassUnitProgressList({
                         textbook={tb}
                         units={tb.units}
                         editable={editable}
-                        onChange={
-                          editable && onMark
-                            ? (unitNumber, nextStatus) =>
-                                onMark(
-                                  student.id,
-                                  tb.id,
-                                  unitNumber,
-                                  nextStatus
-                                )
+                        onSave={
+                          editable && onSave
+                            ? (changes) => onSave(student.id, tb.id, changes)
                             : undefined
                         }
                       />
