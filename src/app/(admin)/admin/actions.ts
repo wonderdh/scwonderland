@@ -246,6 +246,7 @@ export {
   markUnit,
   bulkMarkUnits,
   clearUnit,
+  getAbsentStudentIds,
 } from "./actions/homework-unit-actions";
 
 export type {

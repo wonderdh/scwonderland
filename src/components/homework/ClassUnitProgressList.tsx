@@ -21,6 +21,8 @@ type Props = {
   ) => Promise<void>;
   loading?: boolean;
   emptyMessage?: string;
+  /** 오늘 결석한 student_id set. 결석자 행은 회색 + "결석" 뱃지 + 클릭 비활성화. */
+  absentStudentIds?: ReadonlySet<string>;
 };
 
 const NEXT_STATUS: Record<UnitStatus, UnitStatus> = {
@@ -39,6 +41,7 @@ export function ClassUnitProgressList({
   onSave,
   loading = false,
   emptyMessage = "이 반에 등록된 학생이 없습니다.",
+  absentStudentIds,
 }: Props) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
 
@@ -65,6 +68,7 @@ export function ClassUnitProgressList({
   }
 
   function handleUnitClick(studentId: string, textbookId: string, unitNumber: number) {
+    if (absentStudentIds?.has(studentId)) return;
     const list = localByStudent[studentId];
     const tb = list?.find((t) => t.id === textbookId);
     const unit = tb?.units.find((u) => u.unitNumber === unitNumber);
@@ -200,31 +204,39 @@ export function ClassUnitProgressList({
         {students.map((student) => {
           const list = localByStudent[student.id] ?? [];
           const isCollapsed = collapsed.has(student.id);
+          const isAbsent = absentStudentIds?.has(student.id) ?? false;
 
           return (
             <section
               key={student.id}
-              className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden"
+              className={`rounded-xl border shadow-sm overflow-hidden ${isAbsent ? "border-slate-200 bg-slate-100/70" : "border-slate-200 bg-white"}`}
             >
               <button
                 type="button"
                 onClick={() => toggle(student.id)}
-                className="w-full flex items-center gap-3 bg-slate-50/60 hover:bg-slate-100 px-4 py-3 border-b border-slate-200 transition-colors text-left"
+                className={`w-full flex items-center gap-3 px-4 py-3 border-b border-slate-200 transition-colors text-left ${isAbsent ? "bg-slate-100 hover:bg-slate-150" : "bg-slate-50/60 hover:bg-slate-100"}`}
               >
                 <span
                   className={`text-slate-500 transition-transform shrink-0 ${isCollapsed ? "" : "rotate-90"}`}
                 >
                   ▶
                 </span>
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-slate-900 truncate">
-                    {student.korean_name ?? student.id.slice(0, 6)}
-                    {student.english_name && (
-                      <span className="ml-1.5 text-xs font-normal text-slate-500">
-                        ({student.english_name})
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className={`text-sm font-semibold truncate ${isAbsent ? "text-slate-500" : "text-slate-900"}`}>
+                      {student.korean_name ?? student.id.slice(0, 6)}
+                      {student.english_name && (
+                        <span className="ml-1.5 text-xs font-normal text-slate-400">
+                          ({student.english_name})
+                        </span>
+                      )}
+                    </p>
+                    {isAbsent && (
+                      <span className="inline-flex items-center rounded-full bg-slate-300 px-2 py-0.5 text-[11px] font-semibold text-slate-600 shrink-0">
+                        결석
                       </span>
                     )}
-                  </p>
+                  </div>
                   <p className="text-[11px] text-slate-500 mt-0.5">{list.length}권 부여</p>
                 </div>
               </button>
@@ -245,10 +257,10 @@ export function ClassUnitProgressList({
                           key={tb.id}
                           textbook={tb}
                           units={tb.units}
-                          editable={editable}
+                          editable={editable && !isAbsent}
                           dirtyNumbers={dirtyNumbers}
                           onUnitClick={
-                            editable
+                            editable && !isAbsent
                               ? (unitNumber) => handleUnitClick(student.id, tb.id, unitNumber)
                               : undefined
                           }

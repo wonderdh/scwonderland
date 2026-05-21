@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
   listClassUnitProgressDetailed,
-  markUnit,
+  bulkMarkUnits,
+  getAbsentStudentIds,
 } from "@/app/(admin)/admin/actions";
 import type {
   ClassUnitProgressDetailed,
@@ -49,6 +50,8 @@ type Props = {
   initialClassId: string | null;
   initialData: ClassUnitProgressDetailed;
   teachers: TeacherOption[];
+  initialAbsentStudentIds: string[];
+  todayKst: string;
 };
 
 export function MobileHomeworkClient({
@@ -56,12 +59,17 @@ export function MobileHomeworkClient({
   initialClassId,
   initialData,
   teachers,
+  initialAbsentStudentIds,
+  todayKst,
 }: Props) {
   const router = useRouter();
   const [selectedClassId, setSelectedClassId] = useState<string | null>(
     initialClassId
   );
   const [data, setData] = useState<ClassUnitProgressDetailed>(initialData);
+  const [absentStudentIds, setAbsentStudentIds] = useState<ReadonlySet<string>>(
+    () => new Set(initialAbsentStudentIds)
+  );
   const [isPending, startTransition] = useTransition();
   const [search, setSearch] = useState("");
   const [koreanTeacherId, setKoreanTeacherId] = useState<string | null>(null);
@@ -178,8 +186,12 @@ export function MobileHomeworkClient({
     setSelectedClassId(classId);
     router.replace(`/m/homework?class=${classId}`, { scroll: false });
     startTransition(async () => {
-      const next = await listClassUnitProgressDetailed(classId);
+      const [next, absentResult] = await Promise.all([
+        listClassUnitProgressDetailed(classId),
+        getAbsentStudentIds(todayKst),
+      ]);
       setData(next);
+      setAbsentStudentIds(new Set(absentResult.studentIds));
     });
   }
 
@@ -196,24 +208,18 @@ export function MobileHomeworkClient({
       changes: { unitNumber: number; status: UnitStatus }[];
     }[]
   ) {
-    const results = await Promise.all(
-      allChanges.flatMap(({ studentId, textbookId, changes }) =>
-        changes.map(async ({ unitNumber, status }) => {
-          const fd = new FormData();
-          fd.set("studentId", studentId);
-          fd.set("textbookId", textbookId);
-          fd.set("unitNumber", String(unitNumber));
-          fd.set("status", status);
-          return markUnit(fd);
-        })
-      )
+    const records = allChanges.flatMap(({ studentId, textbookId, changes }) =>
+      changes.map(({ unitNumber, status }) => ({ studentId, textbookId, unitNumber, status }))
     );
-    const firstError = results.find((r) => r.error)?.error;
-    if (firstError) {
-      toast.error(firstError);
+    const result = await bulkMarkUnits(records, { excludeAbsentOn: todayKst });
+    if (result.error) {
+      toast.error(result.error);
       await reloadCurrentClass();
-      throw new Error(firstError);
+      throw new Error(result.error);
     }
+    const parts = [`저장 ${result.saved}건`];
+    if (result.skippedAbsent > 0) parts.push(`결석자 ${result.skippedAbsent}건 제외`);
+    toast.success(parts.join(" · "));
     setData((prev) => {
       const newByStudent = { ...prev.byStudent };
       for (const { studentId, textbookId, changes } of allChanges) {
@@ -442,6 +448,7 @@ export function MobileHomeworkClient({
         editable={true}
         onSave={handleSaveUnits}
         loading={isPending}
+        absentStudentIds={absentStudentIds}
       />
     </div>
   );

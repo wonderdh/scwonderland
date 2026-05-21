@@ -470,39 +470,74 @@ export async function bulkMarkUnits(
     unitNumber: number;
     status: UnitStatus;
     note?: string | null;
-  }>
-): Promise<{ error?: string; saved: number }> {
+  }>,
+  options?: { excludeAbsentOn?: string /* YYYY-MM-DD KST */ }
+): Promise<{ error?: string; saved: number; skippedAbsent: number }> {
   const auth = await verifyTeacherOrAdmin();
-  if ("error" in auth) return { error: auth.error, saved: 0 };
+  if ("error" in auth) return { error: auth.error, saved: 0, skippedAbsent: 0 };
 
-  if (records.length === 0) return { saved: 0 };
+  if (records.length === 0) return { saved: 0, skippedAbsent: 0 };
 
   const supabase = createAdminClient();
 
+  // excludeAbsentOn 이 주어지면 그 날짜 결석자 student_id set 조회
+  let absentStudentIds = new Set<string>();
+  if (options?.excludeAbsentOn) {
+    const { data: absentRows, error: absentErr } = await supabase
+      .from("attendance")
+      .select("student_id")
+      .eq("attendance_date", options.excludeAbsentOn)
+      .eq("status", "absent");
+    if (absentErr) {
+      logger.error("[bulkMarkUnits absent lookup]", absentErr.message);
+    } else {
+      absentStudentIds = new Set((absentRows ?? []).map((r) => r.student_id as string));
+    }
+  }
+
+  const filteredRecords = records.filter((r) => !absentStudentIds.has(r.studentId));
+  const skippedAbsent = records.length - filteredRecords.length;
+
+  if (filteredRecords.length === 0) return { saved: 0, skippedAbsent };
+
   // (studentId, textbookId) 별로 student_homework_book.id 한 번에 모음
   const pairs = Array.from(
-    new Set(records.map((r) => `${r.studentId}::${r.textbookId}`))
+    new Set(filteredRecords.map((r) => `${r.studentId}::${r.textbookId}`))
   ).map((k) => {
     const [studentId, textbookId] = k.split("::");
     return { studentId, textbookId };
   });
 
+  // SHB lookup 을 batch 로 (이전 직렬 N+1 → 단일 query). textbookIds 로만 in()
+  // 필터링하고 결과를 클라이언트에서 (studentId, textbookId) 로 group. 한 반의
+  // SHB row 수는 작아서 over-fetch 무시 가능.
+  const textbookIds = Array.from(new Set(pairs.map((p) => p.textbookId)));
+  const wantedPairs = new Set(pairs.map((p) => `${p.studentId}::${p.textbookId}`));
+
   const lookupMap = new Map<string, string>(); // key → shb.id
-  for (const p of pairs) {
-    const { data, error } = await supabase
-      .from("student_homework_books")
-      .select("id, class_students!inner(student_id)")
-      .eq("class_homework_book_id", p.textbookId)
-      .eq("class_students.student_id", p.studentId)
-      .maybeSingle();
-    if (error) {
-      logger.error("[bulkMarkUnits lookup]", error.message);
-      continue;
+  const { data: shbRows, error: shbErr } = await supabase
+    .from("student_homework_books")
+    .select("id, class_homework_book_id, class_students!inner(student_id)")
+    .in("class_homework_book_id", textbookIds);
+  if (shbErr) {
+    logger.error("[bulkMarkUnits lookup]", shbErr.message);
+  } else {
+    for (const row of shbRows ?? []) {
+      // !inner join 결과는 단일 객체 형태이지만 PostgREST 타입 추론은 배열일 수
+      // 있어 둘 다 방어.
+      const cs = row.class_students as
+        | { student_id: string }
+        | { student_id: string }[]
+        | null;
+      const sid = Array.isArray(cs) ? cs[0]?.student_id : cs?.student_id;
+      const tbid = row.class_homework_book_id;
+      if (!sid || !tbid) continue;
+      const key = `${sid}::${tbid}`;
+      if (wantedPairs.has(key)) lookupMap.set(key, row.id as string);
     }
-    if (data?.id) lookupMap.set(`${p.studentId}::${p.textbookId}`, data.id);
   }
 
-  const rows = records
+  const rows = filteredRecords
     .map((r) => {
       const shbId = lookupMap.get(`${r.studentId}::${r.textbookId}`);
       if (!shbId) return null;
@@ -514,7 +549,7 @@ export async function bulkMarkUnits(
     })
     .filter((r): r is NonNullable<typeof r> => r !== null);
 
-  if (rows.length === 0) return { saved: 0 };
+  if (rows.length === 0) return { saved: 0, skippedAbsent };
 
   const { error } = await supabase
     .from("student_homework_progress")
@@ -522,11 +557,33 @@ export async function bulkMarkUnits(
 
   if (error) {
     logger.error("[bulkMarkUnits upsert]", error.message);
-    return { error: error.message, saved: 0 };
+    return { error: error.message, saved: 0, skippedAbsent };
   }
 
   revalidateAll();
-  return { saved: rows.length };
+  return { saved: rows.length, skippedAbsent };
+}
+
+/** 특정 날짜(KST YYYY-MM-DD) 결석자 student_id 배열 조회 */
+export async function getAbsentStudentIds(
+  date: string
+): Promise<{ studentIds: string[]; error?: string }> {
+  const auth = await verifyTeacherOrAdmin();
+  if ("error" in auth) return { studentIds: [], error: auth.error };
+
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("attendance")
+    .select("student_id")
+    .eq("attendance_date", date)
+    .eq("status", "absent");
+
+  if (error) {
+    logger.error("[getAbsentStudentIds]", error.message);
+    return { studentIds: [], error: error.message };
+  }
+
+  return { studentIds: (data ?? []).map((r) => r.student_id as string) };
 }
 
 export async function clearUnit(

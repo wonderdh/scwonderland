@@ -16,7 +16,8 @@ import {
   listClassUnitProgressDetailed,
   listClassTextbooks,
   unassignClassTextbook,
-  markUnit,
+  bulkMarkUnits,
+  getAbsentStudentIds,
 } from "@/app/(admin)/admin/actions";
 import type {
   ClassUnitProgressDetailed,
@@ -85,6 +86,8 @@ type Props = {
   initialAssignments: ClassTextbookWithDetails[];
   allTextbooks: TextbookWithSeries[];
   teachers: TeacherOption[];
+  initialAbsentStudentIds: string[];
+  todayKstProp: string;
 };
 
 export function ClassHomeworkManageTab({
@@ -94,12 +97,17 @@ export function ClassHomeworkManageTab({
   initialAssignments,
   allTextbooks,
   teachers,
+  initialAbsentStudentIds,
+  todayKstProp,
 }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [selectedClassId, setSelectedClassId] = useState<string | null>(initialClassId);
   const [progress, setProgress] = useState<ClassUnitProgressDetailed>(initialProgress);
   const [assignments, setAssignments] = useState<ClassTextbookWithDetails[]>(initialAssignments);
+  const [absentStudentIds, setAbsentStudentIds] = useState<ReadonlySet<string>>(
+    () => new Set(initialAbsentStudentIds)
+  );
   const [isPending, startTransition] = useTransition();
   const [search, setSearch] = useState("");
   const [koreanTeacherId, setKoreanTeacherId] = useState<string | null>(null);
@@ -223,12 +231,14 @@ export function ClassHomeworkManageTab({
   );
 
   async function reloadAll(classId: string) {
-    const [nextProgress, nextAssignments] = await Promise.all([
+    const [nextProgress, nextAssignments, absentResult] = await Promise.all([
       listClassUnitProgressDetailed(classId),
       listClassTextbooks(classId),
+      getAbsentStudentIds(todayKstProp),
     ]);
     setProgress(nextProgress);
     setAssignments(nextAssignments);
+    setAbsentStudentIds(new Set(absentResult.studentIds));
   }
 
   function handleClassChange(classId: string) {
@@ -280,24 +290,18 @@ export function ClassHomeworkManageTab({
       changes: { unitNumber: number; status: UnitStatus }[];
     }[]
   ) {
-    const results = await Promise.all(
-      allChanges.flatMap(({ studentId, textbookId, changes }) =>
-        changes.map(async ({ unitNumber, status }) => {
-          const fd = new FormData();
-          fd.set("studentId", studentId);
-          fd.set("textbookId", textbookId);
-          fd.set("unitNumber", String(unitNumber));
-          fd.set("status", status);
-          return markUnit(fd);
-        })
-      )
+    const records = allChanges.flatMap(({ studentId, textbookId, changes }) =>
+      changes.map(({ unitNumber, status }) => ({ studentId, textbookId, unitNumber, status }))
     );
-    const firstError = results.find((r) => r.error)?.error;
-    if (firstError) {
-      toast.error(firstError);
+    const result = await bulkMarkUnits(records, { excludeAbsentOn: todayKstProp });
+    if (result.error) {
+      toast.error(result.error);
       if (selectedClassId) await reloadAll(selectedClassId);
-      throw new Error(firstError);
+      throw new Error(result.error);
     }
+    const parts = [`저장 ${result.saved}건`];
+    if (result.skippedAbsent > 0) parts.push(`결석자 ${result.skippedAbsent}건 제외`);
+    toast.success(parts.join(" · "));
     setProgress((prev) => {
       const newByStudent = { ...prev.byStudent };
       for (const { studentId, textbookId, changes } of allChanges) {
@@ -622,6 +626,7 @@ export function ClassHomeworkManageTab({
               editable={true}
               onSave={handleSaveUnits}
               loading={isPending}
+              absentStudentIds={absentStudentIds}
             />
           </section>
         </>

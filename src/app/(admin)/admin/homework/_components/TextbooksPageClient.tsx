@@ -40,6 +40,8 @@ export function TextbooksPageClient({
   classInitialAssignments,
   classAllTextbooks,
   teachers,
+  initialAbsentStudentIds,
+  todayKst,
 }: {
   allSeriesList: SeriesWithPublisher[];
   levelsBySeries: Record<string, SeriesLevelRow[]>;
@@ -50,6 +52,8 @@ export function TextbooksPageClient({
   classInitialAssignments: ClassTextbookWithDetails[];
   classAllTextbooks: TextbookWithSeries[];
   teachers: TeacherOption[];
+  initialAbsentStudentIds: string[];
+  todayKst: string;
 }) {
   const searchParams = useSearchParams();
   const currentTab = parseTab(searchParams.get("tab"));
@@ -92,6 +96,8 @@ export function TextbooksPageClient({
           initialAssignments={classInitialAssignments}
           allTextbooks={classAllTextbooks}
           teachers={teachers}
+          initialAbsentStudentIds={initialAbsentStudentIds}
+          todayKstProp={todayKst}
         />
       )}
     </>

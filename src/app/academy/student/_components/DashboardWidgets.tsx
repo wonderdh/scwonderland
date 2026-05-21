@@ -1,7 +1,7 @@
 import {
   getAttendanceStats,
 } from "@/app/(admin)/admin/actions";
-import { getCurrentStudentClasses } from "../../actions";
+import { getCurrentStudentClasses, getStudentMonthlyStats } from "../../actions";
 import {
   Card,
   CardContent,
@@ -61,6 +61,80 @@ export async function AttendanceWidget({
       <p className="mt-1 text-xs text-slate-500">
         출석 {attendanceStats.present} · 지각 {attendanceStats.late} · 결석 {attendanceStats.absent}
       </p>
+    </div>
+  );
+}
+
+export function MonthlyStatsCardSkeleton() {
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm space-y-3">
+      <Bone className="h-4 w-32" />
+      <div className="grid grid-cols-2 gap-4 mt-2">
+        <div className="space-y-1">
+          <Bone className="h-8 w-16" />
+          <Bone className="h-3 w-20" />
+        </div>
+        <div className="space-y-1">
+          <Bone className="h-8 w-16" />
+          <Bone className="h-3 w-20" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export async function MonthlyStatsCard({
+  studentId,
+  monthKstStart,
+  month,
+}: {
+  studentId: string;
+  monthKstStart: string;
+  month: number;
+}) {
+  const stats = await getStudentMonthlyStats(studentId, monthKstStart);
+
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      <span className="text-xs font-semibold uppercase tracking-wider text-slate-600">
+        {month}월 통합 현황
+      </span>
+      <div className="mt-3 grid grid-cols-2 gap-4">
+        <div>
+          <div className="flex items-baseline gap-1">
+            {stats.attendance.total > 0 ? (
+              <>
+                <span className="text-3xl font-bold text-sky-700">{stats.attendance.rate}</span>
+                <span className="text-sm text-slate-500">%</span>
+              </>
+            ) : (
+              <span className="text-sm text-slate-500">기록 없음</span>
+            )}
+          </div>
+          <p className="mt-0.5 text-xs text-slate-500">출석률</p>
+          <p className="text-xs text-slate-400">
+            출석 {stats.attendance.present} · 지각 {stats.attendance.late} · 결석 {stats.attendance.absent}
+          </p>
+        </div>
+        <div>
+          <div className="flex items-baseline gap-1">
+            {stats.homework.total > 0 ? (
+              <>
+                <span className="text-3xl font-bold text-emerald-700">{stats.homework.rate}</span>
+                <span className="text-sm text-slate-500">%</span>
+              </>
+            ) : (
+              <span className="text-sm text-slate-500">기록 없음</span>
+            )}
+          </div>
+          <p className="mt-0.5 text-xs text-slate-500">
+            숙제 완료율 <span className="text-slate-400">(누적)</span>
+          </p>
+          <p className="text-xs text-slate-400">
+            완료 {stats.homework.completed} · 미완 {stats.homework.missed}
+          </p>
+        </div>
+      </div>
     </div>
   );
 }

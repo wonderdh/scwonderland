@@ -9,6 +9,32 @@ import type { BusChangeType, StudentSubmittableChangeType } from "@/lib/bus/stat
 import type { BusChangeRequest } from "@/lib/types";
 import type { Database } from "@/lib/types/database.generated";
 
+// ── 헬퍼 ──
+
+async function upsertAttendanceForBusAbsence(
+  supabase: ReturnType<typeof createAdminClient>,
+  { studentId, date, recordedBy }: { studentId: string; date: string; recordedBy: string }
+) {
+  // attendance 의 UK 는 (student_id, attendance_date) 이므로 학생 1명당 1 row.
+  // 학생이 어느 반에든 1개라도 속해있으면 절차상 등록 (소속 없는 학생은 skip).
+  const { count } = await supabase
+    .from("class_students")
+    .select("id", { count: "exact", head: true })
+    .eq("student_id", studentId);
+  if ((count ?? 0) > 0) {
+    await supabase.from("attendance").upsert(
+      [{
+        student_id: studentId,
+        attendance_date: date,
+        status: "absent" as const,
+        note: "버스 결석 자동 등록",
+        recorded_by: recordedBy,
+      }],
+      { onConflict: "student_id,attendance_date", ignoreDuplicates: false }
+    );
+  }
+}
+
 // ── 변경 요청 관리 ──
 
 export async function listAllChangeRequests(
@@ -388,14 +414,27 @@ export async function approveChangeRequest(
     updateData.new_bus_stop_id = overrides.newBusStopId || null;
   }
 
-  const { error } = await supabase
+  // update + returning 한 번에 (pre-select 제거). updated row 가 없으면 명시적 에러.
+  const { data: updated, error } = await supabase
     .from("bus_change_requests")
     .update(updateData)
-    .eq("id", requestId);
-  if (error) {
-    logger.error("[approveChangeRequest]", error.message);
-    return { error: error.message };
+    .eq("id", requestId)
+    .select("student_id, request_date, change_type")
+    .single();
+  if (error || !updated) {
+    logger.error("[approveChangeRequest]", error?.message ?? "row not found", { requestId });
+    return { error: error?.message ?? "변경 요청을 찾을 수 없습니다." };
   }
+
+  // 결석으로 승인 시 출결도 자동 반영. updated.change_type 은 update 적용 후 값.
+  if (updated.change_type === "absent") {
+    await upsertAttendanceForBusAbsence(supabase, {
+      studentId: updated.student_id,
+      date: updated.request_date,
+      recordedBy: reviewerId,
+    });
+  }
+
   logger.info("[approveChangeRequest]", "변경 요청 승인", { requestId, reviewerId });
   return {};
 }
@@ -579,22 +618,11 @@ export async function createAdminBusChange(
 
   // 결석 시 출결도 자동 반영
   if (changeType === "absent") {
-    const { data: classStudents } = await supabase
-      .from("class_students")
-      .select("class_id")
-      .eq("student_id", studentProfileId);
-    if (classStudents?.length) {
-      await supabase.from("attendance").upsert(
-        classStudents.map(() => ({
-          student_id: studentProfileId,
-          attendance_date: requestDate,
-          status: "absent" as const,
-          note: "버스 결석 자동 등록",
-          recorded_by: auth.userId,
-        })),
-        { onConflict: "student_id,attendance_date", ignoreDuplicates: false }
-      );
-    }
+    await upsertAttendanceForBusAbsence(supabase, {
+      studentId: studentProfileId,
+      date: requestDate,
+      recordedBy: auth.userId,
+    });
   }
 
   return {};
@@ -644,22 +672,11 @@ export async function updateAdminBusChange(
 
   // 결석으로 변경 시 출결도 자동 반영
   if (changeType === "absent" && existing) {
-    const { data: classStudents } = await supabase
-      .from("class_students")
-      .select("class_id")
-      .eq("student_id", existing.student_id);
-    if (classStudents?.length) {
-      await supabase.from("attendance").upsert(
-        classStudents.map(() => ({
-          student_id: existing.student_id,
-          attendance_date: existing.request_date,
-          status: "absent" as const,
-          note: "버스 결석 자동 등록",
-          recorded_by: auth.userId,
-        })),
-        { onConflict: "student_id,attendance_date", ignoreDuplicates: false }
-      );
-    }
+    await upsertAttendanceForBusAbsence(supabase, {
+      studentId: existing.student_id,
+      date: existing.request_date,
+      recordedBy: auth.userId,
+    });
   }
 
   return {};

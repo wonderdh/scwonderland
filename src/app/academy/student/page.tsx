@@ -5,7 +5,9 @@ import { nowKstParts } from "@/lib/utils/date-kst";
 import {
   AttendanceWidget,
   StudentClassesCard,
+  MonthlyStatsCard,
   WidgetSkeleton,
+  MonthlyStatsCardSkeleton,
   ClassesCardSkeleton,
 } from "./_components/DashboardWidgets";
 
@@ -14,6 +16,7 @@ export default async function StudentInfoPage() {
   if (!profile) return null;
 
   const { year, month } = nowKstParts();
+  const monthKstStart = `${year}-${String(month).padStart(2, "0")}-01`;
 
   return (
     <div className="space-y-6">
@@ -39,10 +42,13 @@ export default async function StudentInfoPage() {
         </CardContent>
       </Card>
 
-      {/* 대시보드 위젯 — 출석률 */}
+      {/* 대시보드 위젯 — 출석률 + 숙제 완료율 통합 */}
       <div className="grid grid-cols-1 gap-3">
         <Suspense fallback={<WidgetSkeleton />}>
           <AttendanceWidget profileId={profile.id} year={year} month={month} />
+        </Suspense>
+        <Suspense fallback={<MonthlyStatsCardSkeleton />}>
+          <MonthlyStatsCard studentId={profile.id} monthKstStart={monthKstStart} month={month} />
         </Suspense>
       </div>
 

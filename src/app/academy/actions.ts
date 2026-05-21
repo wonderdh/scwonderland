@@ -5,6 +5,11 @@ import { getUserRoles, hasUserRole } from "@/lib/auth/user-roles";
 import { createClient } from "@/lib/supabase/server";
 import type { StudentProfile, StudentClassItem, TeacherProfile, TeacherClassWithStudents, ReportCardStatus } from "@/lib/types";
 
+export interface StudentMonthlyStats {
+  attendance: { total: number; present: number; absent: number; late: number; rate: number };
+  homework: { total: number; completed: number; missed: number; rate: number };
+}
+
 /** 로그인한 학생 본인의 프로필(학생 정보). 학생이 아니면 null. */
 export async function getCurrentStudentProfile(): Promise<StudentProfile | null> {
   const supabase = await createClient();
@@ -193,6 +198,82 @@ export async function getTeacherClasses(): Promise<TeacherClassWithStudents[]> {
         };
       }),
   }));
+}
+
+/**
+ * 학생 본인의 월별 출석/숙제 통합 통계.
+ * - attendance rate = present / (present + absent + late + early_leave)
+ * - homework rate: student_homework_progress 에 날짜 컬럼이 없으므로
+ *   status 단순 집계 (completed / (completed + missed + pending)) 로 대체.
+ */
+export async function getStudentMonthlyStats(
+  studentId: string,
+  monthKstStart: string
+): Promise<StudentMonthlyStats> {
+  const empty: StudentMonthlyStats = {
+    attendance: { total: 0, present: 0, absent: 0, late: 0, rate: 0 },
+    homework: { total: 0, completed: 0, missed: 0, rate: 0 },
+  };
+
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return empty;
+
+  const isStudent = await hasUserRole(supabase, user.id, "student");
+  if (!isStudent) return empty;
+
+  if (user.id !== studentId) return empty;
+
+  // user-context client 그대로 사용 (admin client 우회 금지). RLS 가 다음 정책으로
+  // 학생 본인 row 만 통과시켜 defense-in-depth 확보:
+  //   attendance_select:  student_id = auth.uid() OR admin/teacher
+  //   shp_select:         admin/teacher OR class_students 경유 본인
+  //   class_students_select: 본인 row + 같은 반 + staff (20260601020000_narrow)
+
+  // --- Attendance ---
+  // monthKstStart 는 KST 기준 "YYYY-MM-01" 문자열. Date 파싱 시 로컬 타임존에 따라
+  // 월이 밀릴 수 있어 (Vercel UTC 외 환경) 문자열 split 으로 직접 계산.
+  const start = monthKstStart;
+  const [yStr, mStr] = monthKstStart.split("-");
+  const y = Number(yStr);
+  const m = Number(mStr);
+  const nextY = m === 12 ? y + 1 : y;
+  const nextM = m === 12 ? 1 : m + 1;
+  const end = `${nextY}-${String(nextM).padStart(2, "0")}-01`;
+
+  const { data: attRows } = await supabase
+    .from("attendance")
+    .select("status")
+    .eq("student_id", studentId)
+    .gte("attendance_date", start)
+    .lt("attendance_date", end);
+
+  const att = attRows ?? [];
+  const present = att.filter((r) => r.status === "present").length;
+  const absent = att.filter((r) => r.status === "absent").length;
+  const late = att.filter((r) => r.status === "late").length;
+  const earlyLeave = att.filter((r) => r.status === "early_leave").length;
+  const attDenominator = present + absent + late + earlyLeave;
+  const attRate = attDenominator > 0 ? Math.round((present / attDenominator) * 100) : 0;
+
+  // --- Homework (status-based fallback; no date column on student_homework_progress) ---
+  // 현재는 누적 집계 (월별이 아님). UI 라벨에서 "(누적)" 으로 표기.
+  // 월별 정합성은 향후 student_homework_progress.completed_at 컬럼 추가 후 도입.
+  const { data: hwRows } = await supabase
+    .from("student_homework_progress")
+    .select("status, student_homework_books!inner(class_student_id, class_students!inner(student_id))")
+    .eq("student_homework_books.class_students.student_id", studentId);
+
+  const hw = hwRows ?? [];
+  const hwCompleted = hw.filter((r) => r.status === "completed").length;
+  const hwMissed = hw.filter((r) => r.status === "missed").length;
+  const hwTotal = hw.length;
+  const hwRate = hwTotal > 0 ? Math.round((hwCompleted / hwTotal) * 100) : 0;
+
+  return {
+    attendance: { total: att.length, present, absent, late, rate: attRate },
+    homework: { total: hwTotal, completed: hwCompleted, missed: hwMissed, rate: hwRate },
+  };
 }
 
 /** 특정 반의 지정 년/월 리포트카드 작성 현황 */

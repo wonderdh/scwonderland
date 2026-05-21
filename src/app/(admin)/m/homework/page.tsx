@@ -3,14 +3,17 @@ import {
   listClassesForHomeworkPicker,
   listClassUnitProgressDetailed,
   listTeachersForSelect,
+  getAbsentStudentIds,
 } from "@/app/(admin)/admin/actions";
 import { MobileHomeworkClient } from "./_components/MobileHomeworkClient";
+import { todayKst } from "@/lib/utils/date-kst";
 
 export default async function MobileHomeworkPage({
   searchParams,
 }: {
   searchParams: Promise<{ class?: string }>;
 }) {
+  const today = todayKst();
   const [classOptions, teachers] = await Promise.all([
     listClassesForHomeworkPicker(),
     listTeachersForSelect(),
@@ -21,9 +24,12 @@ export default async function MobileHomeworkPage({
       ? params.class
       : classOptions[0]?.id ?? null;
 
-  const initialData = initialClassId
-    ? await listClassUnitProgressDetailed(initialClassId)
-    : { students: [], byStudent: {} };
+  const [initialData, absentResult] = await Promise.all([
+    initialClassId
+      ? listClassUnitProgressDetailed(initialClassId)
+      : Promise.resolve({ students: [], byStudent: {} }),
+    getAbsentStudentIds(today),
+  ]);
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -55,6 +61,8 @@ export default async function MobileHomeworkPage({
           initialClassId={initialClassId}
           initialData={initialData}
           teachers={teachers}
+          initialAbsentStudentIds={absentResult.studentIds}
+          todayKst={today}
         />
       </div>
     </div>

@@ -577,35 +577,41 @@ export function ClassScheduleManager({
                               const isPendingDelete = pendingDeletes.has(existing.scheduleId);
                               return (
                                 <td key={day} className="py-2 px-2 text-center align-middle border-r last:border-r-0">
-                                  <button
-                                    type="button"
-                                    className={`relative group w-full rounded-lg p-2 cursor-pointer transition-colors text-left ${
+                                  {/* button-in-button 회피: 셀 클릭 button 과 삭제 button 을 형제로 분리.
+                                      group 은 외부 div, ring/bg 도 div 에 두어 시각적으로는 동일. */}
+                                  <div
+                                    className={`relative group w-full rounded-lg transition-colors ${
                                       isPendingDelete
                                         ? "bg-red-50 ring-2 ring-red-400 ring-inset"
                                         : pending ? `ring-2 ring-amber-400 ring-inset ${pendingBg}` : savedBg
                                     }`}
-                                    onClick={() => handleCellToggle(period.id, day)}
                                   >
-                                    {existing.label && (
-                                      <span className={`block text-xs text-muted-foreground mb-0.5 ${isPendingDelete ? "line-through opacity-50" : ""}`}>
-                                        {existing.label}
-                                      </span>
-                                    )}
-                                    {existing.teacherName ? (
-                                      <span
-                                        className={`inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium ${
-                                          isPendingDelete
-                                            ? "bg-red-100 text-red-400 line-through"
-                                            : existing.teacherId && teacherColorMap.has(existing.teacherId)
-                                            ? `${teacherColorMap.get(existing.teacherId)!.bg} ${teacherColorMap.get(existing.teacherId)!.text}`
-                                            : "bg-slate-200 text-slate-700"
-                                        }`}
-                                      >
-                                        {existing.teacherName}
-                                      </span>
-                                    ) : !existing.label ? (
-                                      <span className={`text-xs text-muted-foreground ${isPendingDelete ? "line-through opacity-50" : ""}`}>—</span>
-                                    ) : null}
+                                    <button
+                                      type="button"
+                                      className="block w-full rounded-lg p-2 cursor-pointer text-left"
+                                      onClick={() => handleCellToggle(period.id, day)}
+                                    >
+                                      {existing.label && (
+                                        <span className={`block text-xs text-muted-foreground mb-0.5 ${isPendingDelete ? "line-through opacity-50" : ""}`}>
+                                          {existing.label}
+                                        </span>
+                                      )}
+                                      {existing.teacherName ? (
+                                        <span
+                                          className={`inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium ${
+                                            isPendingDelete
+                                              ? "bg-red-100 text-red-400 line-through"
+                                              : existing.teacherId && teacherColorMap.has(existing.teacherId)
+                                              ? `${teacherColorMap.get(existing.teacherId)!.bg} ${teacherColorMap.get(existing.teacherId)!.text}`
+                                              : "bg-slate-200 text-slate-700"
+                                          }`}
+                                        >
+                                          {existing.teacherName}
+                                        </span>
+                                      ) : !existing.label ? (
+                                        <span className={`text-xs text-muted-foreground ${isPendingDelete ? "line-through opacity-50" : ""}`}>—</span>
+                                      ) : null}
+                                    </button>
                                     <button
                                       type="button"
                                       onClick={(e) => { e.stopPropagation(); handleDeleteCell(existing.scheduleId); }}
@@ -618,7 +624,7 @@ export function ClassScheduleManager({
                                     >
                                       {isPendingDelete ? "↩" : "×"}
                                     </button>
-                                  </button>
+                                  </div>
                                 </td>
                               );
                             }

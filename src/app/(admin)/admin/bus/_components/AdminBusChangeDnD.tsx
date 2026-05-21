@@ -34,7 +34,7 @@ type StudentItem = {
   age: number | null;
 };
 
-type StopMode = "stop" | "pickup";
+type StopMode = "stop" | "pickup" | "absent";
 
 function formatTime(t: string | undefined | null) {
   if (!t) return "";
@@ -122,7 +122,10 @@ export function AdminBusChangeDnD({
         const loadedStopId = existing.new_bus_stop_id ?? def?.bus_stop_id ?? "";
         const loadedReason = existing.reason ?? "";
         setExistingId(existing.id);
-        setStopMode(existing.change_type === "no_ride" ? "pickup" : "stop");
+        setStopMode(
+          existing.change_type === "absent" ? "absent" :
+          existing.change_type === "no_ride" ? "pickup" : "stop"
+        );
         setSlotId(loadedSlotId);
         setStopId(loadedStopId);
         setStopSearch("");
@@ -238,11 +241,15 @@ export function AdminBusChangeDnD({
   async function handleSave() {
     if (!selectedStudentId) { toastError("학생을 선택해 주세요."); return; }
     if (selectedDates.length === 0) { toastError("날짜를 선택해 주세요."); return; }
-    if (!stopId) { toastError("정류장을 선택해 주세요."); return; }
-    if (!slotId) { toastError("시간대를 선택해 주세요."); return; }
+    if (stopMode !== "absent") {
+      if (!stopId) { toastError("정류장을 선택해 주세요."); return; }
+      if (!slotId) { toastError("시간대를 선택해 주세요."); return; }
+    }
 
-    const changeType = stopMode === "pickup" ? "no_ride" : "change";
+    const changeType = stopMode === "absent" ? "absent" : stopMode === "pickup" ? "no_ride" : "change";
     const busNumberId = stopMode === "stop" ? (selectedStopInfo?.bus_number_id ?? undefined) : undefined;
+    const effectiveSlotId = stopMode === "absent" ? undefined : slotId;
+    const effectiveStopId = stopMode === "absent" ? undefined : stopId;
 
     setSaving(true);
 
@@ -252,9 +259,9 @@ export function AdminBusChangeDnD({
         selectedStudentId,
         selectedDates.map((d) => formatDateYmdKst(d)),
         changeType,
-        slotId,
+        effectiveSlotId,
         busNumberId,
-        stopId,
+        effectiveStopId,
         reason || undefined,
       );
       setSaving(false);
@@ -276,17 +283,17 @@ export function AdminBusChangeDnD({
       ? await updateAdminBusChange(
           existingId,
           changeType,
-          slotId,
+          effectiveSlotId,
           busNumberId,
-          stopId,
+          effectiveStopId,
           reason || undefined
         )
       : await createAdminBusChange(
           selectedStudentId, singleDate,
           changeType,
-          slotId,
+          effectiveSlotId,
           busNumberId,
-          stopId,
+          effectiveStopId,
           reason || undefined
         );
     setSaving(false);
@@ -294,8 +301,8 @@ export function AdminBusChangeDnD({
     if (result.error) {
       toastError(result.error);
     } else {
-      // 방과후 연동: 교시 변경 시 enrollment 업데이트
-      if (isAfterschoolDay) {
+      // 방과후 연동: 교시 변경 시 enrollment 업데이트 (결석 시 스킵)
+      if (isAfterschoolDay && stopMode !== "absent") {
         if (isAfterschoolSlot) {
           if (afterschoolToday && afterschoolToday.second_period !== newSecondPeriod) {
             await updateAfterschoolSecondPeriod(selectedStudentId, dow, newSecondPeriod);
@@ -429,28 +436,30 @@ export function AdminBusChangeDnD({
       {/* Form — shown only after student is selected and loaded */}
       {selectedStudentId && !loadingStudent && (
         <>
-          {/* Stop mode: 정류장 | 픽업 */}
+          {/* Stop mode: 정류장 | 픽업 | 결석 */}
           <div>
             <label className="text-base font-semibold text-slate-700 block mb-2">구분</label>
             <div className="flex gap-2">
-              {(["stop", "pickup"] as StopMode[]).map((mode) => (
+              {(["stop", "pickup", "absent"] as StopMode[]).map((mode) => (
                 <button
                   key={mode}
                   onClick={() => handleStopModeChange(mode)}
                   className={`h-11 px-5 text-base rounded-lg border font-medium transition-colors ${
                     stopMode === mode
-                      ? "bg-slate-700 text-white border-slate-700"
+                      ? mode === "absent"
+                        ? "bg-red-600 text-white border-red-600"
+                        : "bg-slate-700 text-white border-slate-700"
                       : "bg-white text-slate-700 border-slate-300 hover:bg-slate-50"
                   }`}
                 >
-                  {mode === "stop" ? "정류장" : "픽업"}
+                  {mode === "stop" ? "정류장" : mode === "pickup" ? "픽업" : "결석"}
                 </button>
               ))}
             </div>
           </div>
 
-          {/* 방과후 교시 선택 (방과후 등록된 날만 표시) */}
-          {isAfterschoolDay && (
+          {/* 방과후 교시 선택 (방과후 등록된 날만 표시, 결석 시 숨김) */}
+          {isAfterschoolDay && stopMode !== "absent" && (
             <div>
               <label className="text-base font-semibold text-slate-700 block mb-2">
                 방과후 교시
@@ -476,7 +485,8 @@ export function AdminBusChangeDnD({
             </div>
           )}
 
-          {/* Time slot */}
+          {/* Time slot — 결석 시 숨김 */}
+          {stopMode !== "absent" && (
           <div>
             <label className="text-base font-semibold text-slate-700 block mb-2">시간대</label>
               <select
@@ -492,8 +502,10 @@ export function AdminBusChangeDnD({
                 ))}
               </select>
           </div>
+          )}
 
-          {/* Stop selection */}
+          {/* Stop selection — 결석 시 숨김 */}
+          {stopMode !== "absent" && (
           <div>
             <label className="text-base font-semibold text-slate-700 block mb-2">
               {stopMode === "pickup" ? "픽업 정류장" : "정류장"}
@@ -541,6 +553,7 @@ export function AdminBusChangeDnD({
               </div>
             )}
           </div>
+          )}
 
           {/* Memo */}
           <div>
@@ -561,10 +574,11 @@ export function AdminBusChangeDnD({
               onClick={handleSave}
               disabled={
                 saving ||
-                !stopId ||
+                (stopMode !== "absent" && !stopId) ||
                 (stopMode === "stop" && !slotId) ||
                 // 기존 변경과 동일하면 저장 불필요
                 !!(existingId &&
+                  stopMode !== "absent" &&
                   slotId === originalSlotId &&
                   stopId === originalStopId &&
                   reason === originalReason)

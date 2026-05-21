@@ -7,7 +7,9 @@ import {
   listClassTextbooks,
   listTextbooks,
   listTeachersForSelect,
+  getAbsentStudentIds,
 } from "../actions";
+import { todayKst } from "@/lib/utils/date-kst";
 import { PageHeader } from "@/components/navigation/PageHeader";
 import { TextbooksPageClient } from "./_components/TextbooksPageClient";
 import { Suspense } from "react";
@@ -51,15 +53,18 @@ export default async function AdminTextbooksPage({
         : classOptions[0]?.id ?? null
       : null;
 
+  const today = todayKst();
+
   // 통합 탭일 때만 초기 데이터 미리 로드
-  const initialCheckData =
+  const [initialCheckData, initialAssignments, absentResult] = await Promise.all([
     tab === "class" && initialClassId
-      ? await listClassUnitProgressDetailed(initialClassId)
-      : { students: [], byStudent: {} };
-  const initialAssignments =
+      ? listClassUnitProgressDetailed(initialClassId)
+      : Promise.resolve({ students: [], byStudent: {} }),
     tab === "class" && initialClassId
-      ? await listClassTextbooks(initialClassId)
-      : [];
+      ? listClassTextbooks(initialClassId)
+      : Promise.resolve([]),
+    getAbsentStudentIds(today),
+  ]);
 
   return (
     <div className="flex flex-1 min-w-0 flex-col p-6 md:p-8">
@@ -81,6 +86,8 @@ export default async function AdminTextbooksPage({
           classInitialAssignments={initialAssignments}
           classAllTextbooks={textbooks}
           teachers={teachers}
+          initialAbsentStudentIds={absentResult.studentIds}
+          todayKst={today}
         />
       </Suspense>
     </div>
