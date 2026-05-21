@@ -3,6 +3,7 @@ import {
   listClassesForHomeworkPicker,
   listClassUnitProgressDetailed,
   listTeachersForSelect,
+  listTextbooks,
   getAbsentStudentIds,
 } from "@/app/(admin)/admin/actions";
 import { MobileHomeworkClient } from "./_components/MobileHomeworkClient";
@@ -14,9 +15,10 @@ export default async function MobileHomeworkPage({
   searchParams: Promise<{ class?: string }>;
 }) {
   const today = todayKst();
-  const [classOptions, teachers] = await Promise.all([
+  const [classOptions, teachers, allTextbooks] = await Promise.all([
     listClassesForHomeworkPicker(),
     listTeachersForSelect(),
+    listTextbooks(),
   ]);
   const params = await searchParams;
   const initialClassId =
@@ -61,6 +63,7 @@ export default async function MobileHomeworkPage({
           initialClassId={initialClassId}
           initialData={initialData}
           teachers={teachers}
+          allTextbooks={allTextbooks}
           initialAbsentStudentIds={absentResult.studentIds}
           todayKst={today}
         />

@@ -109,3 +109,12 @@ export function todayWeekdayArray(): Date[] {
   if (dow === 0 || dow === 6) return [];
   return [d];
 }
+
+/**
+ * KST 기준 오늘의 요일 인덱스 (0=일 ~ 6=토). `KST_DAY_LABELS` / DB `days_of_week`
+ * / `homework_days` 컬럼과 동일 컨벤션. 요일 칩 필터 기본값 등에서 사용.
+ */
+export function todayDowKst(): number {
+  const { year, month, day } = nowKstParts();
+  return new Date(year, month - 1, day).getDay();
+}

@@ -28,7 +28,7 @@ import type {
 } from "@/app/(admin)/admin/actions";
 import type { TeacherOption } from "@/lib/types";
 import { ClassUnitProgressList } from "@/components/homework/ClassUnitProgressList";
-import { KST_DAY_LABELS } from "@/lib/utils/date-kst";
+import { KST_DAY_LABELS, todayDowKst } from "@/lib/utils/date-kst";
 import { GROUP_TYPE_TO_LABEL } from "@/lib/constants/class";
 import { AssignClassHomeworkModal } from "./AssignClassHomeworkModal";
 import { EditClassHomeworkModal } from "./EditClassHomeworkModal";
@@ -112,7 +112,9 @@ export function ClassHomeworkManageTab({
   const [search, setSearch] = useState("");
   const [koreanTeacherId, setKoreanTeacherId] = useState<string | null>(null);
   const [nativeTeacherId, setNativeTeacherId] = useState<string | null>(null);
-  const [selectedDays, setSelectedDays] = useState<Set<number>>(() => new Set());
+  const [selectedDays, setSelectedDays] = useState<Set<number>>(
+    () => new Set([todayDowKst()])
+  );
   const [selectedGroups, setSelectedGroups] = useState<Set<string>>(
     () => new Set(["afternoon"])
   );
@@ -122,6 +124,8 @@ export function ClassHomeworkManageTab({
       return id ? new Set([id]) : new Set();
     }
   );
+  const [selectedSeriesIds, setSelectedSeriesIds] = useState<Set<string>>(() => new Set());
+  const [selectedLevels, setSelectedLevels] = useState<Set<string>>(() => new Set());
   const [assignOpen, setAssignOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<ClassTextbookWithDetails | null>(null);
   const [removeTarget, setRemoveTarget] = useState<ClassTextbookWithDetails | null>(null);
@@ -163,6 +167,45 @@ export function ClassHomeworkManageTab({
     return m;
   }, [classes]);
 
+  // 책 필터용 — 부여된 시리즈 / 레벨 목록을 allTextbooks 에서 추출.
+  // 어느 반에도 부여 안 된 시리즈/레벨은 의도적으로 노출 (관리자가 "왜 비어있지" 보기 편하게).
+  const availableSeries = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const tb of allTextbooks) {
+      if (!tb.series_id) continue;
+      if (!map.has(tb.series_id)) {
+        map.set(tb.series_id, tb.series_name ?? "");
+      }
+    }
+    return [...map.entries()]
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name, "ko"));
+  }, [allTextbooks]);
+
+  const availableLevels = useMemo(() => {
+    if (selectedSeriesIds.size === 0) return [] as string[];
+    const set = new Set<string>();
+    for (const tb of allTextbooks) {
+      if (!tb.series_id || !selectedSeriesIds.has(tb.series_id)) continue;
+      if (tb.level) set.add(tb.level);
+    }
+    return [...set].sort((a, b) => a.localeCompare(b, "ko", { numeric: true }));
+  }, [allTextbooks, selectedSeriesIds]);
+
+  // 선택된 시리즈/레벨 조합으로 좁혀진 textbook id Set. 둘 다 미선택 시 null
+  // (필터 미적용). 선택된 시리즈가 있고 그 시리즈의 레벨 중 일부만 선택했으면
+  // 해당 레벨 책만, 레벨 미선택이면 시리즈의 모든 책.
+  const matchedTextbookIds = useMemo(() => {
+    if (selectedSeriesIds.size === 0) return null;
+    const ids = new Set<string>();
+    for (const tb of allTextbooks) {
+      if (!tb.series_id || !selectedSeriesIds.has(tb.series_id)) continue;
+      if (selectedLevels.size > 0 && (!tb.level || !selectedLevels.has(tb.level))) continue;
+      ids.add(tb.id);
+    }
+    return ids;
+  }, [allTextbooks, selectedSeriesIds, selectedLevels]);
+
   const filteredClasses = useMemo(() => {
     const q = search.trim().toLowerCase();
     const hasFilter =
@@ -171,7 +214,8 @@ export function ClassHomeworkManageTab({
       nativeTeacherId !== null ||
       selectedDays.size > 0 ||
       selectedGroups.size > 0 ||
-      selectedPeriods.size > 0;
+      selectedPeriods.size > 0 ||
+      matchedTextbookIds !== null;
     if (!hasFilter) return classes;
     return classes.filter((c) => {
       if (c.id === selectedClassId) return true;
@@ -183,6 +227,8 @@ export function ClassHomeworkManageTab({
       if (selectedGroups.size > 0 && !(c.groupType && selectedGroups.has(c.groupType)))
         return false;
       if (selectedPeriods.size > 0 && !(c.periodId && selectedPeriods.has(c.periodId)))
+        return false;
+      if (matchedTextbookIds && !c.assignedTextbookIds.some((id) => matchedTextbookIds.has(id)))
         return false;
       return true;
     });
@@ -196,6 +242,7 @@ export function ClassHomeworkManageTab({
     selectedDays,
     selectedGroups,
     selectedPeriods,
+    matchedTextbookIds,
   ]);
 
   function toggleDay(day: number) {
@@ -221,6 +268,28 @@ export function ClassHomeworkManageTab({
       const next = new Set(prev);
       if (next.has(periodId)) next.delete(periodId);
       else next.add(periodId);
+      return next;
+    });
+  }
+
+  function toggleSeries(seriesId: string) {
+    setSelectedSeriesIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(seriesId)) {
+        next.delete(seriesId);
+        // 그 시리즈를 풀면 그 시리즈에만 있던 레벨 선택도 정리 (남은 시리즈에 같은 이름 레벨이 있으면 유지)
+      } else {
+        next.add(seriesId);
+      }
+      return next;
+    });
+  }
+
+  function toggleLevel(level: string) {
+    setSelectedLevels((prev) => {
+      const next = new Set(prev);
+      if (next.has(level)) next.delete(level);
+      else next.add(level);
       return next;
     });
   }
@@ -354,7 +423,8 @@ export function ClassHomeworkManageTab({
         {(koreanTeachers.length > 0 ||
           nativeTeachers.length > 0 ||
           availableDays.length > 0 ||
-          availablePeriods.length > 0) && (
+          availablePeriods.length > 0 ||
+          availableSeries.length > 0) && (
           <div className="space-y-2 rounded-lg border border-slate-200 bg-slate-50/50 p-3">
             <div className="flex flex-wrap items-center gap-2">
               <span className="shrink-0 text-xs font-semibold text-slate-500 w-16">
@@ -489,6 +559,75 @@ export function ClassHomeworkManageTab({
                   <button
                     type="button"
                     onClick={() => setSelectedDays(new Set())}
+                    className="ml-1 text-xs text-slate-400 hover:text-slate-600 underline-offset-2 hover:underline"
+                  >
+                    초기화
+                  </button>
+                )}
+              </div>
+            )}
+            {availableSeries.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="shrink-0 text-xs font-semibold text-slate-500 w-16">
+                  시리즈
+                </span>
+                {availableSeries.map((s) => {
+                  const active = selectedSeriesIds.has(s.id);
+                  return (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => toggleSeries(s.id)}
+                      className={`px-3 py-1 rounded-full text-xs font-medium transition-colors border ${
+                        active
+                          ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                          : "bg-white text-slate-700 border-slate-200 hover:border-primary/50 hover:text-primary"
+                      }`}
+                    >
+                      {s.name || "(이름 없음)"}
+                    </button>
+                  );
+                })}
+                {selectedSeriesIds.size > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedSeriesIds(new Set());
+                      setSelectedLevels(new Set());
+                    }}
+                    className="ml-1 text-xs text-slate-400 hover:text-slate-600 underline-offset-2 hover:underline"
+                  >
+                    초기화
+                  </button>
+                )}
+              </div>
+            )}
+            {availableLevels.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="shrink-0 text-xs font-semibold text-slate-500 w-16">
+                  레벨
+                </span>
+                {availableLevels.map((lv) => {
+                  const active = selectedLevels.has(lv);
+                  return (
+                    <button
+                      key={lv}
+                      type="button"
+                      onClick={() => toggleLevel(lv)}
+                      className={`px-3 py-1 rounded-full text-xs font-medium transition-colors border ${
+                        active
+                          ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                          : "bg-white text-slate-700 border-slate-200 hover:border-primary/50 hover:text-primary"
+                      }`}
+                    >
+                      {lv}
+                    </button>
+                  );
+                })}
+                {selectedLevels.size > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedLevels(new Set())}
                     className="ml-1 text-xs text-slate-400 hover:text-slate-600 underline-offset-2 hover:underline"
                   >
                     초기화

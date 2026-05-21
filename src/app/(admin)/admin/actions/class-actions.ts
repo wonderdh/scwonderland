@@ -58,6 +58,8 @@ export type HomeworkClassPickerOption = {
   periodLabel: string | null;
   /** academy_periods.start_time (HH:MM:SS). 칩 정렬용. */
   periodStartTime: string | null;
+  /** 이 반에 부여된 책 (homework_books) id 목록. 시리즈/레벨 필터링용. */
+  assignedTextbookIds: string[];
 };
 
 /** 유치부 1st Period id 를 1회 조회해 캐시. createClass / updateClass 에서 kindergarten override 용. */
@@ -135,6 +137,24 @@ export async function listClassesForHomeworkPicker(): Promise<HomeworkClassPicke
     studentsByClass.set(row.class_id as string, list);
   }
 
+  // 반별 부여된 책(homework_books) id 매핑. 시리즈/레벨 필터링용.
+  const { data: assignedRows, error: assignedErr } = await supabase
+    .from("class_homework_books")
+    .select("class_id, textbook_id")
+    .in("class_id", classIds);
+  if (assignedErr) {
+    logger.error("[listClassesForHomeworkPicker assigned]", assignedErr.message);
+  }
+  const textbooksByClass = new Map<string, string[]>();
+  for (const row of assignedRows ?? []) {
+    const cid = row.class_id as string;
+    const tbid = row.textbook_id as string | null;
+    if (!cid || !tbid) continue;
+    const list = textbooksByClass.get(cid) ?? [];
+    list.push(tbid);
+    textbooksByClass.set(cid, list);
+  }
+
   return classes.map((c) => {
     const classTeachers = teachersByClass.get(c.id) ?? [];
     const period = Array.isArray(c.period) ? c.period[0] : c.period;
@@ -151,6 +171,7 @@ export async function listClassesForHomeworkPicker(): Promise<HomeworkClassPicke
       periodId: (c.period_id as string | null) ?? null,
       periodLabel: period?.name ?? null,
       periodStartTime: period?.start_time ?? null,
+      assignedTextbookIds: textbooksByClass.get(c.id) ?? [],
     };
   });
 }
