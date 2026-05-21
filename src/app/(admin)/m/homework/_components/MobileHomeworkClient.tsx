@@ -90,7 +90,7 @@ export function MobileHomeworkClient({
     }
   );
   const [selectedSeriesIds, setSelectedSeriesIds] = useState<Set<string>>(() => new Set());
-  const [selectedLevels, setSelectedLevels] = useState<Set<string>>(() => new Set());
+  const [selectedLevel, setSelectedLevel] = useState<string | null>(null);
 
   const koreanTeachers = useMemo(
     () => teachers.filter((t) => t.teacher_type === "korean"),
@@ -156,11 +156,11 @@ export function MobileHomeworkClient({
     const ids = new Set<string>();
     for (const tb of allTextbooks) {
       if (!tb.series_id || !selectedSeriesIds.has(tb.series_id)) continue;
-      if (selectedLevels.size > 0 && (!tb.level || !selectedLevels.has(tb.level))) continue;
+      if (selectedLevel !== null && tb.level !== selectedLevel) continue;
       ids.add(tb.id);
     }
     return ids;
-  }, [allTextbooks, selectedSeriesIds, selectedLevels]);
+  }, [allTextbooks, selectedSeriesIds, selectedLevel]);
 
   const filteredClasses = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -238,12 +238,7 @@ export function MobileHomeworkClient({
   }
 
   function toggleLevel(level: string) {
-    setSelectedLevels((prev) => {
-      const next = new Set(prev);
-      if (next.has(level)) next.delete(level);
-      else next.add(level);
-      return next;
-    });
+    setSelectedLevel((prev) => (prev === level ? null : level));
   }
 
   function handleClassChange(classId: string) {
@@ -508,7 +503,7 @@ export function MobileHomeworkClient({
                     type="button"
                     onClick={() => {
                       setSelectedSeriesIds(new Set());
-                      setSelectedLevels(new Set());
+                      setSelectedLevel(null);
                     }}
                     className="ml-1 text-xs text-slate-400 hover:text-slate-600 underline-offset-2 hover:underline"
                   >
@@ -524,7 +519,7 @@ export function MobileHomeworkClient({
                   레벨
                 </span>
                 {availableLevels.map((lv) => {
-                  const active = selectedLevels.has(lv);
+                  const active = selectedLevel === lv;
                   return (
                     <button
                       key={lv}
@@ -540,10 +535,10 @@ export function MobileHomeworkClient({
                     </button>
                   );
                 })}
-                {selectedLevels.size > 0 && (
+                {selectedLevel !== null && (
                   <button
                     type="button"
-                    onClick={() => setSelectedLevels(new Set())}
+                    onClick={() => setSelectedLevel(null)}
                     className="ml-1 text-xs text-slate-400 hover:text-slate-600 underline-offset-2 hover:underline"
                   >
                     초기화
