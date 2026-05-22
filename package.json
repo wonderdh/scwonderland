@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "type-check": "tsc --noEmit",
+    "check:admin-imports": "node scripts/check-admin-client-imports.mjs",
     "db:types": "supabase gen types typescript --project-id jxrzhonxnkjpjmzdhyoi > src/lib/types/database.generated.ts",
     "db:types:local": "supabase gen types typescript --local > src/lib/types/database.generated.ts",
     "db:sync": "bash scripts/sync-full.sh",

@@ -2,6 +2,15 @@ import { Hourglass, Check, X } from "lucide-react";
 import type { ComponentType } from "react";
 import type { BusChangeType, BusRequestStatus } from "@/lib/bus/state";
 
+/** 버스 운행 요일 (월~금). admin bus 화면들이 공유. */
+export const BUS_WEEKDAYS = [
+  { value: 1, label: "월" },
+  { value: 2, label: "화" },
+  { value: 3, label: "수" },
+  { value: 4, label: "목" },
+  { value: 5, label: "금" },
+] as const;
+
 export const BUS_REQUEST_STATUS_CONFIG: Record<BusRequestStatus, {
   label: string;
   icon: ComponentType<{ className?: string }>;

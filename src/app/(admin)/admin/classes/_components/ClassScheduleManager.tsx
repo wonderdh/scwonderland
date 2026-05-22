@@ -17,7 +17,7 @@ import { Spinner } from "@/components/feedback/Spinner";
 import { GROUP_ORDER, GROUP_TYPE_TO_LABEL } from "@/lib/constants/class";
 import type { SubTab } from "./ClassesPageClient";
 
-const DAY_LABELS = ["월", "화", "수", "목", "금"];
+import { WEEKDAY_NAMES_5 as DAY_LABELS } from "@/lib/constants/date";
 
 // IMPORTANT: All strings must be complete Tailwind class names (no dynamic concat) for purging to work.
 const TEACHER_COLOR_PALETTE: { bg: string; text: string }[] = [

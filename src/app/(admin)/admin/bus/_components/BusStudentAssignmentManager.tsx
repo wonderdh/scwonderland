@@ -17,13 +17,7 @@ import {
 import { getAgeColor } from "@/lib/ui/student-age-colors";
 import { formatStudentName } from "@/lib/utils/student-name";
 
-const DAYS = [
-  { value: 1, label: "월" },
-  { value: 2, label: "화" },
-  { value: 3, label: "수" },
-  { value: 4, label: "목" },
-  { value: 5, label: "금" },
-];
+import { BUS_WEEKDAYS as DAYS } from "@/lib/constants/bus";
 
 const GROUP_LABELS = ["전체", "유치부", "오후반"] as const;
 type GroupFilter = (typeof GROUP_LABELS)[number];

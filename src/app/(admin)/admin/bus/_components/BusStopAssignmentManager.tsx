@@ -13,17 +13,9 @@ import {
   upsertBusStopSchedule,
   deleteBusStopSchedule,
 } from "../../actions";
-
-const DAYS = [
-  { value: 1, label: "월" },
-  { value: 2, label: "화" },
-  { value: 3, label: "수" },
-  { value: 4, label: "목" },
-  { value: 5, label: "금" },
-];
-
-// Per-day assignment entry: which bus + sort order
-type StopAssignment = { busNumberId: string; sortOrder: number };
+import { BUS_WEEKDAYS as DAYS } from "@/lib/constants/bus";
+import { useBusDirtyFilter, type StopAssignment } from "../_hooks/useBusDirtyFilter";
+import { DayTimeFilterBar } from "./DayTimeFilterBar";
 
 // 복사 모달용 충돌 정보
 type CopyConflict = {
@@ -56,19 +48,22 @@ export function BusStopAssignmentManager({
   // Master stop list (read-only — CRUD is handled in BusManagePanel)
   const [stops] = useState<BusStop[]>(initialStops);
 
-  // Per-day assignment: stopId → { busNumberId, sortOrder }
-  const [dayAssignments, setDayAssignments] = useState<Map<string, StopAssignment>>(new Map());
-  // serverAssignments: 서버와 동기화된 baseline — dirty check 용. 렌더 중 읽기 때문에 state.
-  const [serverAssignments, setServerAssignments] = useState<Map<string, StopAssignment>>(new Map());
-
-  // Schedule times: stopId → time
-  const [scheduleMap, setScheduleMap] = useState<Map<string, string>>(new Map());
-  const [serverSchedules, setServerSchedules] = useState<Map<string, string>>(new Map());
+  // Per-day assignment + schedule + dirty/필터 가드 — BusNumbersManager 와 공유.
+  const {
+    dayAssignments, setDayAssignments,
+    serverAssignments, setServerAssignments,
+    scheduleMap, setScheduleMap,
+    serverSchedules, setServerSchedules,
+    hasChanges,
+    filterChangeConfirm,
+    guardFilterChange,
+    confirmFilterChange,
+    closeFilterConfirm,
+  } = useBusDirtyFilter();
 
   // UI
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
-  const [filterChangeConfirm, setFilterChangeConfirm] = useState<{ open: boolean; setter?: () => void }>({ open: false });
   const [copyTimeConfirm, setCopyTimeConfirm] = useState<{
     open: boolean;
     stopId?: string;
@@ -105,9 +100,9 @@ export function BusStopAssignmentManager({
     setServerAssignments(
       isSlotFallback
         ? new Map()
-        : new Map(map.entries().map(([k, v]) => [k, { ...v }]))
+        : new Map([...map].map(([k, v]) => [k, { ...v }]))
     );
-  }, [day, timeSlotId]);
+  }, [day, timeSlotId, setDayAssignments, setServerAssignments]);
 
   const fetchSchedules = useCallback(async () => {
     const data = await listBusStopSchedulesBulk(day, timeSlotId || undefined);
@@ -115,51 +110,11 @@ export function BusStopAssignmentManager({
     for (const s of data) map.set(s.bus_stop_id, s.estimated_time?.slice(0, 5) ?? "");
     setScheduleMap(map);
     setServerSchedules(new Map(map));
-  }, [day, timeSlotId]);
+  }, [day, timeSlotId, setScheduleMap, setServerSchedules]);
 
-  // async fetch 후 setState — 외부(서버) 데이터 동기화 패턴
-  // eslint-disable-next-line react-hooks/set-state-in-effect
+  // async fetch → setState. setter 는 useBusDirtyFilter 가 useState 로 만든 stable ref.
   useEffect(() => { fetchDayAssignments(); }, [fetchDayAssignments]);
-  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { fetchSchedules(); }, [fetchSchedules]);
-
-  // ── Dirty detection ──
-
-  function computeHasChanges(): boolean {
-    const allIds = new Set([...dayAssignments.keys(), ...serverAssignments.keys()]);
-    for (const id of allIds) {
-      const local = dayAssignments.get(id);
-      const server = serverAssignments.get(id);
-      if (!local && server) return true;
-      if (local && !server) return true;
-      if (local && server && (local.busNumberId !== server.busNumberId || local.sortOrder !== server.sortOrder)) return true;
-    }
-    const allSchedIds = new Set([...scheduleMap.keys(), ...serverSchedules.keys()]);
-    for (const id of allSchedIds) {
-      if ((scheduleMap.get(id) ?? "") !== (serverSchedules.get(id) ?? "")) return true;
-    }
-    return false;
-  }
-
-  const hasChanges = computeHasChanges();
-
-  // ── Filter guard ──
-
-  function guardFilterChange(setter: () => void) {
-    if (hasChanges) {
-      setFilterChangeConfirm({ open: true, setter });
-      return;
-    }
-    setter();
-  }
-
-  function confirmFilterChange() {
-    const setter = filterChangeConfirm.setter;
-    setFilterChangeConfirm({ open: false });
-    setDayAssignments(new Map(serverAssignments.entries().map(([k, v]) => [k, { ...v }])));
-    setScheduleMap(new Map(serverSchedules));
-    setter?.();
-  }
 
   // ── Derived: get ordered stops for a bus ──
 
@@ -212,29 +167,20 @@ export function BusStopAssignmentManager({
 
       setDayAssignments((prev) => {
         const next = new Map(prev);
-        const sourceBusId = prev.get(stopId)?.busNumberId;
 
-        // 대상 호차의 현재 정렬된 정류장 목록
+        // 대상 호차의 현재 정렬된 정류장 id 목록
         const busStopIds = stops
           .filter((s) => next.get(s.id)?.busNumberId === targetBusId)
           .sort((a, b) => (next.get(a.id)?.sortOrder ?? 0) - (next.get(b.id)?.sortOrder ?? 0))
           .map((s) => s.id);
 
-        // 같은 호차 내 이동이면 드래그 대상을 목록에서 제거
+        // 같은 호차 내 이동이면 dragged 를 목록에서 제거 후 target 앞에 재삽입
         const filtered = busStopIds.filter((id) => id !== stopId);
-
-        // 타겟 앞에 삽입
         const targetIdx = filtered.indexOf(targetStopId);
-        if (targetIdx === -1) {
-          filtered.push(stopId);
-        } else {
-          filtered.splice(targetIdx, 0, stopId);
-        }
+        if (targetIdx === -1) filtered.push(stopId);
+        else filtered.splice(targetIdx, 0, stopId);
 
-        // 다른 호차에서 온 경우 sourceBusId는 이미 filtered에 포함되지 않음
-        void sourceBusId;
-
-        // sort_order 재할당
+        // sort_order 재할당 (다른 호차에서 온 경우 자동으로 호차 이동)
         for (let i = 0; i < filtered.length; i++) {
           next.set(filtered[i], { busNumberId: targetBusId, sortOrder: i });
         }
@@ -328,7 +274,7 @@ export function BusStopAssignmentManager({
       toast.success("저장되었습니다.");
     }
 
-    setServerAssignments(new Map(dayAssignments.entries().map(([k, v]) => [k, { ...v }])));
+    setServerAssignments(new Map([...dayAssignments].map(([k, v]) => [k, { ...v }])));
     setServerSchedules(new Map(scheduleMap));
     setSaving(false);
   }
@@ -377,25 +323,27 @@ export function BusStopAssignmentManager({
     setCopyPreviewLoading(true);
 
     const otherDays = DAYS.filter((d) => d.value !== day);
-    const previews: CopyDayPreview[] = [];
 
-    for (const d of otherDays) {
-      const existing = await listBusStopDayAssignments(d.value, timeSlotId || undefined);
-      const conflicts: CopyConflict[] = [];
-      for (const ex of existing) {
-        const newAssignment = dayAssignments.get(ex.bus_stop_id);
-        if (!newAssignment) continue;
-        if (newAssignment.busNumberId !== ex.bus_number_id) {
-          conflicts.push({
-            stopId: ex.bus_stop_id,
-            stopName: stopNameMap.get(ex.bus_stop_id) ?? ex.bus_stop_id,
-            existingBusLabel: busLabelMap.get(ex.bus_number_id) ?? ex.bus_number_id,
-            newBusLabel: busLabelMap.get(newAssignment.busNumberId) ?? newAssignment.busNumberId,
-          });
+    // 4개 요일 preview 를 병렬로 fetch — 직렬 await 대비 4배 빠름.
+    const previews: CopyDayPreview[] = await Promise.all(
+      otherDays.map(async (d) => {
+        const existing = await listBusStopDayAssignments(d.value, timeSlotId || undefined);
+        const conflicts: CopyConflict[] = [];
+        for (const ex of existing) {
+          const newAssignment = dayAssignments.get(ex.bus_stop_id);
+          if (!newAssignment) continue;
+          if (newAssignment.busNumberId !== ex.bus_number_id) {
+            conflicts.push({
+              stopId: ex.bus_stop_id,
+              stopName: stopNameMap.get(ex.bus_stop_id) ?? ex.bus_stop_id,
+              existingBusLabel: busLabelMap.get(ex.bus_number_id) ?? ex.bus_number_id,
+              newBusLabel: busLabelMap.get(newAssignment.busNumberId) ?? newAssignment.busNumberId,
+            });
+          }
         }
-      }
-      previews.push({ day: d.value, conflicts });
-    }
+        return { day: d.value, conflicts };
+      })
+    );
 
     setCopyPreviews(previews);
     setCopyPreviewLoading(false);
@@ -446,35 +394,15 @@ export function BusStopAssignmentManager({
 
   return (
     <div className="space-y-4">
-      {/* 툴바: 요일·방향·시간대 필터 + 저장 버튼 */}
+      {/* 툴바: 요일·시간대 필터 + 저장 버튼 */}
       <div className="flex flex-wrap items-center gap-3">
-        <div className="flex items-center gap-1">
-          {DAYS.map((d) => (
-            <button
-              key={d.value}
-              onClick={() => guardFilterChange(() => setDay(d.value))}
-              className={`w-8 h-8 text-xs rounded font-medium transition-colors ${
-                day === d.value
-                  ? "bg-slate-800 text-white"
-                  : "bg-white text-slate-500 hover:bg-slate-100 border border-slate-200"
-              }`}
-            >
-              {d.label}
-            </button>
-          ))}
-        </div>
-
-        <select
-          value={timeSlotId}
-          onChange={(e) => guardFilterChange(() => setTimeSlotId(e.target.value))}
-          className="h-8 text-xs border border-slate-200 rounded px-2 bg-white"
-        >
-          {filteredSlots.map((slot) => (
-            <option key={slot.id} value={slot.id}>
-              {slot.label} ({slot.time.slice(0, 5)})
-            </option>
-          ))}
-        </select>
+        <DayTimeFilterBar
+          day={day}
+          onDayChange={(d) => guardFilterChange(() => setDay(d))}
+          timeSlotId={timeSlotId}
+          onTimeSlotChange={(id) => guardFilterChange(() => setTimeSlotId(id))}
+          timeSlots={filteredSlots}
+        />
 
         <div className="flex items-center gap-2 ml-auto">
           <Button
@@ -761,7 +689,7 @@ export function BusStopAssignmentManager({
         description="계속하면 지금까지의 변경이 사라집니다. 계속하시겠습니까?"
         confirmLabel="계속"
         onConfirm={confirmFilterChange}
-        onCancel={() => setFilterChangeConfirm({ open: false })}
+        onCancel={closeFilterConfirm}
       />
     </div>
   );

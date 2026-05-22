@@ -22,17 +22,9 @@ import {
   copyBusDayDataToOtherDays,
   getBusDayDataCounts,
 } from "../../actions";
-
-const DAYS = [
-  { value: 1, label: "월" },
-  { value: 2, label: "화" },
-  { value: 3, label: "수" },
-  { value: 4, label: "목" },
-  { value: 5, label: "금" },
-];
-
-// Per-day assignment entry: which bus + sort order
-type StopAssignment = { busNumberId: string; sortOrder: number };
+import { BUS_WEEKDAYS as DAYS } from "@/lib/constants/bus";
+import { useBusDirtyFilter, type StopAssignment } from "../_hooks/useBusDirtyFilter";
+import { DayTimeFilterBar } from "./DayTimeFilterBar";
 
 export function BusNumbersManager({
   busNumbers,
@@ -52,14 +44,18 @@ export function BusNumbersManager({
   // Master stop list
   const [stops, setStops] = useState<BusStop[]>(initialStops);
 
-  // Per-day assignment: stopId → { busNumberId, sortOrder }
-  const [dayAssignments, setDayAssignments] = useState<Map<string, StopAssignment>>(new Map());
-  // serverAssignments: 서버와 동기화된 baseline — dirty check 용. 렌더 중 읽기 때문에 state.
-  const [serverAssignments, setServerAssignments] = useState<Map<string, StopAssignment>>(new Map());
-
-  // Schedule times: stopId → time
-  const [scheduleMap, setScheduleMap] = useState<Map<string, string>>(new Map());
-  const [serverSchedules, setServerSchedules] = useState<Map<string, string>>(new Map());
+  // Per-day assignment + schedule + dirty/필터 가드 — BusStopAssignmentManager 와 공유.
+  const {
+    dayAssignments, setDayAssignments,
+    serverAssignments, setServerAssignments,
+    scheduleMap, setScheduleMap,
+    serverSchedules, setServerSchedules,
+    hasChanges,
+    filterChangeConfirm,
+    guardFilterChange,
+    confirmFilterChange,
+    closeFilterConfirm,
+  } = useBusDirtyFilter();
 
   // UI
   const [search, setSearch] = useState("");
@@ -74,8 +70,6 @@ export function BusNumbersManager({
   const [dragOverTarget, setDragOverTarget] = useState<string | null>(null);
   const [deleteBusConfirm, setDeleteBusConfirm] = useState<{ open: boolean; id?: string; label?: string }>({ open: false });
   const [deleteStopConfirm, setDeleteStopConfirm] = useState<{ open: boolean; id?: string; name?: string }>({ open: false });
-  const [filterChangeConfirm, setFilterChangeConfirm] = useState<{ open: boolean; setter?: () => void }>({ open: false });
-
   // 다른 요일에 복사 모달
   const [copyModalOpen, setCopyModalOpen] = useState(false);
   const [copyTargets, setCopyTargets] = useState<Set<number>>(new Set());
@@ -101,9 +95,9 @@ export function BusNumbersManager({
     setServerAssignments(
       isSlotFallback
         ? new Map()
-        : new Map(map.entries().map(([k, v]) => [k, { ...v }]))
+        : new Map([...map].map(([k, v]) => [k, { ...v }]))
     );
-  }, [day, timeSlotId]);
+  }, [day, timeSlotId, setDayAssignments, setServerAssignments]);
 
   const fetchSchedules = useCallback(async () => {
     const data = await listBusStopSchedulesBulk(day, timeSlotId || undefined);
@@ -111,51 +105,11 @@ export function BusNumbersManager({
     for (const s of data) map.set(s.bus_stop_id, s.estimated_time?.slice(0, 5) ?? "");
     setScheduleMap(map);
     setServerSchedules(new Map(map));
-  }, [day, timeSlotId]);
+  }, [day, timeSlotId, setScheduleMap, setServerSchedules]);
 
-  // async fetch 후 setState — 외부(서버) 데이터 동기화 패턴
-  // eslint-disable-next-line react-hooks/set-state-in-effect
+  // async fetch → setState. setter 는 useBusDirtyFilter 가 useState 로 만든 stable ref.
   useEffect(() => { fetchDayAssignments(); }, [fetchDayAssignments]);
-  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { fetchSchedules(); }, [fetchSchedules]);
-
-  // ── Dirty detection ──
-
-  function computeHasChanges(): boolean {
-    const allIds = new Set([...dayAssignments.keys(), ...serverAssignments.keys()]);
-    for (const id of allIds) {
-      const local = dayAssignments.get(id);
-      const server = serverAssignments.get(id);
-      if (!local && server) return true;
-      if (local && !server) return true;
-      if (local && server && (local.busNumberId !== server.busNumberId || local.sortOrder !== server.sortOrder)) return true;
-    }
-    const allSchedIds = new Set([...scheduleMap.keys(), ...serverSchedules.keys()]);
-    for (const id of allSchedIds) {
-      if ((scheduleMap.get(id) ?? "") !== (serverSchedules.get(id) ?? "")) return true;
-    }
-    return false;
-  }
-
-  const hasChanges = computeHasChanges();
-
-  // ── Filter guard ──
-
-  function guardFilterChange(setter: () => void) {
-    if (hasChanges) {
-      setFilterChangeConfirm({ open: true, setter });
-      return;
-    }
-    setter();
-  }
-
-  function confirmFilterChange() {
-    const setter = filterChangeConfirm.setter;
-    setFilterChangeConfirm({ open: false });
-    setDayAssignments(new Map(serverAssignments.entries().map(([k, v]) => [k, { ...v }])));
-    setScheduleMap(new Map(serverSchedules));
-    setter?.();
-  }
 
   // ── Derived: get ordered stops for a bus ──
 
@@ -206,32 +160,20 @@ export function BusNumbersManager({
 
       setDayAssignments((prev) => {
         const next = new Map(prev);
-        const sourceBusId = prev.get(stopId)?.busNumberId;
 
-        // Get current ordered list for target bus
+        // 대상 호차의 현재 정렬된 정류장 id 목록
         const busStopIds = stops
           .filter((s) => next.get(s.id)?.busNumberId === targetBusId)
           .sort((a, b) => (next.get(a.id)?.sortOrder ?? 0) - (next.get(b.id)?.sortOrder ?? 0))
           .map((s) => s.id);
 
-        // Remove dragged stop from list if it's in the same bus
+        // 같은 호차 내 이동이면 dragged 를 목록에서 제거 후 target 앞에 재삽입
         const filtered = busStopIds.filter((id) => id !== stopId);
-
-        // Insert before target
         const targetIdx = filtered.indexOf(targetStopId);
-        if (targetIdx === -1) {
-          // Target not found, just append
-          filtered.push(stopId);
-        } else {
-          filtered.splice(targetIdx, 0, stopId);
-        }
+        if (targetIdx === -1) filtered.push(stopId);
+        else filtered.splice(targetIdx, 0, stopId);
 
-        // If coming from a different bus, remove from old bus (already not in filtered)
-        if (sourceBusId && sourceBusId !== targetBusId) {
-          // Will be re-assigned below
-        }
-
-        // Reassign sort orders
+        // sort_order 재할당 (다른 호차에서 온 경우 자동으로 호차 이동)
         for (let i = 0; i < filtered.length; i++) {
           next.set(filtered[i], { busNumberId: targetBusId, sortOrder: i });
         }
@@ -314,7 +256,7 @@ export function BusNumbersManager({
       toast.success("저장되었습니다.");
     }
 
-    setServerAssignments(new Map(dayAssignments.entries().map(([k, v]) => [k, { ...v }])));
+    setServerAssignments(new Map([...dayAssignments].map(([k, v]) => [k, { ...v }])));
     setServerSchedules(new Map(scheduleMap));
     setSaving(false);
   }
@@ -478,34 +420,14 @@ export function BusNumbersManager({
     <div className="space-y-4">
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-3">
-        <div className="flex items-center gap-1">
-          {DAYS.map((d) => (
-            <button
-              key={d.value}
-              onClick={() => guardFilterChange(() => setDay(d.value))}
-              className={`w-8 h-8 text-xs rounded font-medium transition-colors ${
-                day === d.value
-                  ? "bg-slate-800 text-white"
-                  : "bg-white text-slate-500 hover:bg-slate-100 border border-slate-200"
-              }`}
-            >
-              {d.label}
-            </button>
-          ))}
-        </div>
-
-        <select
-          value={timeSlotId}
-          onChange={(e) => guardFilterChange(() => setTimeSlotId(e.target.value))}
-          className="h-8 text-xs border border-slate-200 rounded px-2 bg-white"
-        >
-          <option value="">전체 (기본)</option>
-          {filteredSlots.map((slot) => (
-            <option key={slot.id} value={slot.id}>
-              {slot.label} ({slot.time.slice(0, 5)})
-            </option>
-          ))}
-        </select>
+        <DayTimeFilterBar
+          day={day}
+          onDayChange={(d) => guardFilterChange(() => setDay(d))}
+          timeSlotId={timeSlotId}
+          onTimeSlotChange={(id) => guardFilterChange(() => setTimeSlotId(id))}
+          timeSlots={filteredSlots}
+          includeAllSlotsOption
+        />
 
         <Button
           size="sm"
@@ -813,7 +735,7 @@ export function BusNumbersManager({
         description="계속하면 지금까지의 변경이 사라집니다. 계속하시겠습니까?"
         confirmLabel="계속"
         onConfirm={confirmFilterChange}
-        onCancel={() => setFilterChangeConfirm({ open: false })}
+        onCancel={closeFilterConfirm}
       />
     </div>
   );

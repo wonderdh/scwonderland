@@ -14,7 +14,7 @@ import { Spinner } from "@/components/feedback/Spinner";
 import { ConfirmDialog } from "@/components/overlays/ConfirmDialog";
 import { formatStudentName } from "@/lib/utils/student-name";
 
-const DAY_LABELS = ["월", "화", "수", "목", "금"];
+import { WEEKDAY_NAMES_5 as DAY_LABELS } from "@/lib/constants/date";
 const AGE_GROUPS: { label: string; test: (age: number | null) => boolean }[] = [
   { label: "5세", test: (a) => a === 5 },
   { label: "6세", test: (a) => a === 6 },

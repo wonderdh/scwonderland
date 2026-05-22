@@ -10,7 +10,7 @@ import { useBusRealtime } from "@/lib/hooks/use-bus-realtime";
 import { applyCheckRecord, applyChangeRequest } from "@/lib/bus/realtime-utils";
 import { getDateForIsoDayKst, getTodayIsoDayKst } from "@/lib/bus/monitor-date";
 
-const DAY_LABELS = ["월", "화", "수", "목", "금"] as const;
+import { WEEKDAY_NAMES_5 as DAY_LABELS } from "@/lib/constants/date";
 
 // 시간대별 그룹
 type TimeGroup = {
