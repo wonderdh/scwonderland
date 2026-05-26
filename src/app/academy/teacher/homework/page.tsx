@@ -3,6 +3,7 @@ import { getCurrentTeacherProfile, getTeacherClasses } from "../../actions";
 import {
   listClassTextbooks,
   listClassUnitProgressDetailed,
+  listAcademyClosedDays,
 } from "@/app/(admin)/admin/actions";
 import { TeacherTextbooksClient } from "./_components/TeacherTextbooksClient";
 
@@ -37,10 +38,12 @@ export default async function TeacherHomeworkPage({
       ? params.class
       : classes[0].id;
 
-  const [classTextbooks, initialDetailed] = await Promise.all([
+  const [classTextbooks, initialDetailed, closedDaysResult] = await Promise.all([
     listClassTextbooks(selectedClassId),
     listClassUnitProgressDetailed(selectedClassId),
+    listAcademyClosedDays(),
   ]);
+  const closedDates = closedDaysResult.days.map((d) => d.closed_date);
 
   const classesList = classes.map((c) => ({ id: c.id, name: c.name }));
 
@@ -56,6 +59,7 @@ export default async function TeacherHomeworkPage({
         classTextbooks={classTextbooks}
         canEditSchedule={canEditSchedule}
         initialData={initialDetailed}
+        closedDates={closedDates}
       />
     </div>
   );

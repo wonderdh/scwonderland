@@ -26,12 +26,15 @@ import { ClassUnitProgressList } from "@/components/homework/ClassUnitProgressLi
 function EditDaysModal({
   assignment,
   meetDays,
+  closedDates,
   onClose,
   onSaved,
 }: {
   assignment: ClassTextbookWithDetails;
   /** 채점일 계산용 — 반의 등원 요일 (0=일~6=토). */
   meetDays: number[];
+  /** 학원 공통 쉬는날 (YYYY-MM-DD) — 미리보기 채점일 계산에서 제외. */
+  closedDates: string[];
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -70,9 +73,9 @@ function EditDaysModal({
       totalUnits,
       homeworkDays,
       meetDays,
-      skipDates: [],
+      skipDates: closedDates,
     }).slice(0, 7);
-  }, [startDate, startDateWeekend, totalUnits, homeworkDays, meetDays]);
+  }, [startDate, startDateWeekend, totalUnits, homeworkDays, meetDays, closedDates]);
 
   const MONTH_LABELS = [
     "1월", "2월", "3월", "4월", "5월", "6월", "7월", "8월", "9월", "10월", "11월", "12월",
@@ -230,6 +233,8 @@ type Props = {
   /** 한국 교사만 schedule 수정 가능. false 면 ✎ 일정 섹션 자체 숨김. */
   canEditSchedule: boolean;
   initialData: ClassUnitProgressDetailed;
+  /** 학원 공통 쉬는날 (YYYY-MM-DD) — 일정 미리보기 채점일 계산에서 제외. */
+  closedDates: string[];
 };
 
 export function TeacherTextbooksClient({
@@ -238,6 +243,7 @@ export function TeacherTextbooksClient({
   classTextbooks,
   canEditSchedule,
   initialData,
+  closedDates,
 }: Props) {
   const router = useRouter();
   const [editTarget, setEditTarget] = useState<ClassTextbookWithDetails | null>(
@@ -354,6 +360,7 @@ export function TeacherTextbooksClient({
         <EditDaysModal
           assignment={editTarget}
           meetDays={data.meetDays ?? []}
+          closedDates={closedDates}
           onClose={() => setEditTarget(null)}
           onSaved={() => router.refresh()}
         />

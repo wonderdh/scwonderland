@@ -81,6 +81,23 @@ function isUnitStatus(s: string): s is UnitStatus {
   return s === "pending" || s === "completed" || s === "missed";
 }
 
+/**
+ * 학원 공통 쉬는날(휴원일) 날짜 배열. 채점일 계산 시 책별 skip_dates 와 합집합되어
+ * getUnitSchedule 의 skipDates 로 전달된다 (closed-days-actions.ts 참고).
+ */
+async function getClosedDates(
+  supabase: ReturnType<typeof createAdminClient>
+): Promise<string[]> {
+  const { data, error } = await supabase
+    .from("academy_closed_days")
+    .select("closed_date");
+  if (error) {
+    logger.error("[getClosedDates]", error.message);
+    return [];
+  }
+  return (data ?? []).map((r) => r.closed_date as string);
+}
+
 // ── Reads ────────────────────────────────────────────────────────────────────
 
 export async function listClassUnitProgressDetailed(
@@ -200,6 +217,9 @@ export async function listClassUnitProgressDetailed(
     };
   });
 
+  // 학원 공통 쉬는날 — 모든 책의 채점일 계산에서 제외 (책별 skip_dates 와 합집합).
+  const closedDates = await getClosedDates(supabase);
+
   // 책별 unit→채점일 맵 한 번만 계산 (책마다 다른 요일/예외일/start_unit 가능).
   // 등원일(meetDays) 이 비어 있으면 schedule 비활성 → 빈 맵.
   const expectedByBook = new Map<string, Map<number, string>>();
@@ -217,7 +237,7 @@ export async function listClassUnitProgressDetailed(
       totalUnits: b.total_units,
       homeworkDays: b.homework_days,
       meetDays,
-      skipDates: b.skip_dates,
+      skipDates: Array.from(new Set([...b.skip_dates, ...closedDates])),
     });
     const m = new Map<number, string>();
     for (const s of schedule) m.set(s.unit, s.date);
@@ -370,6 +390,9 @@ export async function listUnitProgressByStudent(
     }
   }
 
+  // 학원 공통 쉬는날 — 책별 skip_dates 와 합집합되어 채점일 계산에서 제외.
+  const closedDates = await getClosedDates(supabase);
+
   const textbooks: StudentTextbookUnits[] = rows.map((row) => {
     const chb = Array.isArray(row.class_homework_books)
       ? row.class_homework_books[0]
@@ -415,7 +438,7 @@ export async function listUnitProgressByStudent(
         totalUnits,
         homeworkDays,
         meetDays,
-        skipDates,
+        skipDates: Array.from(new Set([...skipDates, ...closedDates])),
       })) {
         expectedByUnit.set(s.unit, s.date);
       }

@@ -1,7 +1,7 @@
 export type AdminNavItem = {
   href: string;
   label: string;
-  icon: "home" | "users" | "graduation-cap" | "school" | "book" | "bell" | "megaphone" | "calendar" | "bus" | "clipboard-check" | "calendar-days" | "file-text" | "sparkles" | "school-2";
+  icon: "home" | "users" | "graduation-cap" | "school" | "book" | "bell" | "megaphone" | "calendar" | "calendar-x" | "bus" | "clipboard-check" | "calendar-days" | "file-text" | "sparkles" | "school-2";
 };
 
 export type AdminNavGroup = {
@@ -30,6 +30,7 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
     items: [
       { href: "/admin/homework", label: "숙제", icon: "book" },
       { href: "/admin/timetable", label: "시간표", icon: "calendar" },
+      { href: "/admin/closed-days", label: "쉬는날", icon: "calendar-x" },
       { href: "/admin/weekly-sentences", label: "주간 문장", icon: "sparkles" },
     ],
   },

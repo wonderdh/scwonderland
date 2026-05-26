@@ -256,3 +256,11 @@ export type {
   ClassUnitOverview,
   ClassUnitProgressDetailed,
 } from "./actions/homework-unit-actions";
+
+export {
+  listAcademyClosedDays,
+  addAcademyClosedDays,
+  removeAcademyClosedDay,
+} from "./actions/closed-days-actions";
+
+export type { AcademyClosedDay } from "./actions/closed-days-actions";
