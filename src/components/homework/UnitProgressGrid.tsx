@@ -145,7 +145,7 @@ export function UnitProgressGrid({
         {units.length === 0 ? (
           <p className="py-6 text-center text-xs text-slate-400">unit 정보가 없습니다.</p>
         ) : (
-          <div className="grid gap-1 grid-cols-7 sm:grid-cols-10 md:grid-cols-[repeat(15,minmax(0,1fr))]">
+          <div className="grid gap-1 [grid-template-columns:repeat(auto-fill,2.5rem)]">
             {units.map((u) => {
               const cls = statusClasses(u.status, u.expectedDate, today, editable);
               const dateLabel = u.expectedDate ? formatMonthDay(u.expectedDate) : "—";

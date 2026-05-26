@@ -37,6 +37,7 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
   {
     title: "일일 운영",
     items: [
+      { href: "/admin/today", label: "오늘 수업", icon: "calendar-days" },
       { href: "/admin/attendance", label: "출결", icon: "clipboard-check" },
       { href: "/admin/bus", label: "승하차", icon: "bus" },
       { href: "/admin/reservations", label: "예약 현황", icon: "calendar-days" },
