@@ -15,18 +15,41 @@ import { getStudentRecordByProfileId, getStudentsByIds, getTeacherRecordByProfil
 import { translateText } from "@/lib/server/translate";
 import { logger } from "@/lib/server/logger";
 
-/** student profile id → class_students.id 변환 헬퍼. 한 학생은 동시에 한 반에만 소속됨. */
-async function resolveClassStudentId(
+/** student profile id → 해당 학생의 모든 class_students.id.
+ *  한 학생이 여러 반(예: 정규반 + 방과후)에 동시 소속될 수 있으므로 복수를 반환한다.
+ *  리포트카드 조회는 어느 반 등록에 귀속됐든 모두 보여야 하므로 전체 반을 커버한다. */
+async function resolveClassStudentIds(
+  supabase: ReturnType<typeof createAdminClient>,
+  studentProfileId: string
+): Promise<string[]> {
+  const { data } = await supabase
+    .from("class_students")
+    .select("id")
+    .eq("student_id", studentProfileId);
+  return (data ?? []).map((row) => row.id);
+}
+
+/** 리포트카드 쓰기 대상 class_students.id 1건.
+ *  여러 반 소속 시 정규반(비-afterschool) → active → 최근 합류 순으로 결정적으로 선택한다.
+ *  (읽기는 resolveClassStudentIds 로 전체 반을 커버하지만, 쓰기는 한 곳에 귀속시켜야 한다.
+ *   임의 선택 시 방과후 등록에 붙어 정규반 화면에서 사라지는 문제가 있었음.) */
+async function resolveWriteClassStudentId(
   supabase: ReturnType<typeof createAdminClient>,
   studentProfileId: string
 ): Promise<string | null> {
   const { data } = await supabase
     .from("class_students")
-    .select("id")
-    .eq("student_id", studentProfileId)
-    .limit(1)
-    .maybeSingle();
-  return data?.id ?? null;
+    .select("id, is_active, joined_at, classes(group_type)")
+    .eq("student_id", studentProfileId);
+  if (!data || data.length === 0) return null;
+  const ranked = [...data].sort((a, b) => {
+    const aAfter = (a.classes as unknown as { group_type: string } | null)?.group_type === "afterschool" ? 1 : 0;
+    const bAfter = (b.classes as unknown as { group_type: string } | null)?.group_type === "afterschool" ? 1 : 0;
+    if (aAfter !== bAfter) return aAfter - bAfter; // 정규반 우선
+    if (a.is_active !== b.is_active) return a.is_active ? -1 : 1; // active 우선
+    return (b.joined_at ?? "").localeCompare(a.joined_at ?? ""); // 최근 합류 우선
+  });
+  return ranked[0].id;
 }
 
 /** 선택한 학생·년·월의 리포트카드 1건 조회 (없으면 null). admin/선생/해당 학생만 조회 가능(RLS). */
@@ -37,19 +60,21 @@ export async function getReportCard(
 ): Promise<ReportCard | null> {
   const supabase = await createClient();
   const admin = createAdminClient();
-  const classStudentId = await resolveClassStudentId(admin, studentProfileId);
-  if (!classStudentId) return null;
-  const { data, error } = await supabase
+  const classStudentIds = await resolveClassStudentIds(admin, studentProfileId);
+  if (classStudentIds.length === 0) return null;
+  const { data: rows, error } = await supabase
     .from("report_cards")
     .select("id, class_student_id, year, month, class_teacher_id, content_en, content_ko, reply_ko, reply_en, created_at, updated_at")
-    .eq("class_student_id", classStudentId)
+    .in("class_student_id", classStudentIds)
     .eq("year", year)
     .eq("month", month)
-    .maybeSingle();
+    .order("updated_at", { ascending: false })
+    .limit(1);
   if (error) {
     logger.error("[getReportCard]", error.message, { studentProfileId, year, month });
     return null;
   }
+  const data = rows?.[0];
   if (!data) return null;
 
   let author_name: string | null = null;
@@ -73,19 +98,26 @@ export async function listReportCardsByStudent(
 ): Promise<ReportCardListItem[]> {
   const supabase = await createClient();
   const admin = createAdminClient();
-  const classStudentId = await resolveClassStudentId(admin, studentProfileId);
-  if (!classStudentId) return [];
+  const classStudentIds = await resolveClassStudentIds(admin, studentProfileId);
+  if (classStudentIds.length === 0) return [];
   const { data, error } = await supabase
     .from("report_cards")
     .select("id, year, month")
-    .eq("class_student_id", classStudentId)
+    .in("class_student_id", classStudentIds)
     .order("year", { ascending: false })
     .order("month", { ascending: false });
   if (error) {
     logger.error("[listReportCardsByStudent]", error.message, { studentProfileId });
     return [];
   }
-  return (data ?? []) as ReportCardListItem[];
+  // 여러 반에 동시 소속된 학생이 같은 년·월에 중복 리포트를 가질 경우를 대비해 년·월 기준 dedupe.
+  const seen = new Set<string>();
+  return (data ?? []).filter((row) => {
+    const key = `${row.year}-${row.month}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }) as ReportCardListItem[];
 }
 
 /** 리포트카드 본문 작성/수정. 선생 또는 admin만 가능. teacher_id는 현재 로그인 사용자. */
@@ -148,7 +180,7 @@ export async function upsertReportCard(
     return { error: "년도 또는 월이 올바르지 않습니다." };
   }
 
-  const classStudentId = await resolveClassStudentId(admin, studentProfileId);
+  const classStudentId = await resolveWriteClassStudentId(admin, studentProfileId);
   if (!classStudentId) return { error: "학생의 반 정보를 찾을 수 없습니다." };
 
   const trimmedContent = content.trim() || null;
