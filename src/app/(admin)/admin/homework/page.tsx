@@ -59,7 +59,7 @@ export default async function AdminTextbooksPage({
   const [initialCheckData, initialAssignments, absentResult] = await Promise.all([
     tab === "class" && initialClassId
       ? listClassUnitProgressDetailed(initialClassId)
-      : Promise.resolve({ students: [], byStudent: {} }),
+      : Promise.resolve({ students: [], byStudent: {}, meetDays: [] }),
     tab === "class" && initialClassId
       ? listClassTextbooks(initialClassId)
       : Promise.resolve([]),

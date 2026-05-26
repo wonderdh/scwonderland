@@ -29,7 +29,7 @@ export default async function MobileHomeworkPage({
   const [initialData, absentResult] = await Promise.all([
     initialClassId
       ? listClassUnitProgressDetailed(initialClassId)
-      : Promise.resolve({ students: [], byStudent: {} }),
+      : Promise.resolve({ students: [], byStudent: {}, meetDays: [] }),
     getAbsentStudentIds(today),
   ]);
 

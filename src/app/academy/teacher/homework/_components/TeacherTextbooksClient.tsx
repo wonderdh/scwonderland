@@ -25,10 +25,13 @@ import { ClassUnitProgressList } from "@/components/homework/ClassUnitProgressLi
 
 function EditDaysModal({
   assignment,
+  meetDays,
   onClose,
   onSaved,
 }: {
   assignment: ClassTextbookWithDetails;
+  /** 채점일 계산용 — 반의 등원 요일 (0=일~6=토). */
+  meetDays: number[];
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -54,15 +57,22 @@ function EditDaysModal({
       : false;
 
   const preview = useMemo(() => {
-    if (!startDate || startDateWeekend || homeworkDays.length === 0) return [];
+    if (
+      !startDate ||
+      startDateWeekend ||
+      homeworkDays.length === 0 ||
+      meetDays.length === 0
+    )
+      return [];
     return getUnitSchedule({
       startDate,
       startUnit: 1,
       totalUnits,
       homeworkDays,
+      meetDays,
       skipDates: [],
     }).slice(0, 7);
-  }, [startDate, startDateWeekend, totalUnits, homeworkDays]);
+  }, [startDate, startDateWeekend, totalUnits, homeworkDays, meetDays]);
 
   const MONTH_LABELS = [
     "1월", "2월", "3월", "4월", "5월", "6월", "7월", "8월", "9월", "10월", "11월", "12월",
@@ -343,6 +353,7 @@ export function TeacherTextbooksClient({
       {editTarget && (
         <EditDaysModal
           assignment={editTarget}
+          meetDays={data.meetDays ?? []}
           onClose={() => setEditTarget(null)}
           onSaved={() => router.refresh()}
         />

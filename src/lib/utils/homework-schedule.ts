@@ -85,15 +85,26 @@ function ymdCompare(a: string, b: string): number {
 }
 
 /**
- * 순수 함수 — 입력만 받으면 unit ↔ 날짜 매핑 계산.
+ * 순수 함수 — 입력만 받으면 unit ↔ **채점일** 매핑 계산.
  * DB 의존성 없음. UI preview 등에서 사용 가능.
+ *
+ * 규칙:
+ *  - unit 은 `homeworkDays` 요일에 1씩 "내려진다" (issue).
+ *  - 그 unit 의 **채점일 = issue 날짜의 다음 등원일 (`meetDays`, skipDates 제외)**.
+ *  - 즉 반환되는 `date` 는 채점일이지, 내준 날이 아님.
+ *  - `meetDays` 가 비어 있으면 schedule 비활성 (빈 배열).
+ *  - `skipDates` 는 issue 날짜와 채점일 후보 양쪽에서 제외.
  */
 export function getUnitSchedule(params: {
   startDate: string;
   startUnit: number;
   totalUnits: number;
+  /** unit 이 "내려지는(부여되는)" 요일 (0=일~6=토, KST). */
   homeworkDays: number[];
+  /** 학생이 학원에 오는(=채점 후보) 요일 (0=일~6=토, KST). */
+  meetDays: number[];
   skipDates: string[];
+  /** fromDate/toDate 비교는 채점일 기준. */
   fromDate?: string;
   toDate?: string;
 }): UnitAssignment[] {
@@ -102,18 +113,37 @@ export function getUnitSchedule(params: {
     startUnit,
     totalUnits,
     homeworkDays,
+    meetDays,
     skipDates,
     fromDate,
     toDate,
   } = params;
 
   const result: UnitAssignment[] = [];
-  if (!startDate || !homeworkDays?.length) return result;
+  if (!startDate || !homeworkDays?.length || !meetDays?.length) return result;
   if (startUnit > totalUnits) return result;
 
-  const daySet = new Set(homeworkDays);
+  const hwSet = new Set(homeworkDays);
+  const meetSet = new Set(meetDays);
   const skipSet = new Set(skipDates ?? []);
   const MAX_ITER = 730;
+
+  function nextMeetDay(fromYmd: string): string | null {
+    let cur = fromYmd;
+    for (let i = 0; i < MAX_ITER; i++) {
+      const wd = ymdToKstWeekday(cur);
+      if (meetSet.has(wd) && !skipSet.has(cur)) return cur;
+      cur = nextDay(cur);
+    }
+    return null;
+  }
+
+  function inRange(date: string): boolean {
+    return (
+      (!fromDate || ymdCompare(date, fromDate) >= 0) &&
+      (!toDate || ymdCompare(date, toDate) <= 0)
+    );
+  }
 
   // 1) startUnit 이전 unit 들: startDate 에서 하루씩 뒤로 가며 역산.
   if (startUnit > 1) {
@@ -122,11 +152,11 @@ export function getUnitSchedule(params: {
     let curUnit = startUnit - 1;
     for (let i = 0; i < MAX_ITER && curUnit >= 1; i++) {
       const weekday = ymdToKstWeekday(curDate);
-      if (daySet.has(weekday) && !skipSet.has(curDate)) {
-        const inRange =
-          (!fromDate || ymdCompare(curDate, fromDate) >= 0) &&
-          (!toDate || ymdCompare(curDate, toDate) <= 0);
-        if (inRange) backward.push({ date: curDate, unit: curUnit });
+      if (hwSet.has(weekday) && !skipSet.has(curDate)) {
+        const grading = nextMeetDay(nextDay(curDate));
+        if (grading && inRange(grading)) {
+          backward.push({ date: grading, unit: curUnit });
+        }
         curUnit--;
       }
       curDate = prevDay(curDate);
@@ -142,15 +172,16 @@ export function getUnitSchedule(params: {
 
   for (let i = 0; i < MAX_ITER; i++) {
     if (currentUnit > totalUnits) break;
-    if (toDate && ymdCompare(currentDate, toDate) > 0) break;
 
     const weekday = ymdToKstWeekday(currentDate);
-    if (daySet.has(weekday) && !skipSet.has(currentDate)) {
-      const inRange =
-        (!fromDate || ymdCompare(currentDate, fromDate) >= 0) &&
-        (!toDate || ymdCompare(currentDate, toDate) <= 0);
-      if (inRange) {
-        result.push({ date: currentDate, unit: currentUnit });
+    if (hwSet.has(weekday) && !skipSet.has(currentDate)) {
+      const grading = nextMeetDay(nextDay(currentDate));
+      if (grading) {
+        // 채점일이 toDate 를 넘어가면 이후 unit 도 모두 넘어가므로 종료.
+        if (toDate && ymdCompare(grading, toDate) > 0) break;
+        if (inRange(grading)) {
+          result.push({ date: grading, unit: currentUnit });
+        }
       }
       currentUnit++;
     }

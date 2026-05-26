@@ -61,6 +61,8 @@ export type ClassUnitOverview = {
 export type ClassUnitProgressDetailed = {
   students: { id: string; korean_name: string | null; english_name: string | null }[];
   byStudent: Record<string, StudentTextbookUnits[]>;
+  /** 반의 등원 요일 (0=일~6=토). 채점일 계산용. EditDaysModal preview 도 사용. */
+  meetDays: number[];
   error?: string;
 };
 
@@ -86,7 +88,7 @@ export async function listClassUnitProgressDetailed(
 ): Promise<ClassUnitProgressDetailed> {
   const auth = await verifyAuthenticated();
   if ("error" in auth)
-    return { students: [], byStudent: {}, error: auth.error };
+    return { students: [], byStudent: {}, meetDays: [], error: auth.error };
 
   const supabase = createAdminClient();
 
@@ -102,6 +104,7 @@ export async function listClassUnitProgressDetailed(
     return {
       students: [],
       byStudent: {},
+      meetDays: [],
       error: rosterErr.message,
     };
   }
@@ -122,8 +125,20 @@ export async function listClassUnitProgressDetailed(
     english_name: r.english_name,
   }));
 
+  // 1b. 반 등원일 (= 채점 후보일)
+  const { data: scheduleRows, error: scheduleErr } = await supabase
+    .from("class_schedules")
+    .select("day_of_week")
+    .eq("class_id", classId);
+  if (scheduleErr) {
+    logger.error("[listClassUnitProgressDetailed schedules]", scheduleErr.message);
+  }
+  const meetDays = Array.from(
+    new Set(((scheduleRows ?? []).map((r) => r.day_of_week as number)))
+  ).sort((a, b) => a - b);
+
   if (roster.length === 0) {
-    return { students: [], byStudent: {} };
+    return { students: [], byStudent: {}, meetDays };
   }
 
   // 2. 반의 모든 책 (class_homework_books × homework_books) — 책마다 homework_days/skip_dates/start_unit 보유
@@ -139,6 +154,7 @@ export async function listClassUnitProgressDetailed(
     return {
       students,
       byStudent: {},
+      meetDays,
       error: bookErr.message,
     };
   }
@@ -184,15 +200,23 @@ export async function listClassUnitProgressDetailed(
     };
   });
 
-  // 책별 unit→expectedDate 맵 한 번만 계산 (책마다 다른 요일/예외일/start_unit 가능)
+  // 책별 unit→채점일 맵 한 번만 계산 (책마다 다른 요일/예외일/start_unit 가능).
+  // 등원일(meetDays) 이 비어 있으면 schedule 비활성 → 빈 맵.
   const expectedByBook = new Map<string, Map<number, string>>();
   for (const b of books) {
-    if (!b.start_date || b.homework_days.length === 0 || b.total_units <= 0) continue;
+    if (
+      !b.start_date ||
+      b.homework_days.length === 0 ||
+      meetDays.length === 0 ||
+      b.total_units <= 0
+    )
+      continue;
     const schedule = getUnitSchedule({
       startDate: b.start_date,
       startUnit: b.start_unit,
       totalUnits: b.total_units,
       homeworkDays: b.homework_days,
+      meetDays,
       skipDates: b.skip_dates,
     });
     const m = new Map<number, string>();
@@ -214,6 +238,7 @@ export async function listClassUnitProgressDetailed(
     return {
       students,
       byStudent: {},
+      meetDays,
       error: shbErr.message,
     };
   }
@@ -254,7 +279,8 @@ export async function listClassUnitProgressDetailed(
     byStudent[r.student_id] = books.map((b) => {
       const m = progressMap.get(keyOf(r.student_id, b.chbId));
       const exp = expectedByBook.get(b.chbId);
-      const hasSchedule = !!b.start_date && b.homework_days.length > 0;
+      const hasSchedule =
+        !!b.start_date && b.homework_days.length > 0 && meetDays.length > 0;
       const lastUnit = b.total_units;
       const unitsCount = Math.max(0, lastUnit);
       const units = Array.from({ length: unitsCount }, (_, i) => {
@@ -283,7 +309,7 @@ export async function listClassUnitProgressDetailed(
     });
   }
 
-  return { students, byStudent };
+  return { students, byStudent, meetDays };
 }
 
 export async function listUnitProgressByStudent(
@@ -310,6 +336,39 @@ export async function listUnitProgressByStudent(
 
   type ShbRow = NonNullable<typeof shbRows>[number];
   const rows: ShbRow[] = shbRows ?? [];
+
+  // row 별 class_id 를 모아 한 번에 등원일 조회 (채점일 계산용).
+  function pickClassId(row: ShbRow): string | null {
+    const cs = Array.isArray(row.class_students)
+      ? row.class_students[0]
+      : row.class_students;
+    const cid = (cs as { class_id?: string | null } | null)?.class_id;
+    return cid ?? null;
+  }
+
+  const classIds = Array.from(
+    new Set(rows.map(pickClassId).filter((v): v is string => !!v))
+  );
+  const meetDaysByClass = new Map<string, number[]>();
+  if (classIds.length > 0) {
+    const { data: scheduleRows, error: scheduleErr } = await supabase
+      .from("class_schedules")
+      .select("class_id, day_of_week")
+      .in("class_id", classIds);
+    if (scheduleErr) {
+      logger.error("[listUnitProgressByStudent schedules]", scheduleErr.message);
+    }
+    for (const r of scheduleRows ?? []) {
+      const cid = r.class_id as string;
+      const wd = r.day_of_week as number;
+      const arr = meetDaysByClass.get(cid) ?? [];
+      arr.push(wd);
+      meetDaysByClass.set(cid, arr);
+    }
+    for (const [k, v] of meetDaysByClass) {
+      meetDaysByClass.set(k, Array.from(new Set(v)).sort((a, b) => a - b));
+    }
+  }
 
   const textbooks: StudentTextbookUnits[] = rows.map((row) => {
     const chb = Array.isArray(row.class_homework_books)
@@ -340,13 +399,22 @@ export async function listUnitProgressByStudent(
       )
     ).sort();
 
+    const classId = pickClassId(row);
+    const meetDays = classId ? meetDaysByClass.get(classId) ?? [] : [];
+
     const expectedByUnit = new Map<number, string>();
-    if (startDate && homeworkDays.length > 0 && totalUnits > 0) {
+    if (
+      startDate &&
+      homeworkDays.length > 0 &&
+      meetDays.length > 0 &&
+      totalUnits > 0
+    ) {
       for (const s of getUnitSchedule({
         startDate,
         startUnit,
         totalUnits,
         homeworkDays,
+        meetDays,
         skipDates,
       })) {
         expectedByUnit.set(s.unit, s.date);
@@ -389,7 +457,8 @@ export async function listUnitProgressByStudent(
       cover_image_url: seriesRel?.cover_image_url ?? null,
       total_units: totalUnits,
       source: "class" as const,
-      hasSchedule: !!startDate && homeworkDays.length > 0,
+      hasSchedule:
+        !!startDate && homeworkDays.length > 0 && meetDays.length > 0,
       homeworkDays,
       units,
     };
