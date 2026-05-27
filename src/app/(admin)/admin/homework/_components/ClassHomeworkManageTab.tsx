@@ -18,6 +18,7 @@ import {
   unassignClassTextbook,
   bulkMarkUnits,
   getAbsentStudentIds,
+  listAcademyClosedDays,
 } from "@/app/(admin)/admin/actions";
 import type {
   ClassUnitProgressDetailed,
@@ -108,6 +109,7 @@ export function ClassHomeworkManageTab({
   const [absentStudentIds, setAbsentStudentIds] = useState<ReadonlySet<string>>(
     () => new Set(initialAbsentStudentIds)
   );
+  const [closedDates, setClosedDates] = useState<string[]>([]);
   const [isPending, startTransition] = useTransition();
   const [search, setSearch] = useState("");
   const [koreanTeacherId, setKoreanTeacherId] = useState<string | null>(null);
@@ -315,6 +317,17 @@ export function ClassHomeworkManageTab({
       await reloadAll(classId);
     });
   }
+
+  // 학원 공통 쉬는날 — 미리보기 채점일 계산에서 제외 (한 번만 로드).
+  useEffect(() => {
+    let alive = true;
+    listAcademyClosedDays().then((res) => {
+      if (alive) setClosedDates(res.days.map((d) => d.closed_date));
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (initialClassId === selectedClassId) return;
@@ -771,6 +784,8 @@ export function ClassHomeworkManageTab({
           classId={selectedClassId}
           textbooks={allTextbooks}
           assignedTextbookIds={assignedTextbookIds}
+          meetDays={progress.meetDays}
+          closedDates={closedDates}
           onClose={() => setAssignOpen(false)}
           onSaved={handleSaved}
         />
@@ -779,6 +794,8 @@ export function ClassHomeworkManageTab({
       {editTarget && (
         <EditClassHomeworkModal
           assignment={editTarget}
+          meetDays={progress.meetDays}
+          closedDates={closedDates}
           onClose={() => setEditTarget(null)}
           onSaved={handleSaved}
         />
