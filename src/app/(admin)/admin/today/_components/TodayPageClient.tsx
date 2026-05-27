@@ -86,8 +86,9 @@ export function TodayPageClient(props: Props): React.JSX.Element {
         <header>
           <h1 className="text-xl font-bold text-slate-900">오늘 수업</h1>
           <p className="mt-1 text-sm text-slate-500">
-            필터에 맞는 반들이 접힌 카드로 나옵니다. 반을 펼치면 학생별 출결 버튼 + 숙제
-            그리드가 함께 나옵니다. 결석 처리한 학생은 숙제 그리드가 자동 회색·비활성됩니다.
+            필터에 맞는 반들이 접힌 카드로 나옵니다. 반을 펼치면 <b>출결</b>·<b>숙제</b> 탭으로
+            나뉘고, 숙제 탭에선 부여된 책 중 하나를 골라 그 책만 체크합니다. 결석 처리한 학생은
+            숙제 그리드가 자동 회색·비활성됩니다.
           </p>
         </header>
       )}
