@@ -60,6 +60,8 @@ export type HomeworkClassPickerOption = {
   periodStartTime: string | null;
   /** 이 반에 부여된 책 (homework_books) id 목록. 시리즈/레벨 필터링용. */
   assignedTextbookIds: string[];
+  /** 배정된 책별 숙제(채점) 요일. 책(시리즈)마다 요일이 다를 수 있어 책 단위로 보존. 0=일 … 6=토. */
+  assignedBooks: { textbookId: string; homeworkDays: number[] }[];
 };
 
 /** 유치부 1st Period id 를 1회 조회해 캐시. createClass / updateClass 에서 kindergarten override 용. */
@@ -137,15 +139,20 @@ export async function listClassesForHomeworkPicker(): Promise<HomeworkClassPicke
     studentsByClass.set(row.class_id as string, list);
   }
 
-  // 반별 부여된 책(homework_books) id 매핑. 시리즈/레벨 필터링용.
+  // 반별 부여된 책(homework_books) id + 숙제 요일 매핑. 시리즈/레벨 필터링 + 요일 표시용.
   const { data: assignedRows, error: assignedErr } = await supabase
     .from("class_homework_books")
-    .select("class_id, textbook_id")
+    .select("class_id, textbook_id, homework_days")
     .in("class_id", classIds);
   if (assignedErr) {
     logger.error("[listClassesForHomeworkPicker assigned]", assignedErr.message);
   }
   const textbooksByClass = new Map<string, string[]>();
+  // 책(시리즈)마다 숙제 요일이 다를 수 있어 책 단위로 보존한다.
+  const booksByClass = new Map<
+    string,
+    { textbookId: string; homeworkDays: number[] }[]
+  >();
   for (const row of assignedRows ?? []) {
     const cid = row.class_id as string;
     const tbid = row.textbook_id as string | null;
@@ -153,6 +160,15 @@ export async function listClassesForHomeworkPicker(): Promise<HomeworkClassPicke
     const list = textbooksByClass.get(cid) ?? [];
     list.push(tbid);
     textbooksByClass.set(cid, list);
+
+    const books = booksByClass.get(cid) ?? [];
+    books.push({
+      textbookId: tbid,
+      homeworkDays: [...((row.homework_days as number[] | null) ?? [])].sort(
+        (a, b) => a - b
+      ),
+    });
+    booksByClass.set(cid, books);
   }
 
   return classes.map((c) => {
@@ -172,6 +188,7 @@ export async function listClassesForHomeworkPicker(): Promise<HomeworkClassPicke
       periodLabel: period?.name ?? null,
       periodStartTime: period?.start_time ?? null,
       assignedTextbookIds: textbooksByClass.get(c.id) ?? [],
+      assignedBooks: booksByClass.get(c.id) ?? [],
     };
   });
 }

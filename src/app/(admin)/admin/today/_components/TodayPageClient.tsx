@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { KST_DAY_LABELS } from "@/lib/utils/date-kst";
+import { CLASS_COLOR_PALETTE } from "@/lib/constants/class";
 import type {
   HomeworkClassPickerOption,
   TextbookWithSeries,
@@ -40,6 +41,22 @@ export function TodayPageClient(props: Props): React.JSX.Element {
     for (const t of props.textbooks) {
       const base = t.series_name ?? t.title;
       map[t.id] = t.level ? `${base} ${t.level}` : base;
+    }
+    return map;
+  }, [props.textbooks]);
+
+  // textbook id → 태그 색. 같은 시리즈는 같은 색(레벨 무관), 시리즈가 없으면 책별로.
+  const bookColors = useMemo(() => {
+    const seriesIndex = new Map<string, number>();
+    const map: Record<string, (typeof CLASS_COLOR_PALETTE)[number]> = {};
+    for (const t of props.textbooks) {
+      const key = t.series_id ?? t.id;
+      let idx = seriesIndex.get(key);
+      if (idx === undefined) {
+        idx = seriesIndex.size;
+        seriesIndex.set(key, idx);
+      }
+      map[t.id] = CLASS_COLOR_PALETTE[idx % CLASS_COLOR_PALETTE.length];
     }
     return map;
   }, [props.textbooks]);
@@ -195,6 +212,7 @@ export function TodayPageClient(props: Props): React.JSX.Element {
               cls={cls}
               editor={editor}
               bookLabels={bookLabels}
+              bookColors={bookColors}
               expanded={expanded.has(cls.id)}
               onToggle={(next) => toggleCard(cls.id, next)}
             />

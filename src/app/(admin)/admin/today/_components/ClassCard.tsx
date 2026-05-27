@@ -2,27 +2,42 @@
 
 import { useEffect } from "react";
 import { KST_DAY_LABELS } from "@/lib/utils/date-kst";
+import type { CLASS_COLOR_PALETTE } from "@/lib/constants/class";
 import type { HomeworkClassPickerOption } from "@/app/(admin)/admin/actions";
 import type { TodayClassEditor } from "../_hooks/useTodayClassEditor";
 import { StudentRow } from "./StudentRow";
+
+type BookColor = (typeof CLASS_COLOR_PALETTE)[number];
 
 type Props = {
   cls: HomeworkClassPickerOption;
   editor: TodayClassEditor;
   /** textbook id → 태그 라벨. */
   bookLabels: Record<string, string>;
+  /** textbook id → 태그 색 (시리즈 단위). */
+  bookColors: Record<string, BookColor>;
   /** 부모(전체 펼치기/접기) 제어용. */
   expanded: boolean;
   onToggle: (next: boolean) => void;
 };
 
-export function ClassCard({ cls, editor, bookLabels, expanded, onToggle }: Props) {
-  // 배정된 책 태그 (중복 라벨 제거, 접힌 상태에서도 표시).
-  const bookTags = [
-    ...new Set(
-      cls.assignedTextbookIds.map((id) => bookLabels[id]).filter(Boolean)
-    ),
-  ];
+export function ClassCard({
+  cls,
+  editor,
+  bookLabels,
+  bookColors,
+  expanded,
+  onToggle,
+}: Props) {
+  // 배정된 책 태그 — 시리즈별 색 + 책별 숙제 요일. 접힌 상태에서도 표시.
+  const bookTags = cls.assignedBooks
+    .map((b) => ({
+      id: b.textbookId,
+      label: bookLabels[b.textbookId],
+      color: bookColors[b.textbookId],
+      homeworkDays: b.homeworkDays,
+    }))
+    .filter((b) => b.label);
   const cache = editor.cache.get(cls.id);
   const loading = editor.isLoading(cls.id);
   const saving = editor.isSaving(cls.id);
@@ -91,12 +106,22 @@ export function ClassCard({ cls, editor, bookLabels, expanded, onToggle }: Props
           </div>
           {bookTags.length > 0 && (
             <div className="mt-1 flex flex-wrap gap-1">
-              {bookTags.map((label) => (
+              {bookTags.map((b) => (
                 <span
-                  key={label}
-                  className="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-700"
+                  key={b.id}
+                  className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[10px] font-medium ${b.color.bg} ${b.color.text} ${b.color.border}`}
                 >
-                  {label}
+                  {b.label}
+                  <span className="opacity-40">·</span>
+                  {b.homeworkDays.length > 0 ? (
+                    b.homeworkDays.map((d) => (
+                      <span key={d} className="font-bold">
+                        {KST_DAY_LABELS[d]}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="font-normal italic opacity-70">요일미정</span>
+                  )}
                 </span>
               ))}
             </div>
