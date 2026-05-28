@@ -55,8 +55,11 @@ export function AssignClassHomeworkModal({
   const [formError, setFormError] = useState<string | null>(null);
 
   const selectedTextbook = textbooks.find((t) => t.id === selectedTextbookId);
-  const maxUnit = selectedTextbook?.total_units ?? 1;
+  // F9 의 자매 fix: textbook 미선택 / total_units null 시 0 으로 폴백하고 `> 0` 분기.
+  const maxUnit = selectedTextbook?.total_units ?? 0;
   const startUnitNum = Number.parseInt(startUnit, 10);
+  const startUnitInvalid =
+    !Number.isInteger(startUnitNum) || startUnitNum < 1;
   const previewSkipDates = useMemo(
     () => Array.from(new Set([...skipDates, ...closedDates])),
     [skipDates, closedDates]
@@ -86,11 +89,11 @@ export function AssignClassHomeworkModal({
       setFormError("숙제를 선택해 주세요.");
       return;
     }
-    if (!Number.isFinite(startUnitNum) || startUnitNum < 1) {
+    if (startUnitInvalid) {
       setFormError("unit 은 1 이상의 정수여야 합니다.");
       return;
     }
-    if (selectedTextbook && startUnitNum > selectedTextbook.total_units) {
+    if (selectedTextbook && selectedTextbook.total_units > 0 && startUnitNum > selectedTextbook.total_units) {
       setFormError(
         `unit 은 ${selectedTextbook.total_units} 이하여야 합니다.`
       );
@@ -190,13 +193,13 @@ export function AssignClassHomeworkModal({
               <Input
                 type="number"
                 min={1}
-                max={maxUnit}
+                max={maxUnit > 0 ? maxUnit : undefined}
                 value={startUnit}
                 onChange={(e) => setStartUnit(e.target.value)}
                 disabled={isPending}
                 className="h-10"
               />
-              {selectedTextbook && (
+              {selectedTextbook && selectedTextbook.total_units > 0 && (
                 <p className="mt-1 text-xs text-slate-400">
                   / 총 {selectedTextbook.total_units} unit
                 </p>
@@ -270,7 +273,7 @@ export function AssignClassHomeworkModal({
             </label>
             <HomeworkSchedulePreview
               startDate={startDate}
-              startUnit={Number.isFinite(startUnitNum) ? startUnitNum : 1}
+              startUnit={startUnitNum}
               totalUnits={maxUnit}
               homeworkDays={homeworkDays}
               meetDays={meetDays}

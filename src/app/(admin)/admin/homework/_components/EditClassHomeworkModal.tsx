@@ -52,8 +52,12 @@ export function EditClassHomeworkModal({
   );
   const [formError, setFormError] = useState<string | null>(null);
 
-  const maxUnit = assignment.total_units ?? 1;
+  // F9: total_units 가 null/0 일 때(미확정) 1 로 폴백하면 valid 한 startUnit > 1
+  // 입력도 거부되는 버그. 0 으로 두고 분기에서 `> 0` 가드로 검사 스킵.
+  const maxUnit = assignment.total_units ?? 0;
   const startUnitNum = Number.parseInt(startUnit, 10);
+  const startUnitInvalid =
+    !Number.isInteger(startUnitNum) || startUnitNum < 1;
   const previewSkipDates = useMemo(
     () => Array.from(new Set([...skipDates, ...closedDates])),
     [skipDates, closedDates]
@@ -92,7 +96,7 @@ export function EditClassHomeworkModal({
 
   function handleSubmit() {
     setFormError(null);
-    if (!Number.isFinite(startUnitNum) || startUnitNum < 1) {
+    if (startUnitInvalid) {
       setFormError("unit 은 1 이상의 정수여야 합니다.");
       return;
     }
@@ -275,7 +279,7 @@ export function EditClassHomeworkModal({
             </label>
             <HomeworkSchedulePreview
               startDate={startDate}
-              startUnit={Number.isFinite(startUnitNum) ? startUnitNum : 1}
+              startUnit={startUnitNum}
               totalUnits={maxUnit}
               homeworkDays={homeworkDays}
               meetDays={meetDays}

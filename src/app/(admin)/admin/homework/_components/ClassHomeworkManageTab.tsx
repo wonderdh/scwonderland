@@ -319,11 +319,24 @@ export function ClassHomeworkManageTab({
   }
 
   // 학원 공통 쉬는날 — 미리보기 채점일 계산에서 제외 (한 번만 로드).
+  // F8: 에러 처리 + res.error 표면화. 실패 시 preview 가 학원 휴원일을 누락해
+  // 서버 결과와 달라질 수 있어 사용자에게 알린다.
   useEffect(() => {
     let alive = true;
-    listAcademyClosedDays().then((res) => {
-      if (alive) setClosedDates(res.days.map((d) => d.closed_date));
-    });
+    listAcademyClosedDays()
+      .then((res) => {
+        if (!alive) return;
+        if (res.error) {
+          toast.error(`학원 휴원일 로드 실패: ${res.error}`);
+          return;
+        }
+        setClosedDates(res.days.map((d) => d.closed_date));
+      })
+      .catch((e) => {
+        if (!alive) return;
+        toast.error("학원 휴원일 로드 실패");
+        console.error("[ClassHomeworkManageTab listAcademyClosedDays]", e);
+      });
     return () => {
       alive = false;
     };

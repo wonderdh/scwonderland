@@ -1,7 +1,11 @@
 "use client";
 
 import { useMemo } from "react";
-import { getUnitSchedule, ymdToKstWeekday } from "@/lib/utils/homework-schedule";
+import {
+  YMD_RE,
+  getUnitSchedule,
+  ymdToKstWeekday,
+} from "@/lib/utils/homework-schedule";
 
 const WD_LABELS = ["일", "월", "화", "수", "목", "금", "토"];
 const MONTH_LABELS = [
@@ -9,7 +13,9 @@ const MONTH_LABELS = [
   "7월", "8월", "9월", "10월", "11월", "12월",
 ];
 
+/** F14: malformed ymd 에 silent NaN/undefined 출력 방지. */
 function formatPreviewDate(ymd: string): string {
+  if (!YMD_RE.test(ymd)) return ymd; // 비정상 입력은 원문 표시 — silent "undefined" 회피
   const [, m, d] = ymd.split("-").map(Number);
   const wd = ymdToKstWeekday(ymd);
   return `${MONTH_LABELS[m - 1]} ${d}일 (${WD_LABELS[wd]})`;
@@ -44,8 +50,20 @@ export function HomeworkSchedulePreview({
   skipDates,
   limit = 8,
 }: Props) {
+  // F12: startUnit 이 invalid 면 silent fallback 대신 명시적 안내. F14: malformed startDate 도 차단.
+  const startUnitInvalid =
+    !Number.isInteger(startUnit) || startUnit < 1;
+  const startDateMalformed = !!startDate && !YMD_RE.test(startDate);
+
   const rows = useMemo(() => {
-    if (!startDate || homeworkDays.length === 0 || meetDays.length === 0 || totalUnits <= 0) {
+    if (
+      !startDate ||
+      startDateMalformed ||
+      startUnitInvalid ||
+      homeworkDays.length === 0 ||
+      meetDays.length === 0 ||
+      totalUnits <= 0
+    ) {
       return [];
     }
     const wd = ymdToKstWeekday(startDate);
@@ -60,7 +78,17 @@ export function HomeworkSchedulePreview({
     })
       .filter((r) => r.date >= startDate)
       .slice(0, limit);
-  }, [startDate, startUnit, totalUnits, homeworkDays, meetDays, skipDates, limit]);
+  }, [
+    startDate,
+    startDateMalformed,
+    startUnitInvalid,
+    startUnit,
+    totalUnits,
+    homeworkDays,
+    meetDays,
+    skipDates,
+    limit,
+  ]);
 
   if (homeworkDays.length === 0 || meetDays.length === 0) {
     return (
@@ -73,6 +101,23 @@ export function HomeworkSchedulePreview({
   }
   if (!startDate) {
     return <p className="text-xs text-slate-400">검사일을 선택하면 미리보기가 표시됩니다.</p>;
+  }
+  if (startDateMalformed) {
+    return <p className="text-xs text-amber-600">검사일 형식이 올바르지 않습니다.</p>;
+  }
+  if (startUnitInvalid) {
+    return (
+      <p className="text-xs text-amber-600">
+        검사 unit 을 1 이상의 정수로 입력하면 미리보기가 표시됩니다.
+      </p>
+    );
+  }
+  if (totalUnits <= 0) {
+    return (
+      <p className="text-xs text-amber-600">
+        총 unit 수가 확정되지 않아 미리보기를 만들 수 없습니다.
+      </p>
+    );
   }
   if (rows.length === 0) {
     return (
