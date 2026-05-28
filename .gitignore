@@ -75,6 +75,7 @@ supabase/snippets/
 supabase/seed.sql
 # 로컬 dump 산출물 (PII 가능성)
 /dump*.sql
+/tmp/
 
 # DB 백업 / cutover snapshot (PII + bcrypt hash 포함, commit 금지)
 backups/
