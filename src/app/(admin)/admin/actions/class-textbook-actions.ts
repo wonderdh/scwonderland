@@ -5,6 +5,10 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { verifyAdmin, verifyAuthenticated, verifyTeacherOrAdmin } from "./auth-helpers";
 import { logger } from "@/lib/server/logger";
 import type { Database } from "@/lib/types/database.generated";
+import {
+  isValidGradingDate,
+  GRADING_DATE_ERROR_MESSAGES,
+} from "@/lib/utils/homework-schedule";
 
 type ClassHomeworkBookRow =
   Database["public"]["Tables"]["class_homework_books"]["Row"];
@@ -75,6 +79,48 @@ function validateStartDate(s: string): { ok: true; value: string } | { ok: false
     return { ok: false, error: "시작 날짜는 평일(월~금)만 가능합니다." };
   }
   return { ok: true, value: s };
+}
+
+/**
+ * Strict 검사일 검증 — class_schedules.day_of_week + academy_closed_days + 책별 skip_dates 를
+ * 모아 isValidGradingDate(pure) 로 통과 여부 결정. 서버 액션 진입점에서 호출.
+ *
+ * `meetDays` 가 비어 있으면 (이 반에 등원 요일 미설정) 검사일을 의미있게 검증할 수 없으므로 reject.
+ */
+async function validateGradingDateForClass(
+  supabase: ReturnType<typeof createAdminClient>,
+  classId: string,
+  startDate: string,
+  skipDates: string[]
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { data: scheduleRows, error: scheduleErr } = await supabase
+    .from("class_schedules")
+    .select("day_of_week")
+    .eq("class_id", classId);
+  if (scheduleErr) {
+    logger.error("[validateGradingDateForClass schedules]", scheduleErr.message);
+    return { ok: false, error: "반 수업 요일을 불러오지 못했습니다." };
+  }
+  const meetDays = Array.from(
+    new Set((scheduleRows ?? []).map((r) => r.day_of_week as number))
+  ).sort((a, b) => a - b);
+  if (meetDays.length === 0) {
+    return {
+      ok: false,
+      error: "이 반의 수업 요일이 설정되어 있지 않아 검사일을 검증할 수 없습니다.",
+    };
+  }
+  const { data: closedRows, error: closedErr } = await supabase
+    .from("academy_closed_days")
+    .select("closed_date");
+  if (closedErr) {
+    logger.error("[validateGradingDateForClass closed]", closedErr.message);
+    return { ok: false, error: "학원 휴원일을 불러오지 못했습니다." };
+  }
+  const closedDates = (closedRows ?? []).map((r) => r.closed_date as string);
+  const v = isValidGradingDate(startDate, meetDays, closedDates, skipDates);
+  if (!v.ok) return { ok: false, error: GRADING_DATE_ERROR_MESSAGES[v.reason] };
+  return { ok: true };
 }
 
 type DaysPayload = {
@@ -165,7 +211,7 @@ export async function assignClassTextbook(
   let startUnit = 1;
   if (startUnitRaw) {
     const parsed = Number.parseInt(startUnitRaw, 10);
-    if (!Number.isFinite(parsed) || parsed < 1) {
+    if (!Number.isInteger(parsed) || parsed < 1) {
       return { error: "시작 unit 은 1 이상의 정수여야 합니다." };
     }
     startUnit = parsed;
@@ -205,6 +251,13 @@ export async function assignClassTextbook(
   }
 
   const supabase = createAdminClient();
+
+  // Strict 검사일 검증: 반의 등원 요일 ∩ ¬휴원일 ∩ ¬예외일.
+  if (startDate) {
+    const gv = await validateGradingDateForClass(supabase, classId, startDate, skipDates);
+    if (!gv.ok) return { error: gv.error };
+  }
+
   const { data, error } = await supabase
     .from("class_homework_books")
     .insert({
@@ -258,14 +311,43 @@ export async function updateClassTextbookDays(
     update.skip_dates = normalizeSkipDates(payload.skipDates);
   }
   if (payload.startUnit !== undefined) {
-    if (!Number.isFinite(payload.startUnit) || payload.startUnit < 1) {
+    if (!Number.isInteger(payload.startUnit) || payload.startUnit < 1) {
       return { error: "시작 unit 은 1 이상의 정수여야 합니다." };
     }
-    update.start_unit = Math.floor(payload.startUnit);
+    update.start_unit = payload.startUnit;
   }
   if (Object.keys(update).length === 0) return {};
 
   const supabase = createAdminClient();
+
+  // Strict 검사일 검증: startDate 가 새로 들어왔거나 payload 에 명시된 경우에만 수행.
+  // skipDates 가 payload 에 없으면 기존 row 값을 사용해서 검증한다.
+  if (typeof update.start_date === "string") {
+    const { data: chbRow, error: chbErr } = await supabase
+      .from("class_homework_books")
+      .select("class_id, skip_dates")
+      .eq("id", id)
+      .maybeSingle();
+    if (chbErr || !chbRow) {
+      logger.error(
+        "[updateClassTextbookDays chb lookup]",
+        chbErr?.message ?? "row not found"
+      );
+      return { error: chbErr?.message ?? "부여 정보를 찾을 수 없습니다." };
+    }
+    const effectiveSkipDates =
+      payload.skipDates !== undefined
+        ? normalizeSkipDates(payload.skipDates)
+        : ((chbRow.skip_dates as string[] | null) ?? []);
+    const gv = await validateGradingDateForClass(
+      supabase,
+      chbRow.class_id as string,
+      update.start_date,
+      effectiveSkipDates
+    );
+    if (!gv.ok) return { error: gv.error };
+  }
+
   const { error } = await supabase
     .from("class_homework_books")
     .update(update)

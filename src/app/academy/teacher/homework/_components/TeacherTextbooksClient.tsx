@@ -69,13 +69,13 @@ function EditDaysModal({
       return [];
     return getUnitSchedule({
       startDate,
-      startUnit: 1,
+      startUnit: assignment.start_unit ?? 1,
       totalUnits,
       homeworkDays,
       meetDays,
       skipDates: closedDates,
     }).slice(0, 7);
-  }, [startDate, startDateWeekend, totalUnits, homeworkDays, meetDays, closedDates]);
+  }, [startDate, startDateWeekend, totalUnits, homeworkDays, meetDays, closedDates, assignment.start_unit]);
 
   const MONTH_LABELS = [
     "1월", "2월", "3월", "4월", "5월", "6월", "7월", "8월", "9월", "10월", "11월", "12월",

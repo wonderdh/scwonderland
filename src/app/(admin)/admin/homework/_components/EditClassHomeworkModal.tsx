@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,7 +8,10 @@ import { Modal } from "@/components/overlays/Modal";
 import { updateClassTextbookDays } from "@/app/(admin)/admin/actions";
 import type { ClassTextbookWithDetails } from "@/app/(admin)/admin/actions";
 import { KST_DAY_LABELS, todayKst } from "@/lib/utils/date-kst";
-import { ymdToKstWeekday } from "@/lib/utils/homework-schedule";
+import {
+  GRADING_DATE_ERROR_MESSAGES,
+  isValidGradingDate,
+} from "@/lib/utils/homework-schedule";
 import { SkipDatesEditor } from "./SkipDatesEditor";
 import { HomeworkSchedulePreview } from "./HomeworkSchedulePreview";
 
@@ -51,7 +54,20 @@ export function EditClassHomeworkModal({
 
   const maxUnit = assignment.total_units ?? 1;
   const startUnitNum = Number.parseInt(startUnit, 10);
-  const previewSkipDates = Array.from(new Set([...skipDates, ...closedDates]));
+  const previewSkipDates = useMemo(
+    () => Array.from(new Set([...skipDates, ...closedDates])),
+    [skipDates, closedDates]
+  );
+
+  // Strict 검사일 검증 — 실시간으로 inline 에러 표시 + submit / applyToday 비활성에 사용.
+  const startDateValidation = useMemo(() => {
+    if (!startDate) return null;
+    return isValidGradingDate(startDate, meetDays, closedDates, skipDates);
+  }, [startDate, meetDays, closedDates, skipDates]);
+  const startDateError =
+    startDateValidation && !startDateValidation.ok
+      ? GRADING_DATE_ERROR_MESSAGES[startDateValidation.reason]
+      : null;
 
   function toggleDay(day: number) {
     setHomeworkDays((prev) =>
@@ -63,9 +79,11 @@ export function EditClassHomeworkModal({
 
   function applyToday() {
     const today = todayKst();
-    const wd = ymdToKstWeekday(today);
-    if (wd === 0 || wd === 6) {
-      setFormError("오늘은 주말이라 검사일로 지정할 수 없습니다.");
+    const gv = isValidGradingDate(today, meetDays, closedDates, skipDates);
+    if (!gv.ok) {
+      setFormError(
+        `오늘(${today})은 검사일로 지정할 수 없습니다 — ${GRADING_DATE_ERROR_MESSAGES[gv.reason]}`
+      );
       return;
     }
     setFormError(null);
@@ -83,9 +101,9 @@ export function EditClassHomeworkModal({
       return;
     }
     if (startDate) {
-      const wd = ymdToKstWeekday(startDate);
-      if (wd === 0 || wd === 6) {
-        setFormError("검사일은 평일만 가능합니다 (토/일 불가).");
+      const gv = isValidGradingDate(startDate, meetDays, closedDates, skipDates);
+      if (!gv.ok) {
+        setFormError(GRADING_DATE_ERROR_MESSAGES[gv.reason]);
         return;
       }
     }
@@ -158,7 +176,11 @@ export function EditClassHomeworkModal({
                 onChange={(e) => setStartDate(e.target.value)}
                 disabled={isPending}
                 className="h-10"
+                aria-invalid={startDateError ? true : undefined}
               />
+              {startDateError && (
+                <p className="mt-1 text-xs text-red-600">{startDateError}</p>
+              )}
               <button
                 type="button"
                 onClick={applyToday}
@@ -276,7 +298,11 @@ export function EditClassHomeworkModal({
             >
               취소
             </Button>
-            <Button type="button" onClick={handleSubmit} disabled={isPending}>
+            <Button
+              type="button"
+              onClick={handleSubmit}
+              disabled={isPending || !!startDateError}
+            >
               {isPending ? "저장 중..." : "저장"}
             </Button>
           </div>

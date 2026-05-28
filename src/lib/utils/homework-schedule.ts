@@ -66,6 +66,52 @@ export type UnitAssignment = {
   unit: number;
 };
 
+// ── 검사일(grading date) 검증 ────────────────────────────────────────────────
+
+export type GradingDateInvalidReason =
+  | "weekend"
+  | "not_meet_day"
+  | "closed_day"
+  | "skip_day";
+
+export type GradingDateValidation =
+  | { ok: true }
+  | { ok: false; reason: GradingDateInvalidReason };
+
+/** UI/서버 액션에서 그대로 쓸 수 있는 사용자 친화 한글 메시지. */
+export const GRADING_DATE_ERROR_MESSAGES: Record<GradingDateInvalidReason, string> = {
+  weekend: "검사일은 평일(월~금)이어야 합니다.",
+  not_meet_day: "검사일은 반의 수업 요일 중에서 선택해야 합니다.",
+  closed_day: "검사일이 학원 휴원일과 겹칩니다.",
+  skip_day: "검사일이 이 책의 예외일(skip)과 겹칩니다.",
+};
+
+/**
+ * 검사일(grading day) 유효성 검사 — 순수 함수.
+ *
+ *   - `weekend`: 토/일이면 무조건 reject.
+ *   - `not_meet_day`: 반의 등원 요일(`meetDays`)에 속해야 함. 빈 배열은 "정보 없음" 으로 보고 통과시킴 (서버 진입점에서 별도로 보장).
+ *   - `closed_day`: 학원 공통 휴원일 목록(`closedDates`)에 겹치면 reject.
+ *   - `skip_day`: 이 책의 책별 예외일(`skipDates`)에 겹치면 reject.
+ *
+ * date 는 YYYY-MM-DD KST 라고 가정 (서버 액션의 `ISO_DATE_RE` 통과 후 호출).
+ */
+export function isValidGradingDate(
+  date: string,
+  meetDays: number[],
+  closedDates: string[],
+  skipDates: string[]
+): GradingDateValidation {
+  const wd = ymdToKstWeekday(date);
+  if (wd === 0 || wd === 6) return { ok: false, reason: "weekend" };
+  if (meetDays.length > 0 && !meetDays.includes(wd)) {
+    return { ok: false, reason: "not_meet_day" };
+  }
+  if (closedDates.includes(date)) return { ok: false, reason: "closed_day" };
+  if (skipDates.includes(date)) return { ok: false, reason: "skip_day" };
+  return { ok: true };
+}
+
 /** YYYY-MM-DD 의 다음 날을 YYYY-MM-DD 로 반환 (KST 안전). */
 function nextDay(ymdStr: string): string {
   const [y, m, d] = ymdStr.split("-").map(Number);
@@ -124,7 +170,13 @@ export function getUnitSchedule(params: {
 
   const result: UnitAssignment[] = [];
   if (!startDate || !homeworkDays?.length || !meetDays?.length) return result;
-  if (startUnit > totalUnits) return result;
+  if (
+    !Number.isInteger(startUnit) ||
+    startUnit < 1 ||
+    startUnit > totalUnits
+  ) {
+    return result;
+  }
 
   const hwSet = new Set(homeworkDays);
   const meetSet = new Set(meetDays);

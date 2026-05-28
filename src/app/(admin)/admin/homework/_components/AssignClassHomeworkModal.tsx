@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,7 +9,10 @@ import { SeriesLevelPicker } from "@/components/forms/SeriesLevelPicker";
 import { assignClassTextbook } from "@/app/(admin)/admin/actions";
 import type { TextbookWithSeries } from "@/app/(admin)/admin/actions";
 import { KST_DAY_LABELS } from "@/lib/utils/date-kst";
-import { ymdToKstWeekday } from "@/lib/utils/homework-schedule";
+import {
+  GRADING_DATE_ERROR_MESSAGES,
+  isValidGradingDate,
+} from "@/lib/utils/homework-schedule";
 import { SkipDatesEditor } from "./SkipDatesEditor";
 import { HomeworkSchedulePreview } from "./HomeworkSchedulePreview";
 
@@ -54,7 +57,20 @@ export function AssignClassHomeworkModal({
   const selectedTextbook = textbooks.find((t) => t.id === selectedTextbookId);
   const maxUnit = selectedTextbook?.total_units ?? 1;
   const startUnitNum = Number.parseInt(startUnit, 10);
-  const previewSkipDates = Array.from(new Set([...skipDates, ...closedDates]));
+  const previewSkipDates = useMemo(
+    () => Array.from(new Set([...skipDates, ...closedDates])),
+    [skipDates, closedDates]
+  );
+
+  // Strict 검사일 검증 — 실시간으로 inline 에러 표시 + submit 비활성에 사용.
+  const startDateValidation = useMemo(() => {
+    if (!startDate) return null;
+    return isValidGradingDate(startDate, meetDays, closedDates, skipDates);
+  }, [startDate, meetDays, closedDates, skipDates]);
+  const startDateError =
+    startDateValidation && !startDateValidation.ok
+      ? GRADING_DATE_ERROR_MESSAGES[startDateValidation.reason]
+      : null;
 
   function toggleDay(day: number) {
     setHomeworkDays((prev) =>
@@ -81,9 +97,9 @@ export function AssignClassHomeworkModal({
       return;
     }
     if (startDate) {
-      const wd = ymdToKstWeekday(startDate);
-      if (wd === 0 || wd === 6) {
-        setFormError("검사일은 평일만 가능합니다 (토/일 불가).");
+      const gv = isValidGradingDate(startDate, meetDays, closedDates, skipDates);
+      if (!gv.ok) {
+        setFormError(GRADING_DATE_ERROR_MESSAGES[gv.reason]);
         return;
       }
     }
@@ -161,7 +177,11 @@ export function AssignClassHomeworkModal({
                 onChange={(e) => setStartDate(e.target.value)}
                 disabled={isPending}
                 className="h-10"
+                aria-invalid={startDateError ? true : undefined}
               />
+              {startDateError && (
+                <p className="mt-1 text-xs text-red-600">{startDateError}</p>
+              )}
             </div>
             <div>
               <label className="mb-1.5 block text-sm font-medium text-slate-700">
@@ -277,7 +297,11 @@ export function AssignClassHomeworkModal({
             >
               취소
             </Button>
-            <Button type="button" onClick={handleSubmit} disabled={isPending}>
+            <Button
+              type="button"
+              onClick={handleSubmit}
+              disabled={isPending || !!startDateError}
+            >
               {isPending ? "저장 중..." : "부여"}
             </Button>
           </div>

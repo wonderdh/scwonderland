@@ -16,7 +16,10 @@ import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { verifyAuthenticated, verifyTeacherOrAdmin } from "./auth-helpers";
 import { logger } from "@/lib/server/logger";
-import { getUnitSchedule } from "@/lib/utils/homework-schedule";
+import {
+  getUnitSchedule,
+  isValidGradingDate,
+} from "@/lib/utils/homework-schedule";
 
 export type UnitStatus = "pending" | "completed" | "missed";
 
@@ -231,6 +234,15 @@ export async function listClassUnitProgressDetailed(
       b.total_units <= 0
     )
       continue;
+    // Strict boundary 가드: invalid 검사일은 silent shift 하지 않고 expectedDate 를 비워 둔다.
+    const gv = isValidGradingDate(b.start_date, meetDays, closedDates, b.skip_dates);
+    if (!gv.ok) {
+      logger.warn(
+        "[listClassUnitProgressDetailed]",
+        `invalid grading date chb=${b.chbId} date=${b.start_date} reason=${gv.reason}`
+      );
+      continue;
+    }
     const schedule = getUnitSchedule({
       startDate: b.start_date,
       startUnit: b.start_unit,
@@ -432,15 +444,24 @@ export async function listUnitProgressByStudent(
       meetDays.length > 0 &&
       totalUnits > 0
     ) {
-      for (const s of getUnitSchedule({
-        startDate,
-        startUnit,
-        totalUnits,
-        homeworkDays,
-        meetDays,
-        skipDates: Array.from(new Set([...skipDates, ...closedDates])),
-      })) {
-        expectedByUnit.set(s.unit, s.date);
+      // Strict boundary 가드: invalid 검사일은 expectedDate 를 비워 둔다 (silent shift 금지).
+      const gv = isValidGradingDate(startDate, meetDays, closedDates, skipDates);
+      if (gv.ok) {
+        for (const s of getUnitSchedule({
+          startDate,
+          startUnit,
+          totalUnits,
+          homeworkDays,
+          meetDays,
+          skipDates: Array.from(new Set([...skipDates, ...closedDates])),
+        })) {
+          expectedByUnit.set(s.unit, s.date);
+        }
+      } else {
+        logger.warn(
+          "[listUnitProgressByStudent]",
+          `invalid grading date chb=${chb?.id ?? "?"} date=${startDate} reason=${gv.reason}`
+        );
       }
     }
 
