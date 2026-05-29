@@ -130,7 +130,7 @@ end\$\$;
 
 ### 5. 타입 재생성
 ```bash
-npm run db:types:local
+pnpm db:types:local
 ```
 
 ## 함정 모음

@@ -2,7 +2,7 @@
 #
 # 책임:
 #   - WorktreeCreate: repo 와 형제 디렉토리(..\worktrees\<name>) 에 worktree 생성,
-#     .env.local / .env.development.local 복사, 별도 pwsh 창에서 `npm run dev` 기동.
+#     .env.local / .env.development.local 복사, 별도 pwsh 창에서 `pnpm dev` 기동.
 #     stdout 마지막에 worktree 절대 경로만 출력 (Claude Code 가 새 세션의 cwd 로 사용).
 #   - WorktreeRemove: `git worktree remove --force` + `worktree-<name>` 브랜치 삭제.
 #
@@ -115,10 +115,10 @@ Set-Location -LiteralPath '$worktreePath'
 `$env:PORT = '$port'
 `$Host.UI.RawUI.WindowTitle = 'dev: $wtName (port $port)'
 if (-not (Test-Path -LiteralPath 'node_modules')) {
-    Write-Host '[worktree] node_modules missing, running npm install...' -ForegroundColor Yellow
-    npm install --prefer-offline --no-audit --no-fund
+    Write-Host '[worktree] node_modules missing, running pnpm install...' -ForegroundColor Yellow
+    pnpm install --prefer-offline
 }
-npm run dev
+pnpm dev
 "@
             Start-Process pwsh `
                 -ArgumentList @('-NoExit', '-NoProfile', '-Command', $devCmd) `

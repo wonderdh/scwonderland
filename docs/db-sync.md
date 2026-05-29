@@ -31,7 +31,7 @@ set -a; source .env.scripts; set +a
 
 ---
 
-## 2. Full sync — `npm run db:sync`
+## 2. Full sync — `pnpm db:sync`
 
 **언제**: cloud 데이터로 로컬을 동기화. 신규 user 만 비번 `"1111"`, 기존 로컬 user 비번은 자동 보존.
 
@@ -53,18 +53,18 @@ set -a; source .env.scripts; set +a
 ### 비밀번호 정책
 - 신규 user: `"1111"` 자동 (`scripts/sync-auth-from-cloud.mjs` 의 `PASSWORD` 기본값)
 - 기존 user: 비번 보존 (createUser 스킵)
-- 일괄 변경하려면 별도: `npm run db:reset-passwords`
+- 일괄 변경하려면 별도: `pnpm db:reset-passwords`
 
 ---
 
 ## 3. 타입 재생성
 
 ```bash
-npm run db:types:local
+pnpm db:types:local
 # = supabase gen types typescript --local > src/lib/types/database.generated.ts
 ```
 
-원격 직접 (클라우드 project_id 박힘): `npm run db:types`
+원격 직접 (클라우드 project_id 박힘): `pnpm db:types`
 
 ---
 
@@ -88,7 +88,7 @@ MSYS_NO_PATHCONV=1 docker exec supabase_db_scwonderland-local \
 
 ### 4-3. 앱으로 검증
 ```bash
-npm run dev
+pnpm dev
 ```
 임의 cloud user 이메일 + 비번 `"1111"` 로 로그인 가능한지.
 
@@ -98,7 +98,7 @@ npm run dev
 
 | 명령 / 파일 | 용도 |
 |------|------|
-| `npm run db:reset-passwords` | 로컬 전체 비번 `"1111"` 통일 (127.0.0.1 외 URL 은 `ALLOW_REMOTE=true` 필요) |
+| `pnpm db:reset-passwords` | 로컬 전체 비번 `"1111"` 통일 (127.0.0.1 외 URL 은 `ALLOW_REMOTE=true` 필요) |
 | `scripts/sync-auth-from-cloud.mjs` | sync-full 의 3단계. 단독 실행 가능 (auth 만 sync) |
 | Supabase Studio | `http://127.0.0.1:54323` |
 
@@ -113,7 +113,7 @@ npm run dev
 | `mcp__supabase__list_tables` / `execute_sql` | 클라우드 스키마/데이터 사전 점검 |
 | `mcp__supabase__list_migrations` | 클라우드의 마이그레이션 히스토리 확인 |
 | `mcp__supabase__get_advisors` | 마이그레이션 후 RLS/perf 권고 확인 |
-| `mcp__supabase__generate_typescript_types` | `npm run db:types` 대안 |
+| `mcp__supabase__generate_typescript_types` | `pnpm db:types` 대안 |
 
 `mcp__supabase__apply_migration` 은 로컬→클라우드 푸시용 — 이 방향에서는 사용 X.
 
@@ -124,11 +124,11 @@ npm run dev
 ```bash
 set -a; source .env.scripts; set +a
 supabase start                            # 한 번만
-npm run db:sync                           # cloud → local 전체 동기화
-npm run db:types:local                    # 타입 갱신
+pnpm db:sync                           # cloud → local 전체 동기화
+pnpm db:types:local                    # 타입 갱신
 ```
 
-Studio (`http://127.0.0.1:54323`) 또는 `npm run dev` 로 검증.
+Studio (`http://127.0.0.1:54323`) 또는 `pnpm dev` 로 검증.
 
 ---
 
@@ -138,8 +138,8 @@ Studio (`http://127.0.0.1:54323`) 또는 `npm run dev` 로 검증.
 
 ```bash
 set -a; source .env.scripts; set +a
-npm run db:sync
-npm run db:types:local
+pnpm db:sync
+pnpm db:types:local
 ```
 
 - 1단계 `db pull` 은 멱등 — 이미 받은 마이그레이션은 다시 안 받음.
@@ -153,7 +153,7 @@ npm run db:types:local
 
 1. `migrations/` 는 **git-tracked 스키마 진화 기록**. 36개 파일이 RLS/FK 컨벤션 패치 (`20260512000000_role_specific_fks.sql` 등) 포함.
 2. `supabase/AGENTS.md`: "RLS 정책 변경은 마이그레이션으로만. 수동 SQL 패치 금지."
-3. `CLAUDE.md`: "Supabase 마이그레이션은 `supabase/migrations/` 에 추가하고 `npm run db:types` 로 타입 재생성."
+3. `CLAUDE.md`: "Supabase 마이그레이션은 `supabase/migrations/` 에 추가하고 `pnpm db:types` 로 타입 재생성."
 4. 비우면 `db pull` 이 단일 baseline 으로만 받아옴 → 히스토리·맥락 손실.
 
 ### Q. cloud `schema_migrations` history mismatch 에러가 나면?
@@ -175,7 +175,7 @@ supabase migration repair --status applied  <ts1> <ts2> ...    # 파일만 있�
 
 ```bash
 set -a; source .env.scripts; set +a
-TARGET_PASSWORD=1111 npm run db:reset-passwords
+TARGET_PASSWORD=1111 pnpm db:reset-passwords
 ```
 
 > 주의: `supabase/config.toml` 의 `[auth] minimum_password_length` (현재 `4`) 이하로는 거부됨.

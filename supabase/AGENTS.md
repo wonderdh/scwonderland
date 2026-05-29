@@ -5,7 +5,7 @@
 ## 마이그레이션 흐름
 
 1. 새 SQL 파일을 `migrations/` 에 추가. 파일명 timestamp 규칙은 Supabase CLI 에 위임.
-2. `npm run db:types:local` (로컬) 또는 `npm run db:types` (원격) 으로 `src/lib/types/database.ts` 갱신.
+2. `pnpm db:types:local` (로컬) 또는 `pnpm db:types` (원격) 으로 `src/lib/types/database.ts` 갱신.
 3. 타입 변경 PR 에 같이 commit.
 
 ## FK 컨벤션 (중요)

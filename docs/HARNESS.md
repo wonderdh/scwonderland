@@ -104,7 +104,7 @@ cat C:/scwonderland/.claude/hooks/pre-tool-use.log | tail -10
 - `pre-tool-use.log`: 매 Edit/Write/MultiEdit 마다 `OK tool=... matched=N bytes=M file=...` 또는 `SKIP <reason>` / `FATAL <code>` / `WARN <code>` 한 줄.
 
 ### 빌드 영향
-`npm run lint`, `npm run type-check` 둘 다 exit 0. 하네스 파일은 전부 `src/` 밖이라 영향 없음.
+`pnpm lint`, `pnpm type-check` 둘 다 exit 0. 하네스 파일은 전부 `src/` 밖이라 영향 없음.
 
 ## v2 후보 (이번 범위 아님)
 

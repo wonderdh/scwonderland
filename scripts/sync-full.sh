@@ -10,7 +10,7 @@
 #
 # 비번 "1111" 정책:
 #   - 신규 user 만 비번 "1111" 로 생성. 기존 로컬 user 는 비번 보존.
-#   - 강제 일괄 변경하려면 별도로 npm run db:reset-passwords
+#   - 강제 일괄 변경하려면 별도로 pnpm db:reset-passwords
 #
 # 필요 env (.env.scripts):
 #   SOURCE_URL, SOURCE_SERVICE_KEY  (클라우드)
@@ -62,5 +62,5 @@ MSYS_NO_PATHCONV=1 docker exec "${DB_CONTAINER}" \
 echo ""
 echo "=== Full sync 완료 ==="
 echo "다음 단계:"
-echo "  npm run db:types:local  (타입 재생성)"
+echo "  pnpm db:types:local  (타입 재생성)"
 echo "  Studio: http://127.0.0.1:54323"

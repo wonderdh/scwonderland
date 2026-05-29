@@ -11,7 +11,7 @@
  * import 그래프 전이는 따지지 않음 — server action / route handler 안에서 호출되는 것은 정상.
  *
  * 운영:
- *   - `npm run check:admin-imports` 로 수동 실행.
+ *   - `pnpm check:admin-imports` 로 수동 실행.
  *   - PR / CI 에서 lint 와 함께 돌리면 됨.
  *   - 위반 1건이라도 있으면 exit 1.
  */

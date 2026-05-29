@@ -266,7 +266,7 @@
 
 ### TypeScript
 
-- **`database.generated.ts` 활용**: `Database` import 가 service 전반에 들어가 있음. 타입 자동 생성 (`npm run db:types`) 워크플로우 정착.
+- **`database.generated.ts` 활용**: `Database` import 가 service 전반에 들어가 있음. 타입 자동 생성 (`pnpm db:types`) 워크플로우 정착.
 - **`any` / `as` 사용량**: 248회 across 38 파일.
   - 대부분 `as const`, `as <TypeName>` (지정형 cast). `as any` 또는 raw `any` 는 grep 으로 추가 검증 필요.
   - hotspot: `homework-unit-actions.ts:28`, `class-actions.ts:18`, `series-actions.ts:17`, `user-actions.ts:23` — 도메인 매핑 결과를 cast 하는 패턴. Supabase 타입이 nested join 에서 잘 못 추론할 때 흔히 발생. 정당한 사용 가능성 높음.
@@ -317,9 +317,9 @@ const id = result.data.id;  // 타입상 string (narrowing)
 ### 현재 상태
 
 - **테스트 0건.** `package.json` 에 `test` script 없음. `vitest`/`jest`/`@testing-library` deps 없음.
-- **타입 체크 + lint 만**: `npm run type-check`, `npm run lint`.
+- **타입 체크 + lint 만**: `pnpm type-check`, `pnpm lint`.
 - **ESLint config**: `eslint-config-next` + `eslint-config-next/typescript` + `_` prefix unused 허용. 표준.
-- **마이그레이션 검증**: `npm run db:types`/`db:types:local` 로 타입 재생성하는 워크플로우만.
+- **마이그레이션 검증**: `pnpm db:types`/`db:types:local` 로 타입 재생성하는 워크플로우만.
 
 ### 위험도 순 테스트 우선순위
 

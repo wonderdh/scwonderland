@@ -1,0 +1,13 @@
+# pnpm 11 reads pnpm-specific settings here (it no longer reads the `pnpm`
+# field in package.json nor non-auth settings from .npmrc).
+
+# Mirror of package.json `pnpm.overrides` — this is the location pnpm 11 reads.
+overrides:
+  zod-to-json-schema: 3.24.6
+
+# Dependency build scripts left disabled (no native build needed for this
+# project). Set to true only if a package actually requires its postinstall.
+allowBuilds:
+  msw: false
+  sharp: false
+  unrs-resolver: false
