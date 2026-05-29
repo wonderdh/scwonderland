@@ -69,6 +69,20 @@ export type ClassUnitProgressDetailed = {
   error?: string;
 };
 
+/** 보드(시리즈·레벨)용 학생 1명 + 그 시리즈·레벨에 해당하는 책들. */
+export type BoardStudent = {
+  id: string; // students.id (= profiles.id)
+  korean_name: string | null;
+  english_name: string | null;
+  className: string; // 영어이름 중복 구분용. 여러 반이면 " · " 로 join.
+};
+
+export type SeriesLevelProgress = {
+  students: BoardStudent[]; // english_name 가나다(알파벳)순 정렬
+  byStudent: Record<string, StudentTextbookUnits[]>;
+  error?: string;
+};
+
 const REVALIDATE_PATHS = [
   "/admin/homework",
   "/m/homework",
@@ -342,6 +356,239 @@ export async function listClassUnitProgressDetailed(
   }
 
   return { students, byStudent, meetDays };
+}
+
+export async function listSeriesLevelProgress(
+  seriesId: string,
+  level?: string
+): Promise<SeriesLevelProgress> {
+  const auth = await verifyTeacherOrAdmin();
+  if ("error" in auth) return { students: [], byStudent: {}, error: auth.error };
+
+  const supabase = createAdminClient();
+
+  // 1. series + (선택) level 에 해당하는 homework_books id 들
+  let hbQuery = supabase
+    .from("homework_books")
+    .select("id, level, series_rel:series_id(name, total_units, cover_image_url)")
+    .eq("series_id", seriesId);
+  if (level !== undefined) hbQuery = hbQuery.eq("level", level);
+  const { data: hbRows, error: hbErr } = await hbQuery;
+  if (hbErr) {
+    logger.error("[listSeriesLevelProgress hb]", hbErr.message);
+    return { students: [], byStudent: {}, error: hbErr.message };
+  }
+  const homeworkBookIds = (hbRows ?? []).map((r) => r.id as string);
+  if (homeworkBookIds.length === 0) return { students: [], byStudent: {} };
+
+  // 2. 이 책들이 부여된 모든 반의 class_homework_books
+  const { data: chbRows, error: chbErr } = await supabase
+    .from("class_homework_books")
+    .select(
+      "id, class_id, textbook_id, start_date, homework_days, skip_dates, start_unit, classes!inner(name), homework_books!inner(title, level, series_rel:series_id(name, total_units, cover_image_url))"
+    )
+    .in("textbook_id", homeworkBookIds);
+  if (chbErr) {
+    logger.error("[listSeriesLevelProgress chb]", chbErr.message);
+    return { students: [], byStudent: {}, error: chbErr.message };
+  }
+
+  type BookMeta = {
+    chbId: string;
+    classId: string;
+    className: string;
+    title: string;
+    series_name: string | null;
+    level: string | null;
+    cover_image_url: string | null;
+    total_units: number;
+    start_date: string | null;
+    homework_days: number[];
+    skip_dates: string[];
+    start_unit: number;
+  };
+  const books: BookMeta[] = (chbRows ?? []).map((row) => {
+    const hb = Array.isArray(row.homework_books) ? row.homework_books[0] : row.homework_books;
+    const seriesRel = hb?.series_rel
+      ? Array.isArray(hb.series_rel)
+        ? hb.series_rel[0]
+        : hb.series_rel
+      : null;
+    const cls = Array.isArray(row.classes) ? row.classes[0] : row.classes;
+    const days = Array.from(
+      new Set(((row.homework_days as number[] | null | undefined) ?? []) as number[])
+    ).sort((a, b) => a - b);
+    const skips = Array.from(
+      new Set(((row.skip_dates as string[] | null | undefined) ?? []) as string[])
+    ).sort();
+    return {
+      chbId: row.id as string,
+      classId: row.class_id as string,
+      className: (cls as { name?: string } | null)?.name ?? "",
+      title: hb?.title ?? "",
+      series_name: seriesRel?.name ?? null,
+      level: hb?.level ?? null,
+      cover_image_url: seriesRel?.cover_image_url ?? null,
+      total_units: seriesRel?.total_units ?? 0,
+      start_date: (row.start_date as string | null) ?? null,
+      homework_days: days,
+      skip_dates: skips,
+      start_unit: (row.start_unit as number | null) ?? 1,
+    };
+  });
+  if (books.length === 0) return { students: [], byStudent: {} };
+
+  // 3. 반별 등원일(meetDays) 맵 (채점일 계산용) — listUnitProgressByStudent 패턴
+  const classIds = Array.from(new Set(books.map((b) => b.classId)));
+  const meetDaysByClass = new Map<string, number[]>();
+  {
+    const { data: scheduleRows, error: scheduleErr } = await supabase
+      .from("class_schedules")
+      .select("class_id, day_of_week")
+      .in("class_id", classIds);
+    if (scheduleErr) logger.error("[listSeriesLevelProgress schedules]", scheduleErr.message);
+    for (const r of scheduleRows ?? []) {
+      const cid = r.class_id as string;
+      const arr = meetDaysByClass.get(cid) ?? [];
+      arr.push(r.day_of_week as number);
+      meetDaysByClass.set(cid, arr);
+    }
+    for (const [k, v] of meetDaysByClass) {
+      meetDaysByClass.set(k, Array.from(new Set(v)).sort((a, b) => a - b));
+    }
+  }
+
+  const closedDates = await getClosedDates(supabase);
+
+  // 4. 책별 unit→채점일 맵 (listClassUnitProgressDetailed 와 동일, meetDays 만 반별)
+  const expectedByBook = new Map<string, Map<number, string>>();
+  for (const b of books) {
+    const meetDays = meetDaysByClass.get(b.classId) ?? [];
+    if (!b.start_date || b.homework_days.length === 0 || meetDays.length === 0 || b.total_units <= 0)
+      continue;
+    const gv = isValidGradingDate(b.start_date, meetDays, closedDates, b.skip_dates);
+    if (!gv.ok) {
+      logger.warn(
+        "[listSeriesLevelProgress]",
+        `invalid grading date chb=${b.chbId} date=${b.start_date} reason=${gv.reason}`
+      );
+      continue;
+    }
+    const schedule = getUnitSchedule({
+      startDate: b.start_date,
+      startUnit: b.start_unit,
+      totalUnits: b.total_units,
+      homeworkDays: b.homework_days,
+      meetDays,
+      skipDates: Array.from(new Set([...b.skip_dates, ...closedDates])),
+    });
+    const m = new Map<number, string>();
+    for (const s of schedule) m.set(s.unit, s.date);
+    expectedByBook.set(b.chbId, m);
+  }
+
+  // 5. 이 책들의 student_homework_books + 학생 + progress
+  const chbIds = books.map((b) => b.chbId);
+  const { data: shbRows, error: shbErr } = await supabase
+    .from("student_homework_books")
+    .select(
+      "id, class_homework_book_id, class_students!inner(student_id, students!inner(id, korean_name, english_name)), student_homework_progress(unit_number, status)"
+    )
+    .in("class_homework_book_id", chbIds);
+  if (shbErr) {
+    logger.error("[listSeriesLevelProgress shb]", shbErr.message);
+    return { students: [], byStudent: {}, error: shbErr.message };
+  }
+
+  const bookByChb = new Map(books.map((b) => [b.chbId, b]));
+  const studentMeta = new Map<string, BoardStudent>();
+  const classNamesByStudent = new Map<string, Set<string>>();
+  const byStudent: Record<string, StudentTextbookUnits[]> = {};
+
+  for (const shb of shbRows ?? []) {
+    const chbId = shb.class_homework_book_id as string;
+    const b = bookByChb.get(chbId);
+    if (!b) continue;
+    const cs = Array.isArray(shb.class_students) ? shb.class_students[0] : shb.class_students;
+    const stu = cs?.students
+      ? Array.isArray(cs.students)
+        ? cs.students[0]
+        : cs.students
+      : null;
+    const studentId = (stu as { id?: string } | null)?.id;
+    if (!studentId) continue;
+
+    if (!studentMeta.has(studentId)) {
+      studentMeta.set(studentId, {
+        id: studentId,
+        korean_name: (stu as { korean_name?: string | null }).korean_name ?? null,
+        english_name: (stu as { english_name?: string | null }).english_name ?? null,
+        className: "",
+      });
+    }
+    const cn = classNamesByStudent.get(studentId) ?? new Set<string>();
+    if (b.className) cn.add(b.className);
+    classNamesByStudent.set(studentId, cn);
+
+    // progress map
+    const statusByUnit = new Map<number, UnitStatus>();
+    const progress = Array.isArray(shb.student_homework_progress)
+      ? shb.student_homework_progress
+      : shb.student_homework_progress
+        ? [shb.student_homework_progress]
+        : [];
+    for (const p of progress) {
+      const status = (p as { status: string }).status;
+      const unit = (p as { unit_number: number }).unit_number;
+      if (typeof unit === "number" && isUnitStatus(status)) statusByUnit.set(unit, status);
+    }
+
+    const exp = expectedByBook.get(chbId);
+    const hasSchedule =
+      !!b.start_date &&
+      b.homework_days.length > 0 &&
+      (meetDaysByClass.get(b.classId)?.length ?? 0) > 0;
+    const units = Array.from({ length: Math.max(0, b.total_units) }, (_, i) => {
+      const unitNumber = i + 1;
+      return {
+        unitNumber,
+        status: statusByUnit.get(unitNumber) ?? ("pending" as UnitStatus),
+        expectedDate: exp?.get(unitNumber) ?? null,
+        completedAt: null,
+        note: null,
+      };
+    });
+
+    const tbEntry: StudentTextbookUnits = {
+      id: b.chbId,
+      title: b.title,
+      series_name: b.series_name,
+      level: b.level,
+      cover_image_url: b.cover_image_url,
+      total_units: b.total_units,
+      source: "class",
+      hasSchedule,
+      homeworkDays: b.homework_days,
+      units,
+    };
+    (byStudent[studentId] ??= []).push(tbEntry);
+  }
+
+  // 6. className 합치기 + english_name 정렬
+  for (const [studentId, meta] of studentMeta) {
+    meta.className = Array.from(classNamesByStudent.get(studentId) ?? [])
+      .sort()
+      .join(" · ");
+  }
+  const students = Array.from(studentMeta.values()).sort((a, b) => {
+    const ae = (a.english_name ?? "").toLowerCase();
+    const be = (b.english_name ?? "").toLowerCase();
+    if (ae && be && ae !== be) return ae.localeCompare(be);
+    if (ae !== be) return ae ? -1 : 1; // 영어이름 있는 쪽 먼저
+    return (a.korean_name ?? "").localeCompare(b.korean_name ?? "", "ko");
+  });
+
+  return { students, byStudent };
 }
 
 export async function listUnitProgressByStudent(

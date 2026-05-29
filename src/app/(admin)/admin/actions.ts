@@ -243,6 +243,7 @@ export {
   listUnitProgressByStudent,
   listUnitProgressByClass,
   listClassUnitProgressDetailed,
+  listSeriesLevelProgress,
   markUnit,
   bulkMarkUnits,
   clearUnit,
@@ -255,6 +256,8 @@ export type {
   StudentUnitProgressData,
   ClassUnitOverview,
   ClassUnitProgressDetailed,
+  BoardStudent,
+  SeriesLevelProgress,
 } from "./actions/homework-unit-actions";
 
 export {
