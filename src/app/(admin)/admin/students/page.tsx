@@ -21,7 +21,6 @@ import { StudentBusTab } from "./_components/StudentBusTab";
 import { StudentTimetableTab } from "./_components/StudentTimetableTab";
 import { StudentTextbookTab } from "./_components/StudentTextbookTab";
 import { TrashView } from "../_components/TrashView";
-import { BulkPasswordResetDialog } from "./_components/BulkPasswordResetDialog";
 
 const VALID_TABS: StudentTabId[] = ["basic", "learning", "schedule", "bus", "homework"];
 
@@ -78,7 +77,6 @@ export default async function AdminStudentsPage({
                   학생 목록
                   <span className="ml-2 text-base font-normal text-slate-500">{users.length}명</span>
                 </h2>
-                <BulkPasswordResetDialog users={users} />
               </div>
               <StudentGroupedList users={users} onUpdate={updateStudentProfile} onDelete={deleteUserById} />
             </section>

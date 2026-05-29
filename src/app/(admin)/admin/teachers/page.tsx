@@ -16,7 +16,6 @@ import { TeacherTabNav, type TeacherTabId } from "./_components/TeacherTabNav";
 import { TeacherClassesTab } from "./_components/TeacherClassesTab";
 import { TeacherTimetableTab } from "./_components/TeacherTimetableTab";
 import { TrashView } from "../_components/TrashView";
-import { BulkPasswordResetDialog } from "../students/_components/BulkPasswordResetDialog";
 import { PageHeader } from "@/components/navigation/PageHeader";
 
 const VALID_TABS: TeacherTabId[] = ["info", "classes", "timetable"];
@@ -99,7 +98,6 @@ export default async function AdminTeachersPage({
                   교사 목록
                   <span className="ml-2 text-base font-normal text-slate-500">{users.length}명</span>
                 </h2>
-                <BulkPasswordResetDialog users={users} variant="teacher" />
               </div>
               <UserList
                 users={users}
