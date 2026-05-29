@@ -16,6 +16,8 @@ import type {
 } from "@/app/(admin)/admin/actions";
 import type { TeacherOption } from "@/lib/types";
 import { ClassUnitProgressList } from "@/components/homework/ClassUnitProgressList";
+import { HomeworkBoard } from "@/components/homework/HomeworkBoard";
+import type { BoardSeriesOption, BoardLevelsBySeries } from "@/components/homework/HomeworkBoard";
 import { KST_DAY_LABELS, todayDowKst } from "@/lib/utils/date-kst";
 import { GROUP_TYPE_TO_LABEL } from "@/lib/constants/class";
 
@@ -54,6 +56,8 @@ type Props = {
   allTextbooks: TextbookWithSeries[];
   initialAbsentStudentIds: string[];
   todayKst: string;
+  seriesOptions: BoardSeriesOption[];
+  levelsBySeries: BoardLevelsBySeries;
 };
 
 export function MobileHomeworkClient({
@@ -64,7 +68,10 @@ export function MobileHomeworkClient({
   allTextbooks,
   initialAbsentStudentIds,
   todayKst,
+  seriesOptions,
+  levelsBySeries,
 }: Props) {
+  const [mode, setMode] = useState<"board" | "class">("board");
   const router = useRouter();
   const [selectedClassId, setSelectedClassId] = useState<string | null>(
     initialClassId
@@ -317,6 +324,27 @@ export function MobileHomeworkClient({
 
   return (
     <div className="space-y-4">
+      <div className="flex gap-1 rounded-lg bg-slate-100 p-1 text-sm">
+        <button
+          type="button"
+          onClick={() => setMode("board")}
+          className={`flex-1 rounded-md px-3 py-1.5 font-medium transition-colors ${mode === "board" ? "bg-white shadow-sm text-slate-900" : "text-slate-500"}`}
+        >
+          시리즈·레벨
+        </button>
+        <button
+          type="button"
+          onClick={() => setMode("class")}
+          className={`flex-1 rounded-md px-3 py-1.5 font-medium transition-colors ${mode === "class" ? "bg-white shadow-sm text-slate-900" : "text-slate-500"}`}
+        >
+          반별
+        </button>
+      </div>
+
+      {mode === "board" ? (
+        <HomeworkBoard seriesOptions={seriesOptions} levelsBySeries={levelsBySeries} todayKst={todayKst} />
+      ) : (
+        <>
       <div className="space-y-3">
         {/* 검색 */}
         <input
@@ -581,6 +609,8 @@ export function MobileHomeworkClient({
         loading={isPending}
         absentStudentIds={absentStudentIds}
       />
+        </>
+      )}
     </div>
   );
 }
