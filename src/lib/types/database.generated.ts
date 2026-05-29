@@ -101,37 +101,30 @@ export type Database = {
       }
       afterschool_enrollments: {
         Row: {
-          academy_period_id: string | null
           class_id: string
           created_at: string
           day_of_week: number
           id: string
+          second_period: boolean
           student_id: string
         }
         Insert: {
-          academy_period_id?: string | null
           class_id: string
           created_at?: string
           day_of_week: number
           id?: string
+          second_period?: boolean
           student_id: string
         }
         Update: {
-          academy_period_id?: string | null
           class_id?: string
           created_at?: string
           day_of_week?: number
           id?: string
+          second_period?: boolean
           student_id?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "afterschool_enrollments_academy_period_id_fkey"
-            columns: ["academy_period_id"]
-            isOneToOne: false
-            referencedRelation: "academy_periods"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "afterschool_enrollments_class_id_fkey"
             columns: ["class_id"]
