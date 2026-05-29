@@ -164,7 +164,7 @@ export function StudentReportTab({ studentProfileId }: { studentProfileId: strin
         </div>
         <div className="p-4 sm:p-5">
           {loading && (
-            <LoadingState label="저장 중..." className="py-0 mb-2" />
+            <LoadingState label="불러오는 중..." className="py-0 mb-2" />
           )}
           <label htmlFor="rc-content" className="sr-only">
             리포트 본문
