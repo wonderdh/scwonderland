@@ -66,6 +66,18 @@ export default async function AdminTextbooksPage({
     getAbsentStudentIds(today),
   ]);
 
+  const boardSeriesOptions = allSeriesList
+    .filter((s) => s.is_active)
+    .map((s) => ({ id: s.id, name: s.name }));
+  const boardLevelsBySeries: Record<string, string[]> = {};
+  for (const [sid, rows] of Object.entries(levelsBySeries)) {
+    const set = new Set<string>();
+    for (const r of rows) if (r.level) set.add(r.level);
+    boardLevelsBySeries[sid] = [...set].sort((a, b) =>
+      a.localeCompare(b, "ko", { numeric: true })
+    );
+  }
+
   return (
     <div className="flex flex-1 min-w-0 flex-col p-6 md:p-8">
       <PageHeader
@@ -88,6 +100,8 @@ export default async function AdminTextbooksPage({
           teachers={teachers}
           initialAbsentStudentIds={absentResult.studentIds}
           todayKst={today}
+          boardSeriesOptions={boardSeriesOptions}
+          boardLevelsBySeries={boardLevelsBySeries}
         />
       </Suspense>
     </div>
