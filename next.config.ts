@@ -38,6 +38,13 @@ const nextConfig: NextConfig = {
             },
           ]
         : []),
+      // 로컬 dev 라도 DB(운영 동기화)에 저장된 표지 URL 은 운영 supabase 호스트를
+      // 가리키므로, supabase.co 스토리지 public object 를 일괄 허용한다.
+      {
+        protocol: "https" as const,
+        hostname: "*.supabase.co",
+        pathname: "/storage/v1/object/public/**",
+      },
     ],
   },
 };
