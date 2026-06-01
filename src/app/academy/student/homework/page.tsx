@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { getCurrentStudentProfile } from "../../actions";
-import { listUnitProgressByStudent } from "@/app/(admin)/admin/actions";
+import { listUnitProgressByStudent } from "@/app/(admin)/admin/actions/homework-unit-actions";
 import { UnitProgressGrid } from "@/components/homework/UnitProgressGrid";
 
 export default async function StudentHomeworkPage() {

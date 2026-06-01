@@ -18,7 +18,7 @@ import {
   listBusTimeSlots,
   submitBusChangeRequest,
   cancelBusChangeRequest,
-} from "@/app/(admin)/admin/actions";
+} from "@/app/(admin)/admin/actions/bus-actions";
 import { BUS_REQUEST_STATUS_CONFIG } from "@/lib/constants/bus";
 import type { StudentSubmittableChangeType } from "@/lib/bus/state";
 

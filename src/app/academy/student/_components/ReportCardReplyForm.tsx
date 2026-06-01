@@ -1,6 +1,6 @@
 "use client";
 
-import { updateReportCardReply } from "@/app/(admin)/admin/actions";
+import { updateReportCardReply } from "@/app/(admin)/admin/actions/report-actions";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";

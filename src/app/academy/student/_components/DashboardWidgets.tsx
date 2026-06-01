@@ -1,6 +1,4 @@
-import {
-  getAttendanceStats,
-} from "@/app/(admin)/admin/actions";
+import { getAttendanceStats } from "@/app/(admin)/admin/actions/attendance-actions";
 import { getCurrentStudentClasses, getStudentMonthlyStats } from "../../actions";
 import {
   Card,
