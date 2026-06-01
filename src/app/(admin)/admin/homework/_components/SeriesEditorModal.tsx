@@ -11,11 +11,9 @@ import { LevelDropdown } from "./LevelDropdown";
 import {
   createSeries,
   updateSeries,
-} from "@/app/(admin)/admin/actions";
-import type {
-  SeriesWithPublisher,
-  SeriesLevelRow,
-} from "@/app/(admin)/admin/actions";
+  type SeriesWithPublisher,
+  type SeriesLevelRow,
+} from "@/app/(admin)/admin/actions/series-actions";
 import { convertImageToWebP } from "@/lib/supabase/storage";
 
 type PublisherOption = { id: string; name: string };

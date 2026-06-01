@@ -10,11 +10,9 @@ import { SeriesEditorModal } from "./SeriesEditorModal";
 import {
   deleteSeries,
   listSeriesLevels,
-} from "@/app/(admin)/admin/actions";
-import type {
-  SeriesWithPublisher,
-  SeriesLevelRow,
-} from "@/app/(admin)/admin/actions";
+  type SeriesWithPublisher,
+  type SeriesLevelRow,
+} from "@/app/(admin)/admin/actions/series-actions";
 
 type PublisherOption = { id: string; name: string };
 

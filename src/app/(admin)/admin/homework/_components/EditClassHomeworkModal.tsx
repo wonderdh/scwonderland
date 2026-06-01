@@ -5,8 +5,10 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/overlays/Modal";
-import { updateClassTextbookDays } from "@/app/(admin)/admin/actions";
-import type { ClassTextbookWithDetails } from "@/app/(admin)/admin/actions";
+import {
+  updateClassTextbookDays,
+  type ClassTextbookWithDetails,
+} from "@/app/(admin)/admin/actions/class-textbook-actions";
 import { KST_DAY_LABELS, todayKst } from "@/lib/utils/date-kst";
 import {
   GRADING_DATE_ERROR_MESSAGES,
