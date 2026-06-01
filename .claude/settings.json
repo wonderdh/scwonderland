@@ -3,65 +3,65 @@
     "SessionStart": [
       {
         "hooks": [
-          {
-            "type": "command",
-            "command": "node .claude/hooks/session-start.mjs"
-          }
+          { "type": "command", "command": "uv run .claude/hooks/send_event.py --source-app scwonderland --event-type SessionStart" }
         ]
-      },
+      }
+    ],
+    "UserPromptSubmit": [
       {
-        "matcher": "",
         "hooks": [
-          {
-            "type": "command",
-            "command": "git rev-parse --git-dir >/dev/null 2>&1 && code-review-graph status --repo \"C:/scwonderland\" || echo 'Not a git repo, skipping'",
-            "timeout": 10
-          }
+          { "type": "command", "command": "uv run .claude/hooks/send_event.py --source-app scwonderland --event-type UserPromptSubmit" }
         ]
       }
     ],
     "PreToolUse": [
       {
-        "matcher": "Edit|Write|MultiEdit",
+        "matcher": "",
         "hooks": [
-          {
-            "type": "command",
-            "command": "node .claude/hooks/pre-tool-use-agents.mjs"
-          }
+          { "type": "command", "command": "uv run .claude/hooks/send_event.py --source-app scwonderland --event-type PreToolUse" }
         ]
       }
     ],
     "PostToolUse": [
       {
-        "matcher": "Edit|Write|Bash",
+        "matcher": "",
         "hooks": [
-          {
-            "type": "command",
-            "command": "git rev-parse --git-dir >/dev/null 2>&1 && code-review-graph update --skip-flows --repo \"C:/scwonderland\" || true",
-            "timeout": 30
-          }
+          { "type": "command", "command": "uv run .claude/hooks/send_event.py --source-app scwonderland --event-type PostToolUse" }
         ]
       }
     ],
-    "WorktreeCreate": [
+    "Notification": [
       {
         "hooks": [
-          {
-            "type": "command",
-            "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File \".claude/hooks/worktree.ps1\"",
-            "timeout": 30
-          }
+          { "type": "command", "command": "uv run .claude/hooks/send_event.py --source-app scwonderland --event-type Notification" }
         ]
       }
     ],
-    "WorktreeRemove": [
+    "Stop": [
       {
         "hooks": [
-          {
-            "type": "command",
-            "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File \".claude/hooks/worktree.ps1\"",
-            "timeout": 15
-          }
+          { "type": "command", "command": "uv run .claude/hooks/send_event.py --source-app scwonderland --event-type Stop --add-chat" }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          { "type": "command", "command": "uv run .claude/hooks/send_event.py --source-app scwonderland --event-type SubagentStop" }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          { "type": "command", "command": "uv run .claude/hooks/send_event.py --source-app scwonderland --event-type PreCompact" }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          { "type": "command", "command": "uv run .claude/hooks/send_event.py --source-app scwonderland --event-type SessionEnd" }
         ]
       }
     ]
