@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { KST_DAY_LABELS } from "@/lib/utils/date-kst";
 import type { CLASS_COLOR_PALETTE } from "@/lib/constants/class";
-import type { HomeworkClassPickerOption } from "@/app/(admin)/admin/actions";
+import type { HomeworkClassPickerOption } from "@/app/(admin)/admin/actions/class-actions";
 import type { TodayClassEditor } from "../_hooks/useTodayClassEditor";
 import { StudentRow } from "./StudentRow";
 

@@ -4,15 +4,15 @@ import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
   listClassUnitProgressDetailed,
-  getClassStudentsWithAttendance,
   bulkMarkUnits,
+  type ClassUnitProgressDetailed,
+  type UnitStatus,
+} from "@/app/(admin)/admin/actions/homework-unit-actions";
+import {
+  getClassStudentsWithAttendance,
   bulkRecordAttendance,
-} from "@/app/(admin)/admin/actions";
-import type {
-  HomeworkClassPickerOption,
-  ClassUnitProgressDetailed,
-  UnitStatus,
-} from "@/app/(admin)/admin/actions";
+} from "@/app/(admin)/admin/actions/attendance-actions";
+import type { HomeworkClassPickerOption } from "@/app/(admin)/admin/actions/class-actions";
 import type { StudentWithAttendance } from "@/lib/types";
 import type { AttendanceStatus } from "@/lib/constants/attendance";
 

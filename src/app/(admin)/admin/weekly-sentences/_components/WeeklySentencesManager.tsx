@@ -16,7 +16,7 @@ import {
   deleteWeeklySentence,
   bulkImportWeeklySentences,
   updateWeeklySentenceConfig,
-} from "@/app/(admin)/admin/actions";
+} from "@/app/(admin)/admin/actions/weekly-sentence-actions";
 import { WEEKLY_SENTENCE_LEVELS } from "@/lib/constants/weekly-sentence";
 import { computeAutoWeekNumber } from "@/lib/utils/weekly-sentence-week";
 import type { WeeklySentence, WeeklySentenceConfig } from "@/lib/types";

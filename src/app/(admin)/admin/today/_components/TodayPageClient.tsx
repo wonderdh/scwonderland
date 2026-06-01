@@ -3,10 +3,8 @@
 import { useMemo, useState } from "react";
 import { KST_DAY_LABELS } from "@/lib/utils/date-kst";
 import { CLASS_COLOR_PALETTE } from "@/lib/constants/class";
-import type {
-  HomeworkClassPickerOption,
-  TextbookWithSeries,
-} from "@/app/(admin)/admin/actions";
+import type { HomeworkClassPickerOption } from "@/app/(admin)/admin/actions/class-actions";
+import type { TextbookWithSeries } from "@/app/(admin)/admin/actions/textbook-actions";
 import {
   useTodayClassEditor,
   type GroupFilter,

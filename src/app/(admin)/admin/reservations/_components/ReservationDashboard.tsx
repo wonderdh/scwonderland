@@ -16,10 +16,12 @@ import { ConfirmDialog } from "@/components/overlays/ConfirmDialog";
 import { BUS_CHANGE_TYPE_CONFIG } from "@/lib/constants/bus";
 import {
   bulkReserveAttendance,
-  bulkCreateBusChanges,
   deleteAttendance,
+} from "@/app/(admin)/admin/actions/attendance-actions";
+import {
+  bulkCreateBusChanges,
   deleteAdminBusChange,
-} from "@/app/(admin)/admin/actions";
+} from "@/app/(admin)/admin/actions/bus-actions";
 import type {
   ReservationAttendance,
   ReservationBusChange,

@@ -1,9 +1,9 @@
+import { getUpcomingReservations } from "@/app/(admin)/admin/actions/reservation-actions";
+import { listAllStudents } from "@/app/(admin)/admin/actions/user-actions";
 import {
-  getUpcomingReservations,
-  listAllStudents,
   listBusNumbers,
   listBusTimeSlots,
-} from "@/app/(admin)/admin/actions";
+} from "@/app/(admin)/admin/actions/bus-actions";
 import { PageHeader } from "@/components/navigation/PageHeader";
 import { ReservationDashboard } from "./_components/ReservationDashboard";
 
