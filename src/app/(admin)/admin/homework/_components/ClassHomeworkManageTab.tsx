@@ -14,19 +14,19 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/overlays/ConfirmDialog";
 import {
   listClassUnitProgressDetailed,
-  listClassTextbooks,
-  unassignClassTextbook,
   bulkMarkUnits,
   getAbsentStudentIds,
-  listAcademyClosedDays,
-} from "@/app/(admin)/admin/actions";
-import type {
-  ClassUnitProgressDetailed,
-  ClassTextbookWithDetails,
-  HomeworkClassPickerOption,
-  UnitStatus,
-  TextbookWithSeries,
-} from "@/app/(admin)/admin/actions";
+  type ClassUnitProgressDetailed,
+  type UnitStatus,
+} from "@/app/(admin)/admin/actions/homework-unit-actions";
+import {
+  listClassTextbooks,
+  unassignClassTextbook,
+  type ClassTextbookWithDetails,
+} from "@/app/(admin)/admin/actions/class-textbook-actions";
+import { listAcademyClosedDays } from "@/app/(admin)/admin/actions/closed-days-actions";
+import type { HomeworkClassPickerOption } from "@/app/(admin)/admin/actions/class-actions";
+import type { TextbookWithSeries } from "@/app/(admin)/admin/actions/textbook-actions";
 import type { TeacherOption } from "@/lib/types";
 import { ClassUnitProgressList } from "@/components/homework/ClassUnitProgressList";
 import { KST_DAY_LABELS, todayDowKst } from "@/lib/utils/date-kst";

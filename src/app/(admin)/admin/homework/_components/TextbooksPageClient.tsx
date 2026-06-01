@@ -4,22 +4,36 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { SeriesCardsManager } from "./SeriesCardsManager";
 import { ClassHomeworkManageTab } from "./ClassHomeworkManageTab";
+import { HomeworkBoard } from "@/components/homework/HomeworkBoard";
 import type {
-  TextbookWithSeries,
+  BoardSeriesOption,
+  BoardLevelsBySeries,
+} from "@/components/homework/HomeworkBoard";
+import type {
+  HomeworkClassPickerOption,
+} from "@/app/(admin)/admin/actions/class-actions";
+import type {
+  ClassTextbookWithDetails,
+} from "@/app/(admin)/admin/actions/class-textbook-actions";
+import type {
+  ClassUnitProgressDetailed,
+} from "@/app/(admin)/admin/actions/homework-unit-actions";
+import type {
   SeriesWithPublisher,
   SeriesLevelRow,
-  ClassUnitProgressDetailed,
-  ClassTextbookWithDetails,
-  HomeworkClassPickerOption,
-} from "../../actions";
+} from "@/app/(admin)/admin/actions/series-actions";
+import type {
+  TextbookWithSeries,
+} from "@/app/(admin)/admin/actions/textbook-actions";
 import type { TeacherOption } from "@/lib/types";
 
 type PublisherOption = { id: string; name: string };
 type ClassOption = HomeworkClassPickerOption;
 
-type TabId = "textbooks" | "class";
+type TabId = "board" | "textbooks" | "class";
 
 const TABS: { id: TabId; label: string }[] = [
+  { id: "board", label: "시리즈·레벨" },
   { id: "textbooks", label: "숙제" },
   { id: "class", label: "반 숙제 관리" },
 ];
@@ -27,7 +41,8 @@ const TABS: { id: TabId; label: string }[] = [
 function parseTab(tab: string | null | undefined): TabId {
   // 레거시 "check" / "series" URL 호환
   if (tab === "class" || tab === "check") return "class";
-  return "textbooks";
+  if (tab === "textbooks" || tab === "series") return "textbooks";
+  return "board";
 }
 
 export function TextbooksPageClient({
@@ -42,6 +57,8 @@ export function TextbooksPageClient({
   teachers,
   initialAbsentStudentIds,
   todayKst,
+  boardSeriesOptions,
+  boardLevelsBySeries,
 }: {
   allSeriesList: SeriesWithPublisher[];
   levelsBySeries: Record<string, SeriesLevelRow[]>;
@@ -54,6 +71,8 @@ export function TextbooksPageClient({
   teachers: TeacherOption[];
   initialAbsentStudentIds: string[];
   todayKst: string;
+  boardSeriesOptions: BoardSeriesOption[];
+  boardLevelsBySeries: BoardLevelsBySeries;
 }) {
   const searchParams = useSearchParams();
   const currentTab = parseTab(searchParams.get("tab"));
@@ -66,7 +85,7 @@ export function TextbooksPageClient({
           <Link
             key={t.id}
             href={
-              t.id === "textbooks"
+              t.id === "board"
                 ? "/admin/homework"
                 : `/admin/homework?tab=${t.id}`
             }
@@ -82,7 +101,13 @@ export function TextbooksPageClient({
       </nav>
 
       {/* Tab content */}
-      {currentTab === "textbooks" ? (
+      {currentTab === "board" ? (
+        <HomeworkBoard
+          seriesOptions={boardSeriesOptions}
+          levelsBySeries={boardLevelsBySeries}
+          todayKst={todayKst}
+        />
+      ) : currentTab === "textbooks" ? (
         <SeriesCardsManager
           initialSeries={allSeriesList}
           initialLevelsBySeries={levelsBySeries}

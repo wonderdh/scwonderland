@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import type { BusChangeRequest } from "@/lib/types";
-import { listChangeRequestsByDate } from "@/app/(admin)/admin/actions";
+import { listChangeRequestsByDate } from "@/app/(admin)/admin/actions/bus-actions";
 import { useBusRealtime } from "@/lib/hooks/use-bus-realtime";
 import { formatStudentName } from "@/lib/utils/student-name";
 import { todayKst } from "@/lib/utils/date-kst";

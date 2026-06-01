@@ -6,7 +6,7 @@ import { ExternalLink } from "lucide-react";
 import type {
   SeriesWithPublisher,
   SeriesLevelRow,
-} from "@/app/(admin)/admin/actions";
+} from "@/app/(admin)/admin/actions/series-actions";
 
 type Props = {
   series: SeriesWithPublisher;

@@ -1,11 +1,15 @@
 import { redirect } from "next/navigation";
 import {
   getAllClassStudentsFlat,
-  listAllStudents,
   listClassesWithDetails,
   listTeachersForSelect,
+} from "@/app/(admin)/admin/actions/class-actions";
+import {
   listAcademyPeriods,
-} from "../actions";
+} from "@/app/(admin)/admin/actions/timetable-actions";
+import {
+  listAllStudents,
+} from "@/app/(admin)/admin/actions/user-actions";
 import { ClassesPageClient } from "./_components/ClassesPageClient";
 
 export default async function AdminClassesPage({

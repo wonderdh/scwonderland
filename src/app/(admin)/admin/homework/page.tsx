@@ -1,14 +1,24 @@
 import {
+  listClassesForHomeworkPicker,
+  listTeachersForSelect,
+} from "@/app/(admin)/admin/actions/class-actions";
+import {
+  listClassTextbooks,
+} from "@/app/(admin)/admin/actions/class-textbook-actions";
+import {
+  listClassUnitProgressDetailed,
+  getAbsentStudentIds,
+} from "@/app/(admin)/admin/actions/homework-unit-actions";
+import {
+  listPublishers,
+} from "@/app/(admin)/admin/actions/publisher-actions";
+import {
   listAllSeries,
   listLevelsBySeries,
-  listPublishers,
-  listClassesForHomeworkPicker,
-  listClassUnitProgressDetailed,
-  listClassTextbooks,
+} from "@/app/(admin)/admin/actions/series-actions";
+import {
   listTextbooks,
-  listTeachersForSelect,
-  getAbsentStudentIds,
-} from "../actions";
+} from "@/app/(admin)/admin/actions/textbook-actions";
 import { todayKst } from "@/lib/utils/date-kst";
 import { PageHeader } from "@/components/navigation/PageHeader";
 import { TextbooksPageClient } from "./_components/TextbooksPageClient";
@@ -66,6 +76,18 @@ export default async function AdminTextbooksPage({
     getAbsentStudentIds(today),
   ]);
 
+  const boardSeriesOptions = allSeriesList
+    .filter((s) => s.is_active)
+    .map((s) => ({ id: s.id, name: s.name }));
+  const boardLevelsBySeries: Record<string, string[]> = {};
+  for (const [sid, rows] of Object.entries(levelsBySeries)) {
+    const set = new Set<string>();
+    for (const r of rows) if (r.level) set.add(r.level);
+    boardLevelsBySeries[sid] = [...set].sort((a, b) =>
+      a.localeCompare(b, "ko", { numeric: true })
+    );
+  }
+
   return (
     <div className="flex flex-1 min-w-0 flex-col p-6 md:p-8">
       <PageHeader
@@ -88,6 +110,8 @@ export default async function AdminTextbooksPage({
           teachers={teachers}
           initialAbsentStudentIds={absentResult.studentIds}
           todayKst={today}
+          boardSeriesOptions={boardSeriesOptions}
+          boardLevelsBySeries={boardLevelsBySeries}
         />
       </Suspense>
     </div>

@@ -1,4 +1,7 @@
-import { listAllClassesReportStatus, listUntranslatedReports } from "../actions";
+import {
+  listAllClassesReportStatus,
+  listUntranslatedReports,
+} from "@/app/(admin)/admin/actions/report-actions";
 import { ReportTranslateManager } from "./_components/ReportTranslateManager";
 import Link from "next/link";
 

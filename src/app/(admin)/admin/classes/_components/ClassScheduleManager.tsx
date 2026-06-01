@@ -11,7 +11,7 @@ import {
   addSingleClassSchedule,
   deleteClassSchedule,
   listClassSchedules,
-} from "../../actions";
+} from "@/app/(admin)/admin/actions/schedule-actions";
 import { LoadingState } from "@/components/feedback/LoadingState";
 import { Spinner } from "@/components/feedback/Spinner";
 import { GROUP_ORDER, GROUP_TYPE_TO_LABEL } from "@/lib/constants/class";

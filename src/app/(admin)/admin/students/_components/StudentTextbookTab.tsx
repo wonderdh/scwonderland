@@ -11,12 +11,15 @@ import { Modal } from "@/components/overlays/Modal";
 import { SeriesLevelPicker } from "@/components/forms/SeriesLevelPicker";
 import { KST_DAY_LABELS } from "@/lib/utils/date-kst";
 import {
-  listTextbooks,
   listStudentTextbooks,
   assignStudentTextbook,
   unassignStudentTextbook,
-} from "../../actions";
-import type { StudentTextbookWithDetails } from "../../actions";
+  type StudentTextbookWithDetails,
+} from "@/app/(admin)/admin/actions/class-textbook-actions";
+import {
+  listTextbooks,
+} from "@/app/(admin)/admin/actions/textbook-actions";
+
 import type { Database } from "@/lib/types/database.generated";
 
 type TextbookRow = Database["public"]["Tables"]["homework_books"]["Row"] & {

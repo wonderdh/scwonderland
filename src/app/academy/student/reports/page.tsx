@@ -1,7 +1,7 @@
 import {
   getReportCard,
   listReportCardsByStudent,
-} from "@/app/(admin)/admin/actions";
+} from "@/app/(admin)/admin/actions/report-actions";
 import type { ReportCard } from "@/lib/types";
 import { getCurrentStudentProfile } from "../../actions";
 import Link from "next/link";

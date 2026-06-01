@@ -1,11 +1,17 @@
 import Link from "next/link";
 import {
   listClassesForHomeworkPicker,
-  listClassUnitProgressDetailed,
   listTeachersForSelect,
-  listTextbooks,
+} from "@/app/(admin)/admin/actions/class-actions";
+import {
+  listClassUnitProgressDetailed,
   getAbsentStudentIds,
-} from "@/app/(admin)/admin/actions";
+} from "@/app/(admin)/admin/actions/homework-unit-actions";
+import { listTextbooks } from "@/app/(admin)/admin/actions/textbook-actions";
+import {
+  listSeries,
+  listLevelsBySeries,
+} from "@/app/(admin)/admin/actions/series-actions";
 import { MobileHomeworkClient } from "./_components/MobileHomeworkClient";
 import { todayKst } from "@/lib/utils/date-kst";
 
@@ -15,11 +21,21 @@ export default async function MobileHomeworkPage({
   searchParams: Promise<{ class?: string }>;
 }) {
   const today = todayKst();
-  const [classOptions, teachers, allTextbooks] = await Promise.all([
+  const [classOptions, teachers, allTextbooks, seriesList, levelsRaw] = await Promise.all([
     listClassesForHomeworkPicker(),
     listTeachersForSelect(),
     listTextbooks(),
+    listSeries({ activeOnly: true }),
+    listLevelsBySeries(),
   ]);
+
+  const seriesOptions = seriesList.map((s) => ({ id: s.id, name: s.name }));
+  const levelsBySeries: Record<string, string[]> = {};
+  for (const [sid, rows] of Object.entries(levelsRaw)) {
+    const set = new Set<string>();
+    for (const r of rows) if (r.level) set.add(r.level);
+    levelsBySeries[sid] = [...set].sort((a, b) => a.localeCompare(b, "ko", { numeric: true }));
+  }
   const params = await searchParams;
   const initialClassId =
     params.class && classOptions.find((c) => c.id === params.class)
@@ -66,6 +82,8 @@ export default async function MobileHomeworkPage({
           allTextbooks={allTextbooks}
           initialAbsentStudentIds={absentResult.studentIds}
           todayKst={today}
+          seriesOptions={seriesOptions}
+          levelsBySeries={levelsBySeries}
         />
       </div>
     </div>

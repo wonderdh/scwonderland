@@ -8,7 +8,7 @@ import {
   enrollStudent,
   removeAfterschoolStudent,
   bulkUpdateEnrollmentDays,
-} from "../../actions";
+} from "@/app/(admin)/admin/actions/afterschool-actions";
 import type { AfterschoolStudentEnrollment, DayEnrollment } from "@/lib/types";
 import { Spinner } from "@/components/feedback/Spinner";
 import { ConfirmDialog } from "@/components/overlays/ConfirmDialog";

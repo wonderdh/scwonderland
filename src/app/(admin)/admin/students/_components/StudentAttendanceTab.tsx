@@ -9,7 +9,7 @@ import {
   deleteAttendance,
   getAttendanceStats,
   bulkReserveAttendance,
-} from "../../actions";
+} from "@/app/(admin)/admin/actions/attendance-actions";
 import type { AttendanceRecord, AttendanceStats } from "@/lib/types";
 import { LoadingState } from "@/components/feedback/LoadingState";
 import { MultiDatePicker } from "@/components/forms/MultiDatePicker";

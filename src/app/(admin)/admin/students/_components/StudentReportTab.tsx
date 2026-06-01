@@ -4,7 +4,7 @@ import {
   getReportCard,
   listReportCardsByStudent,
   upsertReportCard,
-} from "../../actions";
+} from "@/app/(admin)/admin/actions/report-actions";
 import type { ReportCard, ReportCardListItem } from "@/lib/types";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";

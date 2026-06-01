@@ -2,7 +2,9 @@
 
 import { useEffect, useMemo, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { getStudentTimetable } from "../../actions";
+import {
+  getStudentTimetable,
+} from "@/app/(admin)/admin/actions/schedule-actions";
 import { getStudentAfterschoolDays } from "../../actions/afterschool-actions";
 import type { StudentTimetableRow } from "@/lib/types";
 import { LoadingState } from "@/components/feedback/LoadingState";

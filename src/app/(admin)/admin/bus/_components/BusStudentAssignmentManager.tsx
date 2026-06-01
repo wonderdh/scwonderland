@@ -8,12 +8,14 @@ import { ConfirmDialog } from "@/components/overlays/ConfirmDialog";
 import type { BusNumber, BusTimeSlot, BusStop, BusDefaultAssignment, BusStopDayAssignment } from "@/lib/types";
 import { GROUP_TYPE_TO_LABEL } from "@/lib/constants/class";
 import {
+  listAfterschoolStudentIdsByDay,
+} from "@/app/(admin)/admin/actions/afterschool-actions";
+import {
   getBulkBusDefaults,
   saveBulkBusDefaults,
   listBusStops,
   listBusStopDayAssignments,
-  listAfterschoolStudentIdsByDay,
-} from "../../actions";
+} from "@/app/(admin)/admin/actions/bus-actions";
 import { getAgeColor } from "@/lib/ui/student-age-colors";
 import { formatStudentName } from "@/lib/utils/student-name";
 

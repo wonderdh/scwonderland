@@ -1,7 +1,7 @@
 import {
   listAllWeeklySentences,
   getWeeklySentenceConfig,
-} from "@/app/(admin)/admin/actions";
+} from "@/app/(admin)/admin/actions/weekly-sentence-actions";
 import { PageHeader } from "@/components/navigation/PageHeader";
 import { WeeklySentencesManager } from "./_components/WeeklySentencesManager";
 

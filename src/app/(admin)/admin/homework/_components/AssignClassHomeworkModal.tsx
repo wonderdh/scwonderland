@@ -6,8 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/overlays/Modal";
 import { SeriesLevelPicker } from "@/components/forms/SeriesLevelPicker";
-import { assignClassTextbook } from "@/app/(admin)/admin/actions";
-import type { TextbookWithSeries } from "@/app/(admin)/admin/actions";
+import { assignClassTextbook } from "@/app/(admin)/admin/actions/class-textbook-actions";
+import type { TextbookWithSeries } from "@/app/(admin)/admin/actions/textbook-actions";
 import { KST_DAY_LABELS } from "@/lib/utils/date-kst";
 import {
   GRADING_DATE_ERROR_MESSAGES,

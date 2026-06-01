@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import type { BusManifestGroup, BusTimeSlot } from "@/lib/types";
-import { getDailyBusManifest } from "@/app/(admin)/admin/actions";
+import { getDailyBusManifest } from "@/app/(admin)/admin/actions/bus-actions";
 import { formatTime } from "@/lib/bus/utils";
 import { MonitorBusCard, BUS_CARD_COLORS } from "@/components/bus/MonitorBusCard";
 import { useBusRealtime } from "@/lib/hooks/use-bus-realtime";

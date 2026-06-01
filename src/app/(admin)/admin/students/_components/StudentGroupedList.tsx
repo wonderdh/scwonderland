@@ -4,7 +4,10 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import type { UserWithProfile } from "@/lib/types";
-import type { updateStudentProfile, deleteUserById } from "../../actions";
+import type {
+  updateStudentProfile,
+  deleteUserById,
+} from "@/app/(admin)/admin/actions/user-actions";
 import { getAgeColor } from "@/lib/ui/student-age-colors";
 import { sortStudentsByAgeAndName } from "@/lib/utils/student-sort";
 import { Input } from "@/components/ui/input";

@@ -1,10 +1,8 @@
 import { redirect } from "next/navigation";
 import { getCurrentTeacherProfile, getTeacherClasses } from "../../actions";
-import {
-  listClassTextbooks,
-  listClassUnitProgressDetailed,
-  listAcademyClosedDays,
-} from "@/app/(admin)/admin/actions";
+import { listClassTextbooks } from "@/app/(admin)/admin/actions/class-textbook-actions";
+import { listClassUnitProgressDetailed } from "@/app/(admin)/admin/actions/homework-unit-actions";
+import { listAcademyClosedDays } from "@/app/(admin)/admin/actions/closed-days-actions";
 import { TeacherTextbooksClient } from "./_components/TeacherTextbooksClient";
 
 export default async function TeacherHomeworkPage({

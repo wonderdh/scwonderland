@@ -9,7 +9,7 @@ import {
   addAcademyClosedDays,
   removeAcademyClosedDay,
   type AcademyClosedDay,
-} from "@/app/(admin)/admin/actions";
+} from "@/app/(admin)/admin/actions/closed-days-actions";
 import { ymdToKstWeekday } from "@/lib/utils/homework-schedule";
 import { KST_DAY_LABELS } from "@/lib/utils/date-kst";
 

@@ -8,8 +8,8 @@ import {
   createSeriesLevel,
   updateSeriesLevel,
   deleteSeriesLevel,
-} from "@/app/(admin)/admin/actions";
-import type { SeriesLevelRow } from "@/app/(admin)/admin/actions";
+} from "@/app/(admin)/admin/actions/textbook-actions";
+import type { SeriesLevelRow } from "@/app/(admin)/admin/actions/series-actions";
 
 type SubPanelState =
   | { mode: "closed" }

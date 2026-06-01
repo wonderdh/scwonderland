@@ -1,9 +1,7 @@
 import Link from "next/link";
-import {
-  listClassesForHomeworkPicker,
-  getAbsentStudentIds,
-  listTextbooks,
-} from "@/app/(admin)/admin/actions";
+import { listClassesForHomeworkPicker } from "@/app/(admin)/admin/actions/class-actions";
+import { getAbsentStudentIds } from "@/app/(admin)/admin/actions/homework-unit-actions";
+import { listTextbooks } from "@/app/(admin)/admin/actions/textbook-actions";
 import { todayKst, todayDowKst } from "@/lib/utils/date-kst";
 import { TodayPageClient } from "@/app/(admin)/admin/today/_components/TodayPageClient";
 

@@ -11,7 +11,7 @@ import {
   createBusTimeSlot,
   updateBusTimeSlot,
   deleteBusTimeSlot,
-} from "../../actions";
+} from "@/app/(admin)/admin/actions/bus-actions";
 
 function formatTime(t: string) {
   return t.slice(0, 5);
