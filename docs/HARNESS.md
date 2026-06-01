@@ -8,7 +8,7 @@
 
 - **목적**: Claude Code 세션 이벤트를 실시간 대시보드로 관찰. summary(LLM) 기능은 비활성 → API 키 불필요.
 - **두 파트**:
-  1. **대시보드 인프라** — 레포 밖 `../claude-observability/` (원본 [claude-code-hooks-multi-agent-observability](https://github.com/disler/claude-code-hooks-multi-agent-observability) clone). Bun 서버(`:4000`, SQLite + WebSocket) + Vue 클라이언트(`:5173`).
+  1. **대시보드 인프라** — 레포 밖 `../claude-observability/` (원본 [claude-code-hooks-multi-agent-observability](https://github.com/disler/claude-code-hooks-multi-agent-observability) clone). Bun 서버(`:4000`, SQLite + WebSocket) + Vue 클라이언트(`:6173`, `apps/client/vite.config.ts` 에 strictPort 로 고정 — understand-anything 플러그인 대시보드가 쓰는 5173~ 과 충돌 회피).
   2. **이벤트 전송 훅** — `.claude/hooks/send_event.py`(+ `utils/model_extractor.py`, stub `utils/summarizer.py`). 각 이벤트에서 `uv run` 으로 호출 → `POST :4000/events`.
 - **훅 등록**: `.claude/settings.json` — 9개 이벤트(SessionStart, UserPromptSubmit, PreToolUse, PostToolUse, Notification, Stop[`--add-chat`], SubagentStop, PreCompact, SessionEnd) 각각 `send_event.py --source-app scwonderland --event-type <X>`.
 - **MCP**: `supabase` 만(`.mcp.json`). code-review-graph 는 제거됨.
@@ -23,7 +23,7 @@
 ## 사용법
 
 1. 대시보드 기동: `cd ../claude-observability/apps/server && bun run dev` (그리고 `apps/client && bun run dev`).
-2. 브라우저로 `http://localhost:5173` 접속.
+2. 브라우저로 `http://localhost:6173` 접속.
 3. 이 프로젝트에서 Claude Code 사용 → 이벤트가 실시간으로 대시보드에 흐른다.
 
 서버가 꺼져 있으면 이벤트는 전송 실패하고 버려질 뿐, 작업엔 지장 없다.
@@ -48,7 +48,7 @@ echo '{"session_id":"t","transcript_path":"/tmp/none.jsonl","hook_event_type":"P
   | uv run .claude/hooks/send_event.py --source-app scwonderland --event-type PreToolUse
 curl -s "http://localhost:4000/events/recent?limit=5"
 ```
-기대: 종료 코드 0, `recent` 응답에 방금 이벤트 포함, 대시보드(:5173)에 1건 표시.
+기대: 종료 코드 0, `recent` 응답에 방금 이벤트 포함, 대시보드(:6173)에 1건 표시.
 
 `pnpm lint` / `pnpm type-check` 영향 없음(하네스 파일은 전부 `src/` 밖).
 
