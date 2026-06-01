@@ -7,7 +7,7 @@ import { getAgeColor } from "@/lib/ui/student-age-colors";
 import {
   getDailyBusManifest,
   batchBusCheckRecord,
-} from "@/app/(admin)/admin/actions";
+} from "@/app/(admin)/admin/actions/bus-actions";
 import { formatTime as fmt, formatCheckedTime as fmtISO } from "@/lib/bus/utils";
 import { useBusRealtime } from "@/lib/hooks/use-bus-realtime";
 import { applyCheckRecord, applyChangeRequest } from "@/lib/bus/realtime-utils";

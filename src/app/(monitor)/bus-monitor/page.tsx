@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { listBusTimeSlots, getDailyBusManifest } from "@/app/(admin)/admin/actions";
+import { listBusTimeSlots, getDailyBusManifest } from "@/app/(admin)/admin/actions/bus-actions";
 import { getDateForIsoDayKst, getTodayIsoDayKst } from "@/lib/bus/monitor-date";
 import { BusMonitorClient } from "./BusMonitorClient";
 
