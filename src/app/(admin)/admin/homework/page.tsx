@@ -1,14 +1,24 @@
 import {
+  listClassesForHomeworkPicker,
+  listTeachersForSelect,
+} from "@/app/(admin)/admin/actions/class-actions";
+import {
+  listClassTextbooks,
+} from "@/app/(admin)/admin/actions/class-textbook-actions";
+import {
+  listClassUnitProgressDetailed,
+  getAbsentStudentIds,
+} from "@/app/(admin)/admin/actions/homework-unit-actions";
+import {
+  listPublishers,
+} from "@/app/(admin)/admin/actions/publisher-actions";
+import {
   listAllSeries,
   listLevelsBySeries,
-  listPublishers,
-  listClassesForHomeworkPicker,
-  listClassUnitProgressDetailed,
-  listClassTextbooks,
+} from "@/app/(admin)/admin/actions/series-actions";
+import {
   listTextbooks,
-  listTeachersForSelect,
-  getAbsentStudentIds,
-} from "../actions";
+} from "@/app/(admin)/admin/actions/textbook-actions";
 import { todayKst } from "@/lib/utils/date-kst";
 import { PageHeader } from "@/components/navigation/PageHeader";
 import { TextbooksPageClient } from "./_components/TextbooksPageClient";

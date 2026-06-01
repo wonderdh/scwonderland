@@ -9,8 +9,10 @@ import { ConfirmDialog } from "@/components/overlays/ConfirmDialog";
 import {
   createBusStaff,
   updateBusStaff,
+} from "@/app/(admin)/admin/actions/bus-staff";
+import {
   deleteUserById,
-} from "../../actions";
+} from "@/app/(admin)/admin/actions/user-actions";
 
 export function BusStaffManager({
   busStaff,

@@ -8,7 +8,7 @@ import {
   getGroupTimetableGrid,
   setClassScheduleSlot,
   deleteClassSchedule,
-} from "../../actions";
+} from "@/app/(admin)/admin/actions/schedule-actions";
 
 const DAY_LABELS = ["월", "화", "수", "목", "금"];
 

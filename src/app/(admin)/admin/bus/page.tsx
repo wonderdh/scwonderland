@@ -1,6 +1,14 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import { listBusNumbers, listBusTimeSlots, listBusStaff, listBusStops, listAllActiveStudentNames } from "../actions";
+import {
+  listBusNumbers,
+  listBusTimeSlots,
+  listBusStops,
+  listAllActiveStudentNames,
+} from "@/app/(admin)/admin/actions/bus-actions";
+import {
+  listBusStaff,
+} from "@/app/(admin)/admin/actions/bus-staff";
 import { BusTabNav, type BusTabId } from "./_components/BusTabNav";
 import { BusTimeSlotsManager } from "./_components/BusTimeSlotsManager";
 import { BusDashboard } from "./_components/BusDashboard";

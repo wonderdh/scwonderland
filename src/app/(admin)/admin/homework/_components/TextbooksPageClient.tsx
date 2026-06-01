@@ -10,13 +10,21 @@ import type {
   BoardLevelsBySeries,
 } from "@/components/homework/HomeworkBoard";
 import type {
-  TextbookWithSeries,
+  HomeworkClassPickerOption,
+} from "@/app/(admin)/admin/actions/class-actions";
+import type {
+  ClassTextbookWithDetails,
+} from "@/app/(admin)/admin/actions/class-textbook-actions";
+import type {
+  ClassUnitProgressDetailed,
+} from "@/app/(admin)/admin/actions/homework-unit-actions";
+import type {
   SeriesWithPublisher,
   SeriesLevelRow,
-  ClassUnitProgressDetailed,
-  ClassTextbookWithDetails,
-  HomeworkClassPickerOption,
-} from "../../actions";
+} from "@/app/(admin)/admin/actions/series-actions";
+import type {
+  TextbookWithSeries,
+} from "@/app/(admin)/admin/actions/textbook-actions";
 import type { TeacherOption } from "@/lib/types";
 
 type PublisherOption = { id: string; name: string };

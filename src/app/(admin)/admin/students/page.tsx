@@ -1,12 +1,14 @@
 import {
+  getStudentClasses,
+} from "@/app/(admin)/admin/actions/class-actions";
+import {
   deleteUserById,
   listUsersByRole,
   listDeletedUsers,
   restoreUser,
   permanentlyDeleteUser,
   updateStudentProfile,
-  getStudentClasses,
-} from "../actions";
+} from "@/app/(admin)/admin/actions/user-actions";
 import { AdminListSidebar } from "../_components/AdminListSidebar";
 import { ScrollToSection } from "../_components/ScrollToSection";
 import { PageHeader } from "@/components/navigation/PageHeader";

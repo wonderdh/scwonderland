@@ -1,13 +1,17 @@
 import {
+  listClassesWithDetails,
+} from "@/app/(admin)/admin/actions/class-actions";
+import {
+  getGroupTimetableGrid,
+} from "@/app/(admin)/admin/actions/schedule-actions";
+import {
   deleteUserById,
   listUsersByRole,
   listDeletedUsers,
   restoreUser,
   permanentlyDeleteUser,
-  listClassesWithDetails,
   updateTeacherProfile,
-  getGroupTimetableGrid,
-} from "../actions";
+} from "@/app/(admin)/admin/actions/user-actions";
 import { AdminListSidebar } from "../_components/AdminListSidebar";
 import { UserList } from "../_components/UserList";
 import { AddTeacherForm } from "./_components/AddTeacherForm";

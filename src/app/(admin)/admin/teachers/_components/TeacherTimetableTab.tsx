@@ -9,7 +9,7 @@ import {
   addSingleClassSchedule,
   deleteClassSchedule,
   getGroupTimetableGrid,
-} from "../../actions";
+} from "@/app/(admin)/admin/actions/schedule-actions";
 
 type GroupKey = "유치부" | "오후반";
 

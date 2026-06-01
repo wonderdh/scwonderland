@@ -2,7 +2,7 @@ import {
   getOrCreateAfterschoolClass,
   getAfterschoolEnrollments,
   listAvailableStudents,
-} from "../actions";
+} from "@/app/(admin)/admin/actions/afterschool-actions";
 import { AfterschoolPageClient } from "./_components/AfterschoolPageClient";
 
 export default async function AdminAfterschoolPage() {

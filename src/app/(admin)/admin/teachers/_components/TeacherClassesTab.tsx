@@ -1,6 +1,8 @@
 "use client";
 
-import { getClassWithStudents } from "../../actions";
+import {
+  getClassWithStudents,
+} from "@/app/(admin)/admin/actions/class-actions";
 import type { ClassWithDetails, ClassStudentRow } from "@/lib/types";
 import { useCallback, useEffect, useState } from "react";
 import { LoadingState } from "@/components/feedback/LoadingState";

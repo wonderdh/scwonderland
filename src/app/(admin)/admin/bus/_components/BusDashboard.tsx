@@ -11,7 +11,7 @@ import {
   getDailyBusManifest,
   batchBusCheckRecord,
   deleteAdminBusChange,
-} from "../../actions";
+} from "@/app/(admin)/admin/actions/bus-actions";
 import { useBusRealtime } from "@/lib/hooks/use-bus-realtime";
 import { formatTime } from "@/lib/bus/utils";
 import { formatStudentName } from "@/lib/utils/student-name";

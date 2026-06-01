@@ -9,17 +9,19 @@ import type { StudentBusDefault, BusTimeSlot, BusStop, AfterschoolStatus } from 
 import { detectAfterschoolSlot } from "@/lib/bus/afterschool-sync";
 import { toast } from "sonner";
 import {
-  getStudentBusDefaults,
-  upsertStudentBusDefault,
-  deleteStudentBusDefaults,
-  listBusTimeSlots,
-  listBusStops,
   getStudentAfterschoolDetail,
   updateAfterschoolSecondPeriod,
   deleteAfterschoolEnrollmentDay,
   getOrCreateAfterschoolClass,
   enrollStudent,
-} from "../../actions";
+} from "@/app/(admin)/admin/actions/afterschool-actions";
+import {
+  getStudentBusDefaults,
+  upsertStudentBusDefault,
+  deleteStudentBusDefaults,
+  listBusTimeSlots,
+  listBusStops,
+} from "@/app/(admin)/admin/actions/bus-actions";
 import { LoadingState } from "@/components/feedback/LoadingState";
 import { formatTime } from "@/lib/bus/utils";
 

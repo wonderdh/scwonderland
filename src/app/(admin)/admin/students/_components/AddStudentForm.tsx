@@ -3,7 +3,9 @@
 import { useActionState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { toastSuccess } from "@/lib/ui/toast";
-import { createStudent } from "../../actions";
+import {
+  createStudent,
+} from "@/app/(admin)/admin/actions/user-actions";
 import { Spinner } from "@/components/feedback/Spinner";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";

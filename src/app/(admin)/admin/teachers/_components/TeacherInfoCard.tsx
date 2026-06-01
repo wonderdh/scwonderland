@@ -1,8 +1,11 @@
 "use client";
 
 import type { UserWithProfile } from "@/lib/types";
-import type { updateTeacherProfile } from "../../actions";
-import { getTeacherAssignmentCounts } from "../../actions";
+import {
+  type updateTeacherProfile,
+  getTeacherAssignmentCounts,
+} from "@/app/(admin)/admin/actions/user-actions";
+
 import { usePasswordReset } from "../../hooks/usePasswordReset";
 import { ConfirmDialog } from "@/components/overlays/ConfirmDialog";
 import { FormGroup } from "@/components/forms/FormGroup";

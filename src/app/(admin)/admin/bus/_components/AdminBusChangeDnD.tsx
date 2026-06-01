@@ -13,6 +13,11 @@ import { MultiDatePicker } from "@/components/forms/MultiDatePicker";
 import { formatDateYmdKst, todayKst } from "@/lib/utils/date-kst";
 import { formatStudentName } from "@/lib/utils/student-name";
 import {
+  getStudentAfterschoolDetail,
+  updateAfterschoolSecondPeriod,
+  deleteAfterschoolEnrollmentDay,
+} from "@/app/(admin)/admin/actions/afterschool-actions";
+import {
   listBusStops,
   listBusTimeSlots,
   listAllActiveStudentNames,
@@ -21,11 +26,8 @@ import {
   createAdminBusChange,
   updateAdminBusChange,
   deleteAdminBusChange,
-  getStudentAfterschoolDetail,
-  updateAfterschoolSecondPeriod,
-  deleteAfterschoolEnrollmentDay,
   bulkCreateBusChanges,
-} from "../../actions";
+} from "@/app/(admin)/admin/actions/bus-actions";
 
 type StudentItem = {
   profile_id: string;

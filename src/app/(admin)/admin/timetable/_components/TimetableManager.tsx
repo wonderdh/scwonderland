@@ -12,7 +12,7 @@ import {
   createAcademyPeriod,
   updateAcademyPeriod,
   deleteAcademyPeriod,
-} from "../../actions";
+} from "@/app/(admin)/admin/actions/timetable-actions";
 
 const GROUP_OPTIONS = ["유치부", "방과후", "오후반"] as const;
 

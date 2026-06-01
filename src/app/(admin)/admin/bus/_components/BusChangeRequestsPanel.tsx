@@ -11,7 +11,7 @@ import {
   listBusNumbers,
   listBusTimeSlots,
   listBusStops,
-} from "../../actions";
+} from "@/app/(admin)/admin/actions/bus-actions";
 import { LoadingState } from "@/components/feedback/LoadingState";
 import { StatusBadge } from "@/components/badges/StatusBadge";
 import { ConfirmDialog } from "@/components/overlays/ConfirmDialog";

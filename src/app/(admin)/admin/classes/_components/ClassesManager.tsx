@@ -8,7 +8,7 @@ import {
   getClassLinkedCounts,
   listStudentsNotInClass,
   updateClass,
-} from "../../actions";
+} from "@/app/(admin)/admin/actions/class-actions";
 import type { ClassWithDetails, ClassStudentRow, TeacherOption, AcademyPeriod } from "@/lib/types";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";

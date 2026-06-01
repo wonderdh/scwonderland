@@ -8,7 +8,13 @@ import {
   Bus,
   CheckCircle2,
 } from "lucide-react";
-import { getDashboardStats, getTodayStats, listAdmins } from "./actions";
+import {
+  getDashboardStats,
+  getTodayStats,
+} from "@/app/(admin)/admin/actions/dashboard-actions";
+import {
+  listAdmins,
+} from "@/app/(admin)/admin/actions/user-actions";
 import {
   Card,
   CardContent,

@@ -12,7 +12,7 @@ import {
   createPublisher,
   updatePublisher,
   deletePublisher,
-} from "../../actions";
+} from "@/app/(admin)/admin/actions/publisher-actions";
 import type { Database } from "@/lib/types/database.generated";
 
 type PublisherRow = Database["public"]["Tables"]["publishers"]["Row"];

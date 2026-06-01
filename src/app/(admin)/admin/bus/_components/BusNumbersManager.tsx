@@ -21,7 +21,7 @@ import {
   deleteBusStopSchedule,
   copyBusDayDataToOtherDays,
   getBusDayDataCounts,
-} from "../../actions";
+} from "@/app/(admin)/admin/actions/bus-actions";
 import { BUS_WEEKDAYS as DAYS } from "@/lib/constants/bus";
 import { useBusDirtyFilter, type StopAssignment } from "../_hooks/useBusDirtyFilter";
 import { DayTimeFilterBar } from "./DayTimeFilterBar";
