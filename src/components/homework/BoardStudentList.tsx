@@ -2,7 +2,7 @@
 
 import { UnitProgressGrid } from "@/components/homework/UnitProgressGrid";
 import { todayKst } from "@/lib/utils/date-kst";
-import type { BoardStudent, StudentTextbookUnits } from "@/app/(admin)/admin/actions";
+import type { BoardStudent, StudentTextbookUnits } from "@/app/(admin)/admin/actions/homework-unit-actions";
 
 /** 학생의 책들에서 오늘(todayKst) 채점 예정 유닛 번호 1개(가장 이른 책 기준). 없으면 null. */
 export function deriveTodayUnit(books: StudentTextbookUnits[], today: string): number | null {

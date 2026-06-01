@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import type {
   ClassUnitProgressDetailed,
   UnitStatus,
-} from "@/app/(admin)/admin/actions";
+} from "@/app/(admin)/admin/actions/homework-unit-actions";
 import { UnitProgressGrid } from "@/components/homework/UnitProgressGrid";
 
 type Props = {

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FormGroup } from "@/components/forms/FormGroup";
 import { Modal } from "@/components/overlays/Modal";
-import { listPublishers, createPublisher } from "@/app/(admin)/admin/actions";
+import { listPublishers, createPublisher } from "@/app/(admin)/admin/actions/publisher-actions";
 
 type PublisherOption = { id: string; name: string };
 

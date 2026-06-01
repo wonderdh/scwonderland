@@ -6,13 +6,11 @@ import {
   listSeriesLevelProgress,
   bulkMarkUnits,
   getAbsentStudentIds,
-} from "@/app/(admin)/admin/actions";
-import type {
-  BoardStudent,
-  StudentTextbookUnits,
-  UnitStatus,
-  SeriesLevelProgress,
-} from "@/app/(admin)/admin/actions";
+  type BoardStudent,
+  type StudentTextbookUnits,
+  type UnitStatus,
+  type SeriesLevelProgress,
+} from "@/app/(admin)/admin/actions/homework-unit-actions";
 
 const NEXT_STATUS: Record<UnitStatus, UnitStatus> = {
   pending: "completed",

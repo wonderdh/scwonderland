@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FormGroup } from "@/components/forms/FormGroup";
 import { Modal } from "@/components/overlays/Modal";
-import { listSeries, createSeries } from "@/app/(admin)/admin/actions";
+import { listSeries, createSeries } from "@/app/(admin)/admin/actions/series-actions";
 
 type SeriesOption = { id: string; name: string };
 
