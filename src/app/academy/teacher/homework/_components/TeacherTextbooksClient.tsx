@@ -8,13 +8,13 @@ import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/overlays/Modal";
 import {
   updateClassTextbookDays,
-  getUnitSchedule,
+  type ClassTextbookWithDetails,
+} from "@/app/(admin)/admin/actions/class-textbook-actions";
+import {
   listClassUnitProgressDetailed,
-} from "@/app/(admin)/admin/actions";
-import type {
-  ClassTextbookWithDetails,
-  ClassUnitProgressDetailed,
-} from "@/app/(admin)/admin/actions";
+  type ClassUnitProgressDetailed,
+} from "@/app/(admin)/admin/actions/homework-unit-actions";
+import { getUnitSchedule } from "@/lib/utils/homework-schedule";
 import { todayKst, KST_DAY_LABELS } from "@/lib/utils/date-kst";
 import { ymdToKstWeekday } from "@/lib/utils/homework-schedule";
 import { ClassUnitProgressList } from "@/components/homework/ClassUnitProgressList";

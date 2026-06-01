@@ -7,7 +7,7 @@ import {
   getReportCard,
   upsertReportCard,
   deleteReportCard,
-} from "@/app/(admin)/admin/actions";
+} from "@/app/(admin)/admin/actions/report-actions";
 import type { ReportCard } from "@/lib/types";
 import { reportLabels, ENGLISH_MONTHS } from "@/lib/ui/teacher-labels";
 import { useTeacherType } from "./TeacherTypeContext";
