@@ -7,7 +7,7 @@ import {
   getStudentAttendanceByDate,
   recordAttendance,
   bulkReserveAttendance,
-} from "@/app/(admin)/admin/actions";
+} from "@/app/(admin)/admin/actions/attendance-actions";
 import { MultiDatePicker } from "@/components/forms/MultiDatePicker";
 import { formatDateYmdKst, todayWeekdayArray } from "@/lib/utils/date-kst";
 import {

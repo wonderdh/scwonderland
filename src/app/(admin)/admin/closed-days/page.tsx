@@ -1,4 +1,4 @@
-import { listAcademyClosedDays } from "@/app/(admin)/admin/actions";
+import { listAcademyClosedDays } from "@/app/(admin)/admin/actions/closed-days-actions";
 import { PageHeader } from "@/components/navigation/PageHeader";
 import { ClosedDaysClient } from "./_components/ClosedDaysClient";
 

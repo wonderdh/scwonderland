@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { resetUserPassword } from "@/app/(admin)/admin/actions";
+import { resetUserPassword } from "@/app/(admin)/admin/actions/user-actions";
 
 type PwMessage = { type: "error" | "success"; text: string } | null;
 

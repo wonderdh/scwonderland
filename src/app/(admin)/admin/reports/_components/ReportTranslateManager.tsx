@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { translateReportCard } from "@/app/(admin)/admin/actions";
+import { translateReportCard } from "@/app/(admin)/admin/actions/report-actions";
 import type { UntranslatedReport } from "@/lib/types";
 import { Spinner } from "@/components/feedback/Spinner";
 

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
-import { getClassStudentsWithAttendance, bulkRecordAttendance } from "@/app/(admin)/admin/actions";
+import { getClassStudentsWithAttendance, bulkRecordAttendance } from "@/app/(admin)/admin/actions/attendance-actions";
 import type { ClassWithDetails, StudentWithAttendance } from "@/lib/types";
 import { GROUP_TYPE_TO_LABEL } from "@/lib/constants/class";
 
