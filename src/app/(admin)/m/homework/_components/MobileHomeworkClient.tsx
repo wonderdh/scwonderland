@@ -7,13 +7,11 @@ import {
   listClassUnitProgressDetailed,
   bulkMarkUnits,
   getAbsentStudentIds,
-} from "@/app/(admin)/admin/actions";
-import type {
-  ClassUnitProgressDetailed,
-  HomeworkClassPickerOption,
-  UnitStatus,
-  TextbookWithSeries,
-} from "@/app/(admin)/admin/actions";
+  type ClassUnitProgressDetailed,
+  type UnitStatus,
+} from "@/app/(admin)/admin/actions/homework-unit-actions";
+import type { HomeworkClassPickerOption } from "@/app/(admin)/admin/actions/class-actions";
+import type { TextbookWithSeries } from "@/app/(admin)/admin/actions/textbook-actions";
 import type { TeacherOption } from "@/lib/types";
 import { ClassUnitProgressList } from "@/components/homework/ClassUnitProgressList";
 import { HomeworkBoard } from "@/components/homework/HomeworkBoard";

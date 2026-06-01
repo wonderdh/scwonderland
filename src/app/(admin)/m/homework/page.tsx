@@ -1,13 +1,17 @@
 import Link from "next/link";
 import {
   listClassesForHomeworkPicker,
-  listClassUnitProgressDetailed,
   listTeachersForSelect,
-  listTextbooks,
+} from "@/app/(admin)/admin/actions/class-actions";
+import {
+  listClassUnitProgressDetailed,
   getAbsentStudentIds,
+} from "@/app/(admin)/admin/actions/homework-unit-actions";
+import { listTextbooks } from "@/app/(admin)/admin/actions/textbook-actions";
+import {
   listSeries,
   listLevelsBySeries,
-} from "@/app/(admin)/admin/actions";
+} from "@/app/(admin)/admin/actions/series-actions";
 import { MobileHomeworkClient } from "./_components/MobileHomeworkClient";
 import { todayKst } from "@/lib/utils/date-kst";
 

@@ -4,7 +4,7 @@ import {
   listAllActiveStudentNames,
   listBusStops,
   listBusTimeSlots,
-} from "@/app/(admin)/admin/actions";
+} from "@/app/(admin)/admin/actions/bus-actions";
 
 export default async function MobileBusChangePage() {
   const [students, busStops, busTimeSlots] = await Promise.all([
