@@ -84,7 +84,7 @@ export function StudentRow({
     );
   }
 
-  // ── 숙제 모드: 이름 + 선택한 책 1권 그리드 ──────────────────────────────────
+  // ── 숙제 모드: [이름 + 진도] | [인라인 unit 그리드] ─────────────────────────
   const book = selectedBookId
     ? student.books.find((b) => b.id === selectedBookId)
     : undefined;
@@ -103,47 +103,61 @@ export function StudentRow({
         ),
       }))
     : [];
+  const completedCount = units.filter((u) => u.status === "completed").length;
 
   return (
-    <div className={`rounded-xl border px-3 py-2.5 transition-colors ${rowTint}`}>
-      <div className="mb-2 flex items-center gap-2 flex-wrap">
+    <div
+      className={`flex items-start gap-3 rounded-xl border px-3 py-2.5 transition-colors ${rowTint}`}
+    >
+      {/* 좌측: 이름 + 진도 카운트 (고정폭) */}
+      <div className="w-28 shrink-0 sm:w-32">
         {name}
+        {book && (
+          <p className="mt-0.5 text-xs tabular-nums text-slate-500">
+            완료 {completedCount}/{book.total_units}
+          </p>
+        )}
         {isAbsent && (
-          <span className="text-[11px] font-medium text-red-600">
-            결석 · 숙제 비활성
-          </span>
+          <p className="mt-0.5 text-[11px] font-medium text-red-600">
+            결석 · 비활성
+          </p>
         )}
       </div>
-      {!book ? (
-        <p className="py-2 text-center text-xs text-slate-400">
-          이 학생에겐 이 책이 부여되지 않았습니다.
-        </p>
-      ) : (
-        <div
-          style={{
-            opacity: isAbsent ? 0.45 : 1,
-            pointerEvents: isAbsent ? "none" : "auto",
-          }}
-        >
-          <UnitProgressGrid
-            textbook={book}
-            units={units}
-            editable={!isAbsent}
-            dirtyNumbers={dirty}
-            onUnitClick={
-              isAbsent
-                ? undefined
-                : (unitNumber) =>
-                    editor.cycleUnit(
-                      classId,
-                      student.studentId,
-                      book.id,
-                      unitNumber
-                    )
-            }
-          />
-        </div>
-      )}
+
+      {/* 우측: 클릭 가능한 unit 그리드 (인라인, 헤더 없음) */}
+      <div className="min-w-0 flex-1">
+        {!book ? (
+          <p className="py-2 text-xs text-slate-400">
+            이 학생에겐 이 책이 부여되지 않았습니다.
+          </p>
+        ) : (
+          <div
+            style={{
+              opacity: isAbsent ? 0.45 : 1,
+              pointerEvents: isAbsent ? "none" : "auto",
+            }}
+          >
+            <UnitProgressGrid
+              textbook={book}
+              units={units}
+              editable={!isAbsent}
+              hideHeader
+              dirtyNumbers={dirty}
+              onUnitClick={
+                isAbsent
+                  ? undefined
+                  : (unitNumber) =>
+                      editor.cycleUnit(
+                        classId,
+                        student.studentId,
+                        book.id,
+                        unitNumber
+                      )
+              }
+            />
+          </div>
+        )}
+      </div>
     </div>
   );
 }

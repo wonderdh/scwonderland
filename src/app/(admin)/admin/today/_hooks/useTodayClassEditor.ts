@@ -95,16 +95,28 @@ export function useTodayClassEditor(props: {
   const [day, setDay] = useState<number>(todayDow);
   const [periodId, setPeriodId] = useState<string>(defaultPeriodId);
   const [date, setDate] = useState<string>(todayKst);
+  // 학생 이름 검색어 (한/영 substring, 대소문자 무시). 현재 필터 결과 안에서만 적용.
+  const [search, setSearch] = useState<string>("");
 
   const filteredClasses = useMemo(() => {
     const wantType = GROUP_TO_TYPE[group];
+    const q = search.trim().toLowerCase();
     return classes.filter((c) => {
       if (c.groupType !== wantType) return false;
       if (!c.daysOfWeek.includes(day)) return false;
       if (periodId !== "" && c.periodId !== periodId) return false;
+      // 이름 검색: 반의 학생 중 한글/영문 이름이 검색어를 포함하면 통과.
+      if (q) {
+        const hit = c.studentNames.some(
+          (s) =>
+            (s.ko ?? "").toLowerCase().includes(q) ||
+            (s.en ?? "").toLowerCase().includes(q)
+        );
+        if (!hit) return false;
+      }
       return true;
     });
-  }, [classes, group, day, periodId]);
+  }, [classes, group, day, periodId, search]);
 
   // ── 반별 lazy 캐시 + pending 변경 ───────────────────────────────────────────
   const [cache, setCache] = useState<Map<string, ClassCache>>(new Map());
@@ -389,6 +401,8 @@ export function useTodayClassEditor(props: {
     setPeriodId,
     date,
     setDate,
+    search,
+    setSearch,
     availablePeriods,
     defaultPeriodId,
     filteredClasses,
