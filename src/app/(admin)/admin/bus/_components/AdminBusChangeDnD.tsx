@@ -104,21 +104,27 @@ export function AdminBusChangeDnD({
     });
   }, [initialStudents]);
 
-  // When student / date changes → load existing data
+  // When student changes → load student-scoped reference data (날짜 무관)
+  useEffect(() => {
+    if (!selectedStudentId) return;
+    Promise.all([
+      getStudentBusDefaults(selectedStudentId),
+      getStudentAfterschoolDetail(selectedStudentId),
+    ]).then(([defaults, afterschool]) => {
+      setStudentDefaults(defaults);
+      setAfterschoolDays(afterschool);
+    });
+  }, [selectedStudentId]);
+
+  // When student / date changes → load the existing change for that date & fill form
   useEffect(() => {
     if (!selectedStudentId) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoadingStudent(true);
     const firstDate = selectedDates[0] ? formatDateYmdKst(selectedDates[0]) : today;
     const dow = (() => { const d = new Date(firstDate).getDay(); return d === 0 ? 7 : d; })();
-    Promise.all([
-      getStudentBusDefaults(selectedStudentId),
-      getExistingBusChange(selectedStudentId, firstDate),
-      getStudentAfterschoolDetail(selectedStudentId),
-    ]).then(([defaults, existing, afterschool]) => {
-      setAfterschoolDays(afterschool);
-      const def = defaults.find((d) => d.day_of_week === dow) ?? null;
-      setStudentDefaults(defaults);
+    getExistingBusChange(selectedStudentId, firstDate).then((existing) => {
+      const def = studentDefaults.find((d) => d.day_of_week === dow) ?? null;
       if (existing) {
         const loadedSlotId = existing.new_bus_time_slot_id ?? def?.bus_time_slot_id ?? "";
         const loadedStopId = existing.new_bus_stop_id ?? def?.bus_stop_id ?? "";
@@ -150,7 +156,7 @@ export function AdminBusChangeDnD({
       }
       setLoadingStudent(false);
     });
-  }, [selectedStudentId, selectedDates, today]);
+  }, [selectedStudentId, selectedDates, studentDefaults, today]);
 
   // ── Derived ──
 
@@ -208,6 +214,9 @@ export function AdminBusChangeDnD({
     setSelectedStudentId(profileId);
     setSelectedDates([new Date(today)]);
     setStudentSearch("");
+    // 이전 학생의 기본 배차/방과후 정보를 즉시 비워 전환 중 stale 표시 방지
+    setStudentDefaults([]);
+    setAfterschoolDays([]);
   }
 
   function resetAll() {
