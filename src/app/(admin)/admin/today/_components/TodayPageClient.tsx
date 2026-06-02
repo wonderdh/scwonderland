@@ -160,6 +160,18 @@ export function TodayPageClient(props: Props): React.JSX.Element {
             </select>
           </div>
 
+          {/* 학생 이름 검색 */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-medium text-slate-500">학생</span>
+            <input
+              type="search"
+              value={editor.search}
+              onChange={(e) => editor.setSearch(e.target.value)}
+              placeholder="이름 검색 (한/영)"
+              className="h-8 w-40 rounded border border-slate-200 bg-white px-2 text-xs"
+            />
+          </div>
+
           {/* 날짜 */}
           <div className="ml-auto flex items-center gap-2">
             <span className="text-xs font-medium text-slate-500">날짜</span>
@@ -201,7 +213,9 @@ export function TodayPageClient(props: Props): React.JSX.Element {
       {/* 반 카드 리스트 */}
       {classes.length === 0 ? (
         <p className="rounded-xl border border-dashed border-slate-300 bg-white py-12 text-center text-sm text-slate-400">
-          선택한 조건에 수업이 있는 반이 없습니다.
+          {editor.search.trim()
+            ? "검색어와 일치하는 학생이 있는 반이 없습니다."
+            : "선택한 조건에 수업이 있는 반이 없습니다."}
         </p>
       ) : (
         <div className="space-y-3">
