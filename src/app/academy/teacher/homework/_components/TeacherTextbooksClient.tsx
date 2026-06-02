@@ -73,7 +73,8 @@ function EditDaysModal({
       totalUnits,
       homeworkDays,
       meetDays,
-      skipDates: closedDates,
+      skipDates: [], // 교사뷰는 책별 예외일 미관리(현행과 동일)
+      closedDates,
     }).slice(0, 7);
   }, [startDate, startDateWeekend, totalUnits, homeworkDays, meetDays, closedDates, assignment.start_unit]);
 
@@ -188,11 +189,10 @@ function EditDaysModal({
               </p>
               <ul className="space-y-0.5">
                 {preview.map((p) => (
-                  <li key={p.date} className="text-xs text-slate-700">
-                    {formatPreviewDate(p.date)} →{" "}
-                    <span className="font-semibold text-blue-700">
-                      U{p.unit}
-                    </span>
+                  <li key={p.unit} className="text-xs text-slate-700">
+                    제출 {formatPreviewDate(p.issueDate)} → 검사{" "}
+                    {formatPreviewDate(p.date)}{" "}
+                    <span className="font-semibold text-blue-700">U{p.unit}</span>
                   </li>
                 ))}
               </ul>
