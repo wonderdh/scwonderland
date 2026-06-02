@@ -45,6 +45,8 @@ type Props = {
   dirtyNumbers?: Set<number>;
   /** 셀 클릭 시 호출 (동기). state 관리는 부모 책임. */
   onUnitClick?: (unitNumber: number) => void;
+  /** true → 표지·시리즈명·레벨·완료카운트 헤더 + 바깥 테두리 생략, 셀 그리드만 렌더. 기본 false. */
+  hideHeader?: boolean;
 };
 
 function formatMonthDay(ymd: string): string {
@@ -85,15 +87,23 @@ export function UnitProgressGrid({
   editable = false,
   dirtyNumbers,
   onUnitClick,
+  hideHeader = false,
 }: Props) {
   const today = todayKst();
   const completedCount = units.filter((u) => u.status === "completed").length;
   const displayTitle = textbook.series_name ?? textbook.title;
 
   return (
-    <section className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+    <section
+      className={
+        hideHeader
+          ? ""
+          : "rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden"
+      }
+    >
       {/* Header */}
-      <header className="flex items-start gap-3 border-b border-slate-200 bg-slate-50/50 px-4 py-3">
+      {!hideHeader && (
+        <header className="flex items-start gap-3 border-b border-slate-200 bg-slate-50/50 px-4 py-3">
         <div className="h-14 w-10 shrink-0 overflow-hidden rounded-md bg-slate-100">
           {textbook.cover_image_url ? (
             <Image
@@ -138,10 +148,11 @@ export function UnitProgressGrid({
             {completedCount} / {textbook.total_units}
           </p>
         </div>
-      </header>
+        </header>
+      )}
 
       {/* Grid */}
-      <div className="p-2">
+      <div className={hideHeader ? "" : "p-2"}>
         {units.length === 0 ? (
           <p className="py-6 text-center text-xs text-slate-400">unit 정보가 없습니다.</p>
         ) : (
