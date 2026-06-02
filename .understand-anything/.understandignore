@@ -1,0 +1,36 @@
+# .understandignore — patterns for files/dirs to exclude from analysis
+# Syntax: same as .gitignore (globs, # comments, ! negation, trailing / for dirs)
+#
+# Built-in defaults (always excluded unless negated):
+#   node_modules/, .git/, dist/, build/, obj/, *.lock, *.min.js, etc.
+#
+# --- Scope: src/ only (per user choice "src 전체") ---
+# 분석 범위를 애플리케이션 소스(src/)로 한정한다. 아래 최상위 디렉토리는 제외.
+
+supabase/
+docs/
+scripts/
+public/
+.claude/
+.understand-anything/
+.next/
+.vscode/
+.idea/
+
+# 루트 설정·메타 파일들 (분석 대상 아님)
+*.config.ts
+*.config.js
+*.config.mjs
+components.json
+tsconfig.json
+package.json
+pnpm-workspace.yaml
+postcss.config.mjs
+eslint.config.mjs
+next-env.d.ts
+middleware.ts
+
+# --- Test file patterns (uncomment to exclude) ---
+
+# *.test.*
+# *.spec.*
