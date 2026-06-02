@@ -60,11 +60,6 @@ export function EditClassHomeworkModal({
   const startUnitNum = Number.parseInt(startUnit, 10);
   const startUnitInvalid =
     !Number.isInteger(startUnitNum) || startUnitNum < 1;
-  const previewSkipDates = useMemo(
-    () => Array.from(new Set([...skipDates, ...closedDates])),
-    [skipDates, closedDates]
-  );
-
   // Strict 검사일 검증 — 실시간으로 inline 에러 표시 + submit / applyToday 비활성에 사용.
   const startDateValidation = useMemo(() => {
     if (!startDate) return null;
@@ -285,7 +280,8 @@ export function EditClassHomeworkModal({
               totalUnits={maxUnit}
               homeworkDays={homeworkDays}
               meetDays={meetDays}
-              skipDates={previewSkipDates}
+              skipDates={skipDates}
+              closedDates={closedDates}
             />
           </div>
 
