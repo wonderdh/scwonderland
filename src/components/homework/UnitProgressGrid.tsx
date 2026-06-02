@@ -97,7 +97,7 @@ export function UnitProgressGrid({
     <section
       className={
         hideHeader
-          ? ""
+          ? undefined
           : "rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden"
       }
     >
@@ -149,7 +149,7 @@ export function UnitProgressGrid({
           </p>
         </div>
         </header>
-      )}
+        )}
 
       {/* Grid */}
       <div className={hideHeader ? "" : "p-2"}>
