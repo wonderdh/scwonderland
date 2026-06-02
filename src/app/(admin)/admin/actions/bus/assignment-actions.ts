@@ -4,7 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { verifyAdmin, verifyAuthenticated } from "../auth-helpers";
 import { getUserRoles } from "@/lib/auth/user-roles";
 import { logger } from "@/lib/server/logger";
-import { buildStopToBusMaps, getServedStopIdsByDay } from "./_helpers";
+import { buildStopToBusMaps, getServedStopIdsByDay, isStopServed } from "./_helpers";
 import { getStudentRecordByProfileId, getStudentsByIds } from "@/lib/server/domain-helpers";
 import type {
   BusDefaultAssignment,
@@ -173,6 +173,10 @@ export async function upsertStudentBusDefault(
   const supabase = createAdminClient();
   const student = await getStudentRecordByProfileId(supabase, studentProfileId);
   if (!student) return { error: "학생 정보를 찾을 수 없습니다." };
+  // 정류장 미배정 가드: 해당 요일·시간대에 배정 안 된 정류장은 거부.
+  if (busStopId && busTimeSlotId && !(await isStopServed(supabase, dayOfWeek, busTimeSlotId, busStopId))) {
+    return { error: "선택한 정류장이 해당 요일·시간대에 배정되어 있지 않습니다." };
+  }
   const { error } = await supabase.from("student_bus_defaults").upsert(
     {
       student_id: student.id,

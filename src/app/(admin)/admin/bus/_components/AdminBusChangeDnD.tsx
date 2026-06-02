@@ -12,6 +12,7 @@ import { detectAfterschoolSlot } from "@/lib/bus/afterschool-sync";
 import { MultiDatePicker } from "@/components/forms/MultiDatePicker";
 import { formatDateYmdKst, todayKst } from "@/lib/utils/date-kst";
 import { formatStudentName } from "@/lib/utils/student-name";
+import { dowFromYmd, findUnassignedDays, formatWeekdayList } from "@/lib/bus/stop-validation";
 import {
   getStudentAfterschoolDetail,
   updateAfterschoolSecondPeriod,
@@ -27,6 +28,7 @@ import {
   updateAdminBusChange,
   deleteAdminBusChange,
   bulkCreateBusChanges,
+  listServedStopIds,
 } from "@/app/(admin)/admin/actions/bus-actions";
 
 type StudentItem = {
@@ -82,6 +84,9 @@ export function AdminBusChangeDnD({
   const [stopSearch, setStopSearch] = useState("");
   const [stopListOpen, setStopListOpen] = useState(false);
   const [reason, setReason] = useState("");
+
+  // 선택 (요일들 × 시간대) 에 운행되는 정류장 ID (요일별). 정류장 미배정 검증용.
+  const [servedByDay, setServedByDay] = useState<Record<number, string[]>>({});
 
   // 원본 값 (기존 변경 로드 시 저장 → 변경 없으면 저장 불필요)
   const [originalSlotId, setOriginalSlotId] = useState("");
@@ -158,6 +163,17 @@ export function AdminBusChangeDnD({
     });
   }, [selectedStudentId, selectedDates, studentDefaults, today]);
 
+  // 정류장(dropoff) 모드에서 (선택 날짜들의 요일 × 시간대) 에 운행되는 정류장 집합 로드.
+  useEffect(() => {
+    if (stopMode !== "stop" || !slotId || selectedDates.length === 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setServedByDay({});
+      return;
+    }
+    const dows = [...new Set(selectedDates.map((d) => dowFromYmd(formatDateYmdKst(d))))];
+    listServedStopIds(dows, slotId).then(setServedByDay);
+  }, [stopMode, slotId, selectedDates]);
+
   // ── Derived ──
 
   const selectedStudentInfo = students.find((s) => s.profile_id === selectedStudentId);
@@ -208,6 +224,12 @@ export function AdminBusChangeDnD({
       ? selectedStopInfo.name.includes("픽업")
       : !selectedStopInfo.name.includes("픽업"));
 
+  // 정류장 미배정 검증 (정류장 모드만). 선택 정류장이 미배정인 요일 목록.
+  const selectedDows = selectedDates.map((d) => dowFromYmd(formatDateYmdKst(d)));
+  const unassignedDays =
+    stopMode === "stop" ? findUnassignedDays(servedByDay, selectedDows, stopId) : [];
+  const hasUnassignedStop = unassignedDays.length > 0;
+
   // ── Handlers ──
 
   function handleStudentSelect(profileId: string) {
@@ -255,6 +277,10 @@ export function AdminBusChangeDnD({
     if (stopMode !== "absent") {
       if (!stopId) { toastError("정류장을 선택해 주세요."); return; }
       if (!slotId) { toastError("시간대를 선택해 주세요."); return; }
+    }
+    if (stopMode === "stop" && hasUnassignedStop) {
+      toastError(`선택한 정류장이 ${formatWeekdayList(unassignedDays)}요일 해당 시간대에 배정되어 있지 않습니다.`);
+      return;
     }
 
     const changeType = stopMode === "absent" ? "absent" : stopMode === "pickup" ? "no_ride" : "change";
@@ -563,6 +589,11 @@ export function AdminBusChangeDnD({
                 )}
               </div>
             )}
+            {stopMode === "stop" && stopId && hasUnassignedStop && (
+              <p className="mt-1.5 text-sm font-medium text-red-600">
+                ⚠ 이 정류장은 {formatWeekdayList(unassignedDays)}요일 {selectedSlotObj?.label ?? "선택 시간대"}에 배정된 버스가 없습니다. 정류장 배치를 확인하세요.
+              </p>
+            )}
           </div>
           )}
 
@@ -587,6 +618,7 @@ export function AdminBusChangeDnD({
                 saving ||
                 (stopMode !== "absent" && !stopId) ||
                 (stopMode === "stop" && !slotId) ||
+                hasUnassignedStop ||
                 // 기존 변경과 동일하면 저장 불필요
                 !!(existingId &&
                   stopMode !== "absent" &&

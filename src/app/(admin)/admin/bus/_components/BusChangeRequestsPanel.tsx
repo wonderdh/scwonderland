@@ -11,6 +11,7 @@ import {
   listBusNumbers,
   listBusTimeSlots,
   listBusStops,
+  listServedStopIds,
 } from "@/app/(admin)/admin/actions/bus-actions";
 import { LoadingState } from "@/components/feedback/LoadingState";
 import { StatusBadge } from "@/components/badges/StatusBadge";
@@ -21,6 +22,7 @@ import { AdminBusChangeDnD } from "./AdminBusChangeDnD";
 import { formatStudentName } from "@/lib/utils/student-name";
 import { formatTime } from "@/lib/bus/utils";
 import { emitBusChangeMutated } from "@/lib/bus/change-events";
+import { dowFromYmd, findUnassignedDays, formatWeekdayList } from "@/lib/bus/stop-validation";
 
 type ActiveStudent = {
   profile_id: string;
@@ -56,6 +58,8 @@ export function BusChangeRequestsPanel({
   const [editBusId, setEditBusId] = useState("");
   const [editStopId, setEditStopId] = useState("");
   const [editNote, setEditNote] = useState("");
+  // 편집 중인 요청의 (요일 × 시간대) 운행 정류장 — 정류장 미배정 검증용.
+  const [editServedByDay, setEditServedByDay] = useState<Record<number, string[]>>({});
 
   // 거부 확인 모달
   const [rejectConfirm, setRejectConfirm] = useState<{ open: boolean; id?: string }>({ open: false });
@@ -86,6 +90,18 @@ export function BusChangeRequestsPanel({
     // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
   }, [load]);
+
+  // 편집(승인/수정) 중 정류장 모드일 때, 요청 날짜 요일 × 선택 시간대 운행 정류장 로드.
+  useEffect(() => {
+    const req = [...requests, ...completedRequests].find((r) => r.id === editingId);
+    if (!editingId || !req || editMode === "reject" || editStopMode !== "stop" || !editSlotId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setEditServedByDay({});
+      return;
+    }
+    const dow = dowFromYmd(String(req.request_date).slice(0, 10));
+    listServedStopIds([dow], editSlotId).then(setEditServedByDay);
+  }, [editingId, editMode, editStopMode, editSlotId, requests, completedRequests]);
 
   // 처리 완료 레이지 로드
   const loadCompleted = useCallback(async () => {
@@ -173,6 +189,17 @@ export function BusChangeRequestsPanel({
   const pendingRequests = requests;
   const showList = segment === "pending" ? pendingRequests : completedRequests;
 
+  // 편집 중인 요청의 미배정 요일 (정류장 모드 + 승인/수정 모드만).
+  const editingReq = [...requests, ...completedRequests].find((r) => r.id === editingId);
+  const editUnassignedDays =
+    editingReq && editMode !== "reject" && editStopMode === "stop"
+      ? findUnassignedDays(
+          editServedByDay,
+          [dowFromYmd(String(editingReq.request_date).slice(0, 10))],
+          editStopId
+        )
+      : [];
+
   function handleStopModeChange(mode: "stop" | "pickup") {
     setEditStopMode(mode);
     setEditStopId("");
@@ -246,6 +273,7 @@ export function BusChangeRequestsPanel({
               busTimeSlots={busTimeSlots}
               busNumbers={busNumbers}
               busStops={busStops}
+              unassignedDays={editingId === req.id ? editUnassignedDays : []}
               actionLoading={actionLoading === req.id}
               onApprove={
                 segment === "pending" || req.status === "rejected"
@@ -302,6 +330,7 @@ function RequestCard({
   busTimeSlots,
   busNumbers,
   busStops,
+  unassignedDays,
   actionLoading,
   onApprove,
   onReject,
@@ -325,6 +354,7 @@ function RequestCard({
   busTimeSlots: BusTimeSlot[];
   busNumbers: BusNumber[];
   busStops: BusStop[];
+  unassignedDays: number[];
   actionLoading: boolean;
   onApprove?: () => void;
   onReject?: () => void;
@@ -337,6 +367,8 @@ function RequestCard({
     ? busStops.filter((s) => s.name.includes("픽업"))
     : busStops.filter((s) => !s.name.includes("픽업"));
   const filteredBusNumbers = busNumbers.filter((b) => !b.label.includes("픽업"));
+  const hasUnassignedStop = editMode !== "reject" && editStopMode === "stop" && unassignedDays.length > 0;
+  const editSlotLabel = busTimeSlots.find((s) => s.id === editSlotId)?.label ?? "선택 시간대";
 
   return (
     <div className={`border rounded-xl p-5 space-y-3 ${
@@ -438,6 +470,11 @@ function RequestCard({
                     </select>
                   </div>
                 </div>
+                {hasUnassignedStop && (
+                  <p className="mt-1.5 text-sm font-medium text-red-600">
+                    ⚠ 이 정류장은 {formatWeekdayList(unassignedDays)}요일 {editSlotLabel}에 배정된 버스가 없습니다. 정류장 배치를 확인하세요.
+                  </p>
+                )}
               </fieldset>
 
               {/* 시간·호차 */}
@@ -478,7 +515,7 @@ function RequestCard({
               variant={editMode === "reject" ? "outline" : "default"}
               className={`h-11 px-5 text-base ${editMode === "reject" ? "text-red-700 border-red-300 hover:bg-red-50" : ""}`}
               onClick={onConfirm}
-              disabled={actionLoading}
+              disabled={actionLoading || hasUnassignedStop}
             >
               {editMode === "reject" ? "거절 확인" : editMode === "edit" ? "수정 확인" : "승인 확인"}
             </Button>

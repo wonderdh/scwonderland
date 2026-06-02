@@ -5,6 +5,8 @@ import { revalidatePath } from "next/cache";
 import { verifyAdmin, verifyAuthenticated } from "../auth-helpers";
 import { logger } from "@/lib/server/logger";
 import { todayKst } from "@/lib/utils/date-kst";
+import { isStopServed, getServedStopIdsByDay } from "./_helpers";
+import { dowFromYmd, findUnassignedDays, formatWeekdayList } from "@/lib/bus/stop-validation";
 import type { BusChangeType, StudentSubmittableChangeType } from "@/lib/bus/state";
 import type { BusChangeRequest } from "@/lib/types";
 import type { Database } from "@/lib/types/database.generated";
@@ -393,6 +395,21 @@ export async function approveChangeRequest(
   if ("error" in auth) return { error: auth.error };
   const supabase = createAdminClient();
 
+  // 정류장 미배정 가드: 정류장(change) 으로 승인하면서 정류장+시간대를 지정한 경우.
+  if (overrides?.changeType === "change" && overrides?.newBusStopId && overrides?.newBusTimeSlotId) {
+    const { data: reqRow } = await supabase
+      .from("bus_change_requests")
+      .select("request_date")
+      .eq("id", requestId)
+      .single();
+    if (reqRow) {
+      const dow = dowFromYmd(String(reqRow.request_date).slice(0, 10));
+      if (!(await isStopServed(supabase, dow, overrides.newBusTimeSlotId, overrides.newBusStopId))) {
+        return { error: "선택한 정류장이 해당 요일·시간대에 배정되어 있지 않습니다." };
+      }
+    }
+  }
+
   const updateData: Database["public"]["Tables"]["bus_change_requests"]["Update"] = {
     status: "approved",
     reviewed_by: reviewerId,
@@ -597,6 +614,13 @@ export async function createAdminBusChange(
   const finalBusId = changeType === "change" ? (newBusNumberId ?? null) : null;
   const finalStopId = newBusStopId || null;
 
+  // 정류장 미배정 가드: 정류장 모드에서 해당 요일·시간대에 배정 안 된 정류장은 거부.
+  if (changeType === "change" && finalStopId && finalSlotId) {
+    if (!(await isStopServed(supabase, dowFromYmd(requestDate), finalSlotId, finalStopId))) {
+      return { error: "선택한 정류장이 해당 요일·시간대에 배정되어 있지 않습니다." };
+    }
+  }
+
   const { error } = await supabase.from("bus_change_requests").insert({
     student_id: studentProfileId,
     request_date: requestDate,
@@ -650,6 +674,13 @@ export async function updateAdminBusChange(
     .select("student_id, request_date")
     .eq("id", requestId)
     .single();
+
+  // 정류장 미배정 가드
+  if (changeType === "change" && finalStopId && finalSlotId && existing) {
+    if (!(await isStopServed(supabase, dowFromYmd(String(existing.request_date).slice(0, 10)), finalSlotId, finalStopId))) {
+      return { error: "선택한 정류장이 해당 요일·시간대에 배정되어 있지 않습니다." };
+    }
+  }
 
   const { error } = await supabase
     .from("bus_change_requests")
@@ -740,6 +771,17 @@ export async function bulkCreateBusChanges(
   if (!dates.length) return { error: "날짜를 선택해 주세요." };
 
   const supabase = createAdminClient();
+
+  // 정류장 미배정 가드: 선택 날짜들의 요일 중 정류장 미배정 요일이 있으면 거부.
+  if (changeType === "change" && newBusStopId && newBusTimeSlotId) {
+    const dows = [...new Set(dates.map((d) => dowFromYmd(d)))];
+    const served = await getServedStopIdsByDay(supabase, dows, newBusTimeSlotId);
+    const bad = findUnassignedDays(served, dows, newBusStopId);
+    if (bad.length) {
+      return { error: `선택한 정류장이 ${formatWeekdayList(bad)}요일 해당 시간대에 배정되어 있지 않습니다.` };
+    }
+  }
+
   const now = new Date().toISOString();
 
   const rows = dates.map((d) => ({
