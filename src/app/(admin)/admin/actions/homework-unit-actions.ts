@@ -38,6 +38,8 @@ export type StudentTextbookUnits = {
     unitNumber: number;
     status: UnitStatus;
     expectedDate: string | null;
+    /** 제출일(issue, 숙제 나가는 날). 검사일=expectedDate. */
+    submitDate: string | null;
     completedAt: string | null;
     note: string | null;
   }>;
@@ -99,8 +101,8 @@ function isUnitStatus(s: string): s is UnitStatus {
 }
 
 /**
- * 학원 공통 쉬는날(휴원일) 날짜 배열. 채점일 계산 시 책별 skip_dates 와 합집합되어
- * getUnitSchedule 의 skipDates 로 전달된다 (closed-days-actions.ts 참고).
+ * 학원 공통 쉬는날(휴원일) 날짜 배열. getUnitSchedule 의 closedDates 인자로 전달되어
+ * 검사일 계산에서만 제외된다(제출은 진행). 책별 skip_dates 와는 별개 (closed-days-actions.ts 참고).
  */
 async function getClosedDates(
   supabase: ReturnType<typeof createAdminClient>
@@ -234,12 +236,12 @@ export async function listClassUnitProgressDetailed(
     };
   });
 
-  // 학원 공통 쉬는날 — 모든 책의 채점일 계산에서 제외 (책별 skip_dates 와 합집합).
+  // 학원 공통 쉬는날 — getUnitSchedule 의 closedDates 로 전달, 검사일에서만 제외(제출은 진행).
   const closedDates = await getClosedDates(supabase);
 
   // 책별 unit→채점일 맵 한 번만 계산 (책마다 다른 요일/예외일/start_unit 가능).
   // 등원일(meetDays) 이 비어 있으면 schedule 비활성 → 빈 맵.
-  const expectedByBook = new Map<string, Map<number, string>>();
+  const expectedByBook = new Map<string, Map<number, { grading: string; issue: string }>>();
   for (const b of books) {
     if (
       !b.start_date ||
@@ -263,10 +265,11 @@ export async function listClassUnitProgressDetailed(
       totalUnits: b.total_units,
       homeworkDays: b.homework_days,
       meetDays,
-      skipDates: Array.from(new Set([...b.skip_dates, ...closedDates])),
+      skipDates: b.skip_dates,
+      closedDates,
     });
-    const m = new Map<number, string>();
-    for (const s of schedule) m.set(s.unit, s.date);
+    const m = new Map<number, { grading: string; issue: string }>();
+    for (const s of schedule) m.set(s.unit, { grading: s.date, issue: s.issueDate });
     expectedByBook.set(b.chbId, m);
   }
 
@@ -332,10 +335,12 @@ export async function listClassUnitProgressDetailed(
       const units = Array.from({ length: unitsCount }, (_, i) => {
         const unitNumber = i + 1;
         const status = m?.get(unitNumber) ?? ("pending" as UnitStatus);
+        const e = exp?.get(unitNumber);
         return {
           unitNumber,
           status,
-          expectedDate: exp?.get(unitNumber) ?? null,
+          expectedDate: e?.grading ?? null,
+          submitDate: e?.issue ?? null,
           completedAt: null,
           note: null,
         };
@@ -461,7 +466,7 @@ export async function listSeriesLevelProgress(
   const closedDates = await getClosedDates(supabase);
 
   // 4. 책별 unit→채점일 맵 (listClassUnitProgressDetailed 와 동일, meetDays 만 반별)
-  const expectedByBook = new Map<string, Map<number, string>>();
+  const expectedByBook = new Map<string, Map<number, { grading: string; issue: string }>>();
   for (const b of books) {
     const meetDays = meetDaysByClass.get(b.classId) ?? [];
     if (!b.start_date || b.homework_days.length === 0 || meetDays.length === 0 || b.total_units <= 0)
@@ -480,10 +485,11 @@ export async function listSeriesLevelProgress(
       totalUnits: b.total_units,
       homeworkDays: b.homework_days,
       meetDays,
-      skipDates: Array.from(new Set([...b.skip_dates, ...closedDates])),
+      skipDates: b.skip_dates,
+      closedDates,
     });
-    const m = new Map<number, string>();
-    for (const s of schedule) m.set(s.unit, s.date);
+    const m = new Map<number, { grading: string; issue: string }>();
+    for (const s of schedule) m.set(s.unit, { grading: s.date, issue: s.issueDate });
     expectedByBook.set(b.chbId, m);
   }
 
@@ -550,10 +556,12 @@ export async function listSeriesLevelProgress(
       (meetDaysByClass.get(b.classId)?.length ?? 0) > 0;
     const units = Array.from({ length: Math.max(0, b.total_units) }, (_, i) => {
       const unitNumber = i + 1;
+      const e = exp?.get(unitNumber);
       return {
         unitNumber,
         status: statusByUnit.get(unitNumber) ?? ("pending" as UnitStatus),
-        expectedDate: exp?.get(unitNumber) ?? null,
+        expectedDate: e?.grading ?? null,
+        submitDate: e?.issue ?? null,
         completedAt: null,
         note: null,
       };
@@ -649,7 +657,7 @@ export async function listUnitProgressByStudent(
     }
   }
 
-  // 학원 공통 쉬는날 — 책별 skip_dates 와 합집합되어 채점일 계산에서 제외.
+  // 학원 공통 쉬는날 — getUnitSchedule 의 closedDates 로 전달, 검사일에서만 제외(제출은 진행).
   const closedDates = await getClosedDates(supabase);
 
   const textbooks: StudentTextbookUnits[] = rows.map((row) => {
@@ -684,7 +692,7 @@ export async function listUnitProgressByStudent(
     const classId = pickClassId(row);
     const meetDays = classId ? meetDaysByClass.get(classId) ?? [] : [];
 
-    const expectedByUnit = new Map<number, string>();
+    const expectedByUnit = new Map<number, { grading: string; issue: string }>();
     if (
       startDate &&
       homeworkDays.length > 0 &&
@@ -700,9 +708,10 @@ export async function listUnitProgressByStudent(
           totalUnits,
           homeworkDays,
           meetDays,
-          skipDates: Array.from(new Set([...skipDates, ...closedDates])),
+          skipDates,
+          closedDates,
         })) {
-          expectedByUnit.set(s.unit, s.date);
+          expectedByUnit.set(s.unit, { grading: s.date, issue: s.issueDate });
         }
       } else {
         logger.warn(
@@ -731,10 +740,12 @@ export async function listUnitProgressByStudent(
     const unitsCount = Math.max(0, totalUnits);
     const units = Array.from({ length: unitsCount }, (_, i) => {
       const unitNumber = i + 1;
+      const e = expectedByUnit.get(unitNumber);
       return {
         unitNumber,
         status: statusByUnit.get(unitNumber) ?? ("pending" as UnitStatus),
-        expectedDate: expectedByUnit.get(unitNumber) ?? null,
+        expectedDate: e?.grading ?? null,
+        submitDate: e?.issue ?? null,
         completedAt: null,
         note: null,
       };
