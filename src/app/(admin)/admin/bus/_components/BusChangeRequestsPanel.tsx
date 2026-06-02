@@ -20,6 +20,7 @@ import { toastSuccess, toastError } from "@/lib/ui/toast";
 import { AdminBusChangeDnD } from "./AdminBusChangeDnD";
 import { formatStudentName } from "@/lib/utils/student-name";
 import { formatTime } from "@/lib/bus/utils";
+import { emitBusChangeMutated } from "@/lib/bus/change-events";
 
 type ActiveStudent = {
   profile_id: string;
@@ -134,6 +135,7 @@ export function BusChangeRequestsPanel({
     setEditingId(null);
     await load();
     if (completedLoaded) await loadCompleted();
+    emitBusChangeMutated();
     router.refresh();
     setActionLoading(null);
   }
@@ -156,6 +158,7 @@ export function BusChangeRequestsPanel({
     setEditingId(null);
     await load();
     if (completedLoaded) await loadCompleted();
+    emitBusChangeMutated();
     router.refresh();
     setActionLoading(null);
   }
@@ -163,6 +166,7 @@ export function BusChangeRequestsPanel({
   /** AdminBusChangeDnD에서 변경 생성 후 콜백 */
   async function handleChangeCreated() {
     await load();
+    emitBusChangeMutated();
     router.refresh();
   }
 

@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import type { BusChangeRequest } from "@/lib/types";
 import { listChangeRequestsByDate } from "@/app/(admin)/admin/actions/bus-actions";
 import { useBusRealtime } from "@/lib/hooks/use-bus-realtime";
+import { onBusChangeMutated } from "@/lib/bus/change-events";
 import { formatStudentName } from "@/lib/utils/student-name";
 import { todayKst } from "@/lib/utils/date-kst";
 import { BUS_CHANGE_TYPE_CONFIG } from "@/lib/constants/bus";
@@ -41,6 +42,9 @@ export function DailyBusChanges() {
   useEffect(() => {
     loadChanges();
   }, [loadChanges]);
+
+  // realtime 미수신 대비: 같은 페이지의 admin 폼/패널 mutation 신호로도 refetch
+  useEffect(() => onBusChangeMutated(loadChanges), [loadChanges]);
 
   useBusRealtime(today, {
     onCheckRecord: () => {},
