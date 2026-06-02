@@ -23,6 +23,8 @@ export type UnitGridUnit = {
   unitNumber: number;
   status: UnitStatus;
   expectedDate: string | null;
+  /** 제출일(issue). 그리드 셀은 검사일만 표시하므로 렌더에는 미사용. */
+  submitDate?: string | null;
   completedAt: string | null;
   note: string | null;
 };
