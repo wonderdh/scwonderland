@@ -71,10 +71,12 @@ export async function isHomeworkDayForStudent(
 }
 
 export type UnitAssignment = {
-  /** YYYY-MM-DD (KST) */
+  /** YYYY-MM-DD (KST) — 검사일(grading) */
   date: string;
   /** 1-based unit number */
   unit: number;
+  /** YYYY-MM-DD (KST) — 제출일(issue, 숙제 나가는 날) */
+  issueDate: string;
 };
 
 // ── 검사일(grading date) 검증 ────────────────────────────────────────────────
@@ -164,6 +166,8 @@ export function getUnitSchedule(params: {
   /** 학생이 학원에 오는(=채점 후보) 요일 (0=일~6=토, KST). */
   meetDays: number[];
   skipDates: string[];
+  /** 학원 휴원일 (YYYY-MM-DD). 검사일에서만 제외; 부여(제출)는 진행. */
+  closedDates?: string[];
   /** fromDate/toDate 비교는 채점일 기준. */
   fromDate?: string;
   toDate?: string;
@@ -175,6 +179,7 @@ export function getUnitSchedule(params: {
     homeworkDays,
     meetDays,
     skipDates,
+    closedDates,
     fromDate,
     toDate,
   } = params;
@@ -192,6 +197,7 @@ export function getUnitSchedule(params: {
   const hwSet = new Set(homeworkDays);
   const meetSet = new Set(meetDays);
   const skipSet = new Set(skipDates ?? []);
+  const closedSet = new Set(closedDates ?? []);
   // F6: 동적 캡 — 최악 가정 "1주 1일 부여 + skipDates 일부" → 1 unit 당 ~14 일.
   // 730 일 floor 유지하되 totalUnits 큰 시리즈도 cover.
   const MAX_ITER = Math.max(730, (totalUnits + 2) * 14);
@@ -201,7 +207,7 @@ export function getUnitSchedule(params: {
     let cur = fromYmd;
     for (let i = 0; i < MAX_ITER; i++) {
       const wd = ymdToKstWeekday(cur);
-      if (meetSet.has(wd) && !skipSet.has(cur)) return cur;
+      if (meetSet.has(wd) && !skipSet.has(cur) && !closedSet.has(cur)) return cur;
       cur = nextDay(cur);
     }
     return null;
@@ -211,9 +217,9 @@ export function getUnitSchedule(params: {
   function gradingDayFor(issueYmd: string): string | null {
     const result = nextMeetDay(nextDay(issueYmd));
     if (result === null && process.env.NODE_ENV !== "production") {
-      // F13: 진단 — 730+ 일 안에 meet day 없음 (보통 skipDates 가 너무 광범위).
+      // F13: 진단 — 730+ 일 안에 meet day 없음 (보통 skipDates/closedDates 가 너무 광범위).
       console.warn(
-        `[getUnitSchedule] gradingDayFor returned null for issue=${issueYmd} (skipDates 가 너무 광범위하지 않은지 확인)`
+        `[getUnitSchedule] gradingDayFor returned null for issue=${issueYmd} (skipDates/closedDates 가 너무 광범위하지 않은지 확인)`
       );
     }
     return result;
@@ -248,17 +254,15 @@ export function getUnitSchedule(params: {
   const forward = collectIssueDays(startDate, 1, maxNeeded); // startDate 포함→미래
   const issueDays = [...backward.reverse(), ...forward]; // 시간순(오름차순)
 
-  // F7: 부여일 → 채점일 이벤트. 같은 채점일에 여러 부여일이 collapse 되는 경우(예:
-  // homeworkDays=[월,수] / meetDays=[금] → 월·수 부여분이 모두 금요일 검사로 모임)
-  // **가장 늦은 issue 만 유지** — "그 검사일에 채점되는 unit" 의미를 보존하고
-  // preview key 중복도 회피.
-  const eventByGrading = new Map<string, { issue: string; grading: string }>();
+  // 부여일 → 검사일 이벤트. 한 검사일에 여러 부여가 모여도 모두 유지(collapse 안 함).
+  // unit = 제출일 1:1. issueDays 는 이미 오름차순이지만 안전하게 정렬.
+  const events: { issue: string; grading: string }[] = [];
   for (const issue of issueDays) {
     const grading = gradingDayFor(issue);
-    if (grading) eventByGrading.set(grading, { issue, grading }); // 마지막 issue 가 winner
+    if (grading) events.push({ issue, grading });
   }
-  const events = [...eventByGrading.values()].sort((a, b) =>
-    ymdCompare(a.grading, b.grading)
+  events.sort(
+    (a, b) => ymdCompare(a.issue, b.issue) || ymdCompare(a.grading, b.grading)
   );
 
   if (events.length === 0) return result;
@@ -284,9 +288,9 @@ export function getUnitSchedule(params: {
     const unit = startUnit + (k - anchorIdx);
     if (unit < 1 || unit > totalUnits) continue;
     const date = events[k].grading;
-    // F15: toDate 초과 시 즉시 종료 (events 는 채점일 오름차순, 이후 다 더 큼).
+    // F15: toDate 초과 시 종료 (events 는 부여일=검사일 오름차순).
     if (toDate && ymdCompare(date, toDate) > 0) break;
-    if (inRange(date)) result.push({ date, unit });
+    if (inRange(date)) result.push({ date, unit, issueDate: events[k].issue });
   }
 
   result.sort((a, b) => a.unit - b.unit);
