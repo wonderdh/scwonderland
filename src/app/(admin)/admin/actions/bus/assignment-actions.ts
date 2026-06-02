@@ -4,7 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { verifyAdmin, verifyAuthenticated } from "../auth-helpers";
 import { getUserRoles } from "@/lib/auth/user-roles";
 import { logger } from "@/lib/server/logger";
-import { buildStopToBusMaps } from "./_helpers";
+import { buildStopToBusMaps, getServedStopIdsByDay } from "./_helpers";
 import { getStudentRecordByProfileId, getStudentsByIds } from "@/lib/server/domain-helpers";
 import type {
   BusDefaultAssignment,
@@ -53,6 +53,22 @@ export async function listAllActiveStudentNames(): Promise<
     age: s.age ?? null,
     group_type: groupMap.get(s.id) ?? null,
   }));
+}
+
+// ── 정류장 운행(배정) 조회 ──
+
+/**
+ * 주어진 요일들 × 시간대에 운행되는 정류장 ID를 요일별로 반환한다.
+ * 정류장 미배정 검증(경고/차단)에 사용. strict 기준(정확 slot OR null 기본)은 `_helpers` 참고.
+ */
+export async function listServedStopIds(
+  daysOfWeek: number[],
+  slotId: string
+): Promise<Record<number, string[]>> {
+  const auth = await verifyAuthenticated();
+  if ("error" in auth) return {};
+  const supabase = createAdminClient();
+  return getServedStopIdsByDay(supabase, daysOfWeek, slotId);
 }
 
 // ── 학생 기본 배정 ──
