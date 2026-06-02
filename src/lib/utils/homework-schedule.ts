@@ -151,10 +151,13 @@ function ymdCompare(a: string, b: string): number {
  *  - `startDate` 는 **`startUnit` 을 채점하는 날**이다 ("이 날까지 해 와라" 의 그 날).
  *  - unit 은 `homeworkDays`(부여 요일)에 1씩 부여되고,
  *    그 부여분의 채점일 = 부여일의 **다음 등원일**(`meetDays`, skipDates 제외).
- *  - 즉 반환 `date` 는 채점일, `unit` 은 그 채점일에 채점하는 unit.
+ *  - 즉 반환 `date` 는 채점일, `unit` 은 그 채점일에 채점하는 unit. `issueDate` 는 그 부여일(제출일).
+ *  - unit = 부여일 1:1. 여러 부여일이 같은 채점일로 모여도 collapse 하지 않고 모두 유지
+ *    (→ 한 채점일에 여러 unit 가능). 같은 채점일이 startDate 면 가장 먼저 부여된 unit 이 startUnit.
  *  - `startDate` 가 채점일 달력에 정확히 없으면, startDate **이후 첫 채점일**에 startUnit 을 앉힌다.
  *  - `meetDays` 또는 `homeworkDays` 가 비어 있으면 schedule 비활성 (빈 배열).
- *  - `skipDates` 는 부여일·채점일 양쪽에서 제외.
+ *  - `skipDates`(책별 예외일) 는 부여일·채점일 양쪽에서 제외.
+ *  - `closedDates`(학원 휴원일) 는 **채점일에서만** 제외 — 부여(제출)는 그대로 진행.
  *  - `fromDate`/`toDate` 비교는 채점일 기준.
  */
 export function getUnitSchedule(params: {

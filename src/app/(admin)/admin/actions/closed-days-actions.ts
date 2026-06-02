@@ -3,8 +3,8 @@
 /**
  * 학원 공통 쉬는날(휴원일) 관리.
  *
- * 지정된 날짜는 숙제 unit↔채점일 계산(getUnitSchedule)의 skipDates 에 합집합되어
- * 숙제 부여·채점일에서 제외된다 (homework-unit-actions.ts 참고).
+ * 지정된 날짜는 숙제 unit↔채점일 계산(getUnitSchedule)의 closedDates 로 전달되어
+ * **채점일에서만** 제외된다 — 숙제 부여(제출)는 휴원일에도 그대로 진행 (homework-unit-actions.ts 참고).
  *
  * 저장 컨벤션: 하루 = 한 row (academy_closed_days.closed_date UNIQUE).
  * 기간(범위) 입력은 addAcademyClosedDays 에서 개별 날짜로 펼쳐 upsert.
