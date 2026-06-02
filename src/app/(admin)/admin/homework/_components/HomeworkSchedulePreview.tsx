@@ -31,8 +31,10 @@ type Props = {
   homeworkDays: number[];
   /** 반 수업(=등원) 요일 (0=일~6=토). 채점일 계산 기준. */
   meetDays: number[];
-  /** 예외일(책별 skip + 학원 공통 쉬는날 합집합). */
+  /** 책별 예외일(skip) — 부여·검사 양쪽 제외. */
   skipDates: string[];
+  /** 학원 공통 휴원일 — 검사일만 제외, 제출은 나감. */
+  closedDates: string[];
   /** 미리보기에 보여줄 최대 행 수 (기본 8). */
   limit?: number;
 };
@@ -48,6 +50,7 @@ export function HomeworkSchedulePreview({
   homeworkDays,
   meetDays,
   skipDates,
+  closedDates,
   limit = 8,
 }: Props) {
   // F12: startUnit 이 invalid 면 silent fallback 대신 명시적 안내. F14: malformed startDate 도 차단.
@@ -75,6 +78,7 @@ export function HomeworkSchedulePreview({
       homeworkDays,
       meetDays,
       skipDates,
+      closedDates,
     })
       .filter((r) => r.date >= startDate)
       .slice(0, limit);
@@ -87,6 +91,7 @@ export function HomeworkSchedulePreview({
     homeworkDays,
     meetDays,
     skipDates,
+    closedDates,
     limit,
   ]);
 
@@ -129,14 +134,27 @@ export function HomeworkSchedulePreview({
 
   return (
     <div className="rounded-lg border border-slate-200 bg-slate-50/60 p-2">
+      <p className="px-1.5 pb-1 text-[10px] text-slate-400">제출일 → 검사일</p>
       <ul className="divide-y divide-slate-100">
         {rows.map((r, i) => (
           <li
-            key={r.date}
+            key={r.unit}
             className="flex items-center justify-between px-1.5 py-1 text-xs"
           >
-            <span className={i === 0 ? "font-semibold text-slate-900" : "text-slate-600"}>
-              {formatPreviewDate(r.date)}
+            <span className="flex items-center gap-1">
+              <span className="tabular-nums text-slate-500">
+                {formatPreviewDate(r.issueDate)}
+              </span>
+              <span className="text-slate-300">→</span>
+              <span
+                className={
+                  i === 0
+                    ? "font-semibold text-slate-900 tabular-nums"
+                    : "text-slate-600 tabular-nums"
+                }
+              >
+                {formatPreviewDate(r.date)}
+              </span>
             </span>
             <span className="flex items-center gap-1.5">
               <span
