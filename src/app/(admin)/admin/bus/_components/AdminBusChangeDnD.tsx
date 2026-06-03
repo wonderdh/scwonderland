@@ -8,7 +8,7 @@ import { toastSuccess, toastError } from "@/lib/ui/toast";
 import { Info } from "lucide-react";
 import { getAgeColor } from "@/lib/ui/student-age-colors";
 import type { BusStop, BusTimeSlot, StudentBusDefault } from "@/lib/types";
-import { detectAfterschoolSlot } from "@/lib/bus/afterschool-sync";
+import { detectAfterschoolSlot, findAfterschoolSlotIds } from "@/lib/bus/afterschool-sync";
 import { MultiDatePicker } from "@/components/forms/MultiDatePicker";
 import { formatDateYmdKst, todayKst } from "@/lib/utils/date-kst";
 import { formatStudentName } from "@/lib/utils/student-name";
@@ -184,9 +184,8 @@ export function AdminBusChangeDnD({
   const afterschoolToday = afterschoolDays.find((e) => e.day_of_week === dow);
   const isAfterschoolDay = !!afterschoolToday;
 
-  // 방과후 슬롯 ID 상수
-  const slot1Id = busTimeSlots.find((s) => s.label === "방과후1차")?.id ?? "";
-  const slot2Id = busTimeSlots.find((s) => s.label === "오후반 1차/방과후2차")?.id ?? "";
+  // 방과후 슬롯 ID (하원 시각 기준: 15:30=1차, 16:20=2차)
+  const { firstSlotId: slot1Id, secondSlotId: slot2Id } = findAfterschoolSlotIds(busTimeSlots);
 
   // 현재 선택된 슬롯이 방과후 슬롯인지
   const selectedSlotObj = busTimeSlots.find((s) => s.id === slotId);

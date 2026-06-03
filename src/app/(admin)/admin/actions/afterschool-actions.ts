@@ -6,28 +6,6 @@ import { verifyAdmin, verifyAuthenticated } from "./auth-helpers";
 import { logger } from "@/lib/server/logger";
 import type { DayEnrollment, AfterschoolStudentEnrollment } from "@/lib/types";
 
-type AdminClient = ReturnType<typeof createAdminClient>;
-
-/**
- * 방과후 academy_periods 의 1교시/2교시 id 조회.
- * group_type='afterschool' 인 active period 를 sort_order, start_time 순으로 정렬해
- * 첫 번째 = 1교시, 두 번째 = 2교시로 본다.
- */
-async function getAfterschoolPeriodIds(
-  supabase: AdminClient,
-): Promise<{ firstPeriodId: string | null; secondPeriodId: string | null }> {
-  const { data } = await supabase
-    .from("academy_periods")
-    .select("id")
-    .eq("group_type", "afterschool")
-    .order("sort_order", { ascending: true })
-    .order("start_time", { ascending: true });
-  return {
-    firstPeriodId: data?.[0]?.id ?? null,
-    secondPeriodId: data?.[1]?.id ?? null,
-  };
-}
-
 // ── 방과후 반 조회 or 자동 생성 ──
 
 export async function getOrCreateAfterschoolClass(): Promise<{ id: string; name: string }> {
@@ -68,16 +46,14 @@ export async function getAfterschoolEnrollments(
 
   const { data: enrollments } = await supabase
     .from("afterschool_enrollments")
-    .select("student_id, day_of_week, academy_period_id")
+    .select("student_id, day_of_week, second_period")
     .eq("class_id", classId);
 
-  // 2교시 여부는 academy_period_id 가 방과후 두 번째 period 와 일치하는지로 판정.
-  const { secondPeriodId } = await getAfterschoolPeriodIds(supabase);
+  // 2교시 여부는 second_period 컬럼(하원 시각 기준)으로 판정.
   const studentDaysMap = new Map<string, DayEnrollment[]>();
   for (const e of enrollments ?? []) {
     const days = studentDaysMap.get(e.student_id) ?? [];
-    const isSecond = !!(secondPeriodId && e.academy_period_id === secondPeriodId);
-    days.push({ day: e.day_of_week, second_period: isSecond });
+    days.push({ day: e.day_of_week, second_period: e.second_period });
     studentDaysMap.set(e.student_id, days);
   }
 
@@ -135,15 +111,12 @@ export async function enrollStudent(
 
   const supabase = createAdminClient();
 
-  // 2교시 여부 → academy_period_id 매핑 (방과후 1교시/2교시 academy_period 사용)
-  const { firstPeriodId, secondPeriodId } = await getAfterschoolPeriodIds(supabase);
-  const targetPeriodId = secondPeriod ? secondPeriodId : firstPeriodId;
-
+  // 2교시 여부는 하원 시각으로 판정된 secondPeriod 를 그대로 저장.
   const rows = days.map((d) => ({
     class_id: classId,
     student_id: studentProfileId,
     day_of_week: d,
-    academy_period_id: targetPeriodId,
+    second_period: secondPeriod,
   }));
 
   const { error } = await supabase.from("afterschool_enrollments").insert(rows);
@@ -285,13 +258,12 @@ export async function getStudentAfterschoolDetail(
   const supabase = createAdminClient();
   const { data } = await supabase
     .from("afterschool_enrollments")
-    .select("day_of_week, academy_period_id")
+    .select("day_of_week, second_period")
     .eq("student_id", studentProfileId);
-  const { secondPeriodId } = await getAfterschoolPeriodIds(supabase);
   return (data ?? [])
     .map((d) => ({
       day_of_week: d.day_of_week,
-      second_period: !!(secondPeriodId && d.academy_period_id === secondPeriodId),
+      second_period: d.second_period,
     }))
     .sort((a, b) => a.day_of_week - b.day_of_week);
 }
@@ -329,11 +301,9 @@ export async function updateAfterschoolSecondPeriod(
   const auth = await verifyAdmin();
   if ("error" in auth) return { error: auth.error };
   const supabase = createAdminClient();
-  const { firstPeriodId, secondPeriodId } = await getAfterschoolPeriodIds(supabase);
-  const targetPeriodId = secondPeriod ? secondPeriodId : firstPeriodId;
   const { error } = await supabase
     .from("afterschool_enrollments")
-    .update({ academy_period_id: targetPeriodId })
+    .update({ second_period: secondPeriod })
     .eq("student_id", studentProfileId)
     .eq("day_of_week", dayOfWeek);
   if (error) {
@@ -367,14 +337,12 @@ export async function bulkUpdateEnrollmentDays(
     return { error: delError.message };
   }
 
-  // second_period 부울 → academy_period_id 매핑
-  const { firstPeriodId, secondPeriodId } = await getAfterschoolPeriodIds(supabase);
   const rows = updates.flatMap((u) =>
     u.days.map((d) => ({
       class_id: classId,
       student_id: u.studentProfileId,
       day_of_week: d.day,
-      academy_period_id: d.second_period ? secondPeriodId : firstPeriodId,
+      second_period: d.second_period,
     })),
   );
 
