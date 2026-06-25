@@ -382,7 +382,6 @@ export async function listPendingChangeRequests(): Promise<BusChangeRequest[]> {
 
 export async function approveChangeRequest(
   requestId: string,
-  reviewerId: string,
   overrides?: {
     changeType?: BusChangeType;
     newBusTimeSlotId?: string;
@@ -393,6 +392,8 @@ export async function approveChangeRequest(
 ): Promise<{ error?: string }> {
   const auth = await verifyAdmin();
   if ("error" in auth) return { error: auth.error };
+  // reviewer 신원은 클라이언트 입력이 아니라 인증 세션에서 가져온다 (감사추적 위조 방지).
+  const reviewerId = auth.userId;
   const supabase = createAdminClient();
 
   // 정류장 미배정 가드: 정류장(change) 으로 승인하면서 정류장+시간대를 지정한 경우.
@@ -458,11 +459,12 @@ export async function approveChangeRequest(
 
 export async function rejectChangeRequest(
   requestId: string,
-  reviewerId: string,
   reviewNote?: string
 ): Promise<{ error?: string }> {
   const auth = await verifyAdmin();
   if ("error" in auth) return { error: auth.error };
+  // reviewer 신원은 인증 세션에서 (클라이언트 입력 신뢰 금지).
+  const reviewerId = auth.userId;
   const supabase = createAdminClient();
   const { error } = await supabase
     .from("bus_change_requests")

@@ -92,6 +92,8 @@ export async function deleteBusNumber(id: string): Promise<{ error?: string }> {
 // ── 버스 시간대 CRUD ──
 
 export async function listBusTimeSlots(): Promise<BusTimeSlot[]> {
+  const auth = await verifyAuthenticated();
+  if ("error" in auth) return [];
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("bus_time_slots")
@@ -300,6 +302,8 @@ export async function listBusStopDayAssignments(
   day: number,
   busTimeSlotId?: string
 ): Promise<BusStopDayAssignment[]> {
+  const auth = await verifyAuthenticated();
+  if ("error" in auth) return [];
   const supabase = createAdminClient();
   let query = supabase
     .from("bus_stop_day_assignments")
@@ -369,6 +373,8 @@ export async function listBusStopSchedulesBulk(
   day: number,
   slotId?: string
 ): Promise<BusStopSchedule[]> {
+  const auth = await verifyAuthenticated();
+  if ("error" in auth) return [];
   const supabase = createAdminClient();
   let query = supabase
     .from("bus_stop_schedules")
@@ -406,6 +412,8 @@ export async function listBusStopSchedules(
   busStopId: string,
   busTimeSlotId?: string
 ): Promise<BusStopSchedule[]> {
+  const auth = await verifyAuthenticated();
+  if ("error" in auth) return [];
   const supabase = createAdminClient();
   let query = supabase
     .from("bus_stop_schedules")
@@ -594,7 +602,6 @@ export async function copyBusDayDataToOtherDays(
 export async function getBusDayDataCounts(
   busTimeSlotId?: string
 ): Promise<Record<number, { assignments: number; schedules: number }>> {
-  const supabase = createAdminClient();
   const result: Record<number, { assignments: number; schedules: number }> = {
     1: { assignments: 0, schedules: 0 },
     2: { assignments: 0, schedules: 0 },
@@ -602,6 +609,9 @@ export async function getBusDayDataCounts(
     4: { assignments: 0, schedules: 0 },
     5: { assignments: 0, schedules: 0 },
   };
+  const auth = await verifyAuthenticated();
+  if ("error" in auth) return result;
+  const supabase = createAdminClient();
 
   let aQuery = supabase
     .from("bus_stop_day_assignments")

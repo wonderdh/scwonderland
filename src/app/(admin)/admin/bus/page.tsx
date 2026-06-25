@@ -77,7 +77,6 @@ export default async function AdminBusPage({
 
         {currentTab === "requests" && (
           <BusChangeRequestsPanel
-            adminId={user.id}
             initialStudents={allStudentNames}
             initialBusStops={busStops}
             initialBusTimeSlots={busTimeSlots}

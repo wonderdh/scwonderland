@@ -32,12 +32,10 @@ type ActiveStudent = {
 };
 
 export function BusChangeRequestsPanel({
-  adminId,
   initialStudents,
   initialBusStops,
   initialBusTimeSlots,
 }: {
-  adminId: string;
   initialStudents?: ActiveStudent[];
   initialBusStops?: BusStop[];
   initialBusTimeSlots?: BusTimeSlot[];
@@ -136,7 +134,7 @@ export function BusChangeRequestsPanel({
   async function handleApproveConfirm(id: string) {
     setActionLoading(id);
     const changeType = editStopMode === "pickup" ? "no_ride" : "change";
-    const result = await approveChangeRequest(id, adminId, {
+    const result = await approveChangeRequest(id, {
       changeType,
       newBusTimeSlotId: editSlotId || undefined,
       newBusNumberId: editStopMode === "stop" ? (editBusId || undefined) : undefined,
@@ -165,7 +163,7 @@ export function BusChangeRequestsPanel({
     setRejectConfirm({ open: false });
     if (!id) return;
     setActionLoading(id);
-    const result = await rejectChangeRequest(id, adminId, editNote || undefined);
+    const result = await rejectChangeRequest(id, editNote || undefined);
     if (result.error) {
       toastError(result.error);
     } else {
