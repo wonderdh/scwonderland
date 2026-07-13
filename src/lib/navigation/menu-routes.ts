@@ -34,20 +34,18 @@ export const itemSlugs: Record<string, Record<string, string>> = {
     MAP: "map",
     Wonderland: "wonderland",
     "Wonder K": "wonder-k",
-    "Primo School": "primo-school",
-    "Quest Academy": "quest-academy",
+    "Primo Class": "primo-school",
+    "Quest Class": "quest-academy",
   },
   features: {
     News: "news",
   },
   gallery: {
-    학부모상담: "parent-consultation",
-    가맹문의: "franchise-inquiry",
     캠퍼스: "campus",
   },
   contact: {
     "Special Day": "special-day",
-    "Wonderland E-School": "e-school",
+    "Wonderland E-Learning": "e-school",
     Library: "library",
     Links: "links",
   },

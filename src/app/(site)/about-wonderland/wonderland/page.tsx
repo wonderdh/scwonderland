@@ -27,7 +27,7 @@ export default function WonderlandPage() {
             </h1>
           </div>
           <div className={styles.txtBox}>
-            주니어 영어 교육의 선두주자로 탄탄한 수업구성과 교수방법을 갖추고
+            주니어 영어 교육에 힘쓰며 탄탄한 수업구성과 교수방법을 갖추고
             있습니다.
             <br />
             교사의 일방적인 수업이 아닌 학습자 중심의 수업을 지향합니다.

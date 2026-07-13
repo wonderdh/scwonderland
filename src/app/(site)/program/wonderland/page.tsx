@@ -12,26 +12,26 @@ const yearGoals = [
     year: "3rd Year",
     icon: "/images/program/wonderland/wonderland_icon1.svg",
     items: [
-      "1,300단어 이상의 어휘 실력을 갖추고 읽기에 전혀 무리가 없습니다.",
-      "문장 위주의 세련된 영어 표현이 가능합니다.",
-      "사고력이 확장되어 쓰기를 통한 Presentation을 할 수 있습니다.",
+      "1,300단어 수준의 어휘 학습을 목표로 하며 읽기에 익숙해지도록 지도합니다.",
+      "문장 위주의 영어 표현을 연습합니다.",
+      "사고력을 확장하며 쓰기를 통한 Presentation을 연습합니다.",
     ],
   },
   {
     year: "2nd Year",
     icon: "/images/program/wonderland/wonderland_icon2.svg",
     items: [
-      "1,000단어 이상의 어휘 실력을 갖추고 읽기에 자신감이 생깁니다.",
-      "단어 위주의 영어 구사 비율이 줄고 문장으로 구사할 수 있으며, 자신의 생각을 담은 간단한 쓰기가 가능합니다.",
+      "1,000단어 수준의 어휘 학습을 목표로 하며 읽기에 자신감을 키웁니다.",
+      "단어 위주에서 문장 위주로 구사하도록 연습하며, 자신의 생각을 담은 간단한 쓰기를 시도합니다.",
     ],
   },
   {
     year: "1st Year",
     icon: "/images/program/wonderland/wonderland_icon3.svg",
     items: [
-      "700단어 이상의 어휘 실력을 갖추고 Phonics에 대한 이해 체계를 형성합니다.",
-      "반복되는 표현들에 대해 자신 있게 구사하며 상황에 맞게 단어를 사용해 자신의 생각을 표현해 말할 수 있습니다.",
-      "주어진 주제에 관련된 단문 위주의 쓰기가 가능합니다.",
+      "700단어 수준의 어휘 학습을 목표로 하며 Phonics에 대한 이해를 형성합니다.",
+      "반복되는 표현을 자신 있게 연습하며 상황에 맞게 단어를 사용해 자신의 생각을 표현하도록 지도합니다.",
+      "주어진 주제에 관련된 단문 위주의 쓰기를 연습합니다.",
     ],
   },
 ];
@@ -39,9 +39,9 @@ const yearGoals = [
 /* commonui.css .program .prbox 순서: pr1~pr5 카드, pr6 중앙 로고 */
 const programs = [
   { title: "표현생활", content: "Art & Craft, Sing & Chant, Activities, Story Telling, Presentation", pr: "pr1" as const },
-  { title: "자연탐구생활", content: "Math,\nScience,\nField Trip", pr: "pr2" as const },
+  { title: "자연탐구생활", content: "English Math,\nEnglish Science,\nField Trip", pr: "pr2" as const },
   { title: "사회생활", content: "International Day,\nSituation English,\nRole Play", pr: "pr3" as const },
-  { title: "신체, 건강생활", content: "Gym Class, Role Play,\nField Trip,\nActivities,\nGames", pr: "pr4" as const },
+  { title: "신체, 건강생활", content: "English Gym, Role Play,\nField Trip,\nActivities,\nGames", pr: "pr4" as const },
   { title: "언어생활", content: "Classroom & Daily English,\nWeekly Expressions,\nPhonics, Course Book,\nSituation English,\nWriting Book", pr: "pr5" as const },
 ];
 

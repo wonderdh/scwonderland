@@ -39,7 +39,7 @@ export function Hero() {
             일까요?&rdquo;
           </h1>
           <p className="mb-8 text-xl text-gray-600">
-            유치원부터 초등학생까지, 아이들의 영어 실력과 자신감을 키워주는
+            유아부터 초등학생까지, 아이들의 영어 실력과 자신감을 키워주는
             <br />
             30년 전통의 영어 전문 교육기관입니다
           </p>

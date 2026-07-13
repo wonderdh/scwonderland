@@ -23,7 +23,7 @@ export const metadata: Metadata = {
     template: "%s | 원더랜드 영어학원",
   },
   description:
-    "유치원부터 초등학생까지, 아이들의 영어 실력과 자신감을 키워주는 30년 전통의 영어 전문 교육기관",
+    "유아부터 초등학생까지, 아이들의 영어 실력과 자신감을 키워주는 30년 전통의 영어 전문 교육기관",
   keywords: [
     "영어학원", "원더랜드", "유치부영어", "초등영어",
     "어린이영어", "순천영어학원", "Wonderland",
@@ -31,7 +31,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "원더랜드 영어학원",
     description:
-      "유치원부터 초등학생까지, 아이들의 영어 실력과 자신감을 키워주는 30년 전통의 영어 전문 교육기관",
+      "유아부터 초등학생까지, 아이들의 영어 실력과 자신감을 키워주는 30년 전통의 영어 전문 교육기관",
     siteName: "원더랜드 영어학원",
     locale: "ko_KR",
     type: "website",

@@ -3,13 +3,13 @@ import { PageContent } from "@/app/(site)/_components/sections/PageContent";
 import styles from "./QuestAcademy.module.css";
 
 export const metadata: Metadata = {
-  title: "Quest Academy | 원더랜드 영어학원",
-  description: "원더랜드 영어학원 Quest Academy - 초등 고학년·중등 전문 프로그램",
+  title: "Quest Class | 원더랜드 영어학원",
+  description: "원더랜드 영어학원 Quest Class - 초등 고학년·중등 전문 프로그램",
 };
 
 export default function QuestAcademyPage() {
   return (
-    <PageContent title="Quest Academy">
+    <PageContent title="Quest Class">
       <div className={`${styles.contents} ${styles.type4}`}>
         <div className={styles.program}>
           <div className={styles.questacademy}>
@@ -18,12 +18,12 @@ export default function QuestAcademyPage() {
                 <span>
                   <strong>초등 고학년·중등 전문</strong> 프로그램
                 </span>
-                <h3>Quest Academy</h3>
+                <h3>Quest Class</h3>
                 <p>
-                  영어의 모든 영역을 최고 단계로 <br />
-                  성장 발전시키는 영어 영재 프로그램으로
+                  영어의 모든 영역을 심화 단계로 <br />
+                  성장시키는 심화 영어 프로그램으로
                   <br />
-                  미래의 Global Leader를 양성하는 집중 단계입니다.
+                  미래의 글로벌 리더십을 키우는 집중 단계입니다.
                 </p>
               </div>
               <div className={styles.imgBox}>
@@ -31,7 +31,7 @@ export default function QuestAcademyPage() {
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src="/images/program/quest-academy/quest_img.svg"
-                  alt="Quest Academy 프로그램"
+                  alt="Quest Class 프로그램"
                 />
               </div>
             </div>
@@ -41,7 +41,7 @@ export default function QuestAcademyPage() {
                 <h2>프로그램</h2>
                 <div className={styles.levelobx}>
                   <div className={styles.no1obx}>
-                    <span>1. 영재 프로그램</span>
+                    <span>1. 심화 프로그램</span>
                     <div>
                       <em>Level</em>
                       <strong>Twilight</strong>
