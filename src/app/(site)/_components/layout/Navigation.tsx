@@ -22,7 +22,7 @@ const aboutGreetingHref = "/about-wonderland/greeting";
 
 const megaMenuItems: Record<string, string[]> = {
   about: ["인사말", "회사연혁", "대외기관 인증", "Wonderland"],
-  programs: ["MAP", "Wonderland", "Wonder K", "Primo Class", "Quest Class"],
+  programs: ["MAP", "Wonderland", "Wonder K", "Primo Class"],
   features: ["News"],
   gallery: ["캠퍼스"],
   contact: ["Special Day", "Wonderland E-Learning", "Library", "Links"],

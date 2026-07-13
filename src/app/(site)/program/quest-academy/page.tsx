@@ -1,126 +1,19 @@
 import type { Metadata } from "next";
 import { PageContent } from "@/app/(site)/_components/sections/PageContent";
-import styles from "./QuestAcademy.module.css";
 
 export const metadata: Metadata = {
   title: "Quest Class | 원더랜드 영어학원",
   description: "원더랜드 영어학원 Quest Class - 초등 고학년·중등 전문 프로그램",
+  // 비활성화 상태: 검색엔진 색인 제외
+  robots: { index: false, follow: false },
 };
 
-export default function QuestAcademyPage() {
+export default function QuestClassPage() {
   return (
     <PageContent title="Quest Class">
-      <div className={`${styles.contents} ${styles.type4}`}>
-        <div className={styles.program}>
-          <div className={styles.questacademy}>
-            <div className={styles.layout}>
-              <div className={styles.txtBox}>
-                <span>
-                  <strong>초등 고학년·중등 전문</strong> 프로그램
-                </span>
-                <h3>Quest Class</h3>
-                <p>
-                  영어의 모든 영역을 심화 단계로 <br />
-                  성장시키는 심화 영어 프로그램으로
-                  <br />
-                  미래의 글로벌 리더십을 키우는 집중 단계입니다.
-                </p>
-              </div>
-              <div className={styles.imgBox}>
-                {/* SVG 벡터 — next/image 최적화 의미 없음. eslint-disable 의도적 */}
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src="/images/program/quest-academy/quest_img.svg"
-                  alt="Quest Class 프로그램"
-                />
-              </div>
-            </div>
-
-            <div className={styles.gyBox}>
-              <div className={styles.layout}>
-                <h2>프로그램</h2>
-                <div className={styles.levelobx}>
-                  <div className={styles.no1obx}>
-                    <span>1. 심화 프로그램</span>
-                    <div>
-                      <em>Level</em>
-                      <strong>Twilight</strong>
-                      <ul>
-                        <li>
-                          미국교과과정 : <b>2.5 ~ 4.0</b>
-                        </li>
-                        <li>
-                          Lexile : <b>450 ~ 650</b>
-                        </li>
-                      </ul>
-                    </div>
-                  </div>
-
-                  <div className={styles.no2obx}>
-                    <span>2. 중등 프로그램</span>
-                    <div>
-                      <em>Level</em>
-                      <strong>Vesper</strong>
-                      <ul>
-                        <li>
-                          미국교과과정 : <b>3.7 ~ 6.0</b>
-                        </li>
-                        <li>
-                          Lexile : <b>625 ~ 850</b>
-                        </li>
-                      </ul>
-                    </div>
-                  </div>
-
-                  <div className={styles.no3obx}>
-                    <span>3. 고등 프로그램</span>
-                    <div>
-                      <em>Level</em>
-                      <strong>Nova</strong>
-                      <ul>
-                        <li>
-                          미국교과과정 : <b>5.7 ~ 8.0</b>
-                        </li>
-                        <li>
-                          Lexile : <b>825 ~ 1000</b>
-                        </li>
-                      </ul>
-                    </div>
-                    <div>
-                      <em>Level</em>
-                      <strong>Prodigy Advanced</strong>
-                      <ul>
-                        <li>
-                          미국교과과정 : <b>7.7 ~ 10.0</b>
-                        </li>
-                        <li>
-                          Lexile : <b>975 ~ 1200</b>
-                        </li>
-                      </ul>
-                    </div>
-                  </div>
-
-                  <div className={styles.no4obx}>
-                    <span>4. Global Leader 프로그램</span>
-                    <div>
-                      <em>Level</em>
-                      <strong>Global Leader</strong>
-                      <ul>
-                        <li>
-                          미국교과과정 : <b>9.5 ~ 10.0 +</b>
-                        </li>
-                        <li>
-                          Lexile : <b>1100 ~ 1200 +</b>
-                        </li>
-                      </ul>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <p className="py-12 text-center text-gray-500">
+        해당 프로그램 안내는 현재 준비 중입니다.
+      </p>
     </PageContent>
   );
 }

@@ -35,7 +35,6 @@ export const itemSlugs: Record<string, Record<string, string>> = {
     Wonderland: "wonderland",
     "Wonder K": "wonder-k",
     "Primo Class": "primo-school",
-    "Quest Class": "quest-academy",
   },
   features: {
     News: "news",
