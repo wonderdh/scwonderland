@@ -25,14 +25,14 @@ const programs = [
   {
     id: "item04",
     href: "/program/primo-school",
-    title: "Primo School",
+    title: "Primo Class",
     description: "초등 저학년 집중 프로그램",
     bgImage: "/images/main/program04.png",
   },
   {
     id: "item05",
     href: "/program/quest-academy",
-    title: "Quest Academy",
+    title: "Quest Class",
     description: "초등 고학년 · 중등 전문 프로그램",
     bgImage: "/images/main/program05.png",
   },

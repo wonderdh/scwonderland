@@ -18,7 +18,7 @@ const HISTORY: HistoryItem[] = [
     year: "2022",
     side: "left",
     color: "blue",
-    events: [{ month: "09월", text: "Wonderland E-school / Level Test 개발" }],
+    events: [{ month: "09월", text: "Wonderland 온라인 학습 / 진단 도구 개발" }],
   },
   {
     year: "2021",

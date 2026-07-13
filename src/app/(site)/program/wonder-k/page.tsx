@@ -71,7 +71,7 @@ export default function WonderKPage() {
                       </p>
                       <p>
                         <strong>Special Subjects</strong> - Sing &amp; Chant /
-                        Science <em>25%</em>
+                        English Science <em>25%</em>
                       </p>
                     </div>
                     <ul>

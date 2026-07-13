@@ -3,13 +3,13 @@ import { PageContent } from "@/app/(site)/_components/sections/PageContent";
 import styles from "./PrimoSchool.module.css";
 
 export const metadata: Metadata = {
-  title: "Primo School | 원더랜드 영어학원",
-  description: "원더랜드 영어학원 Primo School - 초등 저학년 집중 프로그램",
+  title: "Primo Class | 원더랜드 영어학원",
+  description: "원더랜드 영어학원 Primo Class - 초등 저학년 집중 프로그램",
 };
 
 export default function PrimoSchoolPage() {
   return (
-    <PageContent title="Primo School">
+    <PageContent title="Primo Class">
       <div className={`${styles.contents} ${styles.type4}`}>
         <div className={styles.program}>
           <div className={styles.primo}>
@@ -18,7 +18,7 @@ export default function PrimoSchoolPage() {
                 <span>
                   <strong>초등 저학년 집중</strong> 프로그램
                 </span>
-                <h3>Primo School</h3>
+                <h3>Primo Class</h3>
                 <p>
                   영어의 기초를 확립하여 <br />
                   자유로운 의사소통, 문해력 증진, <br />
@@ -30,7 +30,7 @@ export default function PrimoSchoolPage() {
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src="/images/program/primo-school/primo_img.svg"
-                  alt="Primo School 프로그램"
+                  alt="Primo Class 프로그램"
                 />
               </div>
             </div>
