@@ -91,9 +91,8 @@ export async function deleteBusNumber(id: string): Promise<{ error?: string }> {
 
 // ── 버스 시간대 CRUD ──
 
+// @auth-skip: 로그인 없이 쓰는 TV 모니터(/bus-monitor)가 호출하는 read-only 조회
 export async function listBusTimeSlots(): Promise<BusTimeSlot[]> {
-  const auth = await verifyAuthenticated();
-  if ("error" in auth) return [];
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("bus_time_slots")

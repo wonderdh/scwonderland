@@ -3,6 +3,9 @@ import { listBusTimeSlots, getDailyBusManifest } from "@/app/(admin)/admin/actio
 import { getDateForIsoDayKst, getTodayIsoDayKst } from "@/lib/bus/monitor-date";
 import { BusMonitorClient } from "./BusMonitorClient";
 
+// 인증 가드 제거로 정적 프리렌더 대상이 되는 것 방지 — 매니페스트는 요청 시점 데이터
+export const dynamic = "force-dynamic";
+
 export default async function BusMonitorPage() {
   const initialIsoDay = getTodayIsoDayKst();
   const initialDate = getDateForIsoDayKst(initialIsoDay);

@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import type { BusManifestGroup, BusTimeSlot } from "@/lib/types";
 import { getDailyBusManifest } from "@/app/(admin)/admin/actions/bus-actions";
+import { createClient } from "@/lib/supabase/client";
 import { formatTime } from "@/lib/bus/utils";
 import { MonitorBusCard, BUS_CARD_COLORS } from "@/components/bus/MonitorBusCard";
 import { useBusRealtime } from "@/lib/hooks/use-bus-realtime";
@@ -137,6 +138,23 @@ export function BusMonitorClient({
       );
     },
   }, { enabled: isViewingToday });
+
+  // 비로그인 세션(TV 모니터)은 RLS 때문에 realtime 이벤트를 못 받음 → 15초 폴링으로 갱신
+  const [hasSession, setHasSession] = useState<boolean | null>(null);
+  useEffect(() => {
+    createClient()
+      .auth.getSession()
+      .then(({ data }) => setHasSession(Boolean(data.session)));
+  }, []);
+
+  useEffect(() => {
+    if (hasSession !== false || !isViewingToday) return;
+    const timer = setInterval(async () => {
+      const result = await getDailyBusManifest(todayDate);
+      setAllGroups(buildTimeGroups(result.groups));
+    }, 15_000);
+    return () => clearInterval(timer);
+  }, [hasSession, isViewingToday, todayDate]);
 
   // 선택된 시간대의 카드만 필터
   const filteredGroups = allGroups.filter((tg) =>

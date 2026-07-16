@@ -1,7 +1,6 @@
 "use server";
 
 import { createAdminClient } from "@/lib/supabase/admin";
-import { verifyAuthenticated } from "../auth-helpers";
 import { buildStopToBusMaps } from "./_helpers";
 import type {
   BusManifestGroup,
@@ -11,12 +10,10 @@ import type {
   AfterSchoolBusEntry,
 } from "@/lib/types";
 
+// @auth-skip: 로그인 없이 쓰는 TV 모니터(/bus-monitor)가 호출하는 read-only 조회
 export async function getDailyBusManifest(
   date: string
 ): Promise<{ groups: BusManifestGroup[]; noRides: NoRideEntry[]; afterschoolStudents: AfterSchoolBusEntry[] }> {
-  const auth = await verifyAuthenticated();
-  if ("error" in auth) return { groups: [], noRides: [], afterschoolStudents: [] };
-
   const supabase = createAdminClient();
 
   const d = new Date(date);
