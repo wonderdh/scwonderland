@@ -20,6 +20,8 @@ const eslintConfig = defineConfig([
     "supabase/.branches/**",
     // OMC 세션 산출물 (리서치 덤프, 상태 파일)
     ".omc/**",
+    // 비활성화된 라우트 보관소 (구 마케팅 사이트 등)
+    "archive/**",
   ]),
   // _ 접두사 미사용 변수 허용 (TS 컨벤션 — 의도된 unused)
   {
