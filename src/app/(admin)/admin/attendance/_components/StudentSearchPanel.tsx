@@ -50,11 +50,10 @@ export function StudentSearchPanel({
     const todayDate = new Date(localToday + "T00:00:00");
     // today prop과 다를 경우 클라이언트 타임존으로 덮어쓰기
     const initDate = new Date(today + "T00:00:00");
-    if (localToday !== today) {
-      setSelectedDates([todayDate]);
-    } else {
-      setSelectedDates([initDate]);
-    }
+    // 서버가 준 today 를 사용자 시계 기준으로 교정. 렌더 중엔 못 읽어서
+    // (하이드레이션 불일치) mount 후 setState 가 유일한 방법.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSelectedDates([localToday !== today ? todayDate : initDate]);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -72,6 +71,8 @@ export function StudentSearchPanel({
   const primaryDate = selectedDates.length > 0 ? formatDateYmdKst(selectedDates[0]) : today;
   useEffect(() => {
     if (!selectedStudent) return;
+    // 서버 데이터 로드 effect — 요청 시작 시점의 로딩/초기화 상태 반영.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoadingStatus(true);
     setPendingStatus(null);
     setPendingNote(null);

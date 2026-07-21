@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type {
   ClassUnitProgressDetailed,
   UnitStatus,
@@ -51,12 +51,15 @@ export function ClassUnitProgressList({
   const [pendingMap, setPendingMap] = useState<Map<PendingKey, UnitStatus>>(new Map());
   const [isSaving, setIsSaving] = useState(false);
 
-  // 반 전환 / 부모 reload 시 동기화
-  useEffect(() => {
+  // 반 전환 / 부모 reload 시 동기화 — 렌더 중 prev 비교로 즉시 조정
+  // (effect 방식은 이전 반 데이터가 한 프레임 보이는 문제가 있어 React 공식 패턴 사용)
+  const [prevByStudent, setPrevByStudent] = useState(byStudent);
+  if (prevByStudent !== byStudent) {
+    setPrevByStudent(byStudent);
     setLocalByStudent(byStudent);
     setPendingMap(new Map());
     setCollapsed(new Set());
-  }, [byStudent]);
+  }
 
   function toggle(studentId: string) {
     setCollapsed((prev) => {

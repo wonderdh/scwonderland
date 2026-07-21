@@ -30,6 +30,9 @@ export function LunchMonitorClient({ schedule }: { schedule: LunchDaySchedule })
   const [now, setNow] = useState<Date | null>(null);
 
   useEffect(() => {
+    // 사용자 시계 구독. 서버 렌더 시점엔 시각을 알 수 없어 now=null 로 두고
+    // mount 후 채운다 (하이드레이션 불일치 회피).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setNow(new Date());
     const tick = setInterval(() => setNow(new Date()), 1000);
     const refresh = setInterval(() => {

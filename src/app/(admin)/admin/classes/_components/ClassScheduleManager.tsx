@@ -180,12 +180,15 @@ export function ClassScheduleManager({
     }
   }, [selectedClassId, loadSchedules]);
 
-  // sub-tab 변경 시 반 선택 초기화
-  useEffect(() => {
+  // sub-tab 변경 시 반 선택 초기화 — subTab 은 URL(?sub=) prop 이라 뒤로가기로도
+  // 바뀔 수 있어 렌더 중 prev 비교로 조정 (React 공식 패턴)
+  const [prevSubTab, setPrevSubTab] = useState(subTab);
+  if (prevSubTab !== subTab) {
+    setPrevSubTab(subTab);
     setSelectedClassId(null);
     setPendingChanges(new Map());
     setPendingDeletes(new Set());
-  }, [subTab]);
+  }
 
   function handleSelectClass(classId: string) {
     setSelectedClassId(classId);

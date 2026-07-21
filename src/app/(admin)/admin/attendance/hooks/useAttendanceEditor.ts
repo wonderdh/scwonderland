@@ -8,9 +8,16 @@ import { GROUP_TYPE_TO_LABEL } from "@/lib/constants/class";
 
 export type GroupFilter = "유치부" | "오후반";
 
+function classesInGroup(classes: ClassWithDetails[], group: GroupFilter) {
+  return classes.filter((c) => (GROUP_TYPE_TO_LABEL[c.group_type ?? ""] ?? "") === group);
+}
+
 export function useAttendanceEditor(initialClasses: ClassWithDetails[], today: string, autoSelectFirst = false) {
-  const [groupFilter, setGroupFilter] = useState<GroupFilter>("유치부");
-  const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
+  const [groupFilter, setGroupFilterState] = useState<GroupFilter>("유치부");
+  // autoSelectFirst=true 이면 초기 그룹(유치부)의 첫 반을 mount 시점에 선택
+  const [selectedClassId, setSelectedClassId] = useState<string | null>(() =>
+    autoSelectFirst ? (classesInGroup(initialClasses, "유치부")[0]?.id ?? null) : null
+  );
   const [date, setDate] = useState(today);
   const [students, setStudents] = useState<StudentWithAttendance[]>([]);
   const [loading, setLoading] = useState(false);
@@ -21,21 +28,28 @@ export function useAttendanceEditor(initialClasses: ClassWithDetails[], today: s
   // 클라이언트 타임존으로 오늘 날짜 덮어쓰기
   useEffect(() => {
     const localToday = new Date().toLocaleDateString("sv");
+    // 서버가 준 today 를 사용자 시계 기준으로 교정. 렌더 중엔 못 읽어서
+    // (하이드레이션 불일치) mount 후 setState 가 유일한 방법.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (localToday !== date) setDate(localToday);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const filteredClasses = initialClasses.filter((c) => (GROUP_TYPE_TO_LABEL[c.group_type ?? ""] ?? "") === groupFilter);
+  const filteredClasses = classesInGroup(initialClasses, groupFilter);
 
   // 그룹 변경 시 현재 선택 반이 해당 그룹에 없으면 처리
-  useEffect(() => {
-    const inGroup = filteredClasses.find((c) => c.id === selectedClassId);
-    if (!inGroup) {
-      // autoSelectFirst=true 이면 첫 번째 반 자동 선택, 아니면 초기화
-      setSelectedClassId(autoSelectFirst ? (filteredClasses[0]?.id ?? null) : null);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [groupFilter]);
+  // (autoSelectFirst=true 이면 첫 번째 반 자동 선택, 아니면 초기화)
+  const setGroupFilter = useCallback(
+    (g: GroupFilter) => {
+      setGroupFilterState(g);
+      setSelectedClassId((prev) => {
+        const inGroup = classesInGroup(initialClasses, g);
+        if (inGroup.some((c) => c.id === prev)) return prev;
+        return autoSelectFirst ? (inGroup[0]?.id ?? null) : null;
+      });
+    },
+    [initialClasses, autoSelectFirst]
+  );
 
   const loadStudents = useCallback(async (classId: string, d: string) => {
     setLoading(true);
@@ -47,6 +61,8 @@ export function useAttendanceEditor(initialClasses: ClassWithDetails[], today: s
   // selectedClassId 또는 date 변경 시 데이터 로드 + pendingEdits 초기화
   useEffect(() => {
     if (!selectedClassId) {
+      // 서버 데이터 동기화 effect. 선택 해제 시 이전 반 목록을 비운다.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setStudents([]);
       return;
     }

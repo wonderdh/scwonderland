@@ -722,12 +722,14 @@ function AddClassModal({
     [periods]
   );
 
-  useEffect(() => {
-    if (groupLabel === "유치부") {
+  // 유치부는 요일·교시 고정 — 그룹 변경 이벤트에서 즉시 반영 (파생 규칙)
+  const handleGroupLabelChange = (label: string) => {
+    setGroupLabel(label);
+    if (label === "유치부") {
       setDaysOfWeek([1, 2, 3, 4, 5]);
       setPeriodId(null); // 서버가 1교시로 override
     }
-  }, [groupLabel]);
+  };
 
   const toggleTeacher = (id: string) => {
     setSelectedTeacherIds((prev) =>
@@ -790,7 +792,7 @@ function AddClassModal({
             </label>
             <select
               value={groupLabel}
-              onChange={(e) => setGroupLabel(e.target.value)}
+              onChange={(e) => handleGroupLabelChange(e.target.value)}
               className="w-full rounded-lg border border-input px-3 py-2 text-foreground bg-background"
             >
               <option value="유치부">유치부</option>
@@ -965,15 +967,21 @@ function EditClassModal({
   onClose: () => void;
   onSuccess: () => void;
 }) {
+  const initialGroupLabel = GROUP_TYPE_TO_LABEL[classRow.group_type ?? ""] ?? "유치부";
   const [name, setName] = useState(classRow.name);
-  const [groupLabel, setGroupLabel] = useState(GROUP_TYPE_TO_LABEL[classRow.group_type ?? ""] ?? "유치부");
+  const [groupLabel, setGroupLabel] = useState(initialGroupLabel);
   const [colorIndex, setColorIndex] = useState<number | null>(classRow.color_index ?? null);
   const [selectedTeacherIds, setSelectedTeacherIds] = useState<string[]>(
     classRow.teachers.map((t) => t.profile_id)
   );
   const [teacherSearch, setTeacherSearch] = useState("");
-  const [daysOfWeek, setDaysOfWeek] = useState<number[]>(classRow.days_of_week ?? [1, 2, 3, 4, 5]);
-  const [periodId, setPeriodId] = useState<string | null>(classRow.period_id ?? null);
+  // 유치부는 요일·교시 고정 규칙이 있어 초기값부터 정규화
+  const [daysOfWeek, setDaysOfWeek] = useState<number[]>(
+    initialGroupLabel === "유치부" ? [1, 2, 3, 4, 5] : (classRow.days_of_week ?? [1, 2, 3, 4, 5])
+  );
+  const [periodId, setPeriodId] = useState<string | null>(
+    initialGroupLabel === "유치부" ? null : (classRow.period_id ?? null)
+  );
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -992,12 +1000,14 @@ function EditClassModal({
     [periods]
   );
 
-  useEffect(() => {
-    if (groupLabel === "유치부") {
+  // 유치부는 요일·교시 고정 — 그룹 변경 이벤트에서 즉시 반영 (파생 규칙)
+  const handleGroupLabelChange = (label: string) => {
+    setGroupLabel(label);
+    if (label === "유치부") {
       setDaysOfWeek([1, 2, 3, 4, 5]);
       setPeriodId(null); // 서버가 1교시로 override
     }
-  }, [groupLabel]);
+  };
 
   const toggleTeacher = (id: string) => {
     setSelectedTeacherIds((prev) =>
@@ -1072,7 +1082,7 @@ function EditClassModal({
             </label>
             <select
               value={groupLabel}
-              onChange={(e) => setGroupLabel(e.target.value)}
+              onChange={(e) => handleGroupLabelChange(e.target.value)}
               className="w-full rounded-lg border border-input px-3 py-2 text-foreground bg-background"
             >
               <option value="유치부">유치부</option>

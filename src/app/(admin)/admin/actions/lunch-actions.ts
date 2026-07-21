@@ -38,7 +38,7 @@ export async function listLunchGroupClasses(): Promise<LunchGroupClass[]> {
   }
 
   const classIds = (classes ?? []).map((c) => c.id);
-  let countMap = new Map<string, number>();
+  const countMap = new Map<string, number>();
   if (classIds.length > 0) {
     const { data: memberships } = await admin
       .from("class_students")

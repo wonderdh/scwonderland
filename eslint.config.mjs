@@ -20,6 +20,8 @@ const eslintConfig = defineConfig([
     "supabase/.branches/**",
     // OMC 세션 산출물 (리서치 덤프, 상태 파일)
     ".omc/**",
+    // understand-anything 도구 산출물 (임시 스크립트, 휴지통)
+    ".understand-anything/**",
     // 비활성화된 라우트 보관소 (구 마케팅 사이트 등)
     "archive/**",
   ]),

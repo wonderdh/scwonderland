@@ -86,11 +86,17 @@ export function TeacherReportClient({
     }
   }, [selectedClassId, year, month, isNative]);
 
-  useEffect(() => {
-    loadStatus();
+  // 반/년/월 변경 시 학생 선택·작성 영역 초기화 (select 핸들러에서 호출)
+  const resetStudentPane = () => {
     setSelectedStudentId(null);
     setReport(null);
     setContent("");
+  };
+
+  useEffect(() => {
+    // 서버 데이터 로드. loadStatus 내부 setState 때문에 규칙이 관통해 잡는다.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadStatus();
   }, [loadStatus]);
 
   const loadReport = useCallback(async () => {
@@ -110,6 +116,8 @@ export function TeacherReportClient({
   }, [selectedStudentId, year, month, isNative]);
 
   useEffect(() => {
+    // 서버 데이터 로드. loadReport 내부 setState 때문에 규칙이 관통해 잡는다.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (selectedStudentId) loadReport();
   }, [loadReport, selectedStudentId]);
 
@@ -219,7 +227,10 @@ export function TeacherReportClient({
       <div className="flex flex-wrap items-center gap-3">
         <select
           value={selectedClassId}
-          onChange={(e) => setSelectedClassId(e.target.value)}
+          onChange={(e) => {
+            setSelectedClassId(e.target.value);
+            resetStudentPane();
+          }}
           className="min-h-[44px] rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800"
         >
           {classes.map((c) => (
@@ -230,7 +241,10 @@ export function TeacherReportClient({
         </select>
         <select
           value={year}
-          onChange={(e) => setYear(Number(e.target.value))}
+          onChange={(e) => {
+            setYear(Number(e.target.value));
+            resetStudentPane();
+          }}
           className="min-h-[44px] rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800"
         >
           {yearOptions.map((y) => (
@@ -239,7 +253,10 @@ export function TeacherReportClient({
         </select>
         <select
           value={month}
-          onChange={(e) => setMonth(Number(e.target.value))}
+          onChange={(e) => {
+            setMonth(Number(e.target.value));
+            resetStudentPane();
+          }}
           className="min-h-[44px] rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800"
         >
           {MONTHS.map((m) => (

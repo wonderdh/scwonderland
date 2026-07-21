@@ -52,13 +52,9 @@ export function useHomeworkBoard(todayKst: string): UseHomeworkBoard {
   const [isSaving, setIsSaving] = useState(false);
 
   // 시리즈/레벨 바뀌면 데이터 재로드 + 편집상태 초기화
+  // (시리즈 해제 시 비우기는 selectStpoint 에서 처리)
   useEffect(() => {
-    if (!seriesId) {
-      setData({ students: [], byStudent: {} });
-      setLocal({});
-      setPending(new Map());
-      return;
-    }
+    if (!seriesId) return;
     startLoad(async () => {
       const [next, absentResult] = await Promise.all([
         listSeriesLevelProgress(seriesId, level ?? undefined),
@@ -85,6 +81,12 @@ export function useHomeworkBoard(todayKst: string): UseHomeworkBoard {
     setSeriesId(sid);
     setLevel(lv);
     setSearch("");
+    // 시리즈 해제 시 데이터·편집상태 즉시 비우기
+    if (!sid) {
+      setData({ students: [], byStudent: {} });
+      setLocal({});
+      setPending(new Map());
+    }
   }, []);
 
   const unitClick = useCallback(

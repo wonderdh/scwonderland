@@ -21,7 +21,6 @@ export function NavigationProgress() {
       return;
     }
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setVisible(false);
   }, [pathname]);
 

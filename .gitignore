@@ -90,3 +90,6 @@ supabase/archive/
 .lint-output.txt
 # Added by code-review-graph
 .code-review-graph/
+
+# understand-anything knowledge graph (대용량 생성물 — 로컬에서 /understand 로 재생성)
+.understand-anything/

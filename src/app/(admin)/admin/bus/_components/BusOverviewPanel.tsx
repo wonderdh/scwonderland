@@ -90,6 +90,8 @@ function ByDayContent({
   }, [day, slotId]);
 
   useEffect(() => {
+    // 서버 데이터 로드. fetchData 내부 setState 때문에 규칙이 관통해 잡는다.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchData();
   }, [fetchData]);
 

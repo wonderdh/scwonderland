@@ -183,6 +183,8 @@ export function BusMonitorClient({
   useEffect(() => {
     const currentToday = getTodayIsoDayKst();
     if (currentToday !== initialIsoDay && dayOfWeek === initialIsoDay) {
+      // 서버 렌더 이후 자정을 넘긴 경우의 교정. 사용자 시계는 렌더 중 못 읽는다.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setDayOfWeek(currentToday);
       loadedKeyRef.current = "";
       loadData(currentToday);

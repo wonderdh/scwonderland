@@ -21,7 +21,8 @@ export function useAsyncData<T>(
     } finally {
       setLoading(false);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // deps 를 인자로 받는 범용 훅이라 의존성 배열이 리터럴일 수 없다 (정적 분석 불가).
+  // eslint-disable-next-line react-hooks/exhaustive-deps, react-hooks/use-memo
   }, deps);
 
   useEffect(() => {
