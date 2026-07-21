@@ -14,12 +14,12 @@ export default async function StudentLayout({
   } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect("/academy/login?next=/academy/student");
+    redirect("/login?next=/academy/student");
   }
 
   const isStudent = await hasUserRole(supabase, user.id, "student");
   if (!isStudent) {
-    redirect("/academy");
+    redirect("/dashboard");
   }
 
   return (

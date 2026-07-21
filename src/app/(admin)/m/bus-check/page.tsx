@@ -6,7 +6,7 @@ import { BusStaffMonitor } from "@/app/bus/_components/BusStaffMonitor";
 export default async function MobileBusCheckPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/academy/login?next=/m/bus-check");
+  if (!user) redirect("/login?next=/m/bus-check");
 
   return (
     <div className="min-h-screen flex flex-col">

@@ -5,7 +5,7 @@ import { UnitProgressGrid } from "@/components/homework/UnitProgressGrid";
 
 export default async function StudentHomeworkPage() {
   const profile = await getCurrentStudentProfile();
-  if (!profile) redirect("/academy/login");
+  if (!profile) redirect("/login");
 
   const data = await listUnitProgressByStudent(profile.id);
 

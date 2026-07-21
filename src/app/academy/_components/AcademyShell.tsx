@@ -22,7 +22,7 @@ export function AcademyShell({
         ? "/academy/teacher"
         : role === "student"
           ? "/academy/student"
-          : "/academy";
+          : "/dashboard";
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">

@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/feedback/Spinner";
 import { normalizeEmail, getAuthErrorMessage } from "@/lib/auth/auth-utils";
 
-const DEFAULT_REDIRECT = "/academy";
+const DEFAULT_REDIRECT = "/dashboard";
 
 /**
  * next 파라미터 검증: 같은 오리진 내부 경로만 허용.

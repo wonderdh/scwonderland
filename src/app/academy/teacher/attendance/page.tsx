@@ -4,7 +4,7 @@ import { attendanceLabels } from "@/lib/ui/teacher-labels";
 
 export default async function TeacherAttendancePage() {
   const profile = await getCurrentTeacherProfile();
-  if (!profile) redirect("/academy/login");
+  if (!profile) redirect("/login");
 
   const L = attendanceLabels[profile.teacher_type];
   const isNative = profile.teacher_type === "native";

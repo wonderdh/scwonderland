@@ -76,7 +76,7 @@ export default async function MobileHomePage() {
     "use server";
     const supabase = await createClient();
     await supabase.auth.signOut();
-    redirect("/academy/login");
+    redirect("/login");
   }
 
   return (

@@ -10,8 +10,10 @@ Next.js 16 App Router + React 19 + TypeScript + Tailwind v4 + Supabase.
 .
 ├── src/
 │   ├── app/
-│   │   ├── page.tsx        — 루트(/) 로그인 화면. 로그인 상태면 /academy 로 redirect (역할 분기는 academy entry 가 담당)
-│   │   ├── academy/        — 학생·교사 포털 (/academy/...). entry page.tsx 가 인증·역할 redirect, actions 는 academy/actions.ts 1개
+│   │   ├── page.tsx        — 루트(/). /dashboard 로 redirect 만. (추후 랜딩 교체 지점)
+│   │   ├── login/          — 로그인 화면 (/login). next / error 쿼리 처리, 폼은 _components/LoginForm.tsx
+│   │   ├── dashboard/      — 로그인 게이트 + 역할 디스패처 (/dashboard). 미인증 → /login, admin → /admin, teacher·student → /academy/...
+│   │   ├── academy/        — 학생·교사 포털 (/academy/...). 엔트리 없는 순수 네임스페이스, actions 는 academy/actions.ts 1개
 │   │   ├── (admin)/        — 관리자 대시보드 (/admin) + 모바일 (/m)
 │   │   │   └── admin/actions/ — 서버 액션 허브 (~20 파일 + bus/ 하위)  → AGENTS.md
 │   │   ├── bus/            — 버스 기사용 화면 (/bus, 현재 비활성)

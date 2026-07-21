@@ -12,7 +12,7 @@ export default async function MobileAdminLayout({
   } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect("/academy/login?next=/m");
+    redirect("/login?next=/m");
   }
 
   const { data: profile } = await supabase
@@ -22,7 +22,7 @@ export default async function MobileAdminLayout({
     .single();
 
   if (profile?.role !== "admin") {
-    redirect("/academy/login?error=admin_only");
+    redirect("/login?error=admin_only");
   }
 
   return <div className="min-h-screen bg-background">{children}</div>;

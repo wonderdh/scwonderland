@@ -15,5 +15,5 @@ export const viewport: Viewport = {
 export default async function BusLayout(_props: {
   children: React.ReactNode;
 }) {
-  redirect("/academy");
+  redirect("/dashboard");
 }

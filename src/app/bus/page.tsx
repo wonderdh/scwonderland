@@ -4,7 +4,7 @@ import { BusStaffMonitor } from "./_components/BusStaffMonitor";
 
 export default async function BusPage() {
   const staff = await getCurrentBusStaffProfile();
-  if (!staff) redirect("/academy/login?next=/bus");
+  if (!staff) redirect("/login?next=/bus");
 
   return (
     <BusStaffMonitor

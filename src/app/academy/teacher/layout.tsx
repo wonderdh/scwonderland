@@ -16,13 +16,13 @@ export default async function TeacherLayout({
   } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect("/academy/login?next=/academy/teacher");
+    redirect("/login?next=/academy/teacher");
   }
 
   const admin = createAdminClient();
   const isTeacher = await hasUserRole(admin, user.id, "teacher");
   if (!isTeacher) {
-    redirect("/academy");
+    redirect("/dashboard");
   }
 
   const { data: teacher } = await admin

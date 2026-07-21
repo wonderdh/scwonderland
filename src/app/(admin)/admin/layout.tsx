@@ -14,7 +14,7 @@ export default async function AdminLayout({
   } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect("/academy/login?next=/admin");
+    redirect("/login?next=/admin");
   }
 
   const { primaryRole, roles } = await getUserRoles(supabase, user.id);
@@ -23,7 +23,7 @@ export default async function AdminLayout({
     // 세션 유지 — 교사/학생은 로그아웃 강제하지 말고 역할 홈으로 안내.
     if (primaryRole === "teacher") redirect("/academy/teacher");
     if (primaryRole === "student") redirect("/academy/student");
-    redirect("/academy/login?error=admin_only");
+    redirect("/login?error=admin_only");
   }
 
   const adminId = user.email?.split("@")[0] ?? "";

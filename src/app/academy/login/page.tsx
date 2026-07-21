@@ -1,29 +1,15 @@
-import { Suspense } from "react";
-import { LoginForm } from "./LoginForm";
+import { redirect } from "next/navigation";
 
-export default function AcademyLoginPage() {
-  return (
-    <Suspense
-      fallback={
-        <div className="min-h-[70vh] flex items-center justify-center px-4">
-          <div className="w-full max-w-sm rounded-xl border bg-card p-6 shadow-sm animate-pulse">
-            <div className="flex flex-col items-center mb-4">
-              <div className="size-12 rounded-full bg-muted mb-3" />
-              <div className="h-6 bg-muted rounded w-40 mb-2" />
-              <div className="h-4 bg-muted rounded w-56" />
-            </div>
-            <div className="space-y-4">
-              <div className="h-4 bg-muted rounded w-16" />
-              <div className="h-10 bg-muted rounded" />
-              <div className="h-4 bg-muted rounded w-20" />
-              <div className="h-10 bg-muted rounded" />
-              <div className="h-10 bg-muted rounded" />
-            </div>
-          </div>
-        </div>
-      }
-    >
-      <LoginForm />
-    </Suspense>
-  );
+// 로그인 화면은 /login 으로 이관. 기존 링크·북마크 호환용 stub.
+export default async function LegacyAcademyLoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(await searchParams)) {
+    if (typeof value === "string") params.set(key, value);
+  }
+  const qs = params.toString();
+  redirect(qs ? `/login?${qs}` : "/login");
 }

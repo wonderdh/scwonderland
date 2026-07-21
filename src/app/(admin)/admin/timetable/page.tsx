@@ -11,7 +11,7 @@ import { TimetablePageClient } from "./_components/TimetablePageClient";
 export default async function AdminTimetablePage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/academy/login");
+  if (!user) redirect("/login");
 
   const [academyPeriods, kindergartenData, afternoonData] =
     await Promise.all([

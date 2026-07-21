@@ -39,7 +39,7 @@ export function LogoutButton({
     setLoggingOut(true);
     const supabase = createClient();
     await supabase.auth.signOut();
-    router.push("/academy/login");
+    router.push("/login");
     router.refresh();
   }
 

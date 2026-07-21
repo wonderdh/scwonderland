@@ -83,7 +83,7 @@ export default async function StudentReportsPage({
 
       <p>
         <Link
-          href="/academy"
+          href="/academy/student"
           className="text-sm text-slate-500 underline hover:text-slate-700"
         >
           ← 대시보드로

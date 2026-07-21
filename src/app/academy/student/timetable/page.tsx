@@ -5,7 +5,7 @@ import { formatStudentName } from "@/lib/utils/student-name";
 
 export default async function StudentTimetablePage() {
   const profile = await getCurrentStudentProfile();
-  if (!profile) redirect("/academy/login");
+  if (!profile) redirect("/login");
 
   return (
     <div className="space-y-6">

@@ -36,7 +36,7 @@ export default async function AdminBusPage({
 }) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/academy/login");
+  if (!user) redirect("/login");
 
   const { tab } = await searchParams;
   const currentTab = parseTab(tab);

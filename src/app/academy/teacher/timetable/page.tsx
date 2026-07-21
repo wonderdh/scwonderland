@@ -10,10 +10,10 @@ export default async function TeacherTimetablePage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) redirect("/academy/login");
+  if (!user) redirect("/login");
 
   const profile = await getCurrentTeacherProfile();
-  if (!profile) redirect("/academy");
+  if (!profile) redirect("/dashboard");
 
   const [유치부, 오후반] = await Promise.all([
     getGroupTimetableGrid("유치부"),

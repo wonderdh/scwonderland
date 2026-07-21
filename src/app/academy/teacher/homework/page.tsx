@@ -11,7 +11,7 @@ export default async function TeacherHomeworkPage({
   searchParams: Promise<{ class?: string }>;
 }) {
   const profile = await getCurrentTeacherProfile();
-  if (!profile) redirect("/academy/login");
+  if (!profile) redirect("/login");
   // 모든 교사 (한국·원어민) 가 read-only 진도 확인 가능. 일정 수정 권한은 한국 교사만.
   const canEditSchedule = profile.teacher_type === "korean";
 
