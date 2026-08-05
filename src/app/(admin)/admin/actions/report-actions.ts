@@ -8,6 +8,7 @@ import type {
   ReportCardListItem,
   UntranslatedReport,
   ClassReportSummary,
+  TeacherClassWithStudents,
 } from "@/lib/types";
 import { verifyAdmin } from "./auth-helpers";
 import { getUserRoles } from "@/lib/auth/user-roles";
@@ -386,6 +387,43 @@ export async function listAllClassesReportStatus(
       written,
     };
   });
+}
+
+/** 전체 반 + 반별 학생 목록 (관리자 반별 리포트 조회용). afterschool 제외. */
+export async function listAllClassesWithStudents(): Promise<TeacherClassWithStudents[]> {
+  const auth = await verifyAdmin();
+  if ("error" in auth) return [];
+
+  const admin = createAdminClient();
+  const [{ data: classes, error: classError }, { data: members, error: memberError }] = await Promise.all([
+    admin.from("classes").select("id, name").neq("group_type", "afterschool").order("name"),
+    admin.from("class_students").select("class_id, student_id"),
+  ]);
+  if (classError || memberError || !classes?.length) {
+    if (classError || memberError) {
+      logger.error("[listAllClassesWithStudents]", classError?.message ?? memberError?.message ?? "unknown");
+    }
+    return [];
+  }
+
+  const studentIds = [...new Set((members ?? []).map((m) => m.student_id))];
+  const studentMap = await getStudentsByIds(admin, studentIds);
+
+  return classes.map((c) => ({
+    id: c.id,
+    name: c.name,
+    students: (members ?? [])
+      .filter((m) => m.class_id === c.id)
+      .map((m) => {
+        const s = studentMap.get(m.student_id);
+        return {
+          profile_id: s?.profile_id ?? "",
+          korean_name: s?.korean_name ?? null,
+          english_name: s?.english_name ?? null,
+          age: s?.age ?? null,
+        };
+      }),
+  }));
 }
 
 /** 번역 현황 조회 — content가 있는 리포트 전체 (번역 대기 + 완료 포함). 관리자 전용. */

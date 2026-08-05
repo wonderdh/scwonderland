@@ -27,10 +27,16 @@ export function TeacherReportClient({
   classes,
   initialClassId,
   isReadOnly = false,
+  initialYear,
+  initialMonth,
+  hideTitle = false,
 }: {
   classes: TeacherClassWithStudents[];
   initialClassId: string | null;
   isReadOnly?: boolean;
+  initialYear?: number;
+  initialMonth?: number;
+  hideTitle?: boolean;
 }) {
   const teacherType = useTeacherType();
   const L = reportLabels[teacherType];
@@ -39,8 +45,8 @@ export function TeacherReportClient({
   const [selectedClassId, setSelectedClassId] = useState(
     initialClassId ?? classes[0]?.id ?? ""
   );
-  const [year, setYear] = useState(() => getDefaultYearMonth().year);
-  const [month, setMonth] = useState(() => getDefaultYearMonth().month);
+  const [year, setYear] = useState(() => initialYear ?? getDefaultYearMonth().year);
+  const [month, setMonth] = useState(() => initialMonth ?? getDefaultYearMonth().month);
   const [statusList, setStatusList] = useState<ReportCardStatus[]>([]);
   const [statusLoading, setStatusLoading] = useState(false);
   const [statusError, setStatusError] = useState<string | null>(null);
@@ -221,7 +227,7 @@ export function TeacherReportClient({
 
   return (
     <div className="space-y-6">
-      <h1 className="text-lg font-semibold text-slate-800">{L.title}</h1>
+      {!hideTitle && <h1 className="text-lg font-semibold text-slate-800">{L.title}</h1>}
 
       {/* 반 / 년월 선택 */}
       <div className="flex flex-wrap items-center gap-3">
@@ -401,18 +407,18 @@ export function TeacherReportClient({
                   {reportLoading ? (
                     <LoadingState label={L.loading} />
                   ) : isReadOnly ? (
-                    /* 한국인 교사: 번역본 있으면 한국어 우선, 영어 원문 접힘 */
+                    /* 한국인 교사: 영어 원문 기본 표시, 한국어 번역은 클릭 시 펼침 */
                     report?.content_ko ? (
                       <div className="space-y-3">
                         <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-800">
-                          {report.content_ko}
+                          {report.content_en}
                         </p>
                         <details className="border-t border-slate-100 pt-3">
                           <summary className="cursor-pointer text-xs text-slate-400 hover:text-slate-600 select-none w-fit">
-                            영어 원문 보기
+                            번역 보기
                           </summary>
                           <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-slate-500">
-                            {report.content_en}
+                            {report.content_ko}
                           </p>
                         </details>
                       </div>

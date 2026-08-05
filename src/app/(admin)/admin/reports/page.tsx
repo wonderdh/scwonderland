@@ -1,8 +1,10 @@
 import {
   listAllClassesReportStatus,
+  listAllClassesWithStudents,
   listUntranslatedReports,
 } from "@/app/(admin)/admin/actions/report-actions";
 import { ReportTranslateManager } from "./_components/ReportTranslateManager";
+import { TeacherReportClient } from "@/app/academy/teacher/_components/TeacherReportClient";
 import Link from "next/link";
 
 export const metadata = {
@@ -20,9 +22,9 @@ function getRateBadgeClass(written: number, total: number): string {
 export default async function AdminReportsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ year?: string; month?: string; tab?: string }>;
+  searchParams: Promise<{ year?: string; month?: string; tab?: string; classId?: string }>;
 }) {
-  const { year: yearStr, month: monthStr, tab } = await searchParams;
+  const { year: yearStr, month: monthStr, tab, classId } = await searchParams;
 
   const now = new Date();
   const year = yearStr ? parseInt(yearStr, 10) : now.getFullYear();
@@ -30,13 +32,18 @@ export default async function AdminReportsPage({
 
   const safeYear = isNaN(year) || year < 2000 || year > 2100 ? now.getFullYear() : year;
   const safeMonth = isNaN(month) || month < 1 || month > 12 ? now.getMonth() + 1 : month;
-  const activeTab = tab === "translate" ? "translate" : "status";
+  const activeTab =
+    tab === "translate" ? "translate" : tab === "browse" ? "browse" : "status";
 
   // 탭별 데이터 fetch
-  const [classes, reports] = await Promise.all([
+  const [classes, reports, browseClasses] = await Promise.all([
     activeTab === "status" ? listAllClassesReportStatus(safeYear, safeMonth) : Promise.resolve([]),
     activeTab === "translate" ? listUntranslatedReports(safeYear, safeMonth) : Promise.resolve([]),
+    activeTab === "browse" ? listAllClassesWithStudents() : Promise.resolve([]),
   ]);
+
+  // 딥링크로 넘어온 classId 가 실제 존재하는 반일 때만 초기 선택
+  const initialClassId = browseClasses.some((c) => c.id === classId) ? classId! : null;
 
   const totalWritten = classes.reduce((sum, c) => sum + c.written, 0);
   const totalStudents = classes.reduce((sum, c) => sum + c.total, 0);
@@ -57,7 +64,8 @@ export default async function AdminReportsPage({
           <h1 className="text-lg font-semibold text-slate-800">리포트카드</h1>
         </div>
 
-        {/* 년/월 필터 */}
+        {/* 년/월 필터 (반별 조회 탭은 자체 선택 UI 보유) */}
+        {activeTab !== "browse" && (
         <div className="flex items-center gap-2">
           <div className="flex gap-1">
             {years.map((y) => (
@@ -90,12 +98,14 @@ export default async function AdminReportsPage({
             ))}
           </div>
         </div>
+        )}
       </div>
 
       {/* 탭 네비 */}
       <div className="flex gap-1 border-b border-slate-200">
         {[
           { key: "status", label: "작성 현황" },
+          { key: "browse", label: "반별 조회" },
           { key: "translate", label: "번역 관리" },
         ].map(({ key, label }) => (
           <Link
@@ -142,7 +152,14 @@ export default async function AdminReportsPage({
                         : `${Math.round((cls.written / cls.total) * 100)}%`;
                     return (
                       <tr key={cls.classId} className="hover:bg-slate-50 transition-colors">
-                        <td className="px-4 py-3 font-medium text-slate-800">{cls.className}</td>
+                        <td className="px-4 py-3 font-medium text-slate-800">
+                          <Link
+                            href={`/admin/reports?year=${safeYear}&month=${safeMonth}&tab=browse&classId=${cls.classId}`}
+                            className="hover:text-blue-600 hover:underline"
+                          >
+                            {cls.className}
+                          </Link>
+                        </td>
                         <td className="px-4 py-3 text-center text-slate-600">{cls.total}명</td>
                         <td className="px-4 py-3 text-center">
                           <span className="text-emerald-700 font-medium">{cls.written}명</span>
@@ -193,6 +210,18 @@ export default async function AdminReportsPage({
             {safeYear}년 {safeMonth}월 기준 · 전체 {classes.length}개 반
           </p>
         </>
+      )}
+
+      {/* 반별 조회 탭 */}
+      {activeTab === "browse" && (
+        <TeacherReportClient
+          classes={browseClasses}
+          initialClassId={initialClassId}
+          isReadOnly
+          hideTitle
+          initialYear={safeYear}
+          initialMonth={safeMonth}
+        />
       )}
 
       {/* 번역 관리 탭 */}
