@@ -65,3 +65,5 @@ export type {
   BusRequestStatus,
   NoRideChangeType,
 } from "@/lib/bus/state";
+
+export type { RazBook } from "./raz";
