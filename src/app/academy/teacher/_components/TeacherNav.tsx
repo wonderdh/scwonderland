@@ -84,6 +84,12 @@ const koreanLinks: PortalNavLink[] = [
     icon: ICONS.homework,
   },
   {
+    href: "/academy/teacher/reading",
+    label: "Raz 리딩",
+    activeColor: "bg-gradient-to-r from-emerald-500 to-green-600 text-white shadow-md",
+    icon: ICONS.textbooks,
+  },
+  {
     href: "/academy/teacher/attendance",
     label: "출결",
     activeColor: "bg-gradient-to-r from-teal-500 to-cyan-600 text-white shadow-md",
@@ -115,6 +121,12 @@ const nativeLinks: PortalNavLink[] = [
     label: "Homework",
     activeColor: "bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-md",
     icon: ICONS.homework,
+  },
+  {
+    href: "/academy/teacher/reading",
+    label: "Raz Reading",
+    activeColor: "bg-gradient-to-r from-emerald-500 to-green-600 text-white shadow-md",
+    icon: ICONS.textbooks,
   },
   {
     href: "/academy/teacher/attendance",

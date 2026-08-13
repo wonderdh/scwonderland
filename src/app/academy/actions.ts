@@ -5,6 +5,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getUserRoles, hasUserRole } from "@/lib/auth/user-roles";
 import { createClient } from "@/lib/supabase/server";
 import { fetchAllRows } from "@/lib/supabase/fetch-all";
+import { aggregateReadingStats, type ClassReadingStats } from "@/lib/raz/stats";
+import { getRazBooks } from "@/lib/raz/books.server";
 import type { StudentProfile, StudentClassItem, TeacherProfile, TeacherClassWithStudents, ReportCardStatus } from "@/lib/types";
 
 export interface StudentMonthlyStats {
@@ -421,6 +423,29 @@ export async function toggleRazRead(
   revalidatePath(`/academy/teacher/reading/${studentId}`);
   revalidatePath(`/admin/reading/${studentId}`);
   return {};
+}
+
+/** 교사 본인 담당 반들의 학생별 읽기 통계. (권한은 getTeacherClasses 가 담당) */
+export async function getTeacherReadingStats(): Promise<ClassReadingStats[]> {
+  const classes = await getTeacherClasses();
+  if (!classes.length) return [];
+
+  const classShapes = classes.map((c) => ({
+    id: c.id,
+    name: c.name,
+    students: c.students
+      .filter((s) => s.profile_id !== "")
+      .map((s) => ({ id: s.profile_id, koreanName: s.korean_name, englishName: s.english_name })),
+  }));
+  const studentIds = [...new Set(classShapes.flatMap((c) => c.students.map((s) => s.id)))];
+  if (!studentIds.length) return classShapes.map((c) => ({ classId: c.id, className: c.name, students: [] }));
+
+  const admin = createAdminClient();
+  const logs = await fetchAllRows<{ student_id: string; book_id: number }>((from, to) =>
+    admin.from("raz_read_logs").select("student_id, book_id").in("student_id", studentIds).range(from, to),
+  );
+  const books = await getRazBooks();
+  return aggregateReadingStats(classShapes, logs, books);
 }
 
 /** 교사 화면 헤더용 학생 이름. teacher 만. */
