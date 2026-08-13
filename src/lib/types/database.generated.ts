@@ -1003,6 +1003,88 @@ export type Database = {
         }
         Relationships: []
       }
+      raz_books: {
+        Row: {
+          genre: string | null
+          genre2: string | null
+          grade: string | null
+          id: number
+          level: string
+          level_order: number
+          lexile: string | null
+          lexile_num: number | null
+          multilevel: boolean
+          title: string
+        }
+        Insert: {
+          genre?: string | null
+          genre2?: string | null
+          grade?: string | null
+          id: number
+          level: string
+          level_order: number
+          lexile?: string | null
+          lexile_num?: number | null
+          multilevel?: boolean
+          title: string
+        }
+        Update: {
+          genre?: string | null
+          genre2?: string | null
+          grade?: string | null
+          id?: number
+          level?: string
+          level_order?: number
+          lexile?: string | null
+          lexile_num?: number | null
+          multilevel?: boolean
+          title?: string
+        }
+        Relationships: []
+      }
+      raz_read_logs: {
+        Row: {
+          book_id: number
+          marked_by: string | null
+          read_at: string
+          student_id: string
+        }
+        Insert: {
+          book_id: number
+          marked_by?: string | null
+          read_at?: string
+          student_id: string
+        }
+        Update: {
+          book_id?: number
+          marked_by?: string | null
+          read_at?: string
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "raz_read_logs_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "raz_books"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "raz_read_logs_marked_by_fkey"
+            columns: ["marked_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "raz_read_logs_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       report_cards: {
         Row: {
           class_student_id: string
