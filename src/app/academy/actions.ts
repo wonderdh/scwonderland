@@ -1,8 +1,10 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getUserRoles, hasUserRole } from "@/lib/auth/user-roles";
 import { createClient } from "@/lib/supabase/server";
+import { fetchAllRows } from "@/lib/supabase/fetch-all";
 import type { StudentProfile, StudentClassItem, TeacherProfile, TeacherClassWithStudents, ReportCardStatus } from "@/lib/types";
 
 export interface StudentMonthlyStats {
@@ -363,5 +365,81 @@ export async function getClassReportStatus(
       report_id: r?.id ?? null,
     };
   });
+}
+
+// --- Raz 리딩 ---
+
+/** 대상 학생의 읽은 book_id 목록. 본인 또는 teacher 만. (읽은 책이 1,000권 넘을 수 있어 페이지네이션) */
+export async function getReadBookIds(studentId: string): Promise<number[]> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return [];
+  if (user.id !== studentId) {
+    const isTeacher = await hasUserRole(supabase, user.id, "teacher");
+    if (!isTeacher) return [];
+  }
+  const rows = await fetchAllRows<{ book_id: number }>((from, to) =>
+    supabase.from("raz_read_logs").select("book_id").eq("student_id", studentId).range(from, to),
+  );
+  return rows.map((r) => r.book_id);
+}
+
+/** 읽음 토글. 본인 또는 teacher. user-context client 사용 — RLS 가 이중 방어선. */
+export async function toggleRazRead(
+  studentId: string,
+  bookId: number,
+  read: boolean,
+): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "인증이 필요합니다." };
+  if (user.id !== studentId) {
+    const isTeacher = await hasUserRole(supabase, user.id, "teacher");
+    if (!isTeacher) return { error: "권한이 없습니다." };
+  }
+
+  if (read) {
+    // 이미 있으면 무시 (update 정책이 없으므로 DO NOTHING 이어야 함)
+    const { error } = await supabase
+      .from("raz_read_logs")
+      .upsert({ student_id: studentId, book_id: bookId, marked_by: user.id }, { ignoreDuplicates: true });
+    if (error) return { error: "저장에 실패했습니다." };
+  } else {
+    const { error } = await supabase
+      .from("raz_read_logs")
+      .delete()
+      .eq("student_id", studentId)
+      .eq("book_id", bookId);
+    if (error) return { error: "삭제에 실패했습니다." };
+  }
+
+  revalidatePath("/academy/student/reading");
+  revalidatePath(`/academy/teacher/reading/${studentId}`);
+  revalidatePath(`/admin/reading/${studentId}`);
+  return {};
+}
+
+/** 교사 화면 헤더용 학생 이름. teacher 만. */
+export async function getStudentNameForStaff(
+  studentId: string,
+): Promise<{ korean_name: string | null; english_name: string | null } | null> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return null;
+  const isTeacher = await hasUserRole(supabase, user.id, "teacher");
+  if (!isTeacher) return null;
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("students")
+    .select("korean_name, english_name")
+    .eq("id", studentId)
+    .single();
+  return data ?? null;
 }
 
