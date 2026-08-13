@@ -21,13 +21,17 @@ export async function getAllReadingStats(): Promise<ClassReadingStats[]> {
     .order("name");
   if (!classes?.length) return [];
 
-  const { data: members } = await admin
-    .from("class_students")
-    .select("class_id, student_id")
-    .eq("is_active", true)
-    .in("class_id", classes.map((c) => c.id));
+  const classIds = classes.map((c) => c.id);
+  const members = await fetchAllRows<{ class_id: string; student_id: string }>((from, to) =>
+    admin
+      .from("class_students")
+      .select("class_id, student_id")
+      .eq("is_active", true)
+      .in("class_id", classIds)
+      .range(from, to),
+  );
 
-  const studentIds = [...new Set((members ?? []).map((m) => m.student_id))];
+  const studentIds = [...new Set(members.map((m) => m.student_id))];
   const { data: students } = studentIds.length
     ? await admin.from("students").select("id, korean_name, english_name").in("id", studentIds)
     : { data: [] };
@@ -43,7 +47,7 @@ export async function getAllReadingStats(): Promise<ClassReadingStats[]> {
   const classShapes = classes.map((c) => ({
     id: c.id,
     name: c.name,
-    students: (members ?? [])
+    students: members
       .filter((m) => m.class_id === c.id)
       .map((m) => {
         const s = studentMap.get(m.student_id);
