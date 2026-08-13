@@ -14,6 +14,7 @@ export const getRazBooks = unstable_cache(
         .select("*")
         .order("level_order")
         .order("title")
+        .order("id")
         .range(from, to),
     );
   },

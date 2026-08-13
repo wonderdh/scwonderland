@@ -28,6 +28,8 @@ export async function getAllReadingStats(): Promise<ClassReadingStats[]> {
       .select("class_id, student_id")
       .eq("is_active", true)
       .in("class_id", classIds)
+      .order("class_id")
+      .order("student_id")
       .range(from, to),
   );
 
@@ -39,7 +41,7 @@ export async function getAllReadingStats(): Promise<ClassReadingStats[]> {
 
   const logs = studentIds.length
     ? await fetchAllRows<{ student_id: string; book_id: number }>((from, to) =>
-        admin.from("raz_read_logs").select("student_id, book_id").in("student_id", studentIds).range(from, to),
+        admin.from("raz_read_logs").select("student_id, book_id").in("student_id", studentIds).order("student_id").order("book_id").range(from, to),
       )
     : [];
   const books = await getRazBooks();
@@ -67,7 +69,7 @@ export async function getReadBookIdsAsAdmin(studentId: string): Promise<number[]
   if ("error" in auth) return [];
   const admin = createAdminClient();
   const rows = await fetchAllRows<{ book_id: number }>((from, to) =>
-    admin.from("raz_read_logs").select("book_id").eq("student_id", studentId).range(from, to),
+    admin.from("raz_read_logs").select("book_id").eq("student_id", studentId).order("book_id").range(from, to),
   );
   return rows.map((r) => r.book_id);
 }

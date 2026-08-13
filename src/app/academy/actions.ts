@@ -383,7 +383,7 @@ export async function getReadBookIds(studentId: string): Promise<number[]> {
     if (!isTeacher) return [];
   }
   const rows = await fetchAllRows<{ book_id: number }>((from, to) =>
-    supabase.from("raz_read_logs").select("book_id").eq("student_id", studentId).range(from, to),
+    supabase.from("raz_read_logs").select("book_id").eq("student_id", studentId).order("book_id").range(from, to),
   );
   return rows.map((r) => r.book_id);
 }
@@ -442,7 +442,7 @@ export async function getTeacherReadingStats(): Promise<ClassReadingStats[]> {
 
   const admin = createAdminClient();
   const logs = await fetchAllRows<{ student_id: string; book_id: number }>((from, to) =>
-    admin.from("raz_read_logs").select("student_id, book_id").in("student_id", studentIds).range(from, to),
+    admin.from("raz_read_logs").select("student_id, book_id").in("student_id", studentIds).order("student_id").order("book_id").range(from, to),
   );
   const books = await getRazBooks();
   return aggregateReadingStats(classShapes, logs, books);

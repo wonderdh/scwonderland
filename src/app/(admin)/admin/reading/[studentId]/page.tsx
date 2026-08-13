@@ -29,7 +29,6 @@ export default async function AdminReadingStudentPage({
       <BookGrid
         books={books}
         readBookIds={readBookIds}
-        canToggle
         toggleAction={toggleRazReadAsAdmin.bind(null, studentId)}
       />
     </div>

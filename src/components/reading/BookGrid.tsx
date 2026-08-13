@@ -10,11 +10,10 @@ export type ToggleReadAction = (bookId: number, read: boolean) => Promise<{ erro
 interface BookGridProps {
   books: RazBook[];          // level_order → title 순 정렬 전제 (getRazBooks 가 보장)
   readBookIds: number[];
-  canToggle: boolean;
-  toggleAction?: ToggleReadAction;
+  toggleAction: ToggleReadAction;
 }
 
-export function BookGrid({ books, readBookIds, canToggle, toggleAction }: BookGridProps) {
+export function BookGrid({ books, readBookIds, toggleAction }: BookGridProps) {
   const [level, setLevel] = useState("all");
   const [genre, setGenre] = useState("all");
   const [genre2, setGenre2] = useState("all");
@@ -59,7 +58,6 @@ export function BookGrid({ books, readBookIds, canToggle, toggleAction }: BookGr
   }, [books, level, genre, genre2, lexMin, lexMax, query, readFilter, optimisticRead]);
 
   function handleToggle(book: RazBook) {
-    if (!canToggle || !toggleAction) return;
     const next = !optimisticRead.has(book.id);
     startTransition(async () => {
       setOptimisticRead({ bookId: book.id, read: next });
@@ -129,8 +127,7 @@ export function BookGrid({ books, readBookIds, canToggle, toggleAction }: BookGr
               <button
                 type="button"
                 onClick={() => handleToggle(book)}
-                disabled={!canToggle}
-                className="block w-full text-left disabled:cursor-default"
+                className="block w-full text-left"
                 aria-pressed={read}
               >
                 <div className="relative">
