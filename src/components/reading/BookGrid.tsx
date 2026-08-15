@@ -15,10 +15,6 @@ interface BookGridProps {
 
 export function BookGrid({ books, readBookIds, toggleAction }: BookGridProps) {
   const [level, setLevel] = useState("all");
-  const [genre, setGenre] = useState("all");
-  const [genre2, setGenre2] = useState("all");
-  const [lexMin, setLexMin] = useState("");
-  const [lexMax, setLexMax] = useState("");
   const [query, setQuery] = useState("");
   const [readFilter, setReadFilter] = useState<"all" | "read" | "unread">("all");
   const [, startTransition] = useTransition();
@@ -35,33 +31,24 @@ export function BookGrid({ books, readBookIds, toggleAction }: BookGridProps) {
 
   // books 가 level_order 순이라 레벨 목록도 자동으로 aa→Z2 순
   const levels = useMemo(() => [...new Set(books.map((b) => b.level))], [books]);
-  const genre2List = useMemo(
-    () => [...new Set(books.map((b) => b.genre2).filter((g): g is string => g != null))].sort(),
-    [books],
-  );
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const min = lexMin === "" ? null : Number(lexMin);
-    const max = lexMax === "" ? null : Number(lexMax);
     return books.filter((b) => {
       if (level !== "all" && b.level !== level) return false;
-      if (genre !== "all" && b.genre !== genre) return false;
-      if (genre2 !== "all" && b.genre2 !== genre2) return false;
-      if (min != null && (b.lexile_num == null || b.lexile_num < min)) return false;
-      if (max != null && (b.lexile_num == null || b.lexile_num > max)) return false;
       if (q && !b.title.toLowerCase().includes(q)) return false;
       if (readFilter === "read" && !optimisticRead.has(b.id)) return false;
       if (readFilter === "unread" && optimisticRead.has(b.id)) return false;
       return true;
     }).sort((a, b) => {
-      // 기본 정렬: lexile 지수 오름차순 (없는 책은 맨 뒤) → 동률이면 제목 알파벳순
+      // 기본 정렬: 레벨(aa→Z2) → 레벨 내 lexile 오름차순 (없는 책은 레벨 맨 뒤) → 제목 알파벳순
+      if (a.level_order !== b.level_order) return a.level_order - b.level_order;
       const la = a.lexile_num ?? Number.MAX_SAFE_INTEGER;
       const lb = b.lexile_num ?? Number.MAX_SAFE_INTEGER;
       if (la !== lb) return la - lb;
       return a.title.localeCompare(b.title) || a.id - b.id;
     });
-  }, [books, level, genre, genre2, lexMin, lexMax, query, readFilter, optimisticRead]);
+  }, [books, level, query, readFilter, optimisticRead]);
 
   function handleToggle(book: RazBook) {
     const next = !optimisticRead.has(book.id);
@@ -98,21 +85,6 @@ export function BookGrid({ books, readBookIds, toggleAction }: BookGridProps) {
           <option value="all">레벨 전체</option>
           {levels.map((lv) => <option key={lv} value={lv}>{lv}</option>)}
         </select>
-        <select value={genre} onChange={(e) => setGenre(e.target.value)} className="h-9 rounded-md border border-slate-200 px-2">
-          <option value="all">장르 전체</option>
-          <option value="Fiction">Fiction</option>
-          <option value="Nonfiction">Nonfiction</option>
-        </select>
-        <select value={genre2} onChange={(e) => setGenre2(e.target.value)} className="h-9 rounded-md border border-slate-200 px-2">
-          <option value="all">세부장르 전체</option>
-          {genre2List.map((g) => <option key={g} value={g}>{g}</option>)}
-        </select>
-        <span className="flex items-center gap-1">
-          Lexile
-          <input type="number" value={lexMin} onChange={(e) => setLexMin(e.target.value)} placeholder="min" className="h-9 w-20 rounded-md border border-slate-200 px-2" />
-          ~
-          <input type="number" value={lexMax} onChange={(e) => setLexMax(e.target.value)} placeholder="max" className="h-9 w-20 rounded-md border border-slate-200 px-2" />
-        </span>
         <select value={readFilter} onChange={(e) => setReadFilter(e.target.value as typeof readFilter)} className="h-9 rounded-md border border-slate-200 px-2">
           <option value="all">전체</option>
           <option value="read">읽은 책만</option>
@@ -122,13 +94,13 @@ export function BookGrid({ books, readBookIds, toggleAction }: BookGridProps) {
       </div>
 
       {/* 목록 — content-visibility 로 오프스크린 렌더 비용 절감 (가상화 라이브러리 불필요) */}
-      <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+      <ul className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8">
         {filtered.map((book) => {
           const read = optimisticRead.has(book.id);
           return (
             <li
               key={book.id}
-              className="rounded-lg border border-slate-200 bg-white p-2 [content-visibility:auto] [contain-intrinsic-size:auto_240px]"
+              className="rounded-lg border border-slate-200 bg-white p-2 [content-visibility:auto] [contain-intrinsic-size:auto_200px]"
             >
               <button
                 type="button"
@@ -153,9 +125,15 @@ export function BookGrid({ books, readBookIds, toggleAction }: BookGridProps) {
                   )}
                 </div>
                 <p className="mt-1.5 line-clamp-2 text-xs font-medium text-slate-800">{book.title}</p>
-                <p className="mt-0.5 text-[11px] text-muted-foreground">
-                  {book.level}{book.lexile ? ` · ${book.lexile}` : ""}{book.genre ? ` · ${book.genre}` : ""}
-                </p>
+                <div className="mt-1 flex flex-wrap gap-1 text-[10px] font-medium">
+                  <span className="rounded bg-red-100 px-1 py-0.5 text-red-700">{book.level}</span>
+                  {book.lexile && (
+                    <span className="rounded bg-orange-100 px-1 py-0.5 text-orange-700">{book.lexile}</span>
+                  )}
+                  {book.genre && (
+                    <span className="rounded bg-sky-100 px-1 py-0.5 text-sky-700">{book.genre}</span>
+                  )}
+                </div>
               </button>
             </li>
           );
