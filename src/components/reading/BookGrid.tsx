@@ -94,13 +94,13 @@ export function BookGrid({ books, readBookIds, toggleAction }: BookGridProps) {
       </div>
 
       {/* 목록 — content-visibility 로 오프스크린 렌더 비용 절감 (가상화 라이브러리 불필요) */}
-      <ul className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8">
+      <ul className="grid grid-cols-5 gap-3">
         {filtered.map((book) => {
           const read = optimisticRead.has(book.id);
           return (
             <li
               key={book.id}
-              className="rounded-lg border border-slate-200 bg-white p-2 [content-visibility:auto] [contain-intrinsic-size:auto_200px]"
+              className="rounded-lg border border-slate-200 bg-white p-2 [content-visibility:auto] [contain-intrinsic-size:auto_220px]"
             >
               <button
                 type="button"
@@ -115,7 +115,7 @@ export function BookGrid({ books, readBookIds, toggleAction }: BookGridProps) {
                     src={razCoverUrl(book.id)}
                     alt={book.title}
                     loading="lazy"
-                    className="aspect-[3/4] w-full rounded object-cover bg-slate-100"
+                    className="aspect-[25/19] w-full rounded object-cover bg-slate-100"
                     onError={(e) => { e.currentTarget.style.visibility = "hidden"; }}
                   />
                   {read && (
