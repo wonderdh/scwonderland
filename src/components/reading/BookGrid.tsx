@@ -8,7 +8,7 @@ import type { RazBook } from "@/lib/types";
 export type ToggleReadAction = (bookId: number, read: boolean) => Promise<{ error?: string }>;
 
 interface BookGridProps {
-  books: RazBook[];          // level_order → title 순 정렬 전제 (getRazBooks 가 보장)
+  books: RazBook[];          // level_order 순 입력 전제 (레벨 드롭다운이 이 순서에 의존) — 목록 표시 정렬은 아래 filtered 에서 lexile 기준
   readBookIds: number[];
   toggleAction: ToggleReadAction;
 }
@@ -54,6 +54,12 @@ export function BookGrid({ books, readBookIds, toggleAction }: BookGridProps) {
       if (readFilter === "read" && !optimisticRead.has(b.id)) return false;
       if (readFilter === "unread" && optimisticRead.has(b.id)) return false;
       return true;
+    }).sort((a, b) => {
+      // 기본 정렬: lexile 지수 오름차순 (없는 책은 맨 뒤) → 동률이면 제목 알파벳순
+      const la = a.lexile_num ?? Number.MAX_SAFE_INTEGER;
+      const lb = b.lexile_num ?? Number.MAX_SAFE_INTEGER;
+      if (la !== lb) return la - lb;
+      return a.title.localeCompare(b.title) || a.id - b.id;
     });
   }, [books, level, genre, genre2, lexMin, lexMax, query, readFilter, optimisticRead]);
 
