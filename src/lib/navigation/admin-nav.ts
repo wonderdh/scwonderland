@@ -30,7 +30,6 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
     items: [
       { href: "/admin/homework", label: "숙제", icon: "book" },
       { href: "/admin/reading", label: "Raz 리딩", icon: "book" },
-      { href: "/admin/reading2", label: "Raz 리딩2", icon: "book" },
       { href: "/admin/timetable", label: "시간표", icon: "calendar" },
       { href: "/admin/closed-days", label: "쉬는날", icon: "calendar-x" },
       { href: "/admin/weekly-sentences", label: "주간 문장", icon: "sparkles" },

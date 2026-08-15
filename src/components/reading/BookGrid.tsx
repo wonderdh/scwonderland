@@ -8,16 +8,19 @@ import type { RazBook, RazReadLogEntry } from "@/lib/types";
 
 export type ToggleReadAction = (bookId: number, read: boolean) => Promise<{ error?: string }>;
 
+// 레벨 선택 → 해당 레벨만 5×4 페이지네이션. PC 기준 고정 레이아웃.
+const PAGE_SIZE = 20; // 가로 5 × 세로 4
+
 interface BookGridProps {
-  books: RazBook[];          // level_order 순 입력 전제 (레벨 드롭다운이 이 순서에 의존) — 목록 표시 정렬은 아래 filtered 에서 lexile 기준
+  books: RazBook[]; // level_order 순 입력 전제 (레벨 드롭다운이 이 순서에 의존)
   readLogs: RazReadLogEntry[];
   toggleAction: ToggleReadAction;
 }
 
 export function BookGrid({ books, readLogs, toggleAction }: BookGridProps) {
-  const [level, setLevel] = useState("all");
-  const [query, setQuery] = useState("");
-  const [readFilter, setReadFilter] = useState<"all" | "read" | "unread">("all");
+  const levels = useMemo(() => [...new Set(books.map((b) => b.level))], [books]);
+  const [level, setLevel] = useState(levels[0] ?? "aa");
+  const [page, setPage] = useState(0);
   const [, startTransition] = useTransition();
 
   // bookId → 체크 일시(ISO). 존재 여부 = 읽음.
@@ -31,26 +34,16 @@ export function BookGrid({ books, readLogs, toggleAction }: BookGridProps) {
     },
   );
 
-  // books 가 level_order 순이라 레벨 목록도 자동으로 aa→Z2 순
-  const levels = useMemo(() => [...new Set(books.map((b) => b.level))], [books]);
-
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return books.filter((b) => {
-      if (level !== "all" && b.level !== level) return false;
-      if (q && !b.title.toLowerCase().includes(q)) return false;
-      if (readFilter === "read" && !optimisticRead.has(b.id)) return false;
-      if (readFilter === "unread" && optimisticRead.has(b.id)) return false;
-      return true;
-    }).sort((a, b) => {
-      // 기본 정렬: 레벨(aa→Z2) → 레벨 내 lexile 오름차순 (없는 책은 레벨 맨 뒤) → 제목 알파벳순
-      if (a.level_order !== b.level_order) return a.level_order - b.level_order;
-      const la = a.lexile_num ?? Number.MAX_SAFE_INTEGER;
-      const lb = b.lexile_num ?? Number.MAX_SAFE_INTEGER;
-      if (la !== lb) return la - lb;
-      return a.title.localeCompare(b.title) || a.id - b.id;
-    });
-  }, [books, level, query, readFilter, optimisticRead]);
+  // 선택 레벨 내 제목 알파벳순
+  const levelBooks = useMemo(
+    () =>
+      books
+        .filter((b) => b.level === level)
+        .sort((a, b) => a.title.localeCompare(b.title) || a.id - b.id),
+    [books, level],
+  );
+  const pageCount = Math.max(1, Math.ceil(levelBooks.length / PAGE_SIZE));
+  const pageBooks = levelBooks.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
   function handleToggle(book: RazBook) {
     const next = !optimisticRead.has(book.id);
@@ -67,43 +60,37 @@ export function BookGrid({ books, readLogs, toggleAction }: BookGridProps) {
   }
 
   return (
-    <div className="space-y-4">
-      {/* 진행률 요약 */}
-      <p className="text-sm text-slate-600">
-        읽음 <span className="font-semibold text-slate-800">{optimisticRead.size}</span> / {books.length}권
-        ({Math.round((optimisticRead.size / books.length) * 100)}%)
-      </p>
-
-      {/* 필터 — 전부 클라이언트 메모리 처리 */}
-      <div className="flex flex-wrap items-center gap-2 text-sm">
-        <input
-          type="search"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="제목 검색"
-          className="h-9 w-48 rounded-md border border-slate-200 px-3"
-        />
-        <select value={level} onChange={(e) => setLevel(e.target.value)} className="h-9 rounded-md border border-slate-200 px-2">
-          <option value="all">레벨 전체</option>
-          {levels.map((lv) => <option key={lv} value={lv}>{lv}</option>)}
+    <div className="w-fit space-y-4">
+      {/* 레벨 선택 + 현황 */}
+      <div className="flex items-center gap-3 text-sm">
+        <select
+          value={level}
+          onChange={(e) => {
+            setLevel(e.target.value);
+            setPage(0);
+          }}
+          className="h-9 rounded-md border border-slate-200 px-2"
+        >
+          {levels.map((lv) => (
+            <option key={lv} value={lv}>
+              {lv}
+            </option>
+          ))}
         </select>
-        <select value={readFilter} onChange={(e) => setReadFilter(e.target.value as typeof readFilter)} className="h-9 rounded-md border border-slate-200 px-2">
-          <option value="all">전체</option>
-          <option value="read">읽은 책만</option>
-          <option value="unread">안 읽은 책만</option>
-        </select>
-        <span className="text-xs text-muted-foreground">{filtered.length}권</span>
+        <span className="text-xs text-muted-foreground">
+          {levelBooks.length}권 · 읽음 {levelBooks.filter((b) => optimisticRead.has(b.id)).length}권
+        </span>
       </div>
 
-      {/* 목록 — content-visibility 로 오프스크린 렌더 비용 절감 (가상화 라이브러리 불필요) */}
-      <ul className="flex flex-wrap gap-3">
-        {filtered.map((book) => {
+      {/* 5×4 고정 그리드 */}
+      <ul className="grid w-fit grid-cols-5 gap-3">
+        {pageBooks.map((book) => {
           const readAt = optimisticRead.get(book.id);
           const read = readAt != null;
           return (
             <li
               key={book.id}
-              className={`w-[150px] rounded-lg border p-2 [content-visibility:auto] [contain-intrinsic-size:auto_200px] ${
+              className={`w-[150px] rounded-lg border p-2 ${
                 read ? "border-emerald-300 bg-emerald-50" : "border-slate-200 bg-white"
               }`}
             >
@@ -114,7 +101,7 @@ export function BookGrid({ books, readLogs, toggleAction }: BookGridProps) {
                 aria-pressed={read}
               >
                 <div className="relative">
-                  {/* Supabase Storage 이미지 — next/image 미사용 (원격 최적화 불필요, 190px 원본) */}
+                  {/* Supabase Storage 이미지 — next/image 미사용 (원격 최적화 불필요, 250x190 원본) */}
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={razCoverUrl(book.id)}
@@ -147,6 +134,42 @@ export function BookGrid({ books, readLogs, toggleAction }: BookGridProps) {
           );
         })}
       </ul>
+
+      {/* 페이지네이션 */}
+      {pageCount > 1 && (
+        <div className="flex items-center justify-center gap-1 text-sm">
+          <button
+            type="button"
+            disabled={page === 0}
+            onClick={() => setPage(page - 1)}
+            className="h-8 w-8 rounded-md border border-slate-200 disabled:opacity-40"
+          >
+            ‹
+          </button>
+          {Array.from({ length: pageCount }, (_, i) => (
+            <button
+              key={i}
+              type="button"
+              onClick={() => setPage(i)}
+              className={`h-8 w-8 rounded-md border ${
+                i === page
+                  ? "border-slate-800 bg-slate-800 font-semibold text-white"
+                  : "border-slate-200 hover:bg-slate-50"
+              }`}
+            >
+              {i + 1}
+            </button>
+          ))}
+          <button
+            type="button"
+            disabled={page === pageCount - 1}
+            onClick={() => setPage(page + 1)}
+            className="h-8 w-8 rounded-md border border-slate-200 disabled:opacity-40"
+          >
+            ›
+          </button>
+        </div>
+      )}
     </div>
   );
 }
