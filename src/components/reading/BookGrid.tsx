@@ -8,8 +8,9 @@ import type { RazBook, RazReadLogEntry } from "@/lib/types";
 
 export type ToggleReadAction = (bookId: number, read: boolean) => Promise<{ error?: string }>;
 
-// 레벨 선택 → 해당 레벨만 5×4 페이지네이션. PC 기준 고정 레이아웃.
-const PAGE_SIZE = 20; // 가로 5 × 세로 4
+// 레벨 선택 → 해당 레벨만 20권 페이지네이션.
+// PC(md 이상): 5×4 카드 그리드. 모바일: 썸네일 + 텍스트 한 줄 리스트.
+const PAGE_SIZE = 20; // PC 기준 가로 5 × 세로 4
 
 interface BookGridProps {
   books: RazBook[]; // level_order 순 입력 전제 (레벨 드롭다운이 이 순서에 의존)
@@ -60,7 +61,7 @@ export function BookGrid({ books, readLogs, toggleAction }: BookGridProps) {
   }
 
   return (
-    <div className="w-fit space-y-4">
+    <div className="w-full space-y-4 md:w-fit">
       {/* 레벨 선택 + 현황 */}
       <div className="flex items-center gap-3 text-sm">
         <select
@@ -82,25 +83,25 @@ export function BookGrid({ books, readLogs, toggleAction }: BookGridProps) {
         </span>
       </div>
 
-      {/* 5×4 고정 그리드 */}
-      <ul className="grid w-fit grid-cols-5 gap-3">
+      {/* 모바일: 썸네일 리스트 / md 이상: 5×4 카드 그리드 */}
+      <ul className="flex flex-col gap-2 md:grid md:w-fit md:grid-cols-5 md:gap-3">
         {pageBooks.map((book) => {
           const readAt = optimisticRead.get(book.id);
           const read = readAt != null;
           return (
             <li
               key={book.id}
-              className={`w-[150px] rounded-lg border p-2 ${
+              className={`rounded-lg border p-2 md:w-[150px] ${
                 read ? "border-emerald-300 bg-emerald-50" : "border-slate-200 bg-white"
               }`}
             >
               <button
                 type="button"
                 onClick={() => handleToggle(book)}
-                className="block w-full text-left"
+                className="flex w-full items-center gap-3 text-left md:block"
                 aria-pressed={read}
               >
-                <div className="relative">
+                <div className="relative w-16 shrink-0 md:w-full">
                   {/* Supabase Storage 이미지 — next/image 미사용 (원격 최적화 불필요, 250x190 원본) */}
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
@@ -111,24 +112,26 @@ export function BookGrid({ books, readLogs, toggleAction }: BookGridProps) {
                     onError={(e) => { e.currentTarget.style.visibility = "hidden"; }}
                   />
                   {read && (
-                    <span className="absolute right-1 top-1 rounded-full bg-emerald-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                    <span className="absolute right-1 top-1 hidden rounded-full bg-emerald-500 px-1.5 py-0.5 text-[10px] font-bold text-white md:block">
                       ✓ 읽음
                     </span>
                   )}
                 </div>
-                <p className="mt-1.5 line-clamp-2 text-sm font-medium text-slate-800">{book.title}</p>
-                <div className="mt-1.5 flex flex-wrap gap-1 text-xs font-medium">
-                  <span className="rounded bg-red-100 px-1.5 py-0.5 text-red-700">{book.level}</span>
-                  {book.lexile && (
-                    <span className="rounded bg-orange-100 px-1.5 py-0.5 text-orange-700">{book.lexile}</span>
-                  )}
-                  {book.genre && (
-                    <span className="rounded bg-sky-100 px-1.5 py-0.5 text-sky-700">{book.genre}</span>
+                <div className="min-w-0 flex-1 md:flex-none">
+                  <p className="line-clamp-2 text-sm font-medium text-slate-800 md:mt-1.5">{book.title}</p>
+                  <div className="mt-1 flex flex-wrap gap-1 text-xs font-medium md:mt-1.5">
+                    <span className="rounded bg-red-100 px-1.5 py-0.5 text-red-700">{book.level}</span>
+                    {book.lexile && (
+                      <span className="rounded bg-orange-100 px-1.5 py-0.5 text-orange-700">{book.lexile}</span>
+                    )}
+                    {book.genre && (
+                      <span className="rounded bg-sky-100 px-1.5 py-0.5 text-sky-700">{book.genre}</span>
+                    )}
+                  </div>
+                  {read && (
+                    <p className="mt-1 text-xs font-medium text-emerald-700">✓ {formatDateYmdKst(readAt)}</p>
                   )}
                 </div>
-                {read && (
-                  <p className="mt-1 text-xs font-medium text-emerald-700">✓ {formatDateYmdKst(readAt)}</p>
-                )}
               </button>
             </li>
           );
