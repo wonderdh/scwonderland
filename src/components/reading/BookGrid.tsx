@@ -35,6 +35,18 @@ export function BookGrid({ books, readLogs, toggleAction }: BookGridProps) {
     },
   );
 
+  // 레벨별 진행 현황 (optimisticRead 기반이라 토글 즉시 칩 색에 반영)
+  const levelStats = useMemo(() => {
+    const m = new Map<string, { total: number; read: number }>();
+    for (const b of books) {
+      const s = m.get(b.level) ?? { total: 0, read: 0 };
+      s.total++;
+      if (optimisticRead.has(b.id)) s.read++;
+      m.set(b.level, s);
+    }
+    return m;
+  }, [books, optimisticRead]);
+
   // 선택 레벨 내 제목 알파벳순
   const levelBooks = useMemo(
     () =>
@@ -62,25 +74,46 @@ export function BookGrid({ books, readLogs, toggleAction }: BookGridProps) {
 
   return (
     <div className="w-full space-y-4 md:w-fit">
-      {/* 레벨 선택 + 현황 */}
-      <div className="flex items-center gap-3 text-sm">
-        <select
-          value={level}
-          onChange={(e) => {
-            setLevel(e.target.value);
-            setPage(0);
-          }}
-          className="h-9 rounded-md border border-slate-200 px-2"
-        >
-          {levels.map((lv) => (
-            <option key={lv} value={lv}>
-              {lv}
-            </option>
-          ))}
-        </select>
-        <span className="text-xs text-muted-foreground">
-          {levelBooks.length}권 · 읽음 {levelBooks.filter((b) => optimisticRead.has(b.id)).length}권
-        </span>
+      {/* 레벨 선택 칩 — 시작 전(회색) / 진행 중(호박색) / 완료(에메랄드) */}
+      <div className="space-y-2">
+        <div className="flex flex-wrap gap-1.5">
+          {levels.map((lv) => {
+            const s = levelStats.get(lv) ?? { total: 0, read: 0 };
+            const status = s.read === 0 ? "none" : s.read === s.total ? "done" : "progress";
+            const color =
+              status === "done"
+                ? "bg-emerald-100 text-emerald-700"
+                : status === "progress"
+                  ? "bg-amber-100 text-amber-700"
+                  : "bg-slate-100 text-slate-500";
+            const selected = lv === level;
+            return (
+              <button
+                key={lv}
+                type="button"
+                title={`${s.read}/${s.total}권`}
+                onClick={() => {
+                  setLevel(lv);
+                  setPage(0);
+                }}
+                className={`rounded-md px-2 py-1 text-xs font-semibold ${color} ${
+                  selected ? "ring-2 ring-slate-700" : "hover:ring-1 hover:ring-slate-300"
+                }`}
+              >
+                {lv}
+              </button>
+            );
+          })}
+        </div>
+        <p className="text-xs text-muted-foreground">
+          <span className="font-semibold text-slate-700">{level}</span> · {levelBooks.length}권 중 읽음{" "}
+          {levelBooks.filter((b) => optimisticRead.has(b.id)).length}권
+          <span className="ml-3 inline-flex items-center gap-2">
+            <span className="inline-block h-2.5 w-2.5 rounded-sm bg-slate-100 ring-1 ring-slate-300" /> 시작 전
+            <span className="inline-block h-2.5 w-2.5 rounded-sm bg-amber-100 ring-1 ring-amber-300" /> 진행 중
+            <span className="inline-block h-2.5 w-2.5 rounded-sm bg-emerald-100 ring-1 ring-emerald-300" /> 완료
+          </span>
+        </p>
       </div>
 
       {/* 모바일: 썸네일 리스트 / md 이상: 5×4 카드 그리드 */}
