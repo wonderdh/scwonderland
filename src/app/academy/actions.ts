@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { fetchAllRows } from "@/lib/supabase/fetch-all";
 import { aggregateReadingStats, type ClassReadingStats } from "@/lib/raz/stats";
 import { getRazBooks } from "@/lib/raz/books.server";
-import type { StudentProfile, StudentClassItem, TeacherProfile, TeacherClassWithStudents, ReportCardStatus } from "@/lib/types";
+import type { StudentProfile, StudentClassItem, TeacherProfile, TeacherClassWithStudents, ReportCardStatus, RazReadLogEntry } from "@/lib/types";
 
 export interface StudentMonthlyStats {
   attendance: { total: number; present: number; absent: number; late: number; rate: number };
@@ -371,8 +371,8 @@ export async function getClassReportStatus(
 
 // --- Raz 리딩 ---
 
-/** 대상 학생의 읽은 book_id 목록. 본인 또는 teacher 만. (읽은 책이 1,000권 넘을 수 있어 페이지네이션) */
-export async function getReadBookIds(studentId: string): Promise<number[]> {
+/** 대상 학생의 읽음 기록 (book_id + 체크 일시). 본인 또는 teacher 만. (읽은 책이 1,000권 넘을 수 있어 페이지네이션) */
+export async function getReadLogs(studentId: string): Promise<RazReadLogEntry[]> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -382,10 +382,10 @@ export async function getReadBookIds(studentId: string): Promise<number[]> {
     const isTeacher = await hasUserRole(supabase, user.id, "teacher");
     if (!isTeacher) return [];
   }
-  const rows = await fetchAllRows<{ book_id: number }>((from, to) =>
-    supabase.from("raz_read_logs").select("book_id").eq("student_id", studentId).order("book_id").range(from, to),
+  const rows = await fetchAllRows<{ book_id: number; read_at: string }>((from, to) =>
+    supabase.from("raz_read_logs").select("book_id, read_at").eq("student_id", studentId).order("book_id").range(from, to),
   );
-  return rows.map((r) => r.book_id);
+  return rows.map((r) => ({ bookId: r.book_id, readAt: r.read_at }));
 }
 
 /** 읽음 토글. 본인 또는 teacher. user-context client 사용 — RLS 가 이중 방어선. */

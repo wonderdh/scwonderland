@@ -66,4 +66,4 @@ export type {
   NoRideChangeType,
 } from "@/lib/bus/state";
 
-export type { RazBook } from "./raz";
+export type { RazBook, RazReadLogEntry } from "./raz";

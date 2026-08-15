@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getRazBooks } from "@/lib/raz/books.server";
 import { fetchAllRows } from "@/lib/supabase/fetch-all";
 import { aggregateReadingStats, type ClassReadingStats } from "@/lib/raz/stats";
+import type { RazReadLogEntry } from "@/lib/types";
 
 /** 전체 활성 반의 학생별 읽기 통계 */
 export async function getAllReadingStats(): Promise<ClassReadingStats[]> {
@@ -63,15 +64,15 @@ export async function getAllReadingStats(): Promise<ClassReadingStats[]> {
   return aggregateReadingStats(classShapes, logs, books);
 }
 
-/** admin 학생 상세용: 읽은 book_id 목록 */
-export async function getReadBookIdsAsAdmin(studentId: string): Promise<number[]> {
+/** admin 학생 상세용: 읽음 기록 (book_id + 체크 일시) */
+export async function getReadLogsAsAdmin(studentId: string): Promise<RazReadLogEntry[]> {
   const auth = await verifyAdmin();
   if ("error" in auth) return [];
   const admin = createAdminClient();
-  const rows = await fetchAllRows<{ book_id: number }>((from, to) =>
-    admin.from("raz_read_logs").select("book_id").eq("student_id", studentId).order("book_id").range(from, to),
+  const rows = await fetchAllRows<{ book_id: number; read_at: string }>((from, to) =>
+    admin.from("raz_read_logs").select("book_id, read_at").eq("student_id", studentId).order("book_id").range(from, to),
   );
-  return rows.map((r) => r.book_id);
+  return rows.map((r) => ({ bookId: r.book_id, readAt: r.read_at }));
 }
 
 /** admin 학생 상세용: 학생 이름 */

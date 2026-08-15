@@ -3,27 +3,29 @@
 import { useMemo, useOptimistic, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { razCoverUrl } from "@/lib/raz/cover";
-import type { RazBook } from "@/lib/types";
+import { formatDateYmdKst } from "@/lib/utils/date-kst";
+import type { RazBook, RazReadLogEntry } from "@/lib/types";
 
 export type ToggleReadAction = (bookId: number, read: boolean) => Promise<{ error?: string }>;
 
 interface BookGridProps {
   books: RazBook[];          // level_order 순 입력 전제 (레벨 드롭다운이 이 순서에 의존) — 목록 표시 정렬은 아래 filtered 에서 lexile 기준
-  readBookIds: number[];
+  readLogs: RazReadLogEntry[];
   toggleAction: ToggleReadAction;
 }
 
-export function BookGrid({ books, readBookIds, toggleAction }: BookGridProps) {
+export function BookGrid({ books, readLogs, toggleAction }: BookGridProps) {
   const [level, setLevel] = useState("all");
   const [query, setQuery] = useState("");
   const [readFilter, setReadFilter] = useState<"all" | "read" | "unread">("all");
   const [, startTransition] = useTransition();
 
+  // bookId → 체크 일시(ISO). 존재 여부 = 읽음.
   const [optimisticRead, setOptimisticRead] = useOptimistic(
-    useMemo(() => new Set(readBookIds), [readBookIds]),
+    useMemo(() => new Map(readLogs.map((r) => [r.bookId, r.readAt])), [readLogs]),
     (prev, action: { bookId: number; read: boolean }) => {
-      const next = new Set(prev);
-      if (action.read) next.add(action.bookId);
+      const next = new Map(prev);
+      if (action.read) next.set(action.bookId, new Date().toISOString());
       else next.delete(action.bookId);
       return next;
     },
@@ -96,11 +98,14 @@ export function BookGrid({ books, readBookIds, toggleAction }: BookGridProps) {
       {/* 목록 — content-visibility 로 오프스크린 렌더 비용 절감 (가상화 라이브러리 불필요) */}
       <ul className="grid grid-cols-5 gap-3">
         {filtered.map((book) => {
-          const read = optimisticRead.has(book.id);
+          const readAt = optimisticRead.get(book.id);
+          const read = readAt != null;
           return (
             <li
               key={book.id}
-              className="rounded-lg border border-slate-200 bg-white p-2 [content-visibility:auto] [contain-intrinsic-size:auto_220px]"
+              className={`rounded-lg border p-2 [content-visibility:auto] [contain-intrinsic-size:auto_220px] ${
+                read ? "border-emerald-300 bg-emerald-50" : "border-slate-200 bg-white"
+              }`}
             >
               <button
                 type="button"
@@ -134,6 +139,9 @@ export function BookGrid({ books, readBookIds, toggleAction }: BookGridProps) {
                     <span className="rounded bg-sky-100 px-1 py-0.5 text-sky-700">{book.genre}</span>
                   )}
                 </div>
+                {read && (
+                  <p className="mt-1 text-[10px] font-medium text-emerald-700">✓ {formatDateYmdKst(readAt)}</p>
+                )}
               </button>
             </li>
           );

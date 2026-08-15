@@ -1,7 +1,7 @@
 import { redirect, notFound } from "next/navigation";
 import {
   getCurrentTeacherProfile,
-  getReadBookIds,
+  getReadLogs,
   getStudentNameForStaff,
   toggleRazRead,
 } from "../../../actions";
@@ -17,10 +17,10 @@ export default async function TeacherReadingStudentPage({
   const profile = await getCurrentTeacherProfile();
   if (!profile) redirect("/dashboard");
 
-  const [student, books, readBookIds] = await Promise.all([
+  const [student, books, readLogs] = await Promise.all([
     getStudentNameForStaff(studentId),
     getRazBooks(),
-    getReadBookIds(studentId),
+    getReadLogs(studentId),
   ]);
   if (!student) notFound();
 
@@ -31,7 +31,7 @@ export default async function TeacherReadingStudentPage({
       </h1>
       <BookGrid
         books={books}
-        readBookIds={readBookIds}
+        readLogs={readLogs}
         toggleAction={toggleRazRead.bind(null, studentId)}
       />
     </div>

@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import {
-  getReadBookIdsAsAdmin,
+  getReadLogsAsAdmin,
   getStudentNameAsAdmin,
   toggleRazReadAsAdmin,
 } from "../../actions/raz-actions";
@@ -14,10 +14,10 @@ export default async function AdminReadingStudentPage({
 }) {
   const { studentId } = await params;
 
-  const [student, books, readBookIds] = await Promise.all([
+  const [student, books, readLogs] = await Promise.all([
     getStudentNameAsAdmin(studentId),
     getRazBooks(),
-    getReadBookIdsAsAdmin(studentId),
+    getReadLogsAsAdmin(studentId),
   ]);
   if (!student) notFound();
 
@@ -28,7 +28,7 @@ export default async function AdminReadingStudentPage({
       </h1>
       <BookGrid
         books={books}
-        readBookIds={readBookIds}
+        readLogs={readLogs}
         toggleAction={toggleRazReadAsAdmin.bind(null, studentId)}
       />
     </div>
