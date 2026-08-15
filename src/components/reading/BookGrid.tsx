@@ -96,14 +96,14 @@ export function BookGrid({ books, readLogs, toggleAction }: BookGridProps) {
       </div>
 
       {/* 목록 — content-visibility 로 오프스크린 렌더 비용 절감 (가상화 라이브러리 불필요) */}
-      <ul className="grid grid-cols-5 gap-3">
+      <ul className="flex flex-wrap gap-3">
         {filtered.map((book) => {
           const readAt = optimisticRead.get(book.id);
           const read = readAt != null;
           return (
             <li
               key={book.id}
-              className={`rounded-lg border p-2 [content-visibility:auto] [contain-intrinsic-size:auto_220px] ${
+              className={`w-[150px] rounded-lg border p-2 [content-visibility:auto] [contain-intrinsic-size:auto_200px] ${
                 read ? "border-emerald-300 bg-emerald-50" : "border-slate-200 bg-white"
               }`}
             >
@@ -129,18 +129,18 @@ export function BookGrid({ books, readLogs, toggleAction }: BookGridProps) {
                     </span>
                   )}
                 </div>
-                <p className="mt-1.5 line-clamp-2 text-xs font-medium text-slate-800">{book.title}</p>
-                <div className="mt-1 flex flex-wrap gap-1 text-[10px] font-medium">
-                  <span className="rounded bg-red-100 px-1 py-0.5 text-red-700">{book.level}</span>
+                <p className="mt-1.5 line-clamp-2 text-sm font-medium text-slate-800">{book.title}</p>
+                <div className="mt-1.5 flex flex-wrap gap-1 text-xs font-medium">
+                  <span className="rounded bg-red-100 px-1.5 py-0.5 text-red-700">{book.level}</span>
                   {book.lexile && (
-                    <span className="rounded bg-orange-100 px-1 py-0.5 text-orange-700">{book.lexile}</span>
+                    <span className="rounded bg-orange-100 px-1.5 py-0.5 text-orange-700">{book.lexile}</span>
                   )}
                   {book.genre && (
-                    <span className="rounded bg-sky-100 px-1 py-0.5 text-sky-700">{book.genre}</span>
+                    <span className="rounded bg-sky-100 px-1.5 py-0.5 text-sky-700">{book.genre}</span>
                   )}
                 </div>
                 {read && (
-                  <p className="mt-1 text-[10px] font-medium text-emerald-700">✓ {formatDateYmdKst(readAt)}</p>
+                  <p className="mt-1 text-xs font-medium text-emerald-700">✓ {formatDateYmdKst(readAt)}</p>
                 )}
               </button>
             </li>
