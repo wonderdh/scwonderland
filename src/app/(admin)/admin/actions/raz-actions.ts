@@ -116,6 +116,8 @@ export async function toggleRazReadAsAdmin(
 
   revalidatePath("/admin/reading");
   revalidatePath(`/admin/reading/${studentId}`);
+  revalidatePath("/admin/reading2");
+  revalidatePath(`/admin/reading2/${studentId}`);
   revalidatePath("/academy/student/reading");
   revalidatePath(`/academy/teacher/reading/${studentId}`);
   return {};
