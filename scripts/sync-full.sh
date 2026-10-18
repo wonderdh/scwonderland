@@ -2,11 +2,13 @@
 # Full sync: 클라우드 Supabase → 로컬 (dump-based, 신 스키마 호환)
 #
 # 흐름:
-#   1. supabase db pull         (클라우드 스키마 변경 → migrations/)
-#   2. supabase db reset        (로컬 DB 초기화 + 마이그레이션 재적용)
-#   3. sync-auth-from-cloud.mjs (auth.users UUID 보존 + 비번 "1111")
-#   4. supabase db dump         (cloud public 데이터 dump)
-#   5. docker exec psql         (로컬에 적용)
+#   1. supabase db reset        (로컬 DB 초기화 + 마이그레이션 재적용)
+#   2. sync-auth-from-cloud.mjs (auth.users UUID 보존 + 비번 "1111")
+#   3. supabase db dump         (cloud public 데이터 dump)
+#   4. docker exec psql         (로컬에 적용)
+#
+# db pull 은 하지 않음: 클라우드 migration history 에 기록을 추가하고 노이즈 diff 를 만듦.
+# 스키마는 git 의 supabase/migrations/ 가 기준.
 #
 # 비번 "1111" 정책:
 #   - 신규 user 만 비번 "1111" 로 생성. 기존 로컬 user 는 비번 보존.
@@ -38,23 +40,19 @@ fi
 
 mkdir -p tmp
 
-echo "=== 1/5 스키마 pull (클라우드 → supabase/migrations) ==="
-supabase db pull
-
-echo ""
-echo "=== 2/5 로컬 DB 리셋 (스키마 fresh) ==="
+echo "=== 1/4 로컬 DB 리셋 (스키마 fresh) ==="
 supabase db reset
 
 echo ""
-echo "=== 3/5 auth.users 동기화 (UUID 보존, 비번 1111) ==="
+echo "=== 2/4 auth.users 동기화 (UUID 보존, 비번 1111) ==="
 node scripts/sync-auth-from-cloud.mjs
 
 echo ""
-echo "=== 4/5 클라우드 public 데이터 dump ==="
+echo "=== 3/4 클라우드 public 데이터 dump ==="
 supabase db dump --data-only --schema public --use-copy -f "${DUMP_FILE}"
 
 echo ""
-echo "=== 5/5 dump 로컬 적용 (docker exec psql) ==="
+echo "=== 4/4 dump 로컬 적용 (docker exec psql) ==="
 MSYS_NO_PATHCONV=1 docker cp "${DUMP_FILE}" "${DB_CONTAINER}:/tmp/cloud-public.sql"
 MSYS_NO_PATHCONV=1 docker exec "${DB_CONTAINER}" \
   psql -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/cloud-public.sql

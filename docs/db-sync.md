@@ -35,18 +35,19 @@ set -a; source .env.scripts; set +a
 
 **언제**: cloud 데이터로 로컬을 동기화. 신규 user 만 비번 `"1111"`, 기존 로컬 user 비번은 자동 보존.
 
-`scripts/sync-full.sh` 5단계:
+`scripts/sync-full.sh` 4단계:
 
 | # | 명령 | 효과 |
 |---|------|------|
-| 1 | `supabase db pull` | 클라우드의 새 마이그레이션을 `supabase/migrations/` 로 받아옴 (멱등) |
-| 2 | `supabase db reset` | 로컬 DB 초기화 + 마이그레이션 재적용 (스키마 fresh) |
-| 3 | `node scripts/sync-auth-from-cloud.mjs` | cloud `auth.users` 를 로컬에 createUser. **UUID 보존** + 비번 `"1111"`. 기존 user 는 skip. |
-| 4 | `supabase db dump --data-only --schema public --use-copy -f tmp/cloud-public.sql` | cloud `public` 스키마 데이터를 COPY 형식 SQL 로 dump |
-| 5 | `docker cp` + `docker exec psql -f` | dump 를 로컬 PG 컨테이너에 적용 |
+| 1 | `supabase db reset` | 로컬 DB 초기화 + 마이그레이션 재적용 (스키마 fresh) |
+| 2 | `node scripts/sync-auth-from-cloud.mjs` | cloud `auth.users` 를 로컬에 createUser. **UUID 보존** + 비번 `"1111"`. 기존 user 는 skip. |
+| 3 | `supabase db dump --data-only --schema public --use-copy -f tmp/cloud-public.sql` | cloud `public` 스키마 데이터를 COPY 형식 SQL 로 dump |
+| 4 | `docker cp` + `docker exec psql -f` | dump 를 로컬 PG 컨테이너에 적용 |
+
+> `db pull` 은 하지 않음 — 클라우드 migration history 에 `remote_schema` 기록을 자동 추가하고, 정책/트리거 재생성 노이즈 diff (+ 로컬에 없는 storage 플랫폼 트리거) 를 만들어 `db reset` 이 깨짐. 스키마 기준은 git 의 `supabase/migrations/`.
 
 ### 핵심 포인트
-- **UUID 보존** — 3단계가 cloud user 의 `id` 를 그대로 createUser. → 4단계 dump 의 모든 FK (예: `students.id = auth.users.id`) 가 그대로 유효.
+- **UUID 보존** — 2단계가 cloud user 의 `id` 를 그대로 createUser. → 3단계 dump 의 모든 FK (예: `students.id = auth.users.id`) 가 그대로 유효.
 - **trigger 자동 우회** — `supabase db dump` 가 SQL 첫 줄에 `SET session_replication_role = replica;` 를 박아 import 시 trigger 비활성화.
 - **재실행 안전** — `sync-auth-from-cloud.mjs` 가 기존 user skip 이고, `db reset` 이 매번 깨끗이 만들어줘서 멱등.
 
@@ -99,7 +100,7 @@ pnpm dev
 | 명령 / 파일 | 용도 |
 |------|------|
 | `pnpm db:reset-passwords` | 로컬 전체 비번 `"1111"` 통일 (127.0.0.1 외 URL 은 `ALLOW_REMOTE=true` 필요) |
-| `scripts/sync-auth-from-cloud.mjs` | sync-full 의 3단계. 단독 실행 가능 (auth 만 sync) |
+| `scripts/sync-auth-from-cloud.mjs` | sync-full 의 2단계. 단독 실행 가능 (auth 만 sync) |
 | Supabase Studio | `http://127.0.0.1:54323` |
 
 ---
@@ -142,10 +143,9 @@ pnpm db:sync
 pnpm db:types:local
 ```
 
-- 1단계 `db pull` 은 멱등 — 이미 받은 마이그레이션은 다시 안 받음.
-- 2단계 `db reset` 이 로컬 비우고 마이그레이션 재적용.
-- 3단계 `sync-auth-from-cloud.mjs` 가 cloud 신규 user 만 비번 `"1111"` 로 생성. **기존 로컬 user 의 비번은 그대로**.
-- 4·5단계가 cloud `public` 데이터를 1:1 복제.
+- 1단계 `db reset` 이 로컬 비우고 마이그레이션 재적용.
+- 2단계 `sync-auth-from-cloud.mjs` 가 cloud 신규 user 만 비번 `"1111"` 로 생성. **기존 로컬 user 의 비번은 그대로**.
+- 3·4단계가 cloud `public` 데이터를 1:1 복제.
 
 ### Q. `migrations/` 폴더 비우면 안 됨?
 
@@ -190,7 +190,7 @@ TARGET_PASSWORD=1111 pnpm db:reset-passwords
 ### Q. docker 없이 dump 적용 가능?
 
 현재 스크립트는 `docker exec psql` 사용 (psql 이 PATH 에 없는 환경 가정).
-PATH 에 `psql` 이 있으면 `sync-full.sh` 의 5단계를 다음과 같이 바꿔도 됨:
+PATH 에 `psql` 이 있으면 `sync-full.sh` 의 4단계를 다음과 같이 바꿔도 됨:
 
 ```bash
 psql "postgres://postgres:postgres@127.0.0.1:54322/postgres" -v ON_ERROR_STOP=1 -f tmp/cloud-public.sql
