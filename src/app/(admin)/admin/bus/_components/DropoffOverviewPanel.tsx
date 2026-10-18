@@ -36,6 +36,11 @@ const BUS_COL_COLORS = [
   "bg-cyan-50/60",
 ];
 
+const DAY_GROUPS = [
+  { key: "mwf", label: "월수금", days: [1, 3, 5] },
+  { key: "tt", label: "화목", days: [2, 4] },
+] as const;
+
 type StopGroup = {
   stopName: string;
   stopSortOrder: number;
@@ -55,6 +60,7 @@ export function FullOverviewPanel() {
   const [afterschoolSet, setAfterschoolSet] = useState<Set<string>>(new Set());
   const [activeSlot, setActiveSlot] = useState<string>("");
   const [search, setSearch] = useState("");
+  const [groupIdx, setGroupIdx] = useState(0);
   const [downloading, setDownloading] = useState(false);
   const tableRef = useRef<HTMLDivElement>(null);
 
@@ -119,14 +125,14 @@ export function FullOverviewPanel() {
         pixelRatio: 2,
       });
       const link = document.createElement("a");
-      link.download = `하원표_${slotTime}_${slotLabel}.png`;
+      link.download = `하원표_${slotTime}_${slotLabel}_${DAY_GROUPS[groupIdx].label}.png`;
       link.href = dataUrl;
       link.click();
     } catch (err) {
       console.error("이미지 다운로드 실패:", err);
     }
     setDownloading(false);
-  }, [slots, activeSlot]);
+  }, [slots, activeSlot, groupIdx]);
 
   if (loading) return <LoadingState label="하원표 불러오는 중..." className="py-8" />;
 
@@ -146,9 +152,13 @@ export function FullOverviewPanel() {
   const selectedSlotLabel = selectedSlot?.label ?? "";
   const selectedSlotTime = selectedSlot ? formatTime(selectedSlot.time) : "";
 
+  const group = DAY_GROUPS[groupIdx];
+  const groupDays: readonly number[] = group.days;
+
   const filteredRows = rows.filter(
-    (r) => r.slotTime === selectedSlot?.time && r.slotLabel === selectedSlotLabel
+    (r) => r.slotTime === selectedSlot?.time && r.slotLabel === selectedSlotLabel && groupDays.includes(r.day)
   );
+  const groupUnassigned = unassigned.filter((u) => groupDays.includes(u.day));
 
   const busLabelsInData = new Set(filteredRows.map((r) => r.busLabel));
   const activeBuses = busNumbers
@@ -219,48 +229,66 @@ export function FullOverviewPanel() {
       </div>
 
       <Tabs value={activeSlot} onValueChange={setActiveSlot}>
-        <TabsList variant="line">
-          {dirSlots.map((s) => (
-            <TabsTrigger key={s.id} value={s.id}>
-              {formatTime(s.time)} {s.label}
-            </TabsTrigger>
-          ))}
-        </TabsList>
+        <div className="flex flex-wrap items-center gap-3">
+          <TabsList variant="line">
+            {dirSlots.map((s) => (
+              <TabsTrigger key={s.id} value={s.id}>
+                {formatTime(s.time)} {s.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+          <div className="flex rounded-lg border border-slate-200 overflow-hidden">
+            {DAY_GROUPS.map((g, i) => (
+              <button
+                key={g.key}
+                type="button"
+                onClick={() => setGroupIdx(i)}
+                className={`px-3.5 py-1.5 text-sm font-medium transition-colors ${
+                  groupIdx === i
+                    ? "bg-blue-600 text-white"
+                    : "bg-white text-slate-600 hover:bg-slate-50"
+                }`}
+              >
+                {g.label}
+              </button>
+            ))}
+          </div>
+        </div>
 
         {dirSlots.map((slot) => (
           <TabsContent key={slot.id} value={slot.id}>
             {allBusLabels.length === 0 ? (
               <p className="text-sm text-slate-400 py-4">
-                {selectedSlotTime} {selectedSlotLabel} 시간대에 배정된 학생이 없습니다.
+                {selectedSlotTime} {selectedSlotLabel} 시간대 {group.label}에 배정된 학생이 없습니다.
               </p>
             ) : (
               <div ref={slot.id === activeSlot ? tableRef : undefined} className="bg-white p-2">
                 <div className="text-sm font-bold text-slate-600 mb-2 text-center">
-                  {dirLabel}표 — {formatTime(slot.time)} {slot.label}
+                  {dirLabel}표 — {formatTime(slot.time)} {slot.label} ({group.label})
                 </div>
                 <div className="overflow-x-auto">
                 <table className="w-full text-base border-collapse">
                   <thead>
                     <tr className="border-b-2 border-slate-300">
-                      <th className="text-left py-3 px-3 w-14 bg-slate-100 sticky left-0 z-10 text-sm font-bold">요일</th>
-                      {allBusLabels.map((label, i) => (
-                        <th key={label} className={`text-center py-3 px-3 min-w-[180px] text-sm font-bold border-l border-slate-200 ${BUS_COL_COLORS[i % BUS_COL_COLORS.length]}`}>
-                          {label}
+                      <th className="text-left py-3 px-3 w-20 bg-slate-100 sticky left-0 z-10 text-sm font-bold">호차</th>
+                      {groupDays.map((day) => (
+                        <th key={day} className={`text-center py-3 px-3 min-w-[180px] text-sm font-bold border-l border-slate-200 ${DAY_COLORS[day]}`}>
+                          {WEEKDAY_NAMES_5[day - 1]}
                         </th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
-                    {[1, 2, 3, 4, 5].map((day) => (
-                      <tr key={day} className="border-b border-slate-200 align-top">
-                        <td className={`py-3 px-3 font-bold text-sm sticky left-0 z-10 border-r border-slate-200 ${DAY_COLORS[day]}`}>
-                          {WEEKDAY_NAMES_5[day - 1]}
+                    {allBusLabels.map((busLabel, busIdx) => (
+                      <tr key={busLabel} className="border-b border-slate-200 align-top">
+                        <td className="py-3 px-3 font-bold text-sm sticky left-0 z-10 border-r border-slate-200 whitespace-nowrap bg-white">
+                          {busLabel}
                         </td>
-                        {allBusLabels.map((busLabel, busIdx) => {
+                        {groupDays.map((day) => {
                           const cell = buildCell(day, busLabel);
-                          const colBg = BUS_COL_COLORS[busIdx % BUS_COL_COLORS.length];
+                          const rowBg = BUS_COL_COLORS[busIdx % BUS_COL_COLORS.length];
                           return (
-                            <td key={busLabel} className={`py-2 px-3 border-l border-slate-200 ${colBg}`}>
+                            <td key={day} className={`py-2 px-3 border-l border-slate-200 ${rowBg}`}>
                               {cell.stops.length === 0 ? (
                                 <span className="text-slate-300">-</span>
                               ) : (
@@ -307,13 +335,13 @@ export function FullOverviewPanel() {
       </Tabs>
 
       {/* 미배정 학생 */}
-      {unassigned.length > 0 && (
+      {groupUnassigned.length > 0 && (
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
           <h3 className="text-sm font-bold text-amber-800 mb-2">
-            {dirLabel} 미배정 학생 ({unassigned.length}건)
+            {dirLabel} 미배정 학생 · {group.label} ({groupUnassigned.length}건)
           </h3>
-          <div className="grid grid-cols-5 gap-3">
-            {[1, 2, 3, 4, 5].map((day) => {
+          <div className={`grid gap-3 ${groupDays.length === 3 ? "grid-cols-3" : "grid-cols-2"}`}>
+            {groupDays.map((day) => {
               const dayStudents = unassigned
                 .filter((u) => u.day === day)
                 .sort((a, b) => {
