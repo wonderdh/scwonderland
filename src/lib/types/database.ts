@@ -108,6 +108,8 @@ export type BusStop = {
 export type BusStopSchedule = {
   id: string;
   bus_stop_id: string;
+  /** 같은 정류장이라도 호차별로 도착 시각이 다르다. */
+  bus_number_id: string | null;
   day_of_week: number;
   bus_time_slot_id: string | null;
   estimated_time: string;

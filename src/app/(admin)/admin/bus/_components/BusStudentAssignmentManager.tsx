@@ -13,13 +13,18 @@ import {
 import {
   getBulkBusDefaults,
   saveBulkBusDefaults,
-  listBusStops,
   listBusStopDayAssignments,
 } from "@/app/(admin)/admin/actions/bus-actions";
 import { getAgeColor } from "@/lib/ui/student-age-colors";
 import { formatStudentName } from "@/lib/utils/student-name";
+import { BUS_WEEKDAYS } from "@/lib/constants/bus";
 
-import { BUS_WEEKDAYS as DAYS } from "@/lib/constants/bus";
+const DAY_GROUPS = [
+  { key: "mwf", label: "월수금", days: [1, 3, 5] },
+  { key: "tt", label: "화목", days: [2, 4] },
+] as const;
+
+const dayLabel = (d: number) => BUS_WEEKDAYS.find((x) => x.value === d)?.label ?? "";
 
 const GROUP_LABELS = ["전체", "유치부", "오후반"] as const;
 type GroupFilter = (typeof GROUP_LABELS)[number];
@@ -32,6 +37,18 @@ type StudentItem = {
   group_type?: string | null;
 };
 
+type StudentName = { korean_name: string | null; english_name: string | null; age: number | null };
+
+// 현재 시간대의 (요일, 학생) 배정. 키 = `요일|학생`
+type Assign = { studentId: string; day: number; busId: string | null; stopId: string | null; note: string | null };
+const ak = (day: number, studentId: string) => `${day}|${studentId}`;
+
+// 드래그 payload — fromDay 가 없으면 사이드바에서 끌어온 것
+type DragData = { studentId: string; fromDay?: number };
+
+const sameAssign = (a?: Assign, b?: Assign) =>
+  !!a && !!b && a.busId === b.busId && a.stopId === b.stopId && (a.note ?? null) === (b.note ?? null);
+
 export function BusStudentAssignmentManager({
   busNumbers,
   busTimeSlots,
@@ -43,640 +60,610 @@ export function BusStudentAssignmentManager({
   initialStops: BusStop[];
   allStudents: StudentItem[];
 }) {
-  const [day, setDay] = useState(1);
-  const [timeSlotId, setTimeSlotId] = useState(() => {
-    return busTimeSlots[0]?.id ?? "";
-  });
-  const [stops, setStops] = useState<BusStop[]>(initialStops);
-  const [dayAssignments, setDayAssignments] = useState<BusStopDayAssignment[]>([]);
+  const [groupIdx, setGroupIdx] = useState(0);
+  const [timeSlotId, setTimeSlotId] = useState(() => busTimeSlots[0]?.id ?? "");
+  const days: readonly number[] = DAY_GROUPS[groupIdx].days;
+  const stops = initialStops;
+
+  const [slotRows, setSlotRows] = useState<BusStopDayAssignment[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState("");
   const [groupFilter, setGroupFilter] = useState<GroupFilter>("전체");
+  const [onlyEmpty, setOnlyEmpty] = useState(false);
+  const [dragOverTarget, setDragOverTarget] = useState<string | null>(null);
 
-  // 서버 원본 vs 로컬 작업 사본
-  const [serverAssignments, setServerAssignments] = useState<BusDefaultAssignment[]>([]);
-  const [localAssignments, setLocalAssignments] = useState<BusDefaultAssignment[]>([]);
-  const [hasChanges, setHasChanges] = useState(false);
+  // 서버 원본 vs 로컬 작업 사본 (현재 시간대, 보이는 요일)
+  const [serverAssignments, setServerAssignments] = useState<Map<string, Assign>>(new Map());
+  const [localAssignments, setLocalAssignments] = useState<Map<string, Assign>>(new Map());
 
-  // 같은 요일+방향의 다른 시간대에 배정된 학생 (현재 시간대 제외)
-  const [otherSlotAssigned, setOtherSlotAssigned] = useState<BusDefaultAssignment[]>([]);
-  const [hoveredStudentId, setHoveredStudentId] = useState<string | null>(null);
-
-  // 해당 요일 방과후 학생 ID 세트
-  const [afterschoolIds, setAfterschoolIds] = useState<Set<string>>(new Set());
+  // 요일별 다른 시간대에 배정된 학생
+  const [otherSlotByDay, setOtherSlotByDay] = useState<Map<number, BusDefaultAssignment[]>>(new Map());
+  // 요일별 방과후 학생 ID
+  const [afterschoolByDay, setAfterschoolByDay] = useState<Map<number, Set<string>>>(new Map());
+  // 서버 응답의 이름 (allStudents 에 없는 학생 대비)
+  const [fetchedNames, setFetchedNames] = useState<Map<string, StudentName>>(new Map());
 
   // fetch 버전 카운터 (race condition 방지)
   const fetchVersionRef = useRef(0);
 
-  // 메모 편집
-  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+  // 메모 편집 (키 = `요일|학생`)
+  const [editingNoteKey, setEditingNoteKey] = useState<string | null>(null);
   const [editingNoteValue, setEditingNoteValue] = useState("");
   const [notePopupPos, setNotePopupPos] = useState<{ x: number; y: number } | null>(null);
 
-  const filteredSlots = busTimeSlots;
-
   const fetchAll = useCallback(async () => {
     const version = ++fetchVersionRef.current;
+    const dayList = [...days];
     setLoading(true);
-    const [defaults, stopDayData, allDirDefaults, asIds] = await Promise.all([
-      getBulkBusDefaults(day, timeSlotId || undefined),
-      listBusStopDayAssignments(day, timeSlotId || undefined),
-      // 같은 요일의 전체 배정 조회 (다른 시간대 배정 학생 필터용)
-      getBulkBusDefaults(day),
-      listAfterschoolStudentIdsByDay(day),
+    const [rows, defaultsByDay, asIdsByDay] = await Promise.all([
+      listBusStopDayAssignments(dayList, timeSlotId),
+      Promise.all(dayList.map((d) => getBulkBusDefaults(d))),
+      Promise.all(dayList.map((d) => listAfterschoolStudentIdsByDay(d))),
     ]);
     // 이미 다른 필터로 변경된 경우 무시
     if (version !== fetchVersionRef.current) return;
-    setServerAssignments(defaults);
-    setLocalAssignments(defaults);
-    setDayAssignments(stopDayData);
-    setAfterschoolIds(new Set(asIds));
-    // 현재 시간대가 아닌 다른 시간대에 배정된 학생
-    const currentIds = new Set(defaults.map((d) => d.student_profile_id));
-    setOtherSlotAssigned(
-      allDirDefaults.filter((d) => !currentIds.has(d.student_profile_id))
-    );
-    setHasChanges(false);
-    setLoading(false);
-  }, [day, timeSlotId]);
 
-  const refreshStops = useCallback(async () => {
-    const data = await listBusStops();
-    setStops(data);
-  }, []);
-
-  const [filterChangeConfirm, setFilterChangeConfirm] = useState<{ open: boolean; setter?: () => void }>({ open: false });
-
-  // 필터 변경 시 미저장 경고
-  const guardedSetFilter = useCallback(
-    (setter: () => void) => {
-      if (hasChanges) {
-        setFilterChangeConfirm({ open: true, setter });
-        return;
+    const server = new Map<string, Assign>();
+    const other = new Map<number, BusDefaultAssignment[]>();
+    const names = new Map<string, StudentName>();
+    dayList.forEach((d, i) => {
+      other.set(d, []);
+      for (const a of defaultsByDay[i]) {
+        names.set(a.student_profile_id, { korean_name: a.korean_name, english_name: a.english_name, age: a.age });
+        if (a.bus_time_slot_id === timeSlotId) {
+          server.set(ak(d, a.student_profile_id), {
+            studentId: a.student_profile_id, day: d, busId: a.bus_number_id, stopId: a.bus_stop_id, note: a.note,
+          });
+        } else {
+          other.get(d)!.push(a);
+        }
       }
-      setter();
-    },
-    [hasChanges]
-  );
-
-  function confirmFilterChange() {
-    const setter = filterChangeConfirm.setter;
-    setFilterChangeConfirm({ open: false });
-    setter?.();
-  }
+    });
+    setSlotRows(rows);
+    setServerAssignments(server);
+    setLocalAssignments(new Map(server));
+    setOtherSlotByDay(other);
+    setFetchedNames(names);
+    setAfterschoolByDay(new Map(dayList.map((d, i) => [d, new Set(asIdsByDay[i])])));
+    setLoading(false);
+  }, [days, timeSlotId]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchAll();
   }, [fetchAll]);
 
-  // ── 파생 데이터 계산 ────────────────────────────────────────────────────────
+  // ── 미저장 가드 ─────────────────────────────────────────────────────────────
 
-  // stop_id → bus_number_id 매핑 (현재 요일/방향/시간대 기준)
-  const stopToBusMap = new Map<string, string>();
-  for (const da of dayAssignments) {
-    stopToBusMap.set(da.bus_stop_id, da.bus_number_id);
-  }
-
-  // bus_number_id → BusNumber 조회 맵
-  const busById = new Map(busNumbers.map((b) => [b.id, b]));
-
-  // 활성 정류장 목록 — 요일별 배정 sort_order 우선, 배정 없는 정류장은 전역 sort_order 폴백
-  const dayAssignmentSortMap = new Map(dayAssignments.map((da) => [da.bus_stop_id, da.sort_order]));
-  const activeStops = stops
-    .filter((s) => s.is_active)
-    .sort((a, b) => {
-      const sa = dayAssignmentSortMap.get(a.id) ?? a.sort_order;
-      const sb = dayAssignmentSortMap.get(b.id) ?? b.sort_order;
-      return sa - sb;
-    });
-
-  // 정류장을 버스별로 그룹핑:
-  //   busId → BusStop[]
-  //   null (미배정) → BusStop[]
-  const stopsByBus = new Map<string | null, BusStop[]>();
-  stopsByBus.set(null, []);
-  for (const bus of busNumbers) {
-    stopsByBus.set(bus.id, []);
-  }
-  for (const stop of activeStops) {
-    const busId = stopToBusMap.get(stop.id) ?? null;
-    if (!stopsByBus.has(busId)) stopsByBus.set(busId, []);
-    stopsByBus.get(busId)!.push(stop);
-  }
-
-  // 로컬 배정: stop_id → BusDefaultAssignment[]
-  const assignedByStop = new Map<string, BusDefaultAssignment[]>();
-  // 정류장 없이 배정된 학생 (stop_id null)
-  const assignedNoStop: BusDefaultAssignment[] = [];
-  for (const a of localAssignments) {
-    if (a.bus_stop_id) {
-      if (!assignedByStop.has(a.bus_stop_id)) assignedByStop.set(a.bus_stop_id, []);
-      assignedByStop.get(a.bus_stop_id)!.push(a);
-    } else {
-      assignedNoStop.push(a);
+  const isDayDirty = (day: number) => {
+    const keys = new Set([...localAssignments.keys(), ...serverAssignments.keys()]);
+    for (const k of keys) {
+      if (Number(k.split("|")[0]) !== day) continue;
+      const l = localAssignments.get(k);
+      const s = serverAssignments.get(k);
+      if (!l || !s || !sameAssign(l, s)) return true;
     }
+    return false;
+  };
+  const hasChanges = days.some(isDayDirty);
+
+  const [filterChangeConfirm, setFilterChangeConfirm] = useState<{ open: boolean; setter?: () => void }>({ open: false });
+
+  const guardedSetFilter = (setter: () => void) => {
+    if (hasChanges) {
+      setFilterChangeConfirm({ open: true, setter });
+      return;
+    }
+    setter();
+  };
+
+  function confirmFilterChange() {
+    const setter = filterChangeConfirm.setter;
+    setFilterChangeConfirm({ open: false });
+    setLocalAssignments(new Map(serverAssignments));
+    setter?.();
   }
 
-  // 다른 시간대 배정 학생 ID Set
-  const otherSlotAssignedIds = new Set(otherSlotAssigned.map((a) => a.student_profile_id));
+  // ── 파생 데이터 ─────────────────────────────────────────────────────────────
 
-  // 미배정 학생 (현재 시간대 배정 + 다른 시간대 배정 모두 제외)
-  const assignedIds = new Set(localAssignments.map((a) => a.student_profile_id));
-  const filterStudent = (s: StudentItem) => {
-    if (assignedIds.has(s.profile_id)) return false;
-    if (otherSlotAssignedIds.has(s.profile_id)) return false;
+  const allStudentMap = new Map(allStudents.map((s) => [s.profile_id, s]));
+  const nameOf = (id: string): StudentName => {
+    const s = allStudentMap.get(id);
+    if (s) return { korean_name: s.korean_name, english_name: s.english_name, age: s.age ?? null };
+    return fetchedNames.get(id) ?? { korean_name: null, english_name: null, age: null };
+  };
+  const byAgeName = (a: string, b: string) => {
+    const na = nameOf(a), nb = nameOf(b);
+    if ((na.age ?? 99) !== (nb.age ?? 99)) return (na.age ?? 99) - (nb.age ?? 99);
+    return formatStudentName(na, { fallback: "" }).localeCompare(formatStudentName(nb, { fallback: "" }), "ko");
+  };
+
+  const stopNameMap = new Map(stops.map((s) => [s.id, s.name]));
+  const busById = new Map(busNumbers.map((b) => [b.id, b]));
+  const slotById = new Map(busTimeSlots.map((s) => [s.id, s]));
+
+  // (요일, 호차) 의 정류장 — 운행 순서, 같으면 정류장 목록 순서 (마스터 편집기 cellStops 와 동일)
+  const stopIndex = new Map(stops.map((s, i) => [s.id, i]));
+  const cellStops = (day: number, busId: string) =>
+    slotRows
+      .filter((r) => r.day_of_week === day && r.bus_number_id === busId)
+      .sort((a, b) => a.sort_order - b.sort_order || (stopIndex.get(a.bus_stop_id) ?? 0) - (stopIndex.get(b.bus_stop_id) ?? 0))
+      .map((r) => r.bus_stop_id);
+  const servedKeys = new Set(slotRows.map((r) => `${r.day_of_week}|${r.bus_stop_id}|${r.bus_number_id}`));
+
+  // `요일|정류장|호차` → 학생 ID[] / 표에 못 놓이는 배정 (호차 미지정·운행 안 함·정류장 없음)
+  const studentsByStop = new Map<string, string[]>();
+  const unplaced: Assign[] = [];
+  for (const a of localAssignments.values()) {
+    const key = `${a.day}|${a.stopId}|${a.busId}`;
+    if (!a.stopId || !a.busId || !servedKeys.has(key)) {
+      unplaced.push(a);
+      continue;
+    }
+    studentsByStop.set(key, [...(studentsByStop.get(key) ?? []), a.studentId]);
+  }
+  const invalid = (a: Assign) => !!a.stopId && !servedKeys.has(`${a.day}|${a.stopId}|${a.busId}`);
+
+  const otherSlotOf = (day: number, studentId: string) =>
+    otherSlotByDay.get(day)?.find((a) => a.student_profile_id === studentId);
+
+  // 사이드바 학생 상태: ● 이 시간대 배정 / ○ 어느 시간대에도 없음 / null 다른 시간대 (아래 섹션에 표시)
+  const dayStatus = (day: number, studentId: string): "on" | "off" | null => {
+    if (localAssignments.has(ak(day, studentId))) return "on";
+    if (otherSlotOf(day, studentId)) return null;
+    return "off";
+  };
+
+  const matchesFilter = (s: { korean_name: string | null; english_name: string | null; group_type?: string | null }) => {
     if (groupFilter !== "전체" && (GROUP_TYPE_TO_LABEL[s.group_type ?? ""] ?? "") !== groupFilter) return false;
     if (search) {
       const q = search.toLowerCase();
-      return s.korean_name?.toLowerCase().includes(q) || s.english_name?.toLowerCase().includes(q);
+      return !!(s.korean_name?.toLowerCase().includes(q) || s.english_name?.toLowerCase().includes(q));
     }
     return true;
   };
-  const unassigned = allStudents.filter(filterStudent);
 
-  // 다른 시간대에 이미 배정된 학생 (검색/그룹 필터 적용)
-  const otherSlotFiltered = otherSlotAssigned.filter((a) => {
-    const student = allStudents.find((s) => s.profile_id === a.student_profile_id);
-    if (!student) return false;
-    if (groupFilter !== "전체" && (GROUP_TYPE_TO_LABEL[student.group_type ?? ""] ?? "") !== groupFilter) return false;
-    if (search) {
-      const q = search.toLowerCase();
-      return student.korean_name?.toLowerCase().includes(q) || student.english_name?.toLowerCase().includes(q);
-    }
-    return true;
-  });
+  const sidebarStudents = allStudents
+    .filter(matchesFilter)
+    .filter((s) => {
+      const st = days.map((d) => dayStatus(d, s.profile_id));
+      // 보이는 요일 모두 다른 시간대 배정이면 목록에서 제외 (아래 "다른 시간대 배정" 섹션)
+      if (st.every((x) => x === null)) return false;
+      return !onlyEmpty || st.includes("off");
+    })
+    .sort((a, b) => formatStudentName(a, { fallback: "" }).localeCompare(formatStudentName(b, { fallback: "" }), "ko"));
 
-  // 슬롯 ID → 라벨 맵
-  const slotById = new Map(busTimeSlots.map((s) => [s.id, s]));
+  const otherSlotFiltered = days.map((d) => ({
+    day: d,
+    list: (otherSlotByDay.get(d) ?? [])
+      .filter((a) => {
+        const s = allStudentMap.get(a.student_profile_id);
+        return !!s && matchesFilter(s);
+      })
+      .sort((a, b) => byAgeName(a.student_profile_id, b.student_profile_id)),
+  })).filter((x) => x.list.length > 0);
 
-  // tooltip 위치 (fixed positioning)
-  const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(null);
+  // ── D&D ─────────────────────────────────────────────────────────────────────
 
-  // ── D&D 핸들러 ──────────────────────────────────────────────────────────────
-
-  const handleDragStart = (e: React.DragEvent, student: StudentItem) => {
-    e.dataTransfer.setData(
-      "application/json",
-      JSON.stringify({ studentProfileId: student.profile_id })
-    );
+  const startDrag = (e: React.DragEvent, data: DragData) => {
+    e.dataTransfer.setData("application/json", JSON.stringify(data));
     e.dataTransfer.effectAllowed = "move";
   };
 
-  const handleDropOnStop = (e: React.DragEvent, busStopId: string) => {
-    e.preventDefault();
-    e.currentTarget.classList.remove("border-emerald-400", "bg-emerald-50/30");
+  const readDrag = (e: React.DragEvent): DragData | null => {
     try {
-      const raw = e.dataTransfer.getData("application/json");
-      const { studentProfileId } = JSON.parse(raw) as { studentProfileId: string };
-
-      const slotId = timeSlotId || filteredSlots[0]?.id;
-      if (!slotId) {
-        toast.error("시간대를 먼저 설정해 주세요.");
-        return;
-      }
-
-      const student = allStudents.find((s) => s.profile_id === studentProfileId);
-      const existing = localAssignments.find((a) => a.student_profile_id === studentProfileId);
-
-      // 같은 정류장이면 무시
-      if (existing && existing.bus_stop_id === busStopId) return;
-
-      const stopName = stops.find((s) => s.id === busStopId)?.name ?? null;
-      // 해당 정류장에 배정된 버스 (파생 정보 — 저장 시에는 bus_number_id 생략)
-      const derivedBusId = stopToBusMap.get(busStopId) ?? null;
-
-      const newAssignment: BusDefaultAssignment = {
-        id: existing?.id ?? `new_${studentProfileId}`,
-        student_profile_id: studentProfileId,
-        korean_name: student?.korean_name ?? existing?.korean_name ?? null,
-        english_name: student?.english_name ?? existing?.english_name ?? null,
-        age: student?.age ?? existing?.age ?? null,
-        bus_number_id: derivedBusId,
-        bus_stop_id: busStopId,
-        bus_stop_name: stopName,
-        bus_time_slot_id: existing?.bus_time_slot_id ?? slotId,
-        estimated_time: existing?.estimated_time ?? null,
-        note: existing?.note ?? null,
-      };
-
-      setLocalAssignments((prev) => [
-        ...prev.filter((a) => a.student_profile_id !== studentProfileId),
-        newAssignment,
-      ]);
-      setHasChanges(true);
-    } catch { /* ignore */ }
+      return JSON.parse(e.dataTransfer.getData("application/json")) as DragData;
+    } catch {
+      return null;
+    }
   };
 
-  const handleDropOnUnassigned = (e: React.DragEvent) => {
+  const dragProps = (target: string) => ({
+    onDragOver: (e: React.DragEvent) => { e.preventDefault(); e.stopPropagation(); setDragOverTarget(target); },
+    onDragLeave: (e: React.DragEvent) => {
+      if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOverTarget((t) => (t === target ? null : t));
+    },
+  });
+
+  // 정류장에 드롭: 그 요일·시간대에 (호차, 정류장) 으로 배정. 다른 요일 칩이면 원래 요일은 해제.
+  const handleDropOnStop = (e: React.DragEvent, day: number, busId: string, stopId: string) => {
     e.preventDefault();
-    e.currentTarget.classList.remove("border-emerald-400", "bg-emerald-50/30");
-    try {
-      const raw = e.dataTransfer.getData("application/json");
-      const { studentProfileId } = JSON.parse(raw) as { studentProfileId: string };
-      const exists = localAssignments.some((a) => a.student_profile_id === studentProfileId);
-      if (!exists) return;
+    e.stopPropagation();
+    setDragOverTarget(null);
+    const data = readDrag(e);
+    if (!data?.studentId) return;
+    const { studentId, fromDay } = data;
 
-      setLocalAssignments((prev) => prev.filter((a) => a.student_profile_id !== studentProfileId));
-      setHasChanges(true);
-    } catch { /* ignore */ }
+    const other = otherSlotOf(day, studentId);
+    if (other) {
+      const slot = slotById.get(other.bus_time_slot_id);
+      toast.error(
+        `${formatStudentName(nameOf(studentId))} 학생은 ${dayLabel(day)}요일 다른 시간대(${slot?.label ?? ""})에 배정되어 있습니다.`
+      );
+      return;
+    }
+
+    const next = new Map(localAssignments);
+    const src = fromDay !== undefined && fromDay !== day ? next.get(ak(fromDay, studentId)) : undefined;
+    if (src) next.delete(ak(fromDay!, studentId));
+    const cur = next.get(ak(day, studentId));
+    if (!src && cur && cur.busId === busId && cur.stopId === stopId) return;
+    next.set(ak(day, studentId), { studentId, day, busId, stopId, note: cur?.note ?? src?.note ?? null });
+    setLocalAssignments(next);
   };
 
-  const handleDragOver = (e: React.DragEvent) => {
+  const removeAssign = (day: number, studentId: string) => {
+    setLocalAssignments((prev) => {
+      const next = new Map(prev);
+      next.delete(ak(day, studentId));
+      return next;
+    });
+  };
+
+  const handleDropOnSidebar = (e: React.DragEvent) => {
     e.preventDefault();
-    e.currentTarget.classList.add("border-emerald-400", "bg-emerald-50/30");
+    setDragOverTarget(null);
+    const data = readDrag(e);
+    if (data?.fromDay !== undefined) removeAssign(data.fromDay, data.studentId);
   };
 
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.currentTarget.classList.remove("border-emerald-400", "bg-emerald-50/30");
-  };
+  // ── 메모 ────────────────────────────────────────────────────────────────────
 
-  // ── 메모 핸들러 ────────────────────────────────────────────────────────────
-
-  const openNoteEditor = (profileId: string, e: React.MouseEvent) => {
+  const openNoteEditor = (key: string, e: React.MouseEvent) => {
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    const existing = localAssignments.find((a) => a.student_profile_id === profileId);
-    setEditingNoteId(profileId);
-    setEditingNoteValue(existing?.note ?? "");
+    setEditingNoteKey(key);
+    setEditingNoteValue(localAssignments.get(key)?.note ?? "");
     setNotePopupPos({ x: rect.left + rect.width / 2, y: rect.bottom });
   };
 
-  const saveNote = () => {
-    if (!editingNoteId) return;
-    setLocalAssignments((prev) =>
-      prev.map((a) =>
-        a.student_profile_id === editingNoteId
-          ? { ...a, note: editingNoteValue.trim() || null }
-          : a
-      )
-    );
-    setHasChanges(true);
-    setEditingNoteId(null);
+  const cancelNote = () => {
+    setEditingNoteKey(null);
     setNotePopupPos(null);
   };
 
-  const cancelNote = () => {
-    setEditingNoteId(null);
-    setNotePopupPos(null);
+  const saveNote = () => {
+    if (!editingNoteKey) return;
+    const key = editingNoteKey;
+    setLocalAssignments((prev) => {
+      const cur = prev.get(key);
+      if (!cur) return prev;
+      return new Map(prev).set(key, { ...cur, note: editingNoteValue.trim() || null });
+    });
+    cancelNote();
   };
 
   // ── 저장 / 되돌리기 ─────────────────────────────────────────────────────────
 
   const handleReset = () => {
-    setLocalAssignments(serverAssignments);
-    setHasChanges(false);
+    setLocalAssignments(new Map(serverAssignments));
     cancelNote();
   };
 
   const handleSaveAll = async () => {
-    setSaving(true);
-    const result = await saveBulkBusDefaults(
-      day,
-      localAssignments.map((a) => ({
-        student_profile_id: a.student_profile_id,
-        bus_time_slot_id: a.bus_time_slot_id,
-        bus_stop_id: a.bus_stop_id,
-        note: a.note,
-      }))
-    );
-
-    if (result.error) {
-      toast.error(result.error);
-    } else {
-      toast.success("저장되었습니다.");
-      await refreshStops();
+    const dirtyDays = days.filter(isDayDirty);
+    const dayRows = (d: number) => [...localAssignments.values()].filter((a) => a.day === d);
+    if (dirtyDays.some((d) => dayRows(d).some(invalid))) {
+      toast.error("호차·정류장 확인이 필요한 학생이 있습니다. 표의 정류장으로 옮기거나 제거해 주세요.");
+      return;
     }
-
+    setSaving(true);
+    const errors: string[] = [];
+    for (const d of dirtyDays) {
+      const r = await saveBulkBusDefaults(
+        d,
+        timeSlotId,
+        dayRows(d).map((a) => ({
+          student_profile_id: a.studentId,
+          bus_stop_id: a.stopId,
+          bus_number_id: a.busId,
+          note: a.note,
+        }))
+      );
+      if (r.error) errors.push(`${dayLabel(d)}: ${r.error}`);
+    }
+    if (errors.length) toast.error(`저장 실패 — ${errors.join(", ")}`);
+    else toast.success("저장되었습니다.");
     await fetchAll();
     setSaving(false);
   };
 
-  const studentName = (s: { korean_name: string | null; english_name: string | null }) =>
-    formatStudentName(s);
+  // ── 렌더: 학생 칩 ───────────────────────────────────────────────────────────
 
-  // ── 렌더: 학생 뱃지 ─────────────────────────────────────────────────────────
-
-  const renderStudentBadge = (
-    profileId: string,
-    name: { korean_name: string | null; english_name: string | null },
-    age: number | null | undefined,
-    assigned?: boolean
-  ) => {
-    const ac = getAgeColor(age);
-    const hasNote = assigned && localAssignments.find((a) => a.student_profile_id === profileId)?.note;
-    const isAfterschool = afterschoolIds.has(profileId);
+  const renderChip = (day: number, studentId: string) => {
+    const key = ak(day, studentId);
+    const name = nameOf(studentId);
+    const ac = getAgeColor(name.age);
+    const note = localAssignments.get(key)?.note;
+    const isAfterschool = afterschoolByDay.get(day)?.has(studentId);
     return (
       <span
-        key={profileId}
+        key={key}
         draggable
-        onDragStart={(e) =>
-          handleDragStart(e, {
-            profile_id: profileId,
-            korean_name: name.korean_name,
-            english_name: name.english_name,
-            age,
-          })
-        }
-        onClick={assigned ? (e) => { e.stopPropagation(); openNoteEditor(profileId, e); } : undefined}
-        className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md cursor-grab active:cursor-grabbing hover:shadow-sm select-none ${ac.bg} ${ac.text} border ${ac.border} ${assigned ? "cursor-pointer" : ""}`}
+        onDragStart={(e) => startDrag(e, { studentId, fromDay: day })}
+        onClick={(e) => { e.stopPropagation(); openNoteEditor(key, e); }}
+        title={note ?? undefined}
+        className={`inline-flex items-center gap-1 pl-2 pr-1 py-1 text-xs font-medium rounded-md cursor-grab active:cursor-grabbing hover:shadow-sm select-none ${ac.bg} ${ac.text} border ${ac.border}`}
       >
         {isAfterschool && <span className="text-violet-500 text-xs leading-none">●</span>}
-        {studentName(name)}
-        {hasNote && <span className="w-1.5 h-1.5 rounded-full bg-current opacity-50 shrink-0" />}
+        {formatStudentName(name)}
+        {note && <span className="w-1.5 h-1.5 rounded-full bg-current opacity-50 shrink-0" />}
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); removeAssign(day, studentId); }}
+          className="opacity-50 hover:opacity-100 hover:text-red-600 px-0.5 leading-none"
+          aria-label={`${formatStudentName(name)} 제거`}
+        >
+          ×
+        </button>
       </span>
-    );
-  };
-
-  // ── 렌더: 정류장 드롭존 ─────────────────────────────────────────────────────
-
-  const renderStopZone = (stop: BusStop, derivedBusLabel: string | null) => {
-    const students = [...(assignedByStop.get(stop.id) ?? [])].sort((a, b) => {
-      const ageA = a.age ?? 99;
-      const ageB = b.age ?? 99;
-      if (ageA !== ageB) return ageA - ageB;
-      return formatStudentName(a, { fallback: "" }).localeCompare(formatStudentName(b, { fallback: "" }));
-    });
-    return (
-      <div
-        key={stop.id}
-        className="border border-dashed border-slate-200 rounded-lg p-2 min-h-[52px] transition-colors"
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={(e) => handleDropOnStop(e, stop.id)}
-      >
-        <div className="flex items-center gap-1.5 mb-1.5">
-          <span className="text-xs font-medium text-slate-600">
-            📍 {stop.name}
-          </span>
-          {derivedBusLabel && (
-            <span className="text-xs text-slate-400">({derivedBusLabel})</span>
-          )}
-          <span className="text-xs text-muted-foreground ml-auto">{students.length}명</span>
-        </div>
-        <div className="flex flex-wrap gap-1.5">
-          {students.map((a) =>
-            renderStudentBadge(a.student_profile_id, a, a.age, true)
-          )}
-        </div>
-      </div>
-    );
-  };
-
-  // ── 렌더: 버스 섹션 ─────────────────────────────────────────────────────────
-
-  const renderBusSection = (busId: string | null, stopsInBus: BusStop[]) => {
-    const bus = busId ? busById.get(busId) : null;
-    const headerLabel = bus ? `🚌 ${bus.label}` : "미배정 정류장";
-    const headerBg = bus ? "bg-slate-50" : "bg-amber-50";
-    const headerBorder = bus ? "border-slate-200" : "border-amber-200";
-    const headerText = bus ? "text-slate-800" : "text-amber-700";
-    const totalStudents = stopsInBus.reduce(
-      (sum, s) => sum + (assignedByStop.get(s.id)?.length ?? 0),
-      0
-    );
-
-    if (stopsInBus.length === 0) return null;
-
-    return (
-      <div
-        key={busId ?? "__unassigned__"}
-        className={`border ${headerBorder} rounded-xl overflow-hidden`}
-      >
-        <div className={`flex items-center justify-between px-4 py-3 ${headerBg} border-b ${headerBorder}`}>
-          <span className={`font-semibold text-sm ${headerText}`}>{headerLabel}</span>
-          <span className="text-xs text-muted-foreground">{totalStudents}명</span>
-        </div>
-        <div className="p-3 space-y-2">
-          {stopsInBus.map((stop) =>
-            renderStopZone(stop, bus ? bus.label : null)
-          )}
-        </div>
-      </div>
     );
   };
 
   // ── 렌더: 메인 ──────────────────────────────────────────────────────────────
 
-  // 표시할 버스 섹션: 배정된 버스 먼저 (label 순), 미배정 정류장 마지막
-  const busIdsWithStops = busNumbers
-    .filter((b) => (stopsByBus.get(b.id)?.length ?? 0) > 0)
-    .sort((a, b) => a.label.localeCompare(b.label));
-  const unassignedStops = stopsByBus.get(null) ?? [];
-
-  const hasAnyStops = activeStops.length > 0;
+  const editingAssign = editingNoteKey ? localAssignments.get(editingNoteKey) : undefined;
 
   return (
     <div className="space-y-4">
-      {/* 툴바 */}
+      {/* 툴바: 시간대 · 요일 묶음 · 그룹 · 저장 */}
       <div className="flex flex-wrap items-center gap-3">
-        {/* 요일 */}
-        <div className="flex gap-1">
-          {DAYS.map((d) => (
-            <button
-              key={d.value}
-              onClick={() => guardedSetFilter(() => setDay(d.value))}
-              className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
-                day === d.value
-                  ? "bg-slate-800 text-white"
-                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-              }`}
-            >
-              {d.label}
-            </button>
-          ))}
-        </div>
-
-        {/* 시간대 */}
         <select
           value={timeSlotId}
-          onChange={(e) => guardedSetFilter(() => setTimeSlotId(e.target.value))}
-          className="text-sm border border-slate-200 rounded-lg px-3 py-1.5 bg-white"
+          onChange={(e) => { const id = e.target.value; guardedSetFilter(() => setTimeSlotId(id)); }}
+          className="h-8 text-xs border border-slate-200 rounded px-2 bg-white"
         >
-          {filteredSlots.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.label} ({s.time})
+          {busTimeSlots.map((slot) => (
+            <option key={slot.id} value={slot.id}>
+              {slot.label} ({slot.time.slice(0, 5)})
             </option>
           ))}
         </select>
 
-        {/* 저장 / 되돌리기 */}
-        {hasChanges && (
-          <div className="flex items-center gap-2 ml-auto">
-            <span className="text-xs text-amber-600 font-medium">미저장 변경사항</span>
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-8 text-xs"
-              onClick={handleReset}
-              disabled={saving}
+        <div className="flex rounded-lg border border-slate-200 overflow-hidden">
+          {DAY_GROUPS.map((g, i) => (
+            <button
+              key={g.key}
+              type="button"
+              onClick={() => { if (i !== groupIdx) guardedSetFilter(() => setGroupIdx(i)); }}
+              className={`px-3.5 py-1.5 text-sm font-medium transition-colors ${
+                groupIdx === i ? "bg-blue-600 text-white" : "bg-white text-slate-600 hover:bg-slate-50"
+              }`}
             >
-              되돌리기
-            </Button>
-            <Button
-              size="sm"
-              className="h-8 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
-              onClick={handleSaveAll}
-              disabled={saving}
-            >
-              {saving ? "저장 중..." : "저장"}
-            </Button>
-          </div>
-        )}
-        {loading && <span className="text-sm text-muted-foreground animate-pulse">불러오는 중...</span>}
-      </div>
-
-      {/* 메인 그리드 */}
-      <div className="relative">
-        {loading && (
-          <div className="absolute inset-0 bg-white/70 z-10 flex items-center justify-center rounded-xl">
-            <span className="text-sm text-slate-500 animate-pulse">불러오는 중...</span>
-          </div>
-        )}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* 왼쪽: 정류장별 학생 배정 (버스 그룹 헤더 포함) */}
-        <div className="lg:col-span-2 space-y-4">
-          {!hasAnyStops && (
-            <p className="text-sm text-muted-foreground text-center py-8">
-              정류장이 없습니다. &quot;호차/정류장 관리&quot; 탭에서 정류장을 추가해 주세요.
-            </p>
-          )}
-
-          {/* 버스별 정류장 섹션 */}
-          {busIdsWithStops.map((bus) =>
-            renderBusSection(bus.id, stopsByBus.get(bus.id) ?? [])
-          )}
-
-          {/* 미배정 정류장 섹션 */}
-          {unassignedStops.length > 0 && renderBusSection(null, unassignedStops)}
+              {g.label}
+            </button>
+          ))}
         </div>
 
-        {/* 오른쪽: 미배정 학생 (sticky) */}
-        <div className="lg:col-span-1">
-          <div
-            className="border border-slate-200 rounded-xl sticky top-4 transition-colors"
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDropOnUnassigned}
+        <div className="flex gap-1">
+          {GROUP_LABELS.map((g) => (
+            <button
+              key={g}
+              type="button"
+              onClick={() => setGroupFilter(g)}
+              className={`px-2 py-1 text-xs font-medium rounded-md transition-colors ${
+                groupFilter === g ? "bg-slate-700 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+              }`}
+            >
+              {g}
+            </button>
+          ))}
+        </div>
+
+        {loading && <span className="text-sm text-muted-foreground animate-pulse">불러오는 중...</span>}
+
+        <div className="flex items-center gap-2 ml-auto">
+          {hasChanges && (
+            <Button size="sm" variant="outline" className="h-8 text-xs" onClick={handleReset} disabled={saving}>
+              되돌리기
+            </Button>
+          )}
+          <Button
+            size="sm"
+            className={`h-8 ${hasChanges ? "bg-blue-600 hover:bg-blue-700" : ""}`}
+            onClick={handleSaveAll}
+            disabled={saving || !hasChanges}
           >
-            <div className="px-4 py-3 bg-slate-50 border-b border-slate-200 rounded-t-xl space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="font-semibold text-slate-800 text-sm">미배정 학생</span>
-                <span className="text-xs text-muted-foreground">{unassigned.length}명</span>
+            {saving ? "저장 중..." : hasChanges ? "저장" : "저장됨"}
+          </Button>
+        </div>
+      </div>
+
+      {hasChanges && (
+        <p className="text-xs text-amber-600 bg-amber-50 px-3 py-1.5 rounded border border-amber-200">
+          저장하지 않은 변경사항이 있습니다.
+        </p>
+      )}
+
+      {/* 표에 놓을 수 없는 배정 — 호차 미지정 / 이 시간대에 그 호차가 운행 안 함 / 정류장 없음 */}
+      {unplaced.length > 0 && (
+        <div className="border border-amber-300 bg-amber-50 rounded-xl p-3 space-y-2">
+          <p className="text-sm font-semibold text-amber-800">
+            ⚠ 확인 필요 ({unplaced.length}명) — 표의 정류장으로 드래그해 다시 배정하거나 × 로 제거하세요.
+          </p>
+          <div className="flex flex-wrap gap-x-4 gap-y-2">
+            {[...unplaced].sort((a, b) => a.day - b.day || byAgeName(a.studentId, b.studentId)).map((a) => (
+              <div key={ak(a.day, a.studentId)} className="flex items-center gap-1.5">
+                <span className="text-xs font-semibold text-amber-800">{dayLabel(a.day)}</span>
+                {renderChip(a.day, a.studentId)}
+                <span className="text-xs text-amber-700">
+                  📍 {a.stopId ? (stopNameMap.get(a.stopId) ?? "(삭제됨)") : "정류장 없음"}
+                  {a.stopId && (a.busId ? ` · ${busById.get(a.busId)?.label ?? ""} 운행 안 함` : " · 호차 미지정")}
+                </span>
               </div>
+            ))}
+          </div>
+        </div>
+      )}
 
-              {/* 그룹 필터 */}
-              <div className="flex gap-1 flex-wrap">
-                {GROUP_LABELS.map((g) => (
-                  <button
-                    key={g}
-                    onClick={() => setGroupFilter(g)}
-                    className={`px-2 py-1 text-xs font-medium rounded-md transition-colors ${
-                      groupFilter === g
-                        ? "bg-slate-700 text-white"
-                        : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                    }`}
-                  >
-                    {g}
-                  </button>
-                ))}
-              </div>
-
-              {/* 이름 검색 */}
-              <Input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="이름 검색..."
-                className="h-8 text-sm"
-              />
-            </div>
-
-            <div className="p-3 max-h-[40vh] overflow-y-auto">
-              <div className="flex flex-wrap gap-1.5">
-                {unassigned.map((s) =>
-                  renderStudentBadge(s.profile_id, s, s.age)
-                )}
-                {unassigned.length === 0 && (
-                  <p className="text-xs text-muted-foreground py-2 w-full text-center">
-                    {search || groupFilter !== "전체"
-                      ? "검색 결과 없음"
-                      : "모든 학생이 배정되었습니다"}
-                  </p>
-                )}
-              </div>
-            </div>
-
-            {/* 다른 시간대에 이미 배정된 학생 */}
-            {otherSlotFiltered.length > 0 && (
-              <>
-                <div className="px-4 py-2 bg-amber-50 border-t border-amber-200">
-                  <span className="text-xs font-semibold text-amber-700">
-                    다른 시간대 배정 ({otherSlotFiltered.length}명)
+      <div className="flex gap-4 items-start">
+        {/* 왼쪽: 학생 목록 (sticky) — 여기로 드롭하면 배정 해제 */}
+        <div
+          className={`w-60 shrink-0 rounded-lg border p-3 space-y-2 sticky top-4 transition-colors ${
+            dragOverTarget === "sidebar" ? "border-emerald-400 bg-emerald-50" : "border-slate-200 bg-slate-50"
+          }`}
+          {...dragProps("sidebar")}
+          onDrop={handleDropOnSidebar}
+        >
+          <div className="flex items-center justify-between">
+            <h4 className="text-xs font-semibold text-slate-600">학생</h4>
+            <span className="text-xs text-muted-foreground">{sidebarStudents.length}명</span>
+          </div>
+          <Input
+            placeholder="이름 검색..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="h-7 text-xs"
+          />
+          <label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer">
+            <input type="checkbox" checked={onlyEmpty} onChange={(e) => setOnlyEmpty(e.target.checked)} />
+            빈 요일 있는 학생만
+          </label>
+          <div className="space-y-1 max-h-[55vh] overflow-y-auto">
+            {sidebarStudents.length === 0 && (
+              <p className="text-xs text-slate-400 py-4 text-center">
+                {search || groupFilter !== "전체" || onlyEmpty ? "검색 결과 없음" : "학생 없음"}
+              </p>
+            )}
+            {sidebarStudents.map((s) => {
+              const ac = getAgeColor(s.age);
+              const isAfterschool = days.some((d) => afterschoolByDay.get(d)?.has(s.profile_id));
+              return (
+                <div
+                  key={s.profile_id}
+                  draggable
+                  onDragStart={(e) => startDrag(e, { studentId: s.profile_id })}
+                  className="flex items-center gap-2 px-2 py-1 rounded border bg-white border-slate-200 cursor-grab active:cursor-grabbing hover:border-slate-300"
+                >
+                  <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 text-xs font-medium rounded ${ac.bg} ${ac.text} truncate`}>
+                    {isAfterschool && <span className="text-violet-500 leading-none">●</span>}
+                    {formatStudentName(s)}
+                  </span>
+                  <span className="ml-auto flex gap-1.5 text-[11px] whitespace-nowrap">
+                    {days.map((d) => {
+                      const st = dayStatus(d, s.profile_id);
+                      return (
+                        <span
+                          key={d}
+                          className={st === "on" ? "text-blue-600" : st === "off" ? "text-orange-400" : "text-slate-300"}
+                          title={st === null ? "다른 시간대 배정" : undefined}
+                        >
+                          {dayLabel(d)}{st === "on" ? "●" : st === "off" ? "○" : "–"}
+                        </span>
+                      );
+                    })}
                   </span>
                 </div>
-                <div className="p-3 max-h-[20vh] overflow-y-auto bg-amber-50/30">
-                  <div className="flex flex-wrap gap-1.5">
-                    {[...otherSlotFiltered]
-                      .sort((a, b) => {
-                        const ageA = a.age ?? 99;
-                        const ageB = b.age ?? 99;
-                        if (ageA !== ageB) return ageA - ageB;
-                        return formatStudentName(a, { fallback: "" }).localeCompare(formatStudentName(b, { fallback: "" }));
-                      })
-                      .map((a) => {
+              );
+            })}
+          </div>
+          <p className="text-[11px] text-slate-400">● 이 시간대 배정 · ○ 없음 · – 다른 시간대</p>
+
+          {/* 다른 시간대에 이미 배정된 학생 (요일별) */}
+          {otherSlotFiltered.length > 0 && (
+            <div className="border-t border-amber-200 pt-2 space-y-1.5 max-h-[25vh] overflow-y-auto">
+              <span className="text-xs font-semibold text-amber-700">다른 시간대 배정</span>
+              {otherSlotFiltered.map(({ day, list }) => (
+                <div key={day} className="space-y-1">
+                  <div className="text-[11px] font-semibold text-slate-500">{dayLabel(day)} ({list.length}명)</div>
+                  <div className="flex flex-wrap gap-1">
+                    {list.map((a) => {
                       const ac = getAgeColor(a.age);
-                      const isAfterschool = afterschoolIds.has(a.student_profile_id);
+                      const slot = slotById.get(a.bus_time_slot_id);
                       return (
                         <span
                           key={a.student_profile_id}
-                          className="inline-flex items-center"
-                          onMouseEnter={(e) => {
-                            const rect = e.currentTarget.getBoundingClientRect();
-                            setHoveredStudentId(a.student_profile_id);
-                            setTooltipPos({ x: rect.left + rect.width / 2, y: rect.top });
-                          }}
-                          onMouseLeave={() => {
-                            setHoveredStudentId(null);
-                            setTooltipPos(null);
-                          }}
+                          title={`${slot ? `${slot.label} (${slot.time?.slice(0, 5)})` : ""} · ${a.bus_stop_name ?? "정류장 없음"}`}
+                          className={`inline-flex items-center gap-1 px-1.5 py-0.5 text-xs font-medium rounded-md cursor-default opacity-70 ${ac.bg} ${ac.text} border ${ac.border}`}
                         >
-                          <span
-                            className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md cursor-default opacity-70 ${ac.bg} ${ac.text} border ${ac.border}`}
-                          >
-                            {isAfterschool && <span className="text-violet-500 text-xs leading-none">●</span>}
-                            {formatStudentName(a)}
-                          </span>
+                          {afterschoolByDay.get(day)?.has(a.student_profile_id) && <span className="text-violet-500 leading-none">●</span>}
+                          {formatStudentName(a)}
                         </span>
                       );
                     })}
                   </div>
                 </div>
-              </>
-            )}
-          </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* 오른쪽: 호차 × 요일 표 */}
+        <div className="flex-1 min-w-0 overflow-x-auto relative">
+          {loading && (
+            <div className="absolute inset-0 bg-white/70 z-10 flex items-center justify-center">
+              <span className="text-sm text-slate-500 animate-pulse">불러오는 중...</span>
+            </div>
+          )}
+          {busNumbers.length === 0 ? (
+            <p className="text-xs text-slate-400 py-8 text-center">등록된 호차가 없습니다.</p>
+          ) : (
+            <table className="w-full border-collapse text-xs" style={{ minWidth: 80 + days.length * 260 }}>
+              <thead>
+                <tr className="border-b-2 border-slate-300">
+                  <th className="w-20 py-2 px-2 text-left bg-slate-100 text-sm font-bold">호차</th>
+                  {days.map((d) => (
+                    <th key={d} className="py-2 px-2 text-center bg-slate-100 text-sm font-bold border-l border-slate-200">
+                      {dayLabel(d)}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {busNumbers.map((bus) => (
+                  <tr key={bus.id} className="border-b border-slate-200 align-top">
+                    <td className="py-2 px-2 bg-slate-50 whitespace-nowrap">
+                      <div className="font-semibold text-slate-700">{bus.label}</div>
+                      <div className="text-[11px] text-slate-400 mt-0.5">
+                        {days.reduce((sum, d) => sum + cellStops(d, bus.id).reduce((n, st) => n + (studentsByStop.get(`${d}|${st}|${bus.id}`)?.length ?? 0), 0), 0)}명
+                      </div>
+                    </td>
+                    {days.map((d) => {
+                      const list = cellStops(d, bus.id);
+                      return (
+                        <td key={d} className="p-1.5 border-l border-slate-200 bg-white">
+                          <div className="space-y-1 min-h-[40px]">
+                            {list.map((stopId) => {
+                              const key = `${d}|${stopId}|${bus.id}`;
+                              const students = [...(studentsByStop.get(key) ?? [])].sort(byAgeName);
+                              return (
+                                <div
+                                  key={stopId}
+                                  {...dragProps(key)}
+                                  onDrop={(e) => handleDropOnStop(e, d, bus.id, stopId)}
+                                  className={`rounded border border-dashed p-1.5 transition-colors ${
+                                    dragOverTarget === key ? "border-emerald-400 bg-emerald-50" : "border-slate-200"
+                                  }`}
+                                >
+                                  <div className="text-xs font-medium text-slate-600 mb-1">
+                                    {stopNameMap.get(stopId) ?? "(삭제됨)"}{" "}
+                                    <span className="text-slate-400 font-normal">({students.length})</span>
+                                  </div>
+                                  {students.length > 0 ? (
+                                    <div className="flex flex-wrap gap-1">{students.map((id) => renderChip(d, id))}</div>
+                                  ) : (
+                                    <p className="text-[11px] text-slate-300">여기에 학생을 드래그하세요</p>
+                                  )}
+                                </div>
+                              );
+                            })}
+                            {list.length === 0 && (
+                              <p className="text-[11px] text-slate-300 text-center py-2">정류장 없음 — 마스터 탭에서 설정</p>
+                            )}
+                          </div>
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
-      </div>
-
-      {/* Fixed tooltip — overflow 영향 안 받음 */}
-      {hoveredStudentId && tooltipPos && (() => {
-        const a = otherSlotAssigned.find((x) => x.student_profile_id === hoveredStudentId);
-        if (!a) return null;
-        const slot = slotById.get(a.bus_time_slot_id);
-        const slotLabel = slot ? `${slot.label} (${slot.time?.slice(0, 5)})` : "";
-        const stopLabel = a.bus_stop_name ?? "정류장 없음";
-        return (
-          <div
-            className="fixed z-[100] px-2.5 py-1.5 text-xs bg-slate-800 text-white rounded-lg shadow-lg whitespace-nowrap pointer-events-none"
-            style={{ left: tooltipPos.x, top: tooltipPos.y, transform: "translate(-50%, -100%) translateY(-6px)" }}
-          >
-            {slotLabel} · {stopLabel}
-          </div>
-        );
-      })()}
 
       {/* 메모 편집 팝오버 */}
-      {editingNoteId && notePopupPos && (
+      {editingAssign && notePopupPos && (
         <>
           {/* 배경 클릭 시 닫기 */}
           <div className="fixed inset-0 z-[99]" onClick={cancelNote} />
@@ -686,10 +673,7 @@ export function BusStudentAssignmentManager({
           >
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-semibold text-slate-700">
-                {(() => {
-                  const a = localAssignments.find((a) => a.student_profile_id === editingNoteId);
-                  return a ? formatStudentName(a, { fallback: "" }) : "";
-                })()} 메모
+                {formatStudentName(nameOf(editingAssign.studentId), { fallback: "" })} {dayLabel(editingAssign.day)}요일 메모
               </span>
               <button onClick={cancelNote} className="text-slate-400 hover:text-slate-600 text-sm leading-none">&times;</button>
             </div>
@@ -702,16 +686,10 @@ export function BusStudentAssignmentManager({
               className="w-full h-8 px-2 text-sm border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-400"
             />
             <div className="flex justify-end gap-1.5 mt-2">
-              <button
-                onClick={cancelNote}
-                className="px-2 py-1 text-xs text-slate-500 hover:text-slate-700"
-              >
+              <button onClick={cancelNote} className="px-2 py-1 text-xs text-slate-500 hover:text-slate-700">
                 취소
               </button>
-              <button
-                onClick={saveNote}
-                className="px-2.5 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
-              >
+              <button onClick={saveNote} className="px-2.5 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700">
                 확인
               </button>
             </div>

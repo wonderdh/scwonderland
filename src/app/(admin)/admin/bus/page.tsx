@@ -17,7 +17,6 @@ import { BusStaffManager } from "./_components/BusStaffManager";
 import { BusOverviewPanel } from "./_components/BusOverviewPanel";
 import { BusStopAssignmentManager } from "./_components/BusStopAssignmentManager";
 import { BusStudentAssignmentManager } from "./_components/BusStudentAssignmentManager";
-import { BusNumbersManager } from "./_components/BusNumbersManager";
 import { BusExportButton } from "./_components/BusExportButton";
 import { DailyBusChanges } from "@/components/bus/DailyBusChanges";
 import { PageHeader } from "@/components/navigation/PageHeader";
@@ -94,14 +93,6 @@ export default async function AdminBusPage({
                 allStudents={allStudentNames}
               />
             </section>
-            <section aria-labelledby="assignment-stop">
-              <h2 id="assignment-stop" className="text-lg font-semibold text-slate-800 mb-3">정류장 배치</h2>
-              <BusStopAssignmentManager
-                busNumbers={busNumbers}
-                busTimeSlots={busTimeSlots}
-                initialStops={busStops}
-              />
-            </section>
           </div>
         )}
 
@@ -113,7 +104,7 @@ export default async function AdminBusPage({
                 <span className="text-sm text-slate-400 group-open:rotate-180 transition-transform">▼</span>
               </summary>
               <div className="border-t border-slate-200 p-5">
-                <BusNumbersManager
+                <BusStopAssignmentManager
                   busNumbers={busNumbers}
                   busTimeSlots={busTimeSlots}
                   initialStops={busStops}

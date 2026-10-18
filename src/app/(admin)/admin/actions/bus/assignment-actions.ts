@@ -4,7 +4,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { verifyAdmin, verifyAuthenticated } from "../auth-helpers";
 import { getUserRoles } from "@/lib/auth/user-roles";
 import { logger } from "@/lib/server/logger";
-import { buildStopToBusMaps, getServedStopIdsByDay, isStopServed } from "./_helpers";
+import { buildStopToBusMaps, getServedStopBusesByDay, getServedStopIdsByDay } from "./_helpers";
+import { pickServedBus } from "@/lib/bus/stop-validation";
 import { getStudentRecordByProfileId, getStudentsByIds } from "@/lib/server/domain-helpers";
 import type {
   BusDefaultAssignment,
@@ -71,6 +72,20 @@ export async function listServedStopIds(
   return getServedStopIdsByDay(supabase, daysOfWeek, slotId);
 }
 
+/**
+ * 주어진 요일들 × 시간대에 정류장별 운행 호차 목록을 요일별로 반환한다 (요일 → 정류장 → 호차들).
+ * 공유 정류장(2대 이상) 호차 선택 UI 용. strict 기준은 `listServedStopIds` 와 동일.
+ */
+export async function listServedStopBuses(
+  daysOfWeek: number[],
+  slotId: string
+): Promise<Record<number, Record<string, string[]>>> {
+  const auth = await verifyAuthenticated();
+  if ("error" in auth) return {};
+  const supabase = createAdminClient();
+  return getServedStopBusesByDay(supabase, daysOfWeek, slotId);
+}
+
 // ── 학생 기본 배정 ──
 
 export async function getStudentBusDefaults(
@@ -121,12 +136,15 @@ export async function getStudentBusDefaults(
   const slotMap = new Map((slotResult.data ?? []).map((s) => [s.id, { label: s.label, time: s.time }]));
   const stopMap = new Map((stopResult.data ?? []).map((s) => [s.id, s.name]));
 
-  // stopBusMapsList에서 파생된 bus ID 수집 → 라벨 조회
+  // stopBusMapsList에서 파생된 bus ID + 저장된 bus ID 수집 → 라벨 조회
   const derivedBusIds = new Set<string>();
   for (const sbm of stopBusMapsList) {
     for (const busId of sbm.allBusIds) {
       derivedBusIds.add(busId);
     }
+  }
+  for (const d of data ?? []) {
+    if (d.bus_number_id) derivedBusIds.add(d.bus_number_id);
   }
   const busIds = [...derivedBusIds];
   const busResult = busIds.length
@@ -142,12 +160,10 @@ export async function getStudentBusDefaults(
 
   return (data ?? []).map((d) => {
     const slot = slotMap.get(d.bus_time_slot_id);
-    // 호차 파생: stop→bus 매핑에서 결정
+    // 호차: 저장값 우선, 없으면 단일 운행 호차 폴백
     const dayKey = `${d.day_of_week}`;
     const sbm = dayBusMap.get(dayKey);
-    const derivedBusId = d.bus_stop_id
-      ? (sbm?.getBySlot(d.bus_stop_id, d.bus_time_slot_id) ?? null)
-      : null;
+    const derivedBusId = sbm?.resolveBus(d.bus_number_id, d.bus_stop_id, d.bus_time_slot_id) ?? d.bus_number_id;
     return {
       ...d,
       direction: 'dropoff' as const,
@@ -166,16 +182,22 @@ export async function upsertStudentBusDefault(
   busTimeSlotId: string,
   estimatedTime?: string,
   note?: string,
-  busStopId?: string
+  busStopId?: string,
+  busNumberId?: string
 ): Promise<{ error?: string }> {
   const auth = await verifyAdmin();
   if ("error" in auth) return { error: auth.error };
   const supabase = createAdminClient();
   const student = await getStudentRecordByProfileId(supabase, studentProfileId);
   if (!student) return { error: "학생 정보를 찾을 수 없습니다." };
-  // 정류장 미배정 가드: 해당 요일·시간대에 배정 안 된 정류장은 거부.
-  if (busStopId && busTimeSlotId && !(await isStopServed(supabase, dayOfWeek, busTimeSlotId, busStopId))) {
-    return { error: "선택한 정류장이 해당 요일·시간대에 배정되어 있지 않습니다." };
+  // 정류장 미배정 가드 + 호차 확정: 해당 요일·시간대에 그 정류장을 운행하는 호차여야 함.
+  // 1대면 자동 지정, 공유 정류장(2대 이상)은 호차 선택 필수.
+  let finalBusId: string | null = null;
+  if (busStopId && busTimeSlotId) {
+    const served = await getServedStopBusesByDay(supabase, [dayOfWeek], busTimeSlotId);
+    const picked = pickServedBus(served[dayOfWeek]?.[busStopId], busNumberId);
+    if ("error" in picked) return { error: picked.error };
+    finalBusId = picked.busId;
   }
   const { error } = await supabase.from("student_bus_defaults").upsert(
     {
@@ -185,6 +207,7 @@ export async function upsertStudentBusDefault(
       bus_time_slot_id: busTimeSlotId,
       note: note?.trim() || null,
       bus_stop_id: busStopId ?? null,
+      bus_number_id: finalBusId,
       updated_at: new Date().toISOString(),
     },
     { onConflict: "student_id,direction,day_of_week" }
@@ -263,85 +286,103 @@ export async function deleteStudentBusDefaults(ids: string[]): Promise<{ error?:
 
 // ── 일괄 배정 저장 ──
 
+/**
+ * (요일, 시간대) 의 학생 배정을 assignments 목록으로 맞춘다.
+ * - 이 시간대 배정 중 목록에 없는 학생은 행 삭제 (다른 시간대 배정은 건드리지 않음).
+ * - 목록의 학생은 기존 행과 (정류장·호차·메모) 가 다를 때만 upsert.
+ * - 정류장이 있으면 그 요일·시간대에 그 호차가 운행해야 함 (공유 정류장은 호차 필수).
+ */
 export async function saveBulkBusDefaults(
   dayOfWeek: number,
-  assignments: { student_profile_id: string; bus_time_slot_id: string; bus_stop_id?: string | null; note?: string | null }[]
+  busTimeSlotId: string,
+  assignments: { student_profile_id: string; bus_stop_id?: string | null; bus_number_id?: string | null; note?: string | null }[]
 ): Promise<{ error?: string; saved?: number }> {
   const auth = await verifyAdmin();
   if ("error" in auth) return { error: auth.error };
+  if (!busTimeSlotId) return { error: "시간대를 선택해 주세요." };
   const supabase = createAdminClient();
 
-  // Determine which time slot IDs are involved in this save
-  const slotIds = [...new Set(assignments.map((a) => a.bus_time_slot_id))];
-
-  // 1. 기존 배정 조회 — 저장 대상 시간대만 (다른 시간대 배정은 건드리지 않음)
-  let fetchQuery = supabase
+  // 1. 기존 배정 조회 — 저장 대상 시간대만
+  const { data: existing, error: fetchErr } = await supabase
     .from("student_bus_defaults")
-    .select("student_id, bus_time_slot_id")
+    .select("student_id, bus_stop_id, bus_number_id, note")
     .eq("direction", "dropoff")
-    .eq("day_of_week", dayOfWeek);
-  if (slotIds.length === 1) {
-    fetchQuery = fetchQuery.eq("bus_time_slot_id", slotIds[0]);
-  } else if (slotIds.length > 1) {
-    fetchQuery = fetchQuery.in("bus_time_slot_id", slotIds);
-  }
-  // If no assignments and no slotIds, we still need to handle removal
-  // In that case, don't filter by slot — but only delete unassigned students
-  const { data: existing, error: fetchErr } = await fetchQuery;
+    .eq("day_of_week", dayOfWeek)
+    .eq("bus_time_slot_id", busTimeSlotId);
   if (fetchErr) {
     logger.error("[saveBulkBusDefaults] fetch", fetchErr.message);
     return { error: fetchErr.message };
   }
 
-  const studentRecords = await Promise.all(
-    assignments.map((assignment) => getStudentRecordByProfileId(supabase, assignment.student_profile_id))
-  );
-  const normalized = assignments.flatMap((assignment, index) => {
-    const student = studentRecords[index];
-    if (!student) return [];
-    return [{
-      student_id: student.id,
-      student_profile_id: student.profile_id,
-      bus_time_slot_id: assignment.bus_time_slot_id,
-      bus_stop_id: assignment.bus_stop_id ?? null,
-      note: assignment.note ?? null,
-    }];
-  });
-  const newMap = new Map(normalized.map((a) => [a.student_id, a]));
+  // 운행 호차 (정류장 → 호차들) — 호차 확정/검증용
+  const [studentRecords, served] = await Promise.all([
+    Promise.all(
+      assignments.map((assignment) => getStudentRecordByProfileId(supabase, assignment.student_profile_id))
+    ),
+    getServedStopBusesByDay(supabase, [dayOfWeek], busTimeSlotId),
+  ]);
+  const servedStops = served[dayOfWeek] ?? {};
 
-  // 2. 삭제: 같은 시간대 배정 중 새 목록에 없는 학생만 삭제 (composite key 매칭)
+  const normalized: {
+    student_id: string;
+    bus_stop_id: string | null;
+    bus_number_id: string | null;
+    note: string | null;
+  }[] = [];
+  for (const [index, assignment] of assignments.entries()) {
+    const student = studentRecords[index];
+    if (!student) continue;
+    const stopId = assignment.bus_stop_id ?? null;
+    let busId: string | null = null;
+    if (stopId) {
+      // 정류장 미배정 가드 + 호차 확정 (1대 자동, 공유 정류장은 선택 필수)
+      const picked = pickServedBus(servedStops[stopId], assignment.bus_number_id);
+      if ("error" in picked) return { error: picked.error };
+      busId = picked.busId;
+    }
+    normalized.push({
+      student_id: student.id,
+      bus_stop_id: stopId,
+      bus_number_id: busId,
+      note: assignment.note?.trim() || null,
+    });
+  }
+  const newMap = new Map(normalized.map((a) => [a.student_id, a]));
+  const existingMap = new Map((existing ?? []).map((e) => [e.student_id, e]));
+
+  // 2. 삭제: 이 시간대 배정 중 새 목록에 없는 학생만 삭제
   const toDeleteStudentIds = (existing ?? [])
     .filter((e) => !newMap.has(e.student_id))
     .map((e) => e.student_id);
   if (toDeleteStudentIds.length) {
-    let delQuery = supabase
+    const { error: delErr } = await supabase
       .from("student_bus_defaults")
       .delete()
       .eq("direction", "dropoff")
       .eq("day_of_week", dayOfWeek)
+      .eq("bus_time_slot_id", busTimeSlotId)
       .in("student_id", toDeleteStudentIds);
-    if (slotIds.length === 1) {
-      delQuery = delQuery.eq("bus_time_slot_id", slotIds[0]);
-    } else if (slotIds.length > 1) {
-      delQuery = delQuery.in("bus_time_slot_id", slotIds);
-    }
-    const { error: delErr } = await delQuery;
     if (delErr) {
       logger.error("[saveBulkBusDefaults] delete", delErr.message);
       return { error: delErr.message };
     }
   }
 
-  // 3. Upsert: 새 목록의 모든 배정
-  if (normalized.length) {
+  // 3. Upsert: 바뀐 행만
+  const changed = normalized.filter((a) => {
+    const e = existingMap.get(a.student_id);
+    return !e || e.bus_stop_id !== a.bus_stop_id || e.bus_number_id !== a.bus_number_id || (e.note ?? null) !== a.note;
+  });
+  if (changed.length) {
     const now = new Date().toISOString();
-    const rows = normalized.map((a) => ({
+    const rows = changed.map((a) => ({
       student_id: a.student_id,
       direction: 'dropoff' as const,
       day_of_week: dayOfWeek,
-      bus_time_slot_id: a.bus_time_slot_id,
-      bus_stop_id: a.bus_stop_id ?? null,
-      note: a.note ?? null,
+      bus_time_slot_id: busTimeSlotId,
+      bus_stop_id: a.bus_stop_id,
+      bus_number_id: a.bus_number_id,
+      note: a.note,
       updated_at: now,
     }));
     const { error: upsertErr } = await supabase
@@ -353,7 +394,7 @@ export async function saveBulkBusDefaults(
     }
   }
 
-  return { saved: normalized.length + toDeleteStudentIds.length };
+  return { saved: changed.length + toDeleteStudentIds.length };
 }
 
 // ── 일괄 배정 조회 ──
@@ -398,9 +439,7 @@ export async function getBulkBusDefaults(
 
   return defaults.map((d) => {
     const student = studentsMap.get(d.student_id);
-    const derivedBusId = d.bus_stop_id
-      ? stopBusMaps.getBySlot(d.bus_stop_id, d.bus_time_slot_id ?? null)
-      : null;
+    const derivedBusId = stopBusMaps.resolveBus(d.bus_number_id, d.bus_stop_id, d.bus_time_slot_id ?? null);
     return {
       id: `${d.student_id}-${d.bus_time_slot_id}`,
       student_profile_id: student?.profile_id ?? "",

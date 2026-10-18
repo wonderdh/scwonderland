@@ -75,13 +75,14 @@ function ByDayContent({
     try {
       const [result, stopDayData, afterschoolResult] = await Promise.all([
         getBulkBusDefaults(day, slotId || undefined),
-        listBusStopDayAssignments(day, slotId || undefined),
+        listBusStopDayAssignments(day, slotId),
         listAfterschoolStudentIdsByDay(day),
       ]);
       if (version !== fetchVersionRef.current) return;
       setData(result);
       const sortMap = new Map<string, number>();
-      for (const a of stopDayData) sortMap.set(a.bus_stop_id, a.sort_order);
+      // 정류장 순서는 (호차, 정류장) 단위 — 공유 정류장은 호차마다 순서가 다름
+      for (const a of stopDayData) sortMap.set(`${a.bus_number_id}:${a.bus_stop_id}`, a.sort_order);
       setStopSortOrderMap(sortMap);
       setAfterschoolIds(new Set(afterschoolResult));
     } finally {
@@ -253,8 +254,8 @@ function groupByBusAndStop(
     stops.sort((a, b) => {
       if (a.stopId === NO_STOP) return 1;
       if (b.stopId === NO_STOP) return -1;
-      const orderA = stopSortOrderMap.get(a.stopId) ?? 999;
-      const orderB = stopSortOrderMap.get(b.stopId) ?? 999;
+      const orderA = stopSortOrderMap.get(`${busId}:${a.stopId}`) ?? 999;
+      const orderB = stopSortOrderMap.get(`${busId}:${b.stopId}`) ?? 999;
       return orderA - orderB;
     });
 

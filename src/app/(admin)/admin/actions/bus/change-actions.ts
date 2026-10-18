@@ -5,10 +5,11 @@ import { revalidatePath } from "next/cache";
 import { verifyAdmin, verifyAuthenticated } from "../auth-helpers";
 import { logger } from "@/lib/server/logger";
 import { todayKst } from "@/lib/utils/date-kst";
-import { isStopServed, getServedStopIdsByDay } from "./_helpers";
-import { dowFromYmd, findUnassignedDays, formatWeekdayList } from "@/lib/bus/stop-validation";
+import { buildStopToBusMaps, getServedStopBusesByDay } from "./_helpers";
+import { dowFromYmd, findUnassignedDays, formatWeekdayList, pickServedBus, toServedStopIds } from "@/lib/bus/stop-validation";
 import type { BusChangeType, StudentSubmittableChangeType } from "@/lib/bus/state";
 import type { BusChangeRequest } from "@/lib/types";
+import type { BusRouteRow } from "@/lib/bus/stop-validation";
 import type { Database } from "@/lib/types/database.generated";
 
 // ── 헬퍼 ──
@@ -35,6 +36,86 @@ async function upsertAttendanceForBusAbsence(
       { onConflict: "student_id,attendance_date", ignoreDuplicates: false }
     );
   }
+}
+
+/**
+ * 정류장 변경(change) 의 호차를 요일별로 확정한다.
+ * 요청 호차가 있으면 그 요일에 정류장을 운행하는 호차여야 한다(호차 먼저 입력 UI 가 항상 전송).
+ * 요청 호차가 없으면 1대 운행 정류장만 자동 지정, 공유 정류장(2대 이상)은 에러. 미배정 정류장도 에러.
+ */
+async function resolveChangeBusByDow(
+  supabase: ReturnType<typeof createAdminClient>,
+  dows: number[],
+  slotId: string,
+  stopId: string,
+  requestedBusId: string | null | undefined
+): Promise<{ busByDow: Map<number, string> } | { error: string }> {
+  const served = await getServedStopBusesByDay(supabase, dows, slotId);
+  const busByDow = new Map<number, string>();
+  for (const dow of new Set(dows)) {
+    const buses = served[dow]?.[stopId];
+    const picked = pickServedBus(buses, requestedBusId);
+    if ("error" in picked) return { error: picked.error };
+    busByDow.set(dow, picked.busId);
+  }
+  return { busByDow };
+}
+
+/**
+ * 기존 일정(학생 기본 배정)의 호차 ID. 저장된 bus_number_id 우선, 없으면 정류장 단일 운행 호차 폴백.
+ * key = "studentId:day"
+ */
+async function resolveOrigBusIds(
+  supabase: ReturnType<typeof createAdminClient>,
+  origDefaults: Map<string, { slot_id: string; stop_id: string | null; bus_id: string | null }>
+): Promise<Map<string, string>> {
+  const result = new Map<string, string>();
+  const fallbackDays = new Set<number>();
+  for (const [key, v] of origDefaults) {
+    if (v.bus_id) result.set(key, v.bus_id);
+    else if (v.stop_id) fallbackDays.add(Number(key.split(":")[1]));
+  }
+  if (fallbackDays.size === 0) return result;
+  const days = [...fallbackDays];
+  const mapsList = await Promise.all(days.map((d) => buildStopToBusMaps(supabase, d)));
+  const mapsByDay = new Map(days.map((d, i) => [d, mapsList[i]]));
+  for (const [key, v] of origDefaults) {
+    if (v.bus_id || !v.stop_id) continue;
+    const busId = mapsByDay.get(Number(key.split(":")[1]))?.resolveBus(null, v.stop_id, v.slot_id);
+    if (busId) result.set(key, busId);
+  }
+  return result;
+}
+
+// ── 노선 조회 (호차 먼저 입력 UI) ──
+
+/**
+ * 요일들 × 시간대의 (요일, 호차, 정류장, 운행 순서) 노선 행. 비활성 정류장 제외.
+ * 호차 선택 후 정류장 목록을 그 호차 노선으로 좁히는 데 쓴다 (`busRouteStops`).
+ */
+export async function listBusRouteRows(daysOfWeek: number[], slotId: string): Promise<BusRouteRow[]> {
+  const auth = await verifyAuthenticated();
+  if ("error" in auth) return [];
+  const days = [...new Set(daysOfWeek)].filter((d) => Number.isFinite(d));
+  if (days.length === 0 || !slotId) return [];
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("bus_stop_day_assignments")
+    .select("day_of_week, bus_number_id, bus_stop_id, sort_order, bus_stops!inner(name, is_active)")
+    .in("day_of_week", days)
+    .eq("bus_time_slot_id", slotId)
+    .eq("bus_stops.is_active", true);
+  if (error) {
+    logger.error("[listBusRouteRows]", error.message);
+    return [];
+  }
+  return (data ?? []).map((r) => ({
+    day_of_week: r.day_of_week,
+    bus_number_id: r.bus_number_id,
+    bus_stop_id: r.bus_stop_id,
+    stop_name: r.bus_stops.name,
+    sort_order: r.sort_order,
+  }));
 }
 
 // ── 변경 요청 관리 ──
@@ -119,18 +200,18 @@ export async function listAllChangeRequests(
   }
 
   // 기존 일정 조회 (student_bus_defaults에서 해당 요일)
-  const origDefaults = new Map<string, { slot_id: string; stop_id: string | null }>();
+  const origDefaults = new Map<string, { slot_id: string; stop_id: string | null; bus_id: string | null }>();
   if (studentIds.length && data?.length) {
     // request_date에서 요일 계산
     const { data: origData } = await supabase
       .from("student_bus_defaults")
-      .select("student_id, day_of_week, bus_time_slot_id, bus_stop_id")
+      .select("student_id, day_of_week, bus_time_slot_id, bus_stop_id, bus_number_id")
       .in("student_id", studentIds)
       .eq("direction", "dropoff");
     for (const o of origData ?? []) {
       origDefaults.set(
         `${o.student_id}:${o.day_of_week}`,
-        { slot_id: o.bus_time_slot_id, stop_id: o.bus_stop_id }
+        { slot_id: o.bus_time_slot_id, stop_id: o.bus_stop_id, bus_id: o.bus_number_id }
       );
     }
   }
@@ -154,32 +235,15 @@ export async function listAllChangeRequests(
     for (const s of extraStops ?? []) stopMap.set(s.id, s.name);
   }
 
-  // 기존 일정의 호차 조회 (bus_stop_day_assignments에서 stop→bus 매핑)
+  // 기존 일정의 호차 조회 (저장된 호차 우선, 없으면 단일 운행 호차)
   const origBusLabelMap = new Map<string, string>(); // "student:day" → busLabel
-  const origStopIdsForBus = [...origDefaults.entries()].filter(([, v]) => v.stop_id).map(([k, v]) => ({ key: k, stop_id: v.stop_id! }));
-  if (origStopIdsForBus.length) {
-    const stopIdsForBusQuery = [...new Set(origStopIdsForBus.map((o) => o.stop_id))];
-    const { data: stopAssigns } = await supabase
-      .from("bus_stop_day_assignments")
-      .select("bus_stop_id, bus_number_id, day_of_week")
-      .in("bus_stop_id", stopIdsForBusQuery);
-    // stopId:day → busNumberId
-    const stopBusMap = new Map<string, string>();
-    for (const sa of stopAssigns ?? []) {
-      stopBusMap.set(`${sa.bus_stop_id}:${sa.day_of_week}`, sa.bus_number_id);
-    }
-    // busNumberId → label (기존 busMap + 추가)
-    const missingBusIds = [...new Set([...(stopAssigns ?? []).map((sa) => sa.bus_number_id)])].filter((id) => !busMap.has(id));
-    if (missingBusIds.length) {
-      const { data: extraBuses } = await supabase.from("bus_numbers").select("id, label").in("id", missingBusIds);
-      for (const b of extraBuses ?? []) busMap.set(b.id, b.label);
-    }
-    for (const { key, stop_id } of origStopIdsForBus) {
-      const [, dayStr] = key.split(":");
-      const busNumId = stopBusMap.get(`${stop_id}:${dayStr}`);
-      if (busNumId) origBusLabelMap.set(key, busMap.get(busNumId) ?? "");
-    }
+  const origBusIds = await resolveOrigBusIds(supabase, origDefaults);
+  const missingBusIds = [...new Set(origBusIds.values())].filter((id) => !busMap.has(id));
+  if (missingBusIds.length) {
+    const { data: extraBuses } = await supabase.from("bus_numbers").select("id, label").in("id", missingBusIds);
+    for (const b of extraBuses ?? []) busMap.set(b.id, b.label);
   }
+  for (const [key, busNumId] of origBusIds) origBusLabelMap.set(key, busMap.get(busNumId) ?? "");
 
   return (data ?? []).map((d) => {
     const student = studentMap.get(d.student_id);
@@ -285,17 +349,17 @@ export async function listChangeRequestsByDate(date: string): Promise<BusChangeR
   }
 
   // 기존 일정 조회 (student_bus_defaults에서 해당 요일)
-  const origDefaults = new Map<string, { slot_id: string; stop_id: string | null }>();
+  const origDefaults = new Map<string, { slot_id: string; stop_id: string | null; bus_id: string | null }>();
   if (studentIds.length && data?.length) {
     const { data: origData } = await supabase
       .from("student_bus_defaults")
-      .select("student_id, day_of_week, bus_time_slot_id, bus_stop_id")
+      .select("student_id, day_of_week, bus_time_slot_id, bus_stop_id, bus_number_id")
       .in("student_id", studentIds)
       .eq("direction", "dropoff");
     for (const o of origData ?? []) {
       origDefaults.set(
         `${o.student_id}:${o.day_of_week}`,
-        { slot_id: o.bus_time_slot_id, stop_id: o.bus_stop_id }
+        { slot_id: o.bus_time_slot_id, stop_id: o.bus_stop_id, bus_id: o.bus_number_id }
       );
     }
   }
@@ -318,30 +382,15 @@ export async function listChangeRequestsByDate(date: string): Promise<BusChangeR
     for (const s of extraStops ?? []) stopMap.set(s.id, s.name);
   }
 
-  // 기존 일정의 호차 조회
+  // 기존 일정의 호차 조회 (저장된 호차 우선, 없으면 단일 운행 호차)
   const origBusLabelMap = new Map<string, string>();
-  const origStopIdsForBus = [...origDefaults.entries()].filter(([, v]) => v.stop_id).map(([k, v]) => ({ key: k, stop_id: v.stop_id! }));
-  if (origStopIdsForBus.length) {
-    const stopIdsForBusQuery = [...new Set(origStopIdsForBus.map((o) => o.stop_id))];
-    const { data: stopAssigns } = await supabase
-      .from("bus_stop_day_assignments")
-      .select("bus_stop_id, bus_number_id, day_of_week")
-      .in("bus_stop_id", stopIdsForBusQuery);
-    const stopBusMap = new Map<string, string>();
-    for (const sa of stopAssigns ?? []) {
-      stopBusMap.set(`${sa.bus_stop_id}:${sa.day_of_week}`, sa.bus_number_id);
-    }
-    const missingBusIds = [...new Set([...(stopAssigns ?? []).map((sa) => sa.bus_number_id)])].filter((id) => !busMap.has(id));
-    if (missingBusIds.length) {
-      const { data: extraBuses } = await supabase.from("bus_numbers").select("id, label").in("id", missingBusIds);
-      for (const b of extraBuses ?? []) busMap.set(b.id, b.label);
-    }
-    for (const { key, stop_id } of origStopIdsForBus) {
-      const [, dayStr] = key.split(":");
-      const busNumId = stopBusMap.get(`${stop_id}:${dayStr}`);
-      if (busNumId) origBusLabelMap.set(key, busMap.get(busNumId) ?? "");
-    }
+  const origBusIds = await resolveOrigBusIds(supabase, origDefaults);
+  const missingBusIds = [...new Set(origBusIds.values())].filter((id) => !busMap.has(id));
+  if (missingBusIds.length) {
+    const { data: extraBuses } = await supabase.from("bus_numbers").select("id, label").in("id", missingBusIds);
+    for (const b of extraBuses ?? []) busMap.set(b.id, b.label);
   }
+  for (const [key, busNumId] of origBusIds) origBusLabelMap.set(key, busMap.get(busNumId) ?? "");
 
   return (data ?? []).map((d) => {
     const student = studentMap.get(d.student_id);
@@ -396,7 +445,8 @@ export async function approveChangeRequest(
   const reviewerId = auth.userId;
   const supabase = createAdminClient();
 
-  // 정류장 미배정 가드: 정류장(change) 으로 승인하면서 정류장+시간대를 지정한 경우.
+  // 정류장 미배정 가드 + 호차 확정: 정류장(change) 으로 승인하면서 정류장+시간대를 지정한 경우.
+  let resolvedBusId: string | undefined;
   if (overrides?.changeType === "change" && overrides?.newBusStopId && overrides?.newBusTimeSlotId) {
     const { data: reqRow } = await supabase
       .from("bus_change_requests")
@@ -405,9 +455,9 @@ export async function approveChangeRequest(
       .single();
     if (reqRow) {
       const dow = dowFromYmd(String(reqRow.request_date).slice(0, 10));
-      if (!(await isStopServed(supabase, dow, overrides.newBusTimeSlotId, overrides.newBusStopId))) {
-        return { error: "선택한 정류장이 해당 요일·시간대에 배정되어 있지 않습니다." };
-      }
+      const resolved = await resolveChangeBusByDow(supabase, [dow], overrides.newBusTimeSlotId, overrides.newBusStopId, overrides.newBusNumberId);
+      if ("error" in resolved) return { error: resolved.error };
+      resolvedBusId = resolved.busByDow.get(dow);
     }
   }
 
@@ -425,7 +475,9 @@ export async function approveChangeRequest(
   if (overrides?.newBusTimeSlotId !== undefined) {
     updateData.new_bus_time_slot_id = overrides.newBusTimeSlotId || null;
   }
-  if (overrides?.newBusNumberId !== undefined) {
+  if (resolvedBusId) {
+    updateData.new_bus_number_id = resolvedBusId;
+  } else if (overrides?.newBusNumberId !== undefined) {
     updateData.new_bus_number_id = overrides.newBusNumberId || null;
   }
   if (overrides?.newBusStopId !== undefined) {
@@ -613,14 +665,15 @@ export async function createAdminBusChange(
   const supabase = createAdminClient();
 
   const finalSlotId = newBusTimeSlotId ?? null;
-  const finalBusId = changeType === "change" ? (newBusNumberId ?? null) : null;
+  let finalBusId = changeType === "change" ? (newBusNumberId ?? null) : null;
   const finalStopId = newBusStopId || null;
 
-  // 정류장 미배정 가드: 정류장 모드에서 해당 요일·시간대에 배정 안 된 정류장은 거부.
+  // 정류장 미배정 가드 + 호차 확정: 정류장 모드에서 해당 요일·시간대에 배정 안 된 정류장은 거부.
   if (changeType === "change" && finalStopId && finalSlotId) {
-    if (!(await isStopServed(supabase, dowFromYmd(requestDate), finalSlotId, finalStopId))) {
-      return { error: "선택한 정류장이 해당 요일·시간대에 배정되어 있지 않습니다." };
-    }
+    const dow = dowFromYmd(requestDate);
+    const resolved = await resolveChangeBusByDow(supabase, [dow], finalSlotId, finalStopId, finalBusId);
+    if ("error" in resolved) return { error: resolved.error };
+    finalBusId = resolved.busByDow.get(dow) ?? finalBusId;
   }
 
   const { error } = await supabase.from("bus_change_requests").insert({
@@ -668,7 +721,7 @@ export async function updateAdminBusChange(
   const supabase = createAdminClient();
 
   const finalSlotId = newBusTimeSlotId ?? null;
-  const finalBusId = changeType === "change" ? (newBusNumberId ?? null) : null;
+  let finalBusId = changeType === "change" ? (newBusNumberId ?? null) : null;
   const finalStopId = newBusStopId || null;
 
   const { data: existing } = await supabase
@@ -677,11 +730,12 @@ export async function updateAdminBusChange(
     .eq("id", requestId)
     .single();
 
-  // 정류장 미배정 가드
+  // 정류장 미배정 가드 + 호차 확정
   if (changeType === "change" && finalStopId && finalSlotId && existing) {
-    if (!(await isStopServed(supabase, dowFromYmd(String(existing.request_date).slice(0, 10)), finalSlotId, finalStopId))) {
-      return { error: "선택한 정류장이 해당 요일·시간대에 배정되어 있지 않습니다." };
-    }
+    const dow = dowFromYmd(String(existing.request_date).slice(0, 10));
+    const resolved = await resolveChangeBusByDow(supabase, [dow], finalSlotId, finalStopId, finalBusId);
+    if ("error" in resolved) return { error: resolved.error };
+    finalBusId = resolved.busByDow.get(dow) ?? finalBusId;
   }
 
   const { error } = await supabase
@@ -774,14 +828,18 @@ export async function bulkCreateBusChanges(
 
   const supabase = createAdminClient();
 
-  // 정류장 미배정 가드: 선택 날짜들의 요일 중 정류장 미배정 요일이 있으면 거부.
+  // 정류장 미배정 가드 + 요일별 호차 확정: 선택 날짜들의 요일 중 정류장 미배정 요일이 있으면 거부.
+  let busByDow: Map<number, string> | null = null;
   if (changeType === "change" && newBusStopId && newBusTimeSlotId) {
     const dows = [...new Set(dates.map((d) => dowFromYmd(d)))];
-    const served = await getServedStopIdsByDay(supabase, dows, newBusTimeSlotId);
-    const bad = findUnassignedDays(served, dows, newBusStopId);
+    const served = await getServedStopBusesByDay(supabase, dows, newBusTimeSlotId);
+    const bad = findUnassignedDays(toServedStopIds(served), dows, newBusStopId);
     if (bad.length) {
       return { error: `선택한 정류장이 ${formatWeekdayList(bad)}요일 해당 시간대에 배정되어 있지 않습니다.` };
     }
+    const resolved = await resolveChangeBusByDow(supabase, dows, newBusTimeSlotId, newBusStopId, newBusNumberId);
+    if ("error" in resolved) return { error: resolved.error };
+    busByDow = resolved.busByDow;
   }
 
   const now = new Date().toISOString();
@@ -791,7 +849,7 @@ export async function bulkCreateBusChanges(
     request_date: d,
     change_type: changeType,
     new_bus_time_slot_id: newBusTimeSlotId || null,
-    new_bus_number_id: newBusNumberId || null,
+    new_bus_number_id: busByDow?.get(dowFromYmd(d)) ?? (newBusNumberId || null),
     new_bus_stop_id: newBusStopId || null,
     reason: reason?.trim() || null,
     status: "approved" as const,

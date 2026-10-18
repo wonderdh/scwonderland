@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ConfirmDialog } from "@/components/overlays/ConfirmDialog";
-import type { StudentBusDefault, BusTimeSlot, BusStop, AfterschoolStatus } from "@/lib/types";
+import type { StudentBusDefault, BusTimeSlot, BusStop, BusNumber, AfterschoolStatus } from "@/lib/types";
 import { detectAfterschoolSlot } from "@/lib/bus/afterschool-sync";
 import { toast } from "sonner";
 import {
@@ -21,11 +21,12 @@ import {
   deleteStudentBusDefaults,
   listBusTimeSlots,
   listBusStops,
-  listServedStopIds,
+  listBusNumbers,
+  listBusRouteRows,
 } from "@/app/(admin)/admin/actions/bus-actions";
 import { LoadingState } from "@/components/feedback/LoadingState";
 import { formatTime } from "@/lib/bus/utils";
-import { findUnassignedDays, formatWeekdayList } from "@/lib/bus/stop-validation";
+import { busRouteStops, formatWeekdayList, inferRouteBus, type BusRouteRow } from "@/lib/bus/stop-validation";
 
 const DAY_NAMES = ["", "월", "화", "수", "목", "금"];
 
@@ -41,6 +42,7 @@ export function StudentBusTab({ studentProfileId }: { studentProfileId: string }
   const [defaults, setDefaults] = useState<StudentBusDefault[]>([]);
   const [busTimeSlots, setBusTimeSlots] = useState<BusTimeSlot[]>([]);
   const [busStops, setBusStops] = useState<BusStop[]>([]);
+  const [busNumbers, setBusNumbers] = useState<BusNumber[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -53,23 +55,26 @@ export function StudentBusTab({ studentProfileId }: { studentProfileId: string }
   const [checkedDays, setCheckedDays] = useState<Set<number>>(new Set());
   const [editSlotId, setEditSlotId] = useState("");
   const [editStopId, setEditStopId] = useState("");
+  const [editBusIdRaw, setEditBusId] = useState("");
   const [editNote, setEditNote] = useState("");
-  // 체크된 요일 × 시간대 운행 정류장 — 정류장 미배정 검증용.
-  const [servedByDay, setServedByDay] = useState<Record<number, string[]>>({});
+  // 체크된 요일 × 시간대 노선 (호차 먼저 → 그 호차 정류장만). key = 조회 조건 (stale 응답 구분용).
+  const [route, setRoute] = useState<{ key: string; rows: BusRouteRow[] }>({ key: "", rows: [] });
 
   // 삭제 확인
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [d, ts, stops, afterschool] = await Promise.all([
+    const [d, ts, stops, afterschool, buses] = await Promise.all([
       getStudentBusDefaults(studentProfileId),
       listBusTimeSlots(),
       listBusStops(),
       getStudentAfterschoolDetail(studentProfileId),
+      listBusNumbers(),
     ]);
     setDefaults(d);
     setBusTimeSlots(ts);
+    setBusNumbers(buses);
     setBusStops([...stops].sort((a, b) => a.name.localeCompare(b.name, "ko")));
 
     // 방과후 맵 구성
@@ -87,19 +92,33 @@ export function StudentBusTab({ studentProfileId }: { studentProfileId: string }
     load();
   }, [load]);
 
-  // 편집 중 (체크된 요일 × 시간대) 에 운행되는 정류장 집합 로드.
+  // 편집 중 (체크된 요일 × 시간대) 노선 로드.
+  const editDays = Array.from(checkedDays).sort();
+  const routeKey = editingDay !== null && editSlotId && editDays.length ? `${editDays.join(",")}|${editSlotId}` : "";
   useEffect(() => {
-    if (editingDay === null || !editSlotId || checkedDays.size === 0) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setServedByDay({});
-      return;
-    }
-    listServedStopIds(Array.from(checkedDays), editSlotId).then(setServedByDay);
-  }, [editingDay, checkedDays, editSlotId]);
+    if (!routeKey) return;
+    const [days, slotId] = routeKey.split("|");
+    listBusRouteRows(days.split(",").map(Number), slotId).then((rows) => setRoute({ key: routeKey, rows }));
+  }, [routeKey]);
+  const routeReady = !!routeKey && route.key === routeKey;
+  // 레거시(호차 미저장) 행은 정류장 운행 호차가 1대면 그 호차로 채워 보여줌
+  const editBusId = routeReady ? inferRouteBus(route.rows, editBusIdRaw, editStopId, editDays) : editBusIdRaw;
 
-  // 미배정 요일 (정류장 선택 시에만)
-  const unassignedDays = findUnassignedDays(servedByDay, Array.from(checkedDays), editStopId);
-  const hasUnassignedStop = unassignedDays.length > 0;
+  // 선택 호차가 체크된 요일 모두에 운행하는 정류장 (노선 순서)
+  const stopOptions = routeReady ? busRouteStops(route.rows, editBusId, editDays) : [];
+  // 선택 정류장을 선택 호차가 운행하지 않는 요일 (요일·시간대를 바꾼 경우 등)
+  const unservedDays =
+    routeReady && editBusId && editStopId && !stopOptions.some((s) => s.id === editStopId)
+      ? editDays.filter(
+          (d) => !route.rows.some((r) => r.day_of_week === d && r.bus_number_id === editBusId && r.bus_stop_id === editStopId)
+        )
+      : [];
+
+  // 호차 변경 시 정류장 초기화 — 새 호차도 그 정류장을 운행하면 유지.
+  function handleBusChange(busId: string) {
+    setEditBusId(busId);
+    if (!busRouteStops(route.rows, busId, editDays).some((s) => s.id === editStopId)) setEditStopId("");
+  }
 
   function getDefault(day: number) {
     return defaults.find((d) => d.day_of_week === day);
@@ -111,6 +130,7 @@ export function StudentBusTab({ studentProfileId }: { studentProfileId: string }
     const existing = getDefault(day);
     setEditSlotId(existing?.bus_time_slot_id ?? "");
     setEditStopId(existing?.bus_stop_id ?? "");
+    setEditBusId(existing?.bus_number_id ?? "");
     setEditNote(existing?.note ?? "");
     setError("");
   }
@@ -120,6 +140,7 @@ export function StudentBusTab({ studentProfileId }: { studentProfileId: string }
     setCheckedDays(new Set());
     setEditSlotId("");
     setEditStopId("");
+    setEditBusId("");
     setEditNote("");
     setError("");
   }
@@ -142,8 +163,16 @@ export function StudentBusTab({ studentProfileId }: { studentProfileId: string }
       setError("시간대를 선택해 주세요.");
       return;
     }
-    if (editStopId && hasUnassignedStop) {
-      setError(`선택한 정류장이 ${formatWeekdayList(unassignedDays)}요일 해당 시간대에 배정되어 있지 않습니다.`);
+    if (editBusId && !editStopId) {
+      setError("정류장을 선택해 주세요.");
+      return;
+    }
+    if (editStopId && !editBusId) {
+      setError("호차를 선택해 주세요.");
+      return;
+    }
+    if (unservedDays.length > 0) {
+      setError(`선택한 호차가 ${formatWeekdayList(unservedDays)}요일 해당 시간대에 이 정류장을 운행하지 않습니다.`);
       return;
     }
     setSaving(true);
@@ -160,7 +189,8 @@ export function StudentBusTab({ studentProfileId }: { studentProfileId: string }
         editSlotId,
         undefined,
         editNote || undefined,
-        editStopId || undefined
+        editStopId || undefined,
+        editStopId ? editBusId : undefined
       );
       if (result.error) {
         setError(result.error);
@@ -270,13 +300,18 @@ export function StudentBusTab({ studentProfileId }: { studentProfileId: string }
           note={editNote}
           onSlotChange={setEditSlotId}
           onStopChange={setEditStopId}
+          stopOptions={stopOptions}
+          routeReady={routeReady}
+          busId={editBusId}
+          busNumbers={busNumbers}
+          onBusChange={handleBusChange}
           onNoteChange={setEditNote}
           onSave={handleSave}
           onCancel={closeEdit}
           onDelete={checkedWithData > 0 ? () => setDeleteConfirmOpen(true) : undefined}
           saving={saving}
           afterschoolMap={afterschoolMap}
-          unassignedDays={unassignedDays}
+          unservedDays={unservedDays}
           slotLabel={busTimeSlots.find((s) => s.id === editSlotId)?.label ?? "선택 시간대"}
         />
       )}
@@ -401,13 +436,18 @@ function EditPanel({
   note,
   onSlotChange,
   onStopChange,
+  stopOptions,
+  routeReady,
+  busId,
+  busNumbers,
+  onBusChange,
   onNoteChange,
   onSave,
   onCancel,
   onDelete,
   saving,
   afterschoolMap,
-  unassignedDays,
+  unservedDays,
   slotLabel,
 }: {
   checkedDays: Set<number>;
@@ -419,16 +459,20 @@ function EditPanel({
   note: string;
   onSlotChange: (v: string) => void;
   onStopChange: (v: string) => void;
+  stopOptions: { id: string; name: string }[];
+  routeReady: boolean;
+  busId: string;
+  busNumbers: BusNumber[];
+  onBusChange: (v: string) => void;
   onNoteChange: (v: string) => void;
   onSave: () => void;
   onCancel: () => void;
   onDelete?: () => void;
   saving: boolean;
   afterschoolMap?: Map<number, AfterschoolStatus>;
-  unassignedDays: number[];
+  unservedDays: number[];
   slotLabel: string;
 }) {
-  const hasUnassignedStop = unassignedDays.length > 0;
   // 방과후 등록된 요일 표시
   const afterschoolCheckedDays = afterschoolMap
     ? Array.from(checkedDays).filter((d) => {
@@ -491,26 +535,54 @@ function EditPanel({
             ))}
           </select>
         </div>
-        {stops.length > 0 && (
-          <div className="min-w-[120px]">
-            <label className="text-xs font-medium text-slate-600 block mb-1">정류장</label>
-            <select
-              value={stopId}
-              onChange={(e) => onStopChange(e.target.value)}
-              className="h-9 px-2 border rounded-lg text-sm w-full bg-white"
-            >
-              <option value="">선택 (선택사항)</option>
-              {stops.map((s) => (
-                <option key={s.id} value={s.id}>{s.name}</option>
-              ))}
-            </select>
-            {hasUnassignedStop && (
-              <p className="mt-1 text-xs font-medium text-red-600">
-                ⚠ {formatWeekdayList(unassignedDays)}요일 {slotLabel}에 배정된 버스가 없는 정류장입니다.
-              </p>
+        {/* 호차 먼저 → 정류장은 그 호차가 체크된 요일 모두에 운행하는 곳만 */}
+        <div className="min-w-[120px]">
+          <label className="text-xs font-medium text-slate-600 block mb-1">호차</label>
+          <select
+            value={busId}
+            onChange={(e) => onBusChange(e.target.value)}
+            className="h-9 px-2 border rounded-lg text-sm w-full bg-white"
+          >
+            <option value="">선택 (선택사항)</option>
+            {busNumbers.map((b) => (
+              <option key={b.id} value={b.id}>{b.label}</option>
+            ))}
+          </select>
+        </div>
+        <div className="min-w-[140px]">
+          <label className="text-xs font-medium text-slate-600 block mb-1">정류장</label>
+          <select
+            value={stopId}
+            onChange={(e) => onStopChange(e.target.value)}
+            disabled={!busId}
+            className={`h-9 px-2 border rounded-lg text-sm w-full bg-white disabled:bg-slate-100 ${unservedDays.length ? "border-red-400" : ""}`}
+          >
+            <option value="">{busId ? "선택" : "호차 먼저 선택"}</option>
+            {/* 노선에 없는 기존 정류장도 값 표시용으로 남김 (저장은 차단) */}
+            {stopId && !stopOptions.some((s) => s.id === stopId) && (
+              <option value={stopId} disabled>
+                {stops.find((s) => s.id === stopId)?.name ?? "알 수 없는 정류장"}{unservedDays.length > 0 ? " (운행 안 함)" : ""}
+              </option>
             )}
-          </div>
-        )}
+            {stopOptions.map((s) => (
+              <option key={s.id} value={s.id}>{s.name}</option>
+            ))}
+          </select>
+          {unservedDays.length > 0 && (
+            <p className="mt-1 text-xs font-medium text-red-600">
+              ⚠ 이 호차는 {formatWeekdayList(unservedDays)}요일 {slotLabel}에 이 정류장을 운행하지 않습니다.
+            </p>
+          )}
+          {busId && routeReady && stopOptions.length === 0 && (
+            <p className="mt-1 text-xs font-medium text-amber-600">
+              ⚠ 이 호차는 선택한 요일{checkedDays.size > 1 ? " 모두에" : "에"} {slotLabel} 운행 정류장이 없습니다.
+              {checkedDays.size > 1 && " 요일을 나눠 저장해 주세요."}
+            </p>
+          )}
+          {busId && checkedDays.size > 1 && stopOptions.length > 0 && (
+            <p className="mt-1 text-xs text-slate-400">선택한 요일 모두에 운행하는 정류장만 표시됩니다.</p>
+          )}
+        </div>
         <div className="flex-1 min-w-[120px]">
           <label className="text-xs font-medium text-slate-600 block mb-1">메모</label>
           <Input
@@ -541,7 +613,7 @@ function EditPanel({
           <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={onCancel} disabled={saving}>
             취소
           </Button>
-          <Button size="sm" className="h-8 text-xs" onClick={onSave} disabled={saving || hasUnassignedStop}>
+          <Button size="sm" className="h-8 text-xs" onClick={onSave} disabled={saving || unservedDays.length > 0 || !!busId !== !!stopId}>
             {saving ? "저장 중..." : "저장"}
           </Button>
         </div>

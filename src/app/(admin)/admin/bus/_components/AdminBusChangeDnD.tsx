@@ -7,12 +7,12 @@ import { Input } from "@/components/ui/input";
 import { toastSuccess, toastError } from "@/lib/ui/toast";
 import { Info } from "lucide-react";
 import { getAgeColor } from "@/lib/ui/student-age-colors";
-import type { BusStop, BusTimeSlot, StudentBusDefault } from "@/lib/types";
+import type { BusNumber, BusStop, BusTimeSlot, StudentBusDefault } from "@/lib/types";
 import { detectAfterschoolSlot, findAfterschoolSlotIds } from "@/lib/bus/afterschool-sync";
 import { MultiDatePicker } from "@/components/forms/MultiDatePicker";
 import { formatDateYmdKst, todayKst } from "@/lib/utils/date-kst";
 import { formatStudentName } from "@/lib/utils/student-name";
-import { dowFromYmd, findUnassignedDays, formatWeekdayList } from "@/lib/bus/stop-validation";
+import { busRouteStops, dowFromYmd, formatWeekdayList, inferRouteBus, type BusRouteRow } from "@/lib/bus/stop-validation";
 import {
   getStudentAfterschoolDetail,
   updateAfterschoolSecondPeriod,
@@ -28,7 +28,8 @@ import {
   updateAdminBusChange,
   deleteAdminBusChange,
   bulkCreateBusChanges,
-  listServedStopIds,
+  listBusRouteRows,
+  listBusNumbers,
 } from "@/app/(admin)/admin/actions/bus-actions";
 
 type StudentItem = {
@@ -81,19 +82,28 @@ export function AdminBusChangeDnD({
   const [stopMode, setStopMode] = useState<StopMode>("stop");
   const [slotId, setSlotId] = useState("");
   const [stopId, setStopId] = useState("");
+  // 정류장 모드: 호차 먼저 선택 → 정류장은 그 호차 노선만
+  const [busIdRaw, setBusId] = useState("");
   const [stopSearch, setStopSearch] = useState("");
   const [stopListOpen, setStopListOpen] = useState(false);
   const [reason, setReason] = useState("");
 
-  // 선택 (요일들 × 시간대) 에 운행되는 정류장 ID (요일별). 정류장 미배정 검증용.
-  const [servedByDay, setServedByDay] = useState<Record<number, string[]>>({});
+  // 선택 (날짜들의 요일 × 시간대) 노선. key = 조회 조건 (stale 응답 구분용).
+  const [route, setRoute] = useState<{ key: string; rows: BusRouteRow[] }>({ key: "", rows: [] });
+  const [busNumbers, setBusNumbers] = useState<BusNumber[]>([]);
 
   // 원본 값 (기존 변경 로드 시 저장 → 변경 없으면 저장 불필요)
   const [originalSlotId, setOriginalSlotId] = useState("");
   const [originalStopId, setOriginalStopId] = useState("");
+  const [originalBusId, setOriginalBusId] = useState("");
   const [originalReason, setOriginalReason] = useState("");
 
   const [saving, setSaving] = useState(false);
+
+  // 호차 목록 (정류장 모드 호차 선택용)
+  useEffect(() => {
+    listBusNumbers().then(setBusNumbers);
+  }, []);
 
   // Load reference data on mount — initial props 미전달 시에만 fetch
   useEffect(() => {
@@ -133,6 +143,8 @@ export function AdminBusChangeDnD({
       if (existing) {
         const loadedSlotId = existing.new_bus_time_slot_id ?? def?.bus_time_slot_id ?? "";
         const loadedStopId = existing.new_bus_stop_id ?? def?.bus_stop_id ?? "";
+        // 변경에 정류장이 있으면 그 변경의 호차만 (기본 배정 호차와 섞지 않음 — 미저장이면 아래 inferRouteBus 로 보완)
+        const loadedBusId = existing.new_bus_number_id ?? (existing.new_bus_stop_id ? "" : (def?.bus_number_id ?? ""));
         const loadedReason = existing.reason ?? "";
         setExistingId(existing.id);
         setStopMode(
@@ -141,38 +153,43 @@ export function AdminBusChangeDnD({
         );
         setSlotId(loadedSlotId);
         setStopId(loadedStopId);
+        setBusId(loadedBusId);
         setStopSearch("");
         setStopListOpen(false);
         setReason(loadedReason);
         setOriginalSlotId(loadedSlotId);
         setOriginalStopId(loadedStopId);
+        setOriginalBusId(loadedBusId);
         setOriginalReason(loadedReason);
       } else {
         setExistingId(null);
         setStopMode("stop");
         setSlotId(def?.bus_time_slot_id ?? "");
         setStopId(def?.bus_stop_id ?? "");
+        setBusId(def?.bus_number_id ?? "");
         setStopSearch("");
         setStopListOpen(false);
         setReason("");
         setOriginalSlotId("");
         setOriginalStopId("");
+        setOriginalBusId("");
         setOriginalReason("");
       }
       setLoadingStudent(false);
     });
   }, [selectedStudentId, selectedDates, studentDefaults, today]);
 
-  // 정류장(dropoff) 모드에서 (선택 날짜들의 요일 × 시간대) 에 운행되는 정류장 집합 로드.
+  // 정류장(dropoff) 모드에서 (선택 날짜들의 요일 × 시간대) 노선 로드.
+  const selectedDows = [...new Set(selectedDates.map((d) => dowFromYmd(formatDateYmdKst(d))))].sort();
+  const routeKey = stopMode === "stop" && slotId && selectedDows.length ? `${selectedDows.join(",")}|${slotId}` : "";
   useEffect(() => {
-    if (stopMode !== "stop" || !slotId || selectedDates.length === 0) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setServedByDay({});
-      return;
-    }
-    const dows = [...new Set(selectedDates.map((d) => dowFromYmd(formatDateYmdKst(d))))];
-    listServedStopIds(dows, slotId).then(setServedByDay);
-  }, [stopMode, slotId, selectedDates]);
+    if (!routeKey) return;
+    const [dows, slot] = routeKey.split("|");
+    listBusRouteRows(dows.split(",").map(Number), slot).then((rows) => setRoute({ key: routeKey, rows }));
+  }, [routeKey]);
+  const routeReady = !!routeKey && route.key === routeKey;
+  // 레거시(호차 미저장) 값은 정류장 운행 호차가 1대면 그 호차로 채워 보여줌
+  const busId = routeReady ? inferRouteBus(route.rows, busIdRaw, stopId, selectedDows) : busIdRaw;
 
   // ── Derived ──
 
@@ -206,10 +223,10 @@ export function AdminBusChangeDnD({
 
   const dirSlots = busTimeSlots;
 
-  const baseStops =
-    stopMode === "pickup"
-      ? busStops.filter((s) => s.name.includes("픽업"))
-      : busStops.filter((s) => !s.name.includes("픽업"));
+  // 정류장 모드: 선택 호차가 선택 날짜의 요일 모두에 운행하는 정류장 (노선 순서). 픽업 모드: 픽업 정류장.
+  const routeStops = routeReady ? busRouteStops(route.rows, busId, selectedDows) : [];
+  const baseStops = stopMode === "pickup" ? busStops.filter((s) => s.name.includes("픽업")) : routeStops;
+  const stopBusNumbers = busNumbers.filter((b) => !b.label.includes("픽업"));
 
   const filteredStops = stopSearch.trim()
     ? baseStops.filter((s) => s.name.toLowerCase().includes(stopSearch.trim().toLowerCase()))
@@ -223,11 +240,23 @@ export function AdminBusChangeDnD({
       ? selectedStopInfo.name.includes("픽업")
       : !selectedStopInfo.name.includes("픽업"));
 
-  // 정류장 미배정 검증 (정류장 모드만). 선택 정류장이 미배정인 요일 목록.
-  const selectedDows = selectedDates.map((d) => dowFromYmd(formatDateYmdKst(d)));
-  const unassignedDays =
-    stopMode === "stop" ? findUnassignedDays(servedByDay, selectedDows, stopId) : [];
-  const hasUnassignedStop = unassignedDays.length > 0;
+  // 선택 정류장을 선택 호차가 운행하지 않는 요일 (날짜·시간대를 바꾼 경우 등). 정류장 모드만.
+  const unservedDays =
+    routeReady && busId && stopId && !routeStops.some((s) => s.id === stopId)
+      ? selectedDows.filter(
+          (d) => !route.rows.some((r) => r.day_of_week === d && r.bus_number_id === busId && r.bus_stop_id === stopId)
+        )
+      : [];
+  const busMissing = stopMode === "stop" && !busId;
+
+  // 호차 변경 시 정류장 초기화 — 새 호차도 그 정류장을 운행하면 유지.
+  function handleBusChange(nextBusId: string) {
+    setBusId(nextBusId);
+    if (!busRouteStops(route.rows, nextBusId, selectedDows).some((s) => s.id === stopId)) {
+      setStopId("");
+      setStopSearch("");
+    }
+  }
 
   // ── Handlers ──
 
@@ -248,11 +277,13 @@ export function AdminBusChangeDnD({
     setStopMode("stop");
     setSlotId("");
     setStopId("");
+    setBusId("");
     setStopSearch("");
     setStopListOpen(false);
     setReason("");
     setOriginalSlotId("");
     setOriginalStopId("");
+    setOriginalBusId("");
     setOriginalReason("");
     setAfterschoolDays([]);
   }
@@ -277,13 +308,14 @@ export function AdminBusChangeDnD({
       if (!stopId) { toastError("정류장을 선택해 주세요."); return; }
       if (!slotId) { toastError("시간대를 선택해 주세요."); return; }
     }
-    if (stopMode === "stop" && hasUnassignedStop) {
-      toastError(`선택한 정류장이 ${formatWeekdayList(unassignedDays)}요일 해당 시간대에 배정되어 있지 않습니다.`);
+    if (busMissing) { toastError("호차를 선택해 주세요."); return; }
+    if (stopMode === "stop" && unservedDays.length > 0) {
+      toastError(`선택한 호차가 ${formatWeekdayList(unservedDays)}요일 해당 시간대에 이 정류장을 운행하지 않습니다.`);
       return;
     }
 
     const changeType = stopMode === "absent" ? "absent" : stopMode === "pickup" ? "no_ride" : "change";
-    const busNumberId = stopMode === "stop" ? (selectedStopInfo?.bus_number_id ?? undefined) : undefined;
+    const busNumberId = stopMode === "stop" ? busId : undefined;
     const effectiveSlotId = stopMode === "absent" ? undefined : slotId;
     const effectiveStopId = stopMode === "absent" ? undefined : stopId;
 
@@ -540,13 +572,32 @@ export function AdminBusChangeDnD({
           </div>
           )}
 
+          {/* 호차 — 정류장 모드만. 호차 먼저 고르면 정류장 목록이 그 호차 노선으로 좁혀짐 */}
+          {stopMode === "stop" && (
+          <div>
+            <label className="text-base font-semibold text-slate-700 block mb-2">호차</label>
+            <select
+              value={busId}
+              onChange={(e) => handleBusChange(e.target.value)}
+              className="w-full h-11 px-3 border border-slate-300 rounded-lg text-base bg-white"
+            >
+              <option value="">호차 선택</option>
+              {stopBusNumbers.map((b) => (
+                <option key={b.id} value={b.id}>{b.label}</option>
+              ))}
+            </select>
+          </div>
+          )}
+
           {/* Stop selection — 결석 시 숨김 */}
           {stopMode !== "absent" && (
           <div>
             <label className="text-base font-semibold text-slate-700 block mb-2">
               {stopMode === "pickup" ? "픽업 정류장" : "정류장"}
             </label>
-            {stopId && stopMatchesMode && !stopListOpen ? (
+            {stopMode === "stop" && !busId ? (
+              <p className="p-3 border border-dashed border-slate-300 rounded-lg text-base text-slate-500">호차를 먼저 선택해 주세요.</p>
+            ) : stopId && stopMatchesMode && !stopListOpen ? (
               <div className="flex items-center gap-2 p-3 border border-slate-200 rounded-lg bg-slate-50">
                 <span className="text-slate-500" aria-hidden>📍</span>
                 <span className="text-base font-medium text-slate-800">{selectedStopInfo!.name}</span>
@@ -570,7 +621,11 @@ export function AdminBusChangeDnD({
                 {stopListOpen && (
                   <div className="mt-1 border border-slate-200 rounded-lg max-h-56 overflow-y-auto divide-y divide-slate-100 bg-white shadow-sm absolute w-full z-10">
                     {filteredStops.length === 0 ? (
-                      <p className="text-base text-slate-500 py-3 text-center">정류장이 없습니다.</p>
+                      <p className="text-base text-slate-500 py-3 text-center">
+                        {stopMode === "stop" && !stopSearch.trim()
+                          ? `이 호차는 선택한 날짜${selectedDows.length > 1 ? "의 요일 모두에" : "에"} 해당 시간대 운행 정류장이 없습니다.`
+                          : "정류장이 없습니다."}
+                      </p>
                     ) : (
                       filteredStops.map((s) => (
                         <button
@@ -588,10 +643,13 @@ export function AdminBusChangeDnD({
                 )}
               </div>
             )}
-            {stopMode === "stop" && stopId && hasUnassignedStop && (
+            {stopMode === "stop" && unservedDays.length > 0 && (
               <p className="mt-1.5 text-sm font-medium text-red-600">
-                ⚠ 이 정류장은 {formatWeekdayList(unassignedDays)}요일 {selectedSlotObj?.label ?? "선택 시간대"}에 배정된 버스가 없습니다. 정류장 배치를 확인하세요.
+                ⚠ 이 호차는 {formatWeekdayList(unservedDays)}요일 {selectedSlotObj?.label ?? "선택 시간대"}에 이 정류장을 운행하지 않습니다. 정류장을 다시 선택하세요.
               </p>
+            )}
+            {stopMode === "stop" && busId && selectedDows.length > 1 && (
+              <p className="mt-1.5 text-sm text-slate-500">선택한 날짜의 요일 모두에 운행하는 정류장만 표시됩니다.</p>
             )}
           </div>
           )}
@@ -617,12 +675,14 @@ export function AdminBusChangeDnD({
                 saving ||
                 (stopMode !== "absent" && !stopId) ||
                 (stopMode === "stop" && !slotId) ||
-                hasUnassignedStop ||
+                unservedDays.length > 0 ||
+                busMissing ||
                 // 기존 변경과 동일하면 저장 불필요
                 !!(existingId &&
                   stopMode !== "absent" &&
                   slotId === originalSlotId &&
                   stopId === originalStopId &&
+                  busIdRaw === originalBusId &&
                   reason === originalReason)
               }
             >

@@ -3,6 +3,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { verifyAdmin } from "../auth-helpers";
 import { logger } from "@/lib/server/logger";
+import { buildStopToBusMaps } from "./_helpers";
 import type {
   BusStaffProfile,
   BusNumber,
@@ -120,26 +121,21 @@ export async function getWeeklyDropoffExportData(): Promise<
     ])
   );
 
-  // 5. 슬롯 ID 목록 수집 후 student_bus_defaults / bus_stop_day_assignments 1회 병렬 조회
+  // 5. 슬롯 ID 목록 수집 후 student_bus_defaults 조회 + 요일별 stop→bus 매핑(호차 폴백·정류장 순서) 병렬
   const slotIds = slots.map((s) => s.id);
 
   const [
     { data: allDefaultsRaw, error: allDefaultsError },
-    { data: allAssignmentsRaw },
+    ...stopBusMapsByDay
   ] = await Promise.all([
     slotIds.length > 0
       ? supabase
           .from("student_bus_defaults")
-          .select("student_id, bus_stop_id, bus_time_slot_id, day_of_week, note")
+          .select("student_id, bus_stop_id, bus_number_id, bus_time_slot_id, day_of_week, note")
           .in("bus_time_slot_id", slotIds)
           .eq("direction", "dropoff")
       : Promise.resolve({ data: [], error: null }),
-    slotIds.length > 0
-      ? supabase
-          .from("bus_stop_day_assignments")
-          .select("bus_stop_id, bus_number_id, bus_time_slot_id, day_of_week")
-          .in("bus_time_slot_id", slotIds)
-      : Promise.resolve({ data: [], error: null }),
+    ...[1, 2, 3, 4, 5].map((day) => buildStopToBusMaps(supabase, day)),
   ]);
 
   if (allDefaultsError) {
@@ -156,6 +152,7 @@ export async function getWeeklyDropoffExportData(): Promise<
   type DefaultRow = {
     student_id: string;
     bus_stop_id: string | null;
+    bus_number_id: string | null;
     bus_time_slot_id: string;
     day_of_week: number;
     note: string | null;
@@ -167,19 +164,12 @@ export async function getWeeklyDropoffExportData(): Promise<
     list.push({
       student_id: d.student_id as string,
       bus_stop_id: d.bus_stop_id as string | null,
+      bus_number_id: d.bus_number_id as string | null,
       bus_time_slot_id: d.bus_time_slot_id as string,
       day_of_week: d.day_of_week as number,
       note: d.note as string | null,
     });
     defaultsByDaySlot.set(key, list);
-  }
-
-  const assignmentsByDaySlot = new Map<string, Map<string, string>>();
-  for (const a of allAssignmentsRaw ?? []) {
-    const key = `${a.day_of_week as number}:${a.bus_time_slot_id as string}`;
-    const stopToBus = assignmentsByDaySlot.get(key) ?? new Map<string, string>();
-    stopToBus.set(a.bus_stop_id as string, a.bus_number_id as string);
-    assignmentsByDaySlot.set(key, stopToBus);
   }
 
   const rows: DropoffExportRow[] = [];
@@ -195,7 +185,7 @@ export async function getWeeklyDropoffExportData(): Promise<
       const defaults = defaultsByDaySlot.get(key);
       if (!defaults?.length) continue;
 
-      const stopToBusId = assignmentsByDaySlot.get(key) ?? new Map<string, string>();
+      const stopBusMaps = stopBusMapsByDay[day - 1];
 
       for (const d of defaults) {
         const studentId = d.student_id;
@@ -204,7 +194,8 @@ export async function getWeeklyDropoffExportData(): Promise<
 
         const stud = studMap.get(studentId);
         const stopId = d.bus_stop_id;
-        const busId = stopId ? (stopToBusId.get(stopId) ?? null) : null;
+        // 호차: 저장값 우선, 없으면 정류장 단일 운행 호차
+        const busId = stopBusMaps.resolveBus(d.bus_number_id, stopId, slot.id);
         const stopInfo = stopId ? stopInfoMap.get(stopId) : undefined;
 
         rows.push({

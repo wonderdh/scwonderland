@@ -372,7 +372,7 @@ export type Database = {
         Row: {
           bus_number_id: string
           bus_stop_id: string
-          bus_time_slot_id: string | null
+          bus_time_slot_id: string
           created_at: string
           day_of_week: number
           id: string
@@ -382,7 +382,7 @@ export type Database = {
         Insert: {
           bus_number_id: string
           bus_stop_id: string
-          bus_time_slot_id?: string | null
+          bus_time_slot_id: string
           created_at?: string
           day_of_week: number
           id?: string
@@ -392,7 +392,7 @@ export type Database = {
         Update: {
           bus_number_id?: string
           bus_stop_id?: string
-          bus_time_slot_id?: string | null
+          bus_time_slot_id?: string
           created_at?: string
           day_of_week?: number
           id?: string
@@ -425,8 +425,9 @@ export type Database = {
       }
       bus_stop_schedules: {
         Row: {
+          bus_number_id: string | null
           bus_stop_id: string
-          bus_time_slot_id: string | null
+          bus_time_slot_id: string
           created_at: string
           day_of_week: number
           estimated_time: string
@@ -434,8 +435,9 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          bus_number_id?: string | null
           bus_stop_id: string
-          bus_time_slot_id?: string | null
+          bus_time_slot_id: string
           created_at?: string
           day_of_week: number
           estimated_time: string
@@ -443,8 +445,9 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          bus_number_id?: string | null
           bus_stop_id?: string
-          bus_time_slot_id?: string | null
+          bus_time_slot_id?: string
           created_at?: string
           day_of_week?: number
           estimated_time?: string
@@ -452,6 +455,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "bus_stop_schedules_bus_number_id_fkey"
+            columns: ["bus_number_id"]
+            isOneToOne: false
+            referencedRelation: "bus_numbers"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "bus_stop_schedules_bus_stop_id_fkey"
             columns: ["bus_stop_id"]
@@ -1185,6 +1195,7 @@ export type Database = {
       }
       student_bus_defaults: {
         Row: {
+          bus_number_id: string | null
           bus_stop_id: string | null
           bus_time_slot_id: string
           created_at: string
@@ -1195,6 +1206,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          bus_number_id?: string | null
           bus_stop_id?: string | null
           bus_time_slot_id: string
           created_at?: string
@@ -1205,6 +1217,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          bus_number_id?: string | null
           bus_stop_id?: string | null
           bus_time_slot_id?: string
           created_at?: string
@@ -1215,6 +1228,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "student_bus_defaults_bus_number_id_fkey"
+            columns: ["bus_number_id"]
+            isOneToOne: false
+            referencedRelation: "bus_numbers"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "student_bus_defaults_bus_stop_id_fkey"
             columns: ["bus_stop_id"]

@@ -130,10 +130,10 @@ export async function getDailyBusManifest(
     allStopIds.length
       ? supabase
           .from("bus_stop_schedules")
-          .select("bus_stop_id, estimated_time, bus_time_slot_id")
+          .select("bus_stop_id, estimated_time, bus_time_slot_id, bus_number_id")
           .in("bus_stop_id", allStopIds)
           .eq("day_of_week", isoDay)
-      : Promise.resolve({ data: [] as { bus_stop_id: string; estimated_time: string; bus_time_slot_id: string | null }[] }),
+      : Promise.resolve({ data: [] as { bus_stop_id: string; estimated_time: string; bus_time_slot_id: string | null; bus_number_id: string | null }[] }),
     allStopIds.length
       ? supabase.from("bus_stops").select("id, name").in("id", allStopIds)
       : Promise.resolve({ data: [] as { id: string; name: string }[] }),
@@ -170,12 +170,14 @@ export async function getDailyBusManifest(
     (checkRecords ?? []).map((r) => [r.student_id, { boarded_at: r.boarded_at, checked_at: r.checked_at, id: r.id }])
   );
 
+  // 도착 예정 시각: (정류장, 호차) → slot 별. key = `${stopId}|${busId}`
   const stopScheduleMap = new Map<string, Map<string, string>>();
-  for (const ss of stopSchedulesResult.data ?? []) {
-    if (!stopScheduleMap.has(ss.bus_stop_id)) stopScheduleMap.set(ss.bus_stop_id, new Map());
-    const slotKey = ss.bus_time_slot_id ?? "_";
-    stopScheduleMap.get(ss.bus_stop_id)!.set(slotKey, ss.estimated_time);
+  function addStopSchedule(ss: { bus_stop_id: string; estimated_time: string; bus_time_slot_id: string | null; bus_number_id: string | null }) {
+    const key = `${ss.bus_stop_id}|${ss.bus_number_id ?? ""}`;
+    if (!stopScheduleMap.has(key)) stopScheduleMap.set(key, new Map());
+    if (ss.bus_time_slot_id) stopScheduleMap.get(key)!.set(ss.bus_time_slot_id, ss.estimated_time);
   }
+  for (const ss of stopSchedulesResult.data ?? []) addStopSchedule(ss);
   const stopNameMap = new Map((stopNamesResult.data ?? []).map((s) => [s.id, s.name]));
 
   // 방과후 학생 목록 조합
@@ -202,14 +204,10 @@ export async function getDailyBusManifest(
       .filter((s): s is AfterSchoolBusEntry => s !== null);
   }
 
-  function getStopTime(stopId: string, slotId: string | null): string | null {
-    const bySlot = stopScheduleMap.get(stopId);
-    if (!bySlot) return null;
-    if (slotId) {
-      const matched = bySlot.get(slotId);
-      if (matched) return matched;
-    }
-    return bySlot.get("_") ?? null;
+  function getStopTime(stopId: string, slotId: string | null, busId: string): string | null {
+    const bySlot = stopScheduleMap.get(`${stopId}|${busId}`);
+    if (!bySlot || !slotId) return null;
+    return bySlot.get(slotId) ?? null;
   }
 
   function getSlotTime(slotId: string): string {
@@ -245,9 +243,8 @@ export async function getDailyBusManifest(
     const change = changeMap.get(def.student_id);
     const check = checkMap.get(def.student_id);
 
-    const derivedBusId = def.bus_stop_id
-      ? (stopBusMaps.getBySlot(def.bus_stop_id, def.bus_time_slot_id) ?? null)
-      : null;
+    // 호차: 저장값 우선, 없으면 정류장 단일 운행 호차 (공유 정류장은 추측 안 함)
+    const derivedBusId = stopBusMaps.resolveBus(def.bus_number_id, def.bus_stop_id, def.bus_time_slot_id);
 
     if (change) {
       if (change.change_type === "absent") {
@@ -255,7 +252,7 @@ export async function getDailyBusManifest(
           const absentGroup = ensureGroup(def.bus_time_slot_id, derivedBusId);
           if (def.bus_stop_id) absentGroup.takenStopIds.add(def.bus_stop_id);
           const stopName = def.bus_stop_id ? stopNameMap.get(def.bus_stop_id) : undefined;
-          const stopTime = def.bus_stop_id ? getStopTime(def.bus_stop_id, def.bus_time_slot_id) : undefined;
+          const stopTime = def.bus_stop_id ? getStopTime(def.bus_stop_id, def.bus_time_slot_id, derivedBusId) : undefined;
           absentGroup.students.push({
             student_profile_id: student.id,
             korean_name: student.korean_name,
@@ -266,7 +263,7 @@ export async function getDailyBusManifest(
             estimated_time: stopTime,
             note: "결석",
             bus_stop_name: stopName ?? null,
-            bus_stop_sort_order: def.bus_stop_id ? stopBusMaps.getSortOrder(def.bus_stop_id, def.bus_time_slot_id) : null,
+            bus_stop_sort_order: def.bus_stop_id ? stopBusMaps.getSortOrder(derivedBusId, def.bus_stop_id, def.bus_time_slot_id) : null,
             boarded_at: null,
             checked_at: null,
             check_record_id: null,
@@ -298,9 +295,16 @@ export async function getDailyBusManifest(
       }
       const newStopId = change.new_bus_stop_id;
       const newSlotId = change.new_bus_time_slot_id ?? def.bus_time_slot_id;
-      const newBusId = newStopId
-        ? (stopBusMaps.getBySlot(newStopId, newSlotId) ?? change.new_bus_number_id ?? derivedBusId)
-        : (change.new_bus_number_id ?? derivedBusId);
+      // 새 정류장: 1대 운행이면 그 호차, 공유 정류장이면 요청에 실린 호차(운행 호차일 때만),
+      // 운행 호차가 없으면 기존처럼 요청 호차 → 기본 호차 폴백.
+      const newStopBuses = newStopId ? stopBusMaps.getBusesBySlot(newStopId, newSlotId) : [];
+      const newBusId = !newStopId
+        ? (change.new_bus_number_id ?? derivedBusId)
+        : newStopBuses.length === 1
+          ? newStopBuses[0]
+          : newStopBuses.length > 1
+            ? (change.new_bus_number_id && newStopBuses.includes(change.new_bus_number_id) ? change.new_bus_number_id : null)
+            : (change.new_bus_number_id ?? derivedBusId);
       if (!newBusId) continue;
       const changedGroup = ensureGroup(newSlotId, newBusId);
       const effectiveStopId = newStopId ?? def.bus_stop_id;
@@ -308,8 +312,8 @@ export async function getDailyBusManifest(
       const stopName = effectiveStopId ? stopNameMap.get(effectiveStopId) : undefined;
       const effectiveSlotId2 = change.new_bus_time_slot_id ?? def.bus_time_slot_id;
       const stopTime = newStopId
-        ? getStopTime(newStopId, effectiveSlotId2)
-        : (def.bus_stop_id ? getStopTime(def.bus_stop_id, effectiveSlotId2) : null);
+        ? getStopTime(newStopId, effectiveSlotId2, newBusId)
+        : (def.bus_stop_id ? getStopTime(def.bus_stop_id, effectiveSlotId2, newBusId) : null);
       const estimatedTime = stopTime;
       changedGroup.students.push({
         student_profile_id: student.id,
@@ -320,7 +324,7 @@ export async function getDailyBusManifest(
         estimated_time: estimatedTime,
         note: change.reason || def.note,
         bus_stop_name: stopName ?? null,
-        bus_stop_sort_order: effectiveStopId ? stopBusMaps.getSortOrder(effectiveStopId, newSlotId) : null,
+        bus_stop_sort_order: effectiveStopId ? stopBusMaps.getSortOrder(newBusId, effectiveStopId, newSlotId) : null,
         original_slot_time: getSlotTime(def.bus_time_slot_id),
         original_bus_label: derivedBusId ? busMap.get(derivedBusId) : undefined,
         boarded_at: check?.boarded_at ?? null,
@@ -331,7 +335,7 @@ export async function getDailyBusManifest(
       if (!derivedBusId) continue;
       const defaultGroup = ensureGroup(def.bus_time_slot_id, derivedBusId);
       if (def.bus_stop_id) defaultGroup.takenStopIds.add(def.bus_stop_id);
-      const stopTime2 = def.bus_stop_id ? getStopTime(def.bus_stop_id, def.bus_time_slot_id) : undefined;
+      const stopTime2 = def.bus_stop_id ? getStopTime(def.bus_stop_id, def.bus_time_slot_id, derivedBusId) : undefined;
       const stopName2 = def.bus_stop_id ? stopNameMap.get(def.bus_stop_id) : undefined;
       defaultGroup.students.push({
         student_profile_id: student.id,
@@ -342,7 +346,7 @@ export async function getDailyBusManifest(
         estimated_time: stopTime2,
         note: def.note,
         bus_stop_name: stopName2 ?? null,
-        bus_stop_sort_order: def.bus_stop_id ? stopBusMaps.getSortOrder(def.bus_stop_id, def.bus_time_slot_id) : null,
+        bus_stop_sort_order: def.bus_stop_id ? stopBusMaps.getSortOrder(derivedBusId, def.bus_stop_id, def.bus_time_slot_id) : null,
         boarded_at: check?.boarded_at ?? null,
         checked_at: check?.checked_at ?? null,
         check_record_id: check?.id ?? null,
@@ -376,46 +380,26 @@ export async function getDailyBusManifest(
       missingStopIds.length
         ? supabase
             .from("bus_stop_schedules")
-            .select("bus_stop_id, estimated_time, bus_time_slot_id")
+            .select("bus_stop_id, estimated_time, bus_time_slot_id, bus_number_id")
             .in("bus_stop_id", missingStopIds)
             .eq("day_of_week", isoDay)
-        : Promise.resolve({ data: [] as { bus_stop_id: string; estimated_time: string; bus_time_slot_id: string | null }[] }),
+        : Promise.resolve({ data: [] as { bus_stop_id: string; estimated_time: string; bus_time_slot_id: string | null; bus_number_id: string | null }[] }),
       missingSlotIds.length
         ? supabase.from("bus_time_slots").select("id, label, time").in("id", missingSlotIds)
         : Promise.resolve({ data: [] as { id: string; label: string; time: string }[] }),
     ]);
 
     for (const s of extraStopNamesRes.data ?? []) stopNameMap.set(s.id, s.name);
-    for (const ss of extraStopSchedulesRes.data ?? []) {
-      if (!stopScheduleMap.has(ss.bus_stop_id)) stopScheduleMap.set(ss.bus_stop_id, new Map());
-      const slotKey = ss.bus_time_slot_id ?? "_";
-      stopScheduleMap.get(ss.bus_stop_id)!.set(slotKey, ss.estimated_time);
-    }
+    for (const ss of extraStopSchedulesRes.data ?? []) addStopSchedule(ss);
     for (const s of extraSlotsRes.data ?? []) slotMap.set(s.id, { label: s.label, time: s.time });
 
     for (const slotId of flaggedSlotArr) {
-      const resolved = new Map<string, { busId: string; sortOrder: number }>();
-      for (const row of assignmentRows) {
-        if (row.bus_time_slot_id === slotId) {
-          resolved.set(row.bus_stop_id, {
-            busId: row.bus_number_id,
-            sortOrder: row.sort_order ?? 0,
-          });
-        }
-      }
-      for (const row of assignmentRows) {
-        if (row.bus_time_slot_id === null && !resolved.has(row.bus_stop_id)) {
-          resolved.set(row.bus_stop_id, {
-            busId: row.bus_number_id,
-            sortOrder: row.sort_order ?? 0,
-          });
-        }
-      }
-
+      // 해당 시간대 배정 행들. 공유 정류장은 호차마다 포함.
       const byBus = new Map<string, { stopId: string; sortOrder: number }[]>();
-      for (const [stopId, info] of resolved) {
-        if (!byBus.has(info.busId)) byBus.set(info.busId, []);
-        byBus.get(info.busId)!.push({ stopId, sortOrder: info.sortOrder });
+      for (const row of assignmentRows) {
+        if (row.bus_time_slot_id !== slotId) continue;
+        if (!byBus.has(row.bus_number_id)) byBus.set(row.bus_number_id, []);
+        byBus.get(row.bus_number_id)!.push({ stopId: row.bus_stop_id, sortOrder: row.sort_order ?? 0 });
       }
 
       for (const [busId, stops] of byBus) {
@@ -425,7 +409,7 @@ export async function getDailyBusManifest(
           if (group.takenStopIds.has(s.stopId)) continue;
           const name = stopNameMap.get(s.stopId);
           if (!name) continue;
-          const time = getStopTime(s.stopId, slotId);
+          const time = getStopTime(s.stopId, slotId, busId);
           extras.push({
             bus_stop_id: s.stopId,
             bus_stop_name: name,

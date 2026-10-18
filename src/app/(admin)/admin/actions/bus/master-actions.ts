@@ -11,6 +11,7 @@ import type {
   BusStopSchedule,
 } from "@/lib/types";
 import type { Database } from "@/lib/types/database.generated";
+import { getServedStopBusesByDay } from "./_helpers";
 
 // ── 호차 CRUD ──
 
@@ -276,7 +277,7 @@ export async function deleteBusStop(id: string): Promise<{ error?: string }> {
   // 3. student_bus_defaults 참조 null 처리
   const { error: defaultsErr } = await supabase
     .from("student_bus_defaults")
-    .update({ bus_stop_id: null, updated_at: new Date().toISOString() })
+    .update({ bus_stop_id: null, bus_number_id: null, updated_at: new Date().toISOString() })
     .eq("bus_stop_id", id);
   if (defaultsErr) {
     logger.error("[deleteBusStop] defaults", defaultsErr.message);
@@ -296,24 +297,27 @@ export async function deleteBusStop(id: string): Promise<{ error?: string }> {
 }
 
 // ── 요일별 정류장-호차 배정 ──
+// 한 정류장이 같은 요일·시간대에 여러 호차에 배정될 수 있다 (호차별 1행, sort_order 는 호차 내 순서).
+// day 에 배열을 주면 여러 요일을 한 번에 조회/저장한다 (월수금·화목 편집기).
+
+function toDays(day: number | number[]): number[] {
+  return Array.isArray(day) ? day : [day];
+}
 
 export async function listBusStopDayAssignments(
-  day: number,
-  busTimeSlotId?: string
+  day: number | number[],
+  busTimeSlotId: string
 ): Promise<BusStopDayAssignment[]> {
   const auth = await verifyAuthenticated();
   if ("error" in auth) return [];
+  if (!busTimeSlotId) return [];
   const supabase = createAdminClient();
-  let query = supabase
+  const { data, error } = await supabase
     .from("bus_stop_day_assignments")
     .select("*")
-    .eq("day_of_week", day);
-  if (busTimeSlotId) {
-    query = query.eq("bus_time_slot_id", busTimeSlotId);
-  } else {
-    query = query.is("bus_time_slot_id", null);
-  }
-  const { data, error } = await query.order("sort_order");
+    .in("day_of_week", toDays(day))
+    .eq("bus_time_slot_id", busTimeSlotId)
+    .order("sort_order");
   if (error) {
     logger.error("[listBusStopDayAssignments]", error.message);
     return [];
@@ -321,26 +325,30 @@ export async function listBusStopDayAssignments(
   return data as BusStopDayAssignment[];
 }
 
+// day 의 (요일, 시간대) 배정을 통째로 교체. day 가 배열이면 각 행에 day_of_week 필수.
 export async function saveBusStopDayAssignments(
-  day: number,
-  assignments: { bus_stop_id: string; bus_number_id: string; sort_order: number }[],
-  busTimeSlotId?: string
+  day: number | number[],
+  assignments: { bus_stop_id: string; bus_number_id: string; sort_order: number; day_of_week?: number }[],
+  busTimeSlotId: string
 ): Promise<{ error?: string }> {
   const auth = await verifyAdmin();
   if ("error" in auth) return { error: auth.error };
+  if (!busTimeSlotId) return { error: "시간대를 선택해 주세요." };
   const supabase = createAdminClient();
 
-  // 1. Delete existing assignments for this day + timeSlot
-  let delQuery = supabase
+  const days = toDays(day);
+  if (days.length === 0 || days.some((d) => d < 1 || d > 5)) return { error: "유효하지 않은 요일입니다." };
+  const rowDay = (a: { day_of_week?: number }) => a.day_of_week ?? (Array.isArray(day) ? undefined : day);
+  if (assignments.some((a) => !days.includes(rowDay(a) ?? -1))) {
+    return { error: "배정 행의 요일이 저장 대상 요일과 다릅니다." };
+  }
+
+  // 1. Delete existing assignments for these days + timeSlot
+  const { error: delErr } = await supabase
     .from("bus_stop_day_assignments")
     .delete()
-    .eq("day_of_week", day);
-  if (busTimeSlotId) {
-    delQuery = delQuery.eq("bus_time_slot_id", busTimeSlotId);
-  } else {
-    delQuery = delQuery.is("bus_time_slot_id", null);
-  }
-  const { error: delErr } = await delQuery;
+    .in("day_of_week", days)
+    .eq("bus_time_slot_id", busTimeSlotId);
   if (delErr) {
     logger.error("[saveBusStopDayAssignments] delete", delErr.message);
     return { error: delErr.message };
@@ -352,8 +360,8 @@ export async function saveBusStopDayAssignments(
     const rows = assignments.map((a) => ({
       bus_stop_id: a.bus_stop_id,
       bus_number_id: a.bus_number_id,
-      day_of_week: day,
-      bus_time_slot_id: busTimeSlotId ?? null,
+      day_of_week: rowDay(a)!,
+      bus_time_slot_id: busTimeSlotId,
       sort_order: a.sort_order,
       updated_at: now,
     }));
@@ -365,42 +373,73 @@ export async function saveBusStopDayAssignments(
       return { error: insErr.message };
     }
   }
+  return reconcileStudentBuses(supabase, days);
+}
+
+/**
+ * 정류장 배정이 바뀐 요일의 학생 호차(student_bus_defaults.bus_number_id)를 맞춘다.
+ * 학생 호차가 더 이상 그 정류장을 돌지 않으면: 남은 운행 호차가 1대면 그 호차, 아니면 null(미지정).
+ * 비어 있는데 운행 호차가 1대뿐이면 그 호차로 채운다.
+ */
+async function reconcileStudentBuses(
+  supabase: ReturnType<typeof createAdminClient>,
+  days: number[]
+): Promise<{ error?: string }> {
+  const { data: students, error } = await supabase
+    .from("student_bus_defaults")
+    .select("student_id, direction, day_of_week, bus_time_slot_id, bus_stop_id, bus_number_id")
+    .in("day_of_week", days)
+    .not("bus_stop_id", "is", null);
+  if (error) {
+    logger.error("[reconcileStudentBuses] load", error.message);
+    return { error: error.message };
+  }
+
+  const servedBySlot = new Map<string, Record<number, Record<string, string[]>>>();
+  const now = new Date().toISOString();
+  for (const s of students ?? []) {
+    let served = servedBySlot.get(s.bus_time_slot_id);
+    if (!served) {
+      served = await getServedStopBusesByDay(supabase, days, s.bus_time_slot_id);
+      servedBySlot.set(s.bus_time_slot_id, served);
+    }
+    const buses = served[s.day_of_week]?.[s.bus_stop_id!] ?? [];
+    const next =
+      s.bus_number_id && buses.includes(s.bus_number_id)
+        ? s.bus_number_id
+        : buses.length === 1 ? buses[0] : null;
+    if (next === s.bus_number_id) continue;
+    const { error: upErr } = await supabase
+      .from("student_bus_defaults")
+      .update({ bus_number_id: next, updated_at: now })
+      .eq("student_id", s.student_id)
+      .eq("direction", s.direction)
+      .eq("day_of_week", s.day_of_week);
+    if (upErr) {
+      logger.error("[reconcileStudentBuses] update", upErr.message);
+      return { error: upErr.message };
+    }
+  }
   return {};
 }
 
+// (요일, 정류장, 호차) 별 도착 예정 시간 — 해당 시간대 행만.
 export async function listBusStopSchedulesBulk(
-  day: number,
-  slotId?: string
+  day: number | number[],
+  slotId: string
 ): Promise<BusStopSchedule[]> {
   const auth = await verifyAuthenticated();
   if ("error" in auth) return [];
+  if (!slotId) return [];
   const supabase = createAdminClient();
-  let query = supabase
+  const { data, error } = await supabase
     .from("bus_stop_schedules")
     .select("*")
-    .eq("day_of_week", day);
-  if (slotId) {
-    // Show schedules for selected slot OR fallback to NULL (전체 기본)
-    query = query.or(`bus_time_slot_id.eq.${slotId},bus_time_slot_id.is.null`);
-  } else {
-    query = query.is("bus_time_slot_id", null);
-  }
-  const { data, error } = await query;
+    .in("day_of_week", toDays(day))
+    .eq("bus_time_slot_id", slotId);
   if (error) {
     logger.error("[listBusStopSchedulesBulk]", error.message);
     return [];
-  }
-  // If a slot is selected, prefer slot-specific over NULL fallback (per stop)
-  if (slotId && data) {
-    const byStop = new Map<string, typeof data[0]>();
-    for (const row of data) {
-      const existing = byStop.get(row.bus_stop_id);
-      // Prefer the one with matching slot ID over NULL
-      if (!existing || (row.bus_time_slot_id === slotId)) {
-        byStop.set(row.bus_stop_id, row);
-      }
-    }
-    return Array.from(byStop.values()) as BusStopSchedule[];
   }
   return data as BusStopSchedule[];
 }
@@ -430,219 +469,51 @@ export async function listBusStopSchedules(
   return data as BusStopSchedule[];
 }
 
-export async function upsertBusStopSchedule(
-  busStopId: string,
-  dayOfWeek: number,
-  estimatedTime: string,
-  busTimeSlotId?: string
+// 도착 예정 시간 일괄 저장 — (정류장, 요일, 시간대, 호차) 단위.
+// estimated_time 이 있으면 upsert, null/빈 문자열이면 해당 행 삭제.
+export async function saveBusStopSchedules(
+  changes: { bus_stop_id: string; day_of_week: number; bus_number_id: string; estimated_time: string | null }[],
+  busTimeSlotId: string
 ): Promise<{ error?: string }> {
   const auth = await verifyAdmin();
   if ("error" in auth) return { error: auth.error };
+  if (!busTimeSlotId) return { error: "시간대를 선택해 주세요." };
   const supabase = createAdminClient();
 
-  if (dayOfWeek < 1 || dayOfWeek > 5) return { error: "유효하지 않은 요일입니다." };
-  if (!estimatedTime) return { error: "시간을 입력해 주세요." };
-
-  const { error } = await supabase.from("bus_stop_schedules").upsert(
-    {
-      bus_stop_id: busStopId,
-      day_of_week: dayOfWeek,
-      estimated_time: estimatedTime,
-      bus_time_slot_id: busTimeSlotId ?? null,
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: "bus_stop_id,day_of_week,bus_time_slot_id" }
-  );
-  if (error) {
-    logger.error("[upsertBusStopSchedule]", error.message);
-    return { error: error.message };
-  }
-  return {};
-}
-
-export async function deleteBusStopSchedule(
-  busStopId: string,
-  dayOfWeek: number,
-  busTimeSlotId?: string
-): Promise<{ error?: string }> {
-  const auth = await verifyAdmin();
-  if ("error" in auth) return { error: auth.error };
-  const supabase = createAdminClient();
-
-  let query = supabase
-    .from("bus_stop_schedules")
-    .delete()
-    .eq("bus_stop_id", busStopId)
-    .eq("day_of_week", dayOfWeek);
-  if (busTimeSlotId) {
-    query = query.eq("bus_time_slot_id", busTimeSlotId);
-  } else {
-    query = query.is("bus_time_slot_id", null);
-  }
-  const { error } = await query;
-  if (error) {
-    logger.error("[deleteBusStopSchedule]", error.message);
-    return { error: error.message };
-  }
-  return {};
-}
-
-// 요일·시간대 단위 일괄 복사 — 모든 호차의 정류장 배정 + 스케줄 시간을 다른 요일들로 덮어쓰기
-export async function copyBusDayDataToOtherDays(
-  sourceDay: number,
-  targetDays: number[],
-  busTimeSlotId?: string
-): Promise<{ error?: string; copied?: number }> {
-  const auth = await verifyAdmin();
-  if ("error" in auth) return { error: auth.error };
-  const supabase = createAdminClient();
-
-  const cleanTargets = targetDays.filter((d) => d !== sourceDay && d >= 1 && d <= 5);
-  if (cleanTargets.length === 0) return { error: "복사 대상 요일이 없습니다." };
-
-  // 1. 원본 데이터 로드
-  let assignQuery = supabase
-    .from("bus_stop_day_assignments")
-    .select("bus_stop_id, bus_number_id, sort_order")
-    .eq("day_of_week", sourceDay);
-  assignQuery = busTimeSlotId
-    ? assignQuery.eq("bus_time_slot_id", busTimeSlotId)
-    : assignQuery.is("bus_time_slot_id", null);
-  const { data: srcAssignments, error: srcAErr } = await assignQuery;
-  if (srcAErr) {
-    logger.error("[copyBusDayDataToOtherDays] load assignments", srcAErr.message);
-    return { error: srcAErr.message };
-  }
-
-  let schedQuery = supabase
-    .from("bus_stop_schedules")
-    .select("bus_stop_id, estimated_time")
-    .eq("day_of_week", sourceDay);
-  schedQuery = busTimeSlotId
-    ? schedQuery.eq("bus_time_slot_id", busTimeSlotId)
-    : schedQuery.is("bus_time_slot_id", null);
-  const { data: srcSchedules, error: srcSErr } = await schedQuery;
-  if (srcSErr) {
-    logger.error("[copyBusDayDataToOtherDays] load schedules", srcSErr.message);
-    return { error: srcSErr.message };
-  }
-
-  const slotValue = busTimeSlotId ?? null;
+  if (changes.some((c) => c.day_of_week < 1 || c.day_of_week > 5)) return { error: "유효하지 않은 요일입니다." };
   const now = new Date().toISOString();
 
-  // 2. 대상 요일 각각: 기존 데이터 삭제 후 새로 삽입
-  for (const targetDay of cleanTargets) {
-    let delAssignQ = supabase
-      .from("bus_stop_day_assignments")
-      .delete()
-      .eq("day_of_week", targetDay);
-    delAssignQ = busTimeSlotId
-      ? delAssignQ.eq("bus_time_slot_id", busTimeSlotId)
-      : delAssignQ.is("bus_time_slot_id", null);
-    const { error: delAErr } = await delAssignQ;
-    if (delAErr) {
-      logger.error("[copyBusDayDataToOtherDays] delete assignments", delAErr.message);
-      return { error: `${targetDay}요일 기존 배정 삭제 실패: ${delAErr.message}` };
+  const upserts = changes.filter((c) => c.estimated_time);
+  if (upserts.length) {
+    const { error } = await supabase.from("bus_stop_schedules").upsert(
+      upserts.map((c) => ({
+        bus_stop_id: c.bus_stop_id,
+        day_of_week: c.day_of_week,
+        bus_number_id: c.bus_number_id,
+        estimated_time: c.estimated_time!,
+        bus_time_slot_id: busTimeSlotId,
+        updated_at: now,
+      })),
+      { onConflict: "bus_stop_id,day_of_week,bus_time_slot_id,bus_number_id" }
+    );
+    if (error) {
+      logger.error("[saveBusStopSchedules] upsert", error.message);
+      return { error: error.message };
     }
+  }
 
-    let delSchedQ = supabase
+  for (const c of changes.filter((c) => !c.estimated_time)) {
+    const { error } = await supabase
       .from("bus_stop_schedules")
       .delete()
-      .eq("day_of_week", targetDay);
-    delSchedQ = busTimeSlotId
-      ? delSchedQ.eq("bus_time_slot_id", busTimeSlotId)
-      : delSchedQ.is("bus_time_slot_id", null);
-    const { error: delSErr } = await delSchedQ;
-    if (delSErr) {
-      logger.error("[copyBusDayDataToOtherDays] delete schedules", delSErr.message);
-      return { error: `${targetDay}요일 기존 시간 삭제 실패: ${delSErr.message}` };
-    }
-
-    if (srcAssignments && srcAssignments.length) {
-      const rows = srcAssignments.map((a) => ({
-        bus_stop_id: a.bus_stop_id,
-        bus_number_id: a.bus_number_id,
-        day_of_week: targetDay,
-        bus_time_slot_id: slotValue,
-        sort_order: a.sort_order,
-        updated_at: now,
-      }));
-      const { error: insAErr } = await supabase
-        .from("bus_stop_day_assignments")
-        .insert(rows);
-      if (insAErr) {
-        logger.error("[copyBusDayDataToOtherDays] insert assignments", insAErr.message);
-        return { error: `${targetDay}요일 배정 삽입 실패: ${insAErr.message}` };
-      }
-    }
-
-    if (srcSchedules && srcSchedules.length) {
-      const rows = srcSchedules.map((s) => ({
-        bus_stop_id: s.bus_stop_id,
-        day_of_week: targetDay,
-        bus_time_slot_id: slotValue,
-        estimated_time: s.estimated_time,
-        updated_at: now,
-      }));
-      const { error: insSErr } = await supabase
-        .from("bus_stop_schedules")
-        .insert(rows);
-      if (insSErr) {
-        logger.error("[copyBusDayDataToOtherDays] insert schedules", insSErr.message);
-        return { error: `${targetDay}요일 시간 삽입 실패: ${insSErr.message}` };
-      }
+      .eq("bus_stop_id", c.bus_stop_id)
+      .eq("day_of_week", c.day_of_week)
+      .eq("bus_number_id", c.bus_number_id)
+      .eq("bus_time_slot_id", busTimeSlotId);
+    if (error) {
+      logger.error("[saveBusStopSchedules] delete", error.message);
+      return { error: error.message };
     }
   }
-
-  return { copied: cleanTargets.length };
-}
-
-// 요일·시간대별 기존 배정/시간 행 수 (월~금) — 복사 모달의 충돌 미리보기용
-export async function getBusDayDataCounts(
-  busTimeSlotId?: string
-): Promise<Record<number, { assignments: number; schedules: number }>> {
-  const result: Record<number, { assignments: number; schedules: number }> = {
-    1: { assignments: 0, schedules: 0 },
-    2: { assignments: 0, schedules: 0 },
-    3: { assignments: 0, schedules: 0 },
-    4: { assignments: 0, schedules: 0 },
-    5: { assignments: 0, schedules: 0 },
-  };
-  const auth = await verifyAuthenticated();
-  if ("error" in auth) return result;
-  const supabase = createAdminClient();
-
-  let aQuery = supabase
-    .from("bus_stop_day_assignments")
-    .select("day_of_week");
-  aQuery = busTimeSlotId
-    ? aQuery.eq("bus_time_slot_id", busTimeSlotId)
-    : aQuery.is("bus_time_slot_id", null);
-  const { data: aData, error: aErr } = await aQuery;
-  if (aErr) {
-    logger.error("[getBusDayDataCounts] assignments", aErr.message);
-  } else if (aData) {
-    for (const row of aData) {
-      const d = row.day_of_week;
-      if (d >= 1 && d <= 5) result[d].assignments += 1;
-    }
-  }
-
-  let sQuery = supabase
-    .from("bus_stop_schedules")
-    .select("day_of_week");
-  sQuery = busTimeSlotId
-    ? sQuery.eq("bus_time_slot_id", busTimeSlotId)
-    : sQuery.is("bus_time_slot_id", null);
-  const { data: sData, error: sErr } = await sQuery;
-  if (sErr) {
-    logger.error("[getBusDayDataCounts] schedules", sErr.message);
-  } else if (sData) {
-    for (const row of sData) {
-      const d = row.day_of_week;
-      if (d >= 1 && d <= 5) result[d].schedules += 1;
-    }
-  }
-
-  return result;
+  return {};
 }

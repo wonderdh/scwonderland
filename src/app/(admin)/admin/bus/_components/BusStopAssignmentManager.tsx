@@ -1,34 +1,43 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ConfirmDialog } from "@/components/overlays/ConfirmDialog";
 import type { BusNumber, BusStop, BusTimeSlot } from "@/lib/types";
 import {
+  createBusNumber,
+  updateBusNumber,
+  deleteBusNumber,
+  createBusStop,
+  updateBusStop,
+  deleteBusStop,
   listBusStopDayAssignments,
   saveBusStopDayAssignments,
   listBusStopSchedulesBulk,
-  upsertBusStopSchedule,
-  deleteBusStopSchedule,
+  saveBusStopSchedules,
 } from "@/app/(admin)/admin/actions/bus-actions";
-import { BUS_WEEKDAYS as DAYS } from "@/lib/constants/bus";
+import { BUS_WEEKDAYS } from "@/lib/constants/bus";
 import { useBusDirtyFilter, type StopAssignment } from "../_hooks/useBusDirtyFilter";
-import { DayTimeFilterBar } from "./DayTimeFilterBar";
 
-// 복사 모달용 충돌 정보
-type CopyConflict = {
-  stopId: string;
-  stopName: string;
-  existingBusLabel: string;
-  newBusLabel: string;
+const DAY_GROUPS = [
+  { key: "mwf", label: "월수금", days: [1, 3, 5] },
+  { key: "tt", label: "화목", days: [2, 4] },
+] as const;
+
+const dayLabel = (d: number) => BUS_WEEKDAYS.find((x) => x.value === d)?.label ?? "";
+
+// 배정·시간 Map 의 키 = `요일|정류장|호차`. 한 정류장이 여러 호차에 들어갈 수 있다.
+const ck = (day: number, stopId: string, busId: string) => `${day}|${stopId}|${busId}`;
+const parseKey = (key: string) => {
+  const [d, stopId, busId] = key.split("|");
+  return { day: Number(d), stopId, busId };
 };
 
-type CopyDayPreview = {
-  day: number;
-  conflicts: CopyConflict[];
-};
+// 드래그 payload — from 이 없으면 사이드바에서 끌어온 것 (추가)
+type DragData = { stopId: string; from?: { day: number; busId: string } };
 
 export function BusStopAssignmentManager({
   busNumbers,
@@ -39,16 +48,17 @@ export function BusStopAssignmentManager({
   busTimeSlots: BusTimeSlot[];
   initialStops: BusStop[];
 }) {
+  const router = useRouter();
+
   // Filters
-  const [day, setDay] = useState(1);
-  const [timeSlotId, setTimeSlotId] = useState(() => {
-    return busTimeSlots[0]?.id ?? "";
-  });
+  const [groupIdx, setGroupIdx] = useState(0);
+  const [timeSlotId, setTimeSlotId] = useState(() => busTimeSlots[0]?.id ?? "");
+  const days: readonly number[] = DAY_GROUPS[groupIdx].days;
 
-  // Master stop list (read-only — CRUD is handled in BusManagePanel)
-  const [stops] = useState<BusStop[]>(initialStops);
+  // Master stop list (정류장 CRUD 는 즉시 반영)
+  const [stops, setStops] = useState<BusStop[]>(initialStops);
 
-  // Per-day assignment + schedule + dirty/필터 가드 — BusNumbersManager 와 공유.
+  // 배정(요일|정류장|호차 → 순서) + 시간 + dirty/필터 가드
   const {
     dayAssignments, setDayAssignments,
     serverAssignments, setServerAssignments,
@@ -63,178 +73,261 @@ export function BusStopAssignmentManager({
 
   // UI
   const [search, setSearch] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [copyTimeConfirm, setCopyTimeConfirm] = useState<{
-    open: boolean;
-    stopId?: string;
-    day?: number;
-    time?: string;
-    slotId?: string;
-    dayLabel?: string;
-  }>({ open: false });
+  const [onlyUnassigned, setOnlyUnassigned] = useState(false);
   const [saving, setSaving] = useState(false);
   const [dragOverTarget, setDragOverTarget] = useState<string | null>(null);
 
-  // 복사 모달
-  const [copyModalOpen, setCopyModalOpen] = useState(false);
-  const [copySelectedDays, setCopySelectedDays] = useState<Set<number>>(new Set());
-  const [copyPreviews, setCopyPreviews] = useState<CopyDayPreview[]>([]);
-  const [copyPreviewLoading, setCopyPreviewLoading] = useState(false);
-  const [copying, setCopying] = useState(false);
-
-  const filteredSlots = busTimeSlots;
+  // 호차·정류장 CRUD
+  const [loading, setLoading] = useState(false);
+  const [newBusLabel, setNewBusLabel] = useState("");
+  const [newStopName, setNewStopName] = useState("");
+  const [editingBusId, setEditingBusId] = useState<string | null>(null);
+  const [editBusLabel, setEditBusLabel] = useState("");
+  const [editingStopId, setEditingStopId] = useState<string | null>(null);
+  const [editStopName, setEditStopName] = useState("");
+  const [deleteBusConfirm, setDeleteBusConfirm] = useState<{ open: boolean; id?: string; label?: string }>({ open: false });
+  const [deleteStopConfirm, setDeleteStopConfirm] = useState<{ open: boolean; id?: string; name?: string }>({ open: false });
 
   // ── Fetch ──
 
-  const fetchDayAssignments = useCallback(async () => {
-    let data = await listBusStopDayAssignments(day, timeSlotId || undefined);
-    // 특정 시간대 선택 시 데이터가 없으면 기본(전체) 배정을 복사해서 표시
-    const isSlotFallback = timeSlotId && data.length === 0;
-    if (isSlotFallback) {
-      data = await listBusStopDayAssignments(day, undefined);
-    }
-    const map = new Map<string, StopAssignment>();
-    for (const a of data) map.set(a.bus_stop_id, { busNumberId: a.bus_number_id, sortOrder: a.sort_order });
-    setDayAssignments(map);
-    // fallback 데이터는 서버에 없으므로 serverAssignments를 비워서 dirty 상태로 표시
-    setServerAssignments(
-      isSlotFallback
-        ? new Map()
-        : new Map([...map].map(([k, v]) => [k, { ...v }]))
-    );
-  }, [day, timeSlotId, setDayAssignments, setServerAssignments]);
+  const fetchData = useCallback(async () => {
+    const dayList = [...days];
+    const [rows, schedules] = await Promise.all([
+      listBusStopDayAssignments(dayList, timeSlotId),
+      listBusStopSchedulesBulk(dayList, timeSlotId),
+    ]);
 
-  const fetchSchedules = useCallback(async () => {
-    const data = await listBusStopSchedulesBulk(day, timeSlotId || undefined);
-    const map = new Map<string, string>();
-    for (const s of data) map.set(s.bus_stop_id, s.estimated_time?.slice(0, 5) ?? "");
-    setScheduleMap(map);
-    setServerSchedules(new Map(map));
-  }, [day, timeSlotId, setScheduleMap, setServerSchedules]);
+    const local = new Map<string, StopAssignment>();
+    const server = new Map<string, StopAssignment>();
+    for (const a of rows) {
+      const v = { busNumberId: a.bus_number_id, sortOrder: a.sort_order };
+      local.set(ck(a.day_of_week, a.bus_stop_id, a.bus_number_id), v);
+      server.set(ck(a.day_of_week, a.bus_stop_id, a.bus_number_id), { ...v });
+    }
+    setDayAssignments(local);
+    setServerAssignments(server);
+
+    const times = new Map<string, string>();
+    for (const s of schedules) {
+      if (s.bus_number_id) times.set(ck(s.day_of_week, s.bus_stop_id, s.bus_number_id), s.estimated_time?.slice(0, 5) ?? "");
+    }
+    setScheduleMap(times);
+    setServerSchedules(new Map(times));
+  }, [days, timeSlotId, setDayAssignments, setServerAssignments, setScheduleMap, setServerSchedules]);
 
   // async fetch → setState. setter 는 useBusDirtyFilter 가 useState 로 만든 stable ref.
-  useEffect(() => { fetchDayAssignments(); }, [fetchDayAssignments]);
-  useEffect(() => { fetchSchedules(); }, [fetchSchedules]);
+  useEffect(() => { fetchData(); }, [fetchData]);
 
-  // ── Derived: get ordered stops for a bus ──
+  // ── Derived ──
 
-  function getAssignedStops(busId: string): BusStop[] {
-    return stops
-      .filter((s) => dayAssignments.get(s.id)?.busNumberId === busId)
-      .sort((a, b) => (dayAssignments.get(a.id)?.sortOrder ?? 0) - (dayAssignments.get(b.id)?.sortOrder ?? 0));
+  // sort_order 가 같으면 정류장 목록 순서(sort_order, name)로 — 예전 편집기와 동일
+  const stopIndex = new Map(stops.map((s, i) => [s.id, i]));
+  function cellStops(map: Map<string, StopAssignment>, day: number, busId: string): string[] {
+    return [...map.entries()]
+      .filter(([k]) => { const p = parseKey(k); return p.day === day && p.busId === busId; })
+      .map(([k, v]) => ({ stopId: parseKey(k).stopId, sortOrder: v.sortOrder }))
+      .sort((a, b) => a.sortOrder - b.sortOrder || (stopIndex.get(a.stopId) ?? 0) - (stopIndex.get(b.stopId) ?? 0))
+      .map((x) => x.stopId);
   }
 
-  const unassignedStops = stops
-    .filter((s) => !dayAssignments.has(s.id))
-    .sort((a, b) => a.name.localeCompare(b.name));
-  const filteredUnassigned = search
-    ? unassignedStops.filter((s) => s.name.toLowerCase().includes(search.toLowerCase()))
-    : unassignedStops;
-
-  // ── Drag & Drop ──
-
-  function handleDragStart(e: React.DragEvent, stopId: string) {
-    e.dataTransfer.setData("text/plain", JSON.stringify({ stopId }));
-    e.dataTransfer.effectAllowed = "move";
+  function isCellDirty(day: number, busId: string): boolean {
+    const local = cellStops(dayAssignments, day, busId);
+    const server = cellStops(serverAssignments, day, busId);
+    if (local.join(",") !== server.join(",")) return true;
+    const ids = new Set([...local, ...server]);
+    for (const id of ids) {
+      const k = ck(day, id, busId);
+      if ((scheduleMap.get(k) ?? "") !== (serverSchedules.get(k) ?? "")) return true;
+    }
+    return false;
   }
 
-  function handleDropOnBus(e: React.DragEvent, busNumberId: string) {
-    e.preventDefault();
-    setDragOverTarget(null);
-    try {
-      const { stopId } = JSON.parse(e.dataTransfer.getData("text/plain"));
-      if (dayAssignments.get(stopId)?.busNumberId === busNumberId) return;
-      setDayAssignments((prev) => {
-        const next = new Map(prev);
-        // 해당 호차의 마지막 순서 뒤에 추가
-        let maxOrder = -1;
-        for (const [, v] of next) {
-          if (v.busNumberId === busNumberId && v.sortOrder > maxOrder) maxOrder = v.sortOrder;
-        }
-        next.set(stopId, { busNumberId, sortOrder: maxOrder + 1 });
-        return next;
-      });
-    } catch { /* ignore */ }
+  // 정류장 → 보이는 요일들에서 이 정류장을 쓰는 호차 id 집합
+  const busesByStop = new Map<string, Set<string>>();
+  for (const k of dayAssignments.keys()) {
+    const { day, stopId, busId } = parseKey(k);
+    if (!days.includes(day)) continue;
+    if (!busesByStop.has(stopId)) busesByStop.set(stopId, new Set());
+    busesByStop.get(stopId)!.add(busId);
   }
 
-  function handleDropOnStop(e: React.DragEvent, targetStopId: string, targetBusId: string) {
+  const stopNameMap = new Map(stops.map((s) => [s.id, s.name]));
+  const sidebarStops = stops
+    .filter((s) => !search || s.name.toLowerCase().includes(search.toLowerCase()))
+    .filter((s) => !onlyUnassigned || !busesByStop.has(s.id))
+    .sort((a, b) => a.name.localeCompare(b.name, "ko"));
+
+  function busTag(stopId: string): string {
+    const used = busesByStop.get(stopId);
+    if (!used) return "-";
+    return busNumbers
+      .filter((b) => used.has(b.id))
+      .map((b) => b.label.replace(/호차$/, ""))
+      .join("·");
+  }
+
+  // ── Mutations (local) ──
+
+  // (요일, 호차) 셀을 주어진 정류장 순서로 교체
+  function writeCell(next: Map<string, StopAssignment>, day: number, busId: string, stopIds: string[]) {
+    for (const k of [...next.keys()]) {
+      const p = parseKey(k);
+      if (p.day === day && p.busId === busId) next.delete(k);
+    }
+    stopIds.forEach((id, i) => next.set(ck(day, id, busId), { busNumberId: busId, sortOrder: i }));
+  }
+
+  function setTime(key: string, time: string | undefined) {
+    setScheduleMap((prev) => {
+      const next = new Map(prev);
+      if (time) next.set(key, time);
+      else next.delete(key);
+      return next;
+    });
+  }
+
+  function handleDrop(e: React.DragEvent, day: number, busId: string, beforeStopId?: string) {
     e.preventDefault();
     e.stopPropagation();
     setDragOverTarget(null);
-    try {
-      const { stopId } = JSON.parse(e.dataTransfer.getData("text/plain"));
-      if (stopId === targetStopId) return;
+    let data: DragData;
+    try { data = JSON.parse(e.dataTransfer.getData("text/plain")); } catch { return; }
+    const { stopId, from } = data;
+    if (!stopId) return;
+    const sameCell = from?.day === day && from?.busId === busId;
+    const target = cellStops(dayAssignments, day, busId);
+    // 사이드바 → 이미 있는 셀: 무시
+    if (!from && target.includes(stopId)) return;
 
-      setDayAssignments((prev) => {
-        const next = new Map(prev);
-
-        // 대상 호차의 현재 정렬된 정류장 id 목록
-        const busStopIds = stops
-          .filter((s) => next.get(s.id)?.busNumberId === targetBusId)
-          .sort((a, b) => (next.get(a.id)?.sortOrder ?? 0) - (next.get(b.id)?.sortOrder ?? 0))
-          .map((s) => s.id);
-
-        // 같은 호차 내 이동이면 dragged 를 목록에서 제거 후 target 앞에 재삽입
-        const filtered = busStopIds.filter((id) => id !== stopId);
-        const targetIdx = filtered.indexOf(targetStopId);
-        if (targetIdx === -1) filtered.push(stopId);
-        else filtered.splice(targetIdx, 0, stopId);
-
-        // sort_order 재할당 (다른 호차에서 온 경우 자동으로 호차 이동)
-        for (let i = 0; i < filtered.length; i++) {
-          next.set(filtered[i], { busNumberId: targetBusId, sortOrder: i });
-        }
-
-        return next;
-      });
-    } catch { /* ignore */ }
+    const next = new Map(dayAssignments);
+    if (from && !sameCell) {
+      // 이동: 출발 셀에서 제거. 시간은 대상에 없을 때만 따라감
+      writeCell(next, from.day, from.busId, cellStops(dayAssignments, from.day, from.busId).filter((id) => id !== stopId));
+      const fromKey = ck(from.day, stopId, from.busId);
+      const toKey = ck(day, stopId, busId);
+      const time = scheduleMap.get(fromKey);
+      setTime(fromKey, undefined);
+      if (time && !target.includes(stopId)) setTime(toKey, time);
+      if (target.includes(stopId)) { setDayAssignments(next); return; }
+    }
+    const list = target.filter((id) => id !== stopId);
+    const idx = beforeStopId ? list.indexOf(beforeStopId) : -1;
+    if (idx === -1) list.push(stopId);
+    else list.splice(idx, 0, stopId);
+    writeCell(next, day, busId, list);
+    setDayAssignments(next);
   }
 
-  function handleDropOnUnassigned(e: React.DragEvent) {
-    e.preventDefault();
-    setDragOverTarget(null);
-    try {
-      const { stopId } = JSON.parse(e.dataTransfer.getData("text/plain"));
-      if (!dayAssignments.has(stopId)) return;
-      setDayAssignments((prev) => {
-        const next = new Map(prev);
-        next.delete(stopId);
-        return next;
-      });
-    } catch { /* ignore */ }
+  function removeFromCell(day: number, busId: string, stopId: string) {
+    const next = new Map(dayAssignments);
+    writeCell(next, day, busId, cellStops(dayAssignments, day, busId).filter((id) => id !== stopId));
+    setDayAssignments(next);
+    setTime(ck(day, stopId, busId), undefined);
   }
 
-  function handleDragOver(e: React.DragEvent, targetId: string) {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
-    setDragOverTarget(targetId);
-  }
-
-  function handleDragLeave(e: React.DragEvent) {
-    if (e.currentTarget.contains(e.relatedTarget as Node)) return;
-    setDragOverTarget(null);
-  }
-
-  // ── Dirty helper ──
-
-  function isStopDirty(stopId: string): boolean {
-    const local = dayAssignments.get(stopId);
-    const server = serverAssignments.get(stopId);
-    if (!local && !server) return false;
-    if (!local || !server) return true;
-    if (local.busNumberId !== server.busNumberId || local.sortOrder !== server.sortOrder) return true;
-    return (scheduleMap.get(stopId) ?? "") !== (serverSchedules.get(stopId) ?? "");
-  }
-
-  // ── Time editing (local) ──
-
-  function handleTimeChange(stopId: string, newTime: string) {
+  // 이 셀(정류장·순서·시간)을 같은 호차의 다른 보이는 요일에 덮어쓰기
+  function applyToOtherDays(day: number, busId: string) {
+    const list = cellStops(dayAssignments, day, busId);
+    const others = days.filter((d) => d !== day);
+    const next = new Map(dayAssignments);
+    for (const d of others) writeCell(next, d, busId, list);
+    setDayAssignments(next);
     setScheduleMap((prev) => {
-      const next = new Map(prev);
-      if (newTime) next.set(stopId, newTime);
-      else next.delete(stopId);
-      return next;
+      const times = new Map(prev);
+      for (const d of others) {
+        for (const k of [...times.keys()]) {
+          const p = parseKey(k);
+          if (p.day === d && p.busId === busId) times.delete(k);
+        }
+        for (const id of list) {
+          const t = prev.get(ck(day, id, busId));
+          if (t) times.set(ck(d, id, busId), t);
+        }
+      }
+      return times;
     });
+  }
+
+  // ── Bus CRUD (immediate) ──
+
+  async function handleCreateBus() {
+    if (!newBusLabel.trim()) return;
+    setLoading(true);
+    const result = await createBusNumber(newBusLabel.trim());
+    if (result.error) toast.error(result.error);
+    else { setNewBusLabel(""); router.refresh(); }
+    setLoading(false);
+  }
+
+  async function handleUpdateBus(id: string) {
+    if (!editBusLabel.trim()) return;
+    setLoading(true);
+    const result = await updateBusNumber(id, editBusLabel.trim());
+    if (result.error) toast.error(result.error);
+    else { setEditingBusId(null); router.refresh(); }
+    setLoading(false);
+  }
+
+  async function confirmDeleteBus() {
+    const id = deleteBusConfirm.id;
+    setDeleteBusConfirm({ open: false });
+    if (!id) return;
+    setLoading(true);
+    const result = await deleteBusNumber(id);
+    if (result.error) toast.error(result.error);
+    else router.refresh();
+    setLoading(false);
+  }
+
+  // ── Stop CRUD (immediate) ──
+
+  async function handleCreateStop() {
+    if (!newStopName.trim()) return;
+    setLoading(true);
+    const result = await createBusStop(newStopName.trim());
+    if (result.error) {
+      toast.error(result.error);
+    } else {
+      const name = newStopName.trim();
+      setNewStopName("");
+      setStops((prev) => [...prev, {
+        id: result.id!, bus_number_id: null, name,
+        sort_order: prev.length, is_active: true, created_at: "", updated_at: "",
+      }]);
+    }
+    setLoading(false);
+  }
+
+  async function handleUpdateStop(stopId: string) {
+    if (!editStopName.trim()) return;
+    setLoading(true);
+    const result = await updateBusStop(stopId, editStopName.trim());
+    if (result.error) {
+      toast.error(result.error);
+    } else {
+      setEditingStopId(null);
+      setStops((prev) => prev.map((s) => (s.id === stopId ? { ...s, name: editStopName.trim() } : s)));
+    }
+    setLoading(false);
+  }
+
+  async function confirmDeleteStop() {
+    const stopId = deleteStopConfirm.id;
+    setDeleteStopConfirm({ open: false });
+    if (!stopId) return;
+    setLoading(true);
+    const result = await deleteBusStop(stopId);
+    if (result.error) toast.error(result.error);
+    else {
+      setStops((prev) => prev.filter((s) => s.id !== stopId));
+      // 이 정류장의 모든 (요일, 호차) 키 제거
+      const drop = <V,>(prev: Map<string, V>) => new Map([...prev].filter(([k]) => parseKey(k).stopId !== stopId));
+      setDayAssignments(drop);
+      setServerAssignments(drop);
+      setScheduleMap(drop);
+      setServerSchedules(drop);
+    }
+    setLoading(false);
   }
 
   // ── Bulk Save ──
@@ -242,30 +335,35 @@ export function BusStopAssignmentManager({
   async function handleSaveAll() {
     setSaving(true);
     const errors: string[] = [];
+    const slotId = timeSlotId;
 
-    // 1. 배정(호차 + 순서) 저장
-    const assignmentArr = [...dayAssignments.entries()].map(([bus_stop_id, a]) => ({
-      bus_stop_id,
-      bus_number_id: a.busNumberId,
-      sort_order: a.sortOrder,
-    }));
-    const aResult = await saveBusStopDayAssignments(day, assignmentArr, timeSlotId || undefined);
-    if (aResult.error) errors.push(`배정 저장: ${aResult.error}`);
+    // 1. 배정 — 바뀐 요일만 통째로 교체
+    const dirtyDays = days.filter((d) => {
+      const local = [...dayAssignments].filter(([k]) => parseKey(k).day === d);
+      const server = [...serverAssignments].filter(([k]) => parseKey(k).day === d);
+      return local.length !== server.length
+        || local.some(([k, v]) => serverAssignments.get(k)?.sortOrder !== v.sortOrder);
+    });
+    if (dirtyDays.length) {
+      const rows = [...dayAssignments.entries()]
+        .map(([k, a]) => ({ ...parseKey(k), a }))
+        .filter((r) => dirtyDays.includes(r.day))
+        .map((r) => ({ day_of_week: r.day, bus_stop_id: r.stopId, bus_number_id: r.busId, sort_order: r.a.sortOrder }));
+      const r = await saveBusStopDayAssignments([...dirtyDays], rows, slotId);
+      if (r.error) errors.push(`배정 저장: ${r.error}`);
+    }
 
-    // 2. 도착 예정 시간 저장
-    const slotId = timeSlotId || undefined;
-    const allSchedIds = new Set([...scheduleMap.keys(), ...serverSchedules.keys()]);
-    for (const stopId of allSchedIds) {
-      const local = scheduleMap.get(stopId) ?? "";
-      const server = serverSchedules.get(stopId) ?? "";
-      if (local === server) continue;
-      if (local) {
-        const r = await upsertBusStopSchedule(stopId, day, local, slotId);
-        if (r.error) errors.push(`시간 저장: ${r.error}`);
-      } else {
-        const r = await deleteBusStopSchedule(stopId, day, slotId);
-        if (r.error) errors.push(`시간 삭제: ${r.error}`);
-      }
+    // 2. 도착 예정 시간 — 바뀐 (요일, 정류장, 호차) 만
+    const allKeys = new Set([...scheduleMap.keys(), ...serverSchedules.keys()]);
+    const changes = [...allKeys]
+      .filter((k) => (scheduleMap.get(k) ?? "") !== (serverSchedules.get(k) ?? ""))
+      .map((k) => {
+        const p = parseKey(k);
+        return { day_of_week: p.day, bus_stop_id: p.stopId, bus_number_id: p.busId, estimated_time: scheduleMap.get(k) || null };
+      });
+    if (changes.length) {
+      const r = await saveBusStopSchedules(changes, slotId);
+      if (r.error) errors.push(`시간 저장: ${r.error}`);
     }
 
     if (errors.length) {
@@ -279,150 +377,49 @@ export function BusStopAssignmentManager({
     setSaving(false);
   }
 
-  // ── 전체 요일 시간 복사 (정류장 행 버튼) ──
-
-  async function handleCopyToAllDays(stopId: string) {
-    const time = scheduleMap.get(stopId);
-    if (!time) {
-      toast.error("복사할 시간을 먼저 입력해 주세요.");
-      return;
-    }
-    const dayLabel = DAYS.find((d) => d.value === day)?.label ?? "";
-    setCopyTimeConfirm({ open: true, stopId, day, time, slotId: timeSlotId || undefined, dayLabel });
-  }
-
-  async function confirmCopyTime() {
-    const { stopId, day, time, slotId } = copyTimeConfirm;
-    setCopyTimeConfirm({ open: false });
-    if (!stopId || !day || !time) return;
-    setLoading(true);
-    const errors: string[] = [];
-    for (const d of DAYS) {
-      if (d.value === day) continue;
-      const r = await upsertBusStopSchedule(stopId, d.value, time, slotId);
-      if (r.error) errors.push(`${d.label}: ${r.error}`);
-    }
-    if (errors.length) toast.error(errors.join(", "));
-    else toast.success("전체 요일에 적용되었습니다.");
-    setLoading(false);
-  }
-
-  // ── 다른 요일에 복사 모달 ──
-
-  const busLabelMap = new Map(busNumbers.map((b) => [b.id, b.label]));
-  const stopNameMap = new Map(stops.map((s) => [s.id, s.name]));
-
-  async function openCopyModal() {
-    if (dayAssignments.size === 0) {
-      toast.error("복사할 배정 데이터가 없습니다.");
-      return;
-    }
-    setCopyModalOpen(true);
-    setCopySelectedDays(new Set());
-    setCopyPreviews([]);
-    setCopyPreviewLoading(true);
-
-    const otherDays = DAYS.filter((d) => d.value !== day);
-
-    // 4개 요일 preview 를 병렬로 fetch — 직렬 await 대비 4배 빠름.
-    const previews: CopyDayPreview[] = await Promise.all(
-      otherDays.map(async (d) => {
-        const existing = await listBusStopDayAssignments(d.value, timeSlotId || undefined);
-        const conflicts: CopyConflict[] = [];
-        for (const ex of existing) {
-          const newAssignment = dayAssignments.get(ex.bus_stop_id);
-          if (!newAssignment) continue;
-          if (newAssignment.busNumberId !== ex.bus_number_id) {
-            conflicts.push({
-              stopId: ex.bus_stop_id,
-              stopName: stopNameMap.get(ex.bus_stop_id) ?? ex.bus_stop_id,
-              existingBusLabel: busLabelMap.get(ex.bus_number_id) ?? ex.bus_number_id,
-              newBusLabel: busLabelMap.get(newAssignment.busNumberId) ?? newAssignment.busNumberId,
-            });
-          }
-        }
-        return { day: d.value, conflicts };
-      })
-    );
-
-    setCopyPreviews(previews);
-    setCopyPreviewLoading(false);
-  }
-
-  function toggleCopyDay(d: number) {
-    setCopySelectedDays((prev) => {
-      const next = new Set(prev);
-      if (next.has(d)) next.delete(d);
-      else next.add(d);
-      return next;
-    });
-  }
-
-  async function handleConfirmCopy() {
-    if (copySelectedDays.size === 0) {
-      toast.error("복사할 요일을 선택해 주세요.");
-      return;
-    }
-    setCopying(true);
-    const errors: string[] = [];
-    const assignmentArr = [...dayAssignments.entries()].map(([bus_stop_id, a]) => ({
-      bus_stop_id,
-      bus_number_id: a.busNumberId,
-      sort_order: a.sortOrder,
-    }));
-    for (const targetDay of copySelectedDays) {
-      const r = await saveBusStopDayAssignments(targetDay, assignmentArr, timeSlotId || undefined);
-      if (r.error) {
-        const label = DAYS.find((d) => d.value === targetDay)?.label ?? targetDay;
-        errors.push(`${label}요일: ${r.error}`);
-      }
-    }
-    if (errors.length) {
-      toast.error(`일부 실패: ${errors.join(", ")}`);
-    } else {
-      const labels = [...copySelectedDays].sort().map((d) => DAYS.find((x) => x.value === d)?.label).join(", ");
-      toast.success(`${labels}요일에 복사되었습니다.`);
-    }
-    setCopying(false);
-    setCopyModalOpen(false);
-  }
-
   // ── Render ──
-
-  const currentDayLabel = DAYS.find((d) => d.value === day)?.label ?? "";
-  const currentSlotLabel = filteredSlots.find((s) => s.id === timeSlotId)?.label ?? "";
 
   return (
     <div className="space-y-4">
-      {/* 툴바: 요일·시간대 필터 + 저장 버튼 */}
+      {/* 툴바: 시간대 · 요일 묶음 · 저장 */}
       <div className="flex flex-wrap items-center gap-3">
-        <DayTimeFilterBar
-          day={day}
-          onDayChange={(d) => guardFilterChange(() => setDay(d))}
-          timeSlotId={timeSlotId}
-          onTimeSlotChange={(id) => guardFilterChange(() => setTimeSlotId(id))}
-          timeSlots={filteredSlots}
-        />
+        <select
+          value={timeSlotId}
+          onChange={(e) => { const id = e.target.value; guardFilterChange(() => setTimeSlotId(id)); }}
+          className="h-8 text-xs border border-slate-200 rounded px-2 bg-white"
+        >
+          {busTimeSlots.map((slot) => (
+            <option key={slot.id} value={slot.id}>
+              {slot.label} ({slot.time.slice(0, 5)})
+            </option>
+          ))}
+        </select>
 
-        <div className="flex items-center gap-2 ml-auto">
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-8 text-xs"
-            onClick={openCopyModal}
-            disabled={saving || loading}
-          >
-            다른 요일에 복사
-          </Button>
-          <Button
-            size="sm"
-            className={`h-8 ${hasChanges ? "bg-blue-600 hover:bg-blue-700" : ""}`}
-            onClick={handleSaveAll}
-            disabled={saving || !hasChanges}
-          >
-            {saving ? "저장 중..." : hasChanges ? "저장" : "저장됨"}
-          </Button>
+        <div className="flex rounded-lg border border-slate-200 overflow-hidden">
+          {DAY_GROUPS.map((g, i) => (
+            <button
+              key={g.key}
+              type="button"
+              onClick={() => { if (i !== groupIdx) guardFilterChange(() => setGroupIdx(i)); }}
+              className={`px-3.5 py-1.5 text-sm font-medium transition-colors ${
+                groupIdx === i
+                  ? "bg-blue-600 text-white"
+                  : "bg-white text-slate-600 hover:bg-slate-50"
+              }`}
+            >
+              {g.label}
+            </button>
+          ))}
         </div>
+
+        <Button
+          size="sm"
+          className={`h-8 ml-auto ${hasChanges ? "bg-blue-600 hover:bg-blue-700" : ""}`}
+          onClick={handleSaveAll}
+          disabled={saving || !hasChanges}
+        >
+          {saving ? "저장 중..." : hasChanges ? "저장" : "저장됨"}
+        </Button>
       </div>
 
       {hasChanges && (
@@ -431,255 +428,253 @@ export function BusStopAssignmentManager({
         </p>
       )}
 
-      {/* 2-패널 레이아웃 */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* 왼쪽: 호차별 배정된 정류장 카드 */}
-        <div className="lg:col-span-2 space-y-3">
-          {busNumbers.length === 0 && (
-            <p className="text-xs text-slate-400 py-8 text-center">등록된 호차가 없습니다.</p>
-          )}
-          {busNumbers.map((bus) => {
-            const busStops = getAssignedStops(bus.id);
-            const isDropTarget = dragOverTarget === `bus-${bus.id}`;
+      {/* 새 호차 */}
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-slate-500">새 호차:</span>
+        <Input
+          placeholder="호차 이름 (예: 1호차)"
+          value={newBusLabel}
+          onChange={(e) => setNewBusLabel(e.target.value)}
+          className="max-w-48 h-8 text-sm"
+          onKeyDown={(e) => { if (e.key === "Enter" && newBusLabel.trim()) handleCreateBus(); }}
+        />
+        <Button size="sm" className="h-8" onClick={handleCreateBus} disabled={loading || !newBusLabel.trim()}>
+          추가
+        </Button>
+      </div>
 
-            return (
-              <div
-                key={bus.id}
-                className={`rounded-lg border transition-colors ${
-                  isDropTarget ? "border-emerald-400 bg-emerald-50/50" : "border-slate-200 bg-white"
-                }`}
-                onDragOver={(e) => handleDragOver(e, `bus-${bus.id}`)}
-                onDragLeave={handleDragLeave}
-                onDrop={(e) => handleDropOnBus(e, bus.id)}
-              >
-                {/* 호차 헤더 */}
-                <div className="flex items-center gap-2 px-3 py-2 border-b border-slate-100 bg-slate-50 rounded-t-lg">
-                  <span className="text-sm">🚌</span>
-                  <span className="text-sm font-semibold text-slate-700 flex-1">{bus.label}</span>
-                  <span className="text-xs text-slate-400">{busStops.length}개 정류장</span>
-                </div>
-
-                {/* 배정된 정류장 — 각 행이 재정렬용 드롭 타겟 */}
-                <div className="p-2 space-y-1 min-h-[48px]">
-                  {busStops.map((stop) => (
-                    <div
-                      key={stop.id}
-                      onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setDragOverTarget(`stop-${stop.id}`); }}
-                      onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOverTarget(null); }}
-                      onDrop={(e) => handleDropOnStop(e, stop.id, bus.id)}
-                    >
-                      <StopRow
-                        stop={stop}
-                        time={scheduleMap.get(stop.id) ?? ""}
-                        isDirty={isStopDirty(stop.id)}
-                        isDropTarget={dragOverTarget === `stop-${stop.id}`}
-                        onDragStart={(e) => handleDragStart(e, stop.id)}
-                        onTimeChange={(time) => handleTimeChange(stop.id, time)}
-                        onCopyAllDays={() => handleCopyToAllDays(stop.id)}
-                      />
-                    </div>
-                  ))}
-                  {busStops.length === 0 && (
-                    <p className="text-xs text-slate-300 text-center py-3">여기에 정류장을 드래그하세요</p>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* 오른쪽: 미배정 정류장 패널 (sticky) */}
-        <div
-          className={`lg:col-span-1 rounded-lg border p-3 space-y-3 lg:sticky lg:top-4 lg:self-start transition-colors ${
-            dragOverTarget === "unassigned" ? "border-orange-400 bg-orange-50/50" : "border-slate-200 bg-slate-50"
-          }`}
-          onDragOver={(e) => handleDragOver(e, "unassigned")}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDropOnUnassigned}
-        >
-          <h4 className="text-xs font-semibold text-slate-600">
-            미배정 정류장
-            <span className="ml-1 font-normal text-slate-400">({DAYS.find((d) => d.value === day)?.label}요일)</span>
-          </h4>
-
+      <div className="flex gap-4 items-start">
+        {/* 왼쪽: 전체 정류장 (sticky) */}
+        <div className="w-56 shrink-0 rounded-lg border border-slate-200 bg-slate-50 p-3 space-y-2 sticky top-4">
+          <h4 className="text-xs font-semibold text-slate-600">정류장</h4>
           <Input
             placeholder="검색..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="h-7 text-xs"
           />
-
-          <div className="space-y-1 max-h-[60vh] overflow-y-auto">
-            {filteredUnassigned.length === 0 && (
+          <label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={onlyUnassigned}
+              onChange={(e) => setOnlyUnassigned(e.target.checked)}
+            />
+            미배정만 보기
+          </label>
+          <div className="flex items-center gap-1">
+            <Input
+              placeholder="새 정류장"
+              value={newStopName}
+              onChange={(e) => setNewStopName(e.target.value)}
+              className="h-7 text-xs flex-1"
+              onKeyDown={(e) => { if (e.key === "Enter" && newStopName.trim()) handleCreateStop(); }}
+            />
+            <Button size="sm" variant="outline" className="h-7 text-xs px-2" onClick={handleCreateStop} disabled={loading || !newStopName.trim()}>+</Button>
+          </div>
+          <div className="space-y-1 max-h-[65vh] overflow-y-auto">
+            {sidebarStops.length === 0 && (
               <p className="text-xs text-slate-400 py-4 text-center">
-                {search ? "검색 결과 없음" : "미배정 정류장 없음"}
+                {search ? "검색 결과 없음" : "정류장 없음"}
               </p>
             )}
-            {filteredUnassigned.map((stop) => (
-              <div
-                key={stop.id}
-                draggable
-                onDragStart={(e) => handleDragStart(e, stop.id)}
-                className="flex items-center gap-2 px-2 py-1.5 rounded border cursor-grab active:cursor-grabbing hover:border-slate-300 bg-white border-slate-200 transition-colors"
-              >
-                <span className="text-xs text-slate-400">📍</span>
-                <span className="text-xs text-slate-700 flex-1">{stop.name}</span>
-              </div>
-            ))}
+            {sidebarStops.map((stop) => {
+              const tag = busTag(stop.id);
+              return (
+                <div
+                  key={stop.id}
+                  draggable
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData("text/plain", JSON.stringify({ stopId: stop.id } satisfies DragData));
+                    e.dataTransfer.effectAllowed = "copyMove";
+                  }}
+                  className="flex items-center gap-2 px-2 py-1.5 rounded border cursor-grab active:cursor-grabbing hover:border-slate-300 bg-white border-slate-200 transition-colors"
+                >
+                  {editingStopId === stop.id ? (
+                    <>
+                      <Input
+                        value={editStopName}
+                        onChange={(e) => setEditStopName(e.target.value)}
+                        className="h-6 text-xs flex-1"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") handleUpdateStop(stop.id);
+                          if (e.key === "Escape") setEditingStopId(null);
+                        }}
+                        autoFocus
+                      />
+                      <Button size="sm" variant="outline" className="h-5 text-xs px-1.5" onClick={() => handleUpdateStop(stop.id)} disabled={loading}>저장</Button>
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-xs text-slate-700 flex-1 truncate">{stop.name}</span>
+                      <span className={`text-[11px] ${tag === "-" ? "text-orange-400" : "text-slate-400"}`}>{tag}</span>
+                      <button type="button" className="text-[11px] text-slate-400 hover:text-slate-600" onClick={() => { setEditingStopId(stop.id); setEditStopName(stop.name); }}>수정</button>
+                      <button type="button" className="text-xs text-red-400 hover:text-red-600" onClick={() => setDeleteStopConfirm({ open: true, id: stop.id, name: stop.name })} aria-label={`${stop.name} 삭제`}>×</button>
+                    </>
+                  )}
+                </div>
+              );
+            })}
           </div>
+        </div>
+
+        {/* 오른쪽: 호차 × 요일 표 */}
+        <div className="flex-1 min-w-0 overflow-x-auto">
+          {busNumbers.length === 0 ? (
+            <p className="text-xs text-slate-400 py-8 text-center">등록된 호차가 없습니다.</p>
+          ) : (
+            <table className="w-full border-collapse text-xs" style={{ minWidth: 80 + days.length * 280 }}>
+              <thead>
+                <tr className="border-b-2 border-slate-300">
+                  <th className="w-20 py-2 px-2 text-left bg-slate-100 text-sm font-bold">호차</th>
+                  {days.map((d) => (
+                    <th key={d} className="py-2 px-2 text-center bg-slate-100 text-sm font-bold border-l border-slate-200">
+                      {dayLabel(d)}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {busNumbers.map((bus) => (
+                  <tr key={bus.id} className="border-b border-slate-200 align-top">
+                    <td className="py-2 px-2 bg-slate-50 whitespace-nowrap">
+                      {editingBusId === bus.id ? (
+                        <div className="space-y-1">
+                          <Input
+                            value={editBusLabel}
+                            onChange={(e) => setEditBusLabel(e.target.value)}
+                            className="w-20 h-7 text-sm"
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") handleUpdateBus(bus.id);
+                              if (e.key === "Escape") setEditingBusId(null);
+                            }}
+                            autoFocus
+                          />
+                          <div className="flex gap-1">
+                            <Button size="sm" variant="outline" className="h-6 text-xs px-1.5" onClick={() => handleUpdateBus(bus.id)} disabled={loading}>저장</Button>
+                            <Button size="sm" variant="ghost" className="h-6 text-xs px-1.5" onClick={() => setEditingBusId(null)}>취소</Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="font-semibold text-slate-700">{bus.label}</div>
+                          <div className="flex gap-1.5 mt-1">
+                            <button type="button" className="text-[11px] text-slate-400 hover:text-slate-600" onClick={() => { setEditingBusId(bus.id); setEditBusLabel(bus.label); }}>수정</button>
+                            <button type="button" className="text-[11px] text-red-400 hover:text-red-600" onClick={() => setDeleteBusConfirm({ open: true, id: bus.id, label: bus.label })} disabled={loading}>삭제</button>
+                          </div>
+                        </>
+                      )}
+                    </td>
+                    {days.map((d) => {
+                      const list = cellStops(dayAssignments, d, bus.id);
+                      const cellId = `${d}|${bus.id}`;
+                      const dirty = isCellDirty(d, bus.id);
+                      const others = days.filter((x) => x !== d);
+                      return (
+                        <td
+                          key={d}
+                          className={`p-1.5 border-l border-slate-200 transition-colors ${
+                            dragOverTarget === cellId
+                              ? "bg-emerald-50"
+                              : dirty
+                                ? "bg-amber-50/60"
+                                : "bg-white"
+                          }`}
+                          onDragOver={(e) => { e.preventDefault(); setDragOverTarget(cellId); }}
+                          onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOverTarget(null); }}
+                          onDrop={(e) => handleDrop(e, d, bus.id)}
+                        >
+                          <div className="space-y-1 min-h-[40px]">
+                            {list.map((stopId, i) => {
+                              const key = ck(d, stopId, bus.id);
+                              const chipTarget = `chip-${key}`;
+                              return (
+                                <div
+                                  key={stopId}
+                                  draggable
+                                  onDragStart={(e) => {
+                                    e.dataTransfer.setData("text/plain", JSON.stringify({ stopId, from: { day: d, busId: bus.id } } satisfies DragData));
+                                    e.dataTransfer.effectAllowed = "copyMove";
+                                  }}
+                                  onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setDragOverTarget(chipTarget); }}
+                                  onDrop={(e) => handleDrop(e, d, bus.id, stopId)}
+                                  className={`flex items-center gap-1.5 px-1.5 py-1 rounded border cursor-grab active:cursor-grabbing transition-colors ${
+                                    dragOverTarget === chipTarget
+                                      ? "border-blue-400 bg-blue-50 border-dashed"
+                                      : "bg-slate-50 border-slate-200 hover:border-slate-300"
+                                  }`}
+                                >
+                                  <span className="w-4 h-4 shrink-0 rounded-full bg-slate-700 text-white text-[10px] flex items-center justify-center">
+                                    {i + 1}
+                                  </span>
+                                  <span className="flex-1 truncate text-slate-700">{stopNameMap.get(stopId) ?? "(삭제됨)"}</span>
+                                  <input
+                                    type="time"
+                                    value={scheduleMap.get(key) ?? ""}
+                                    onChange={(e) => setTime(key, e.target.value)}
+                                    className="h-6 text-xs border border-slate-200 rounded px-1 bg-white w-[108px]"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => removeFromCell(d, bus.id, stopId)}
+                                    className="text-slate-400 hover:text-red-500 px-0.5"
+                                    aria-label={`${stopNameMap.get(stopId) ?? ""} 제거`}
+                                  >
+                                    ×
+                                  </button>
+                                </div>
+                              );
+                            })}
+                            {list.length === 0 && (
+                              <p className="text-[11px] text-slate-300 text-center py-2">여기에 정류장을 드래그하세요</p>
+                            )}
+                          </div>
+                          {others.length > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => applyToOtherDays(d, bus.id)}
+                              title={`이 칸의 정류장·순서·시간을 ${others.map(dayLabel).join("·")}요일 ${bus.label}에 덮어씁니다 (저장 전까지 반영 안 됨)`}
+                              className="mt-1 text-[11px] text-slate-400 hover:text-blue-600"
+                            >
+                              → {others.map(dayLabel).join("·")}에 적용
+                            </button>
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
 
-      {/* 다른 요일에 복사 모달 */}
-      {copyModalOpen && (
-        <>
-          <div
-            className="fixed inset-0 bg-black/40 z-50"
-            onClick={() => !copying && setCopyModalOpen(false)}
-          />
-          <div className="fixed inset-0 z-[51] flex items-center justify-center p-4">
-            <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
-              {/* 헤더 */}
-              <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
-                <div>
-                  <h3 className="text-sm font-semibold text-slate-800">다른 요일에 복사</h3>
-                  <p className="text-xs text-slate-400 mt-0.5">
-                    {currentDayLabel}요일 · 하원 · {currentSlotLabel}
-                  </p>
-                </div>
-                <button
-                  onClick={() => setCopyModalOpen(false)}
-                  disabled={copying}
-                  className="text-slate-400 hover:text-slate-600 text-lg leading-none disabled:opacity-40"
-                >
-                  ×
-                </button>
-              </div>
-
-              {/* 본문 */}
-              <div className="px-5 py-4 space-y-4">
-                {/* 요일 선택 */}
-                <div>
-                  <p className="text-xs font-medium text-slate-600 mb-2">복사할 요일 선택</p>
-                  <div className="flex gap-2">
-                    {DAYS.filter((d) => d.value !== day).map((d) => {
-                      const selected = copySelectedDays.has(d.value);
-                      const preview = copyPreviews.find((p) => p.day === d.value);
-                      const hasConflict = (preview?.conflicts.length ?? 0) > 0;
-                      return (
-                        <button
-                          key={d.value}
-                          onClick={() => toggleCopyDay(d.value)}
-                          className={`relative flex-1 py-2 rounded-lg text-xs font-medium border transition-colors ${
-                            selected
-                              ? "bg-blue-600 text-white border-blue-600"
-                              : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
-                          }`}
-                        >
-                          {d.label}
-                          {hasConflict && (
-                            <span className={`absolute -top-1 -right-1 w-2 h-2 rounded-full ${selected ? "bg-yellow-300" : "bg-amber-400"}`} />
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* 충돌 안내 */}
-                {copyPreviewLoading ? (
-                  <p className="text-xs text-slate-400 text-center py-2 animate-pulse">충돌 확인 중...</p>
-                ) : (
-                  <>
-                    {/* 선택된 요일의 충돌 목록 */}
-                    {copySelectedDays.size > 0 && (() => {
-                      const allConflicts: { day: number; conflicts: CopyConflict[] }[] = [];
-                      for (const d of copySelectedDays) {
-                        const preview = copyPreviews.find((p) => p.day === d);
-                        if (preview && preview.conflicts.length > 0) {
-                          allConflicts.push({ day: d, conflicts: preview.conflicts });
-                        }
-                      }
-                      if (allConflicts.length === 0) {
-                        return (
-                          <p className="text-xs text-emerald-600 bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-100">
-                            충돌 없음 — 선택한 요일에 바로 복사됩니다.
-                          </p>
-                        );
-                      }
-                      return (
-                        <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5 space-y-2">
-                          <p className="text-xs font-semibold text-amber-700">⚠ 충돌 발생 — 아래 정류장이 다른 호차로 이동됩니다</p>
-                          {allConflicts.map(({ day: d, conflicts }) => (
-                            <div key={d}>
-                              <p className="text-xs font-medium text-amber-600 mb-1">
-                                {DAYS.find((x) => x.value === d)?.label}요일
-                              </p>
-                              <div className="space-y-0.5">
-                                {conflicts.map((c) => (
-                                  <div key={c.stopId} className="flex items-center gap-1.5 text-xs text-amber-700">
-                                    <span className="text-amber-400">📍</span>
-                                    <span className="font-medium">{c.stopName}</span>
-                                    <span className="text-amber-400">:</span>
-                                    <span className="line-through text-amber-400">{c.existingBusLabel}</span>
-                                    <span className="text-amber-400">→</span>
-                                    <span className="font-semibold">{c.newBusLabel}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      );
-                    })()}
-
-                    {/* 선택 전 전체 충돌 개요 */}
-                    {copySelectedDays.size === 0 && copyPreviews.some((p) => p.conflicts.length > 0) && (
-                      <div className="text-xs text-slate-500 space-y-1">
-                        {copyPreviews.filter((p) => p.conflicts.length > 0).map((p) => (
-                          <p key={p.day}>
-                            <span className="text-amber-500">⚠</span>{" "}
-                            {DAYS.find((d) => d.value === p.day)?.label}요일: {p.conflicts.length}개 정류장 충돌
-                          </p>
-                        ))}
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
-
-              {/* 푸터 */}
-              <div className="flex justify-end gap-2 px-5 py-3 border-t border-slate-100">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setCopyModalOpen(false)}
-                  disabled={copying}
-                >
-                  취소
-                </Button>
-                <Button
-                  size="sm"
-                  className="bg-blue-600 hover:bg-blue-700 text-white"
-                  onClick={handleConfirmCopy}
-                  disabled={copying || copySelectedDays.size === 0 || copyPreviewLoading}
-                >
-                  {copying ? "복사 중..." : `복사 (${copySelectedDays.size}개 요일)`}
-                </Button>
-              </div>
-            </div>
-          </div>
-        </>
-      )}
+      <ConfirmDialog
+        open={deleteBusConfirm.open}
+        title={`"${deleteBusConfirm.label ?? ""}" 호차를 삭제하시겠습니까?`}
+        description="이 호차에 배정된 학생/정류장이 있으면 함께 영향을 받습니다."
+        impactList={[
+          "이 호차에 배정된 정류장이 미배정 상태가 됩니다.",
+          "이 호차를 참조하는 학생 배정·변경 요청에 영향이 갈 수 있습니다.",
+        ]}
+        danger
+        confirmLabel="삭제"
+        onConfirm={confirmDeleteBus}
+        onCancel={() => setDeleteBusConfirm({ open: false })}
+      />
 
       <ConfirmDialog
-        open={copyTimeConfirm.open}
-        variant="primary"
-        title={`${copyTimeConfirm.dayLabel ?? ""}요일 시간(${copyTimeConfirm.time ?? ""})을 전체 요일에 적용할까요?`}
-        description="현재 요일 시간이 미저장이면 먼저 저장해 주세요."
-        confirmLabel="적용"
-        onConfirm={confirmCopyTime}
-        onCancel={() => setCopyTimeConfirm({ open: false })}
+        open={deleteStopConfirm.open}
+        title={`${deleteStopConfirm.name ? `"${deleteStopConfirm.name}" ` : ""}정류장을 삭제하시겠습니까?`}
+        description="이 정류장에 의존하는 데이터에 영향을 줄 수 있습니다."
+        impactList={[
+          "이 정류장을 기본 배정으로 사용하는 학생이 미배정 상태가 됩니다.",
+          "이 정류장이 포함된 스케줄·변경 요청에 영향이 갈 수 있습니다.",
+        ]}
+        danger
+        confirmLabel="삭제"
+        onConfirm={confirmDeleteStop}
+        onCancel={() => setDeleteStopConfirm({ open: false })}
       />
 
       <ConfirmDialog
@@ -691,56 +686,6 @@ export function BusStopAssignmentManager({
         onConfirm={confirmFilterChange}
         onCancel={closeFilterConfirm}
       />
-    </div>
-  );
-}
-
-// ── StopRow (배정된 정류장 행, 왼쪽 패널) ──
-
-function StopRow({
-  stop,
-  time,
-  isDirty,
-  isDropTarget,
-  onDragStart,
-  onTimeChange,
-  onCopyAllDays,
-}: {
-  stop: BusStop;
-  time: string;
-  isDirty: boolean;
-  isDropTarget: boolean;
-  onDragStart: (e: React.DragEvent) => void;
-  onTimeChange: (time: string) => void;
-  onCopyAllDays: () => void;
-}) {
-  return (
-    <div
-      draggable
-      onDragStart={onDragStart}
-      className={`flex items-center gap-2 px-2 py-1.5 rounded border cursor-grab active:cursor-grabbing transition-colors group ${
-        isDropTarget
-          ? "border-blue-400 bg-blue-50 border-dashed"
-          : isDirty
-            ? "bg-amber-50 border-amber-200"
-            : "bg-slate-50 border-slate-100 hover:border-slate-200"
-      }`}
-    >
-      <span className="text-xs text-slate-400">📍</span>
-      <span className="text-xs text-slate-700 min-w-[60px]">{stop.name}</span>
-      <input
-        type="time"
-        value={time}
-        onChange={(e) => onTimeChange(e.target.value)}
-        className="h-6 text-xs border border-slate-200 rounded px-1.5 bg-white w-[90px]"
-      />
-      <button
-        onClick={onCopyAllDays}
-        title="이 시간을 월~금 전체 요일에 동일하게 적용합니다"
-        className="text-xs text-slate-400 hover:text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap"
-      >
-        전체 요일 적용
-      </button>
     </div>
   );
 }

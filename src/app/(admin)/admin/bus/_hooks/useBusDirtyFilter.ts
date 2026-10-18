@@ -7,10 +7,11 @@ export type StopAssignment = { busNumberId: string; sortOrder: number };
 type FilterChangeConfirm = { open: boolean; setter?: () => void };
 
 /**
- * BusNumbersManager / BusStopAssignmentManager 공통 dirty state + 필터 가드.
+ * BusStopAssignmentManager 의 dirty state + 필터 가드.
  *
- * - `dayAssignments` / `serverAssignments` (정류장→{busNumberId, sortOrder}) 와
- *   `scheduleMap` / `serverSchedules` (정류장→시간) 4개 Map 을 묶어 관리.
+ * - `dayAssignments` / `serverAssignments` (키→{busNumberId, sortOrder}) 와
+ *   `scheduleMap` / `serverSchedules` (키→시간) 4개 Map 을 묶어 관리.
+ *   키 형식은 컴포넌트가 정한다 (한 정류장이 여러 호차에 들어가므로 `정류장|호차`, `요일|정류장|호차` 등).
  * - 미저장 변경이 있을 때 요일/시간대 필터 변경을 confirm dialog 로 가드.
  * - confirm 시 local → server 로 롤백 후 보류된 setter 실행.
  *

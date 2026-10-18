@@ -325,6 +325,8 @@ export type StudentBusDefault = {
   bus_time_slot_id: string;
   bus_stop_id?: string | null;
   bus_stop_name?: string | null;
+  /** 학생이 타는 호차. 정류장을 여러 호차가 공유할 수 있어 정류장만으로는 정해지지 않는다. */
+  bus_number_id?: string | null;
   /** @deprecated Wave 6에서 제거 예정. 호환성을 위해 optional 유지. */
   estimated_time?: string | null;
   note?: string | null;

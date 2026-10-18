@@ -42,3 +42,77 @@ export function formatWeekdayList(days: number[]): string {
     .map((d) => WEEKDAY_LABELS[d - 1] ?? String(d))
     .join("·");
 }
+
+/** `listServedStopBuses` 결과(요일 → 정류장 → 호차들) → `findUnassignedDays` 용 요일 → 정류장 ID 목록. */
+export function toServedStopIds(
+  servedBusesByDay: Record<number, Record<string, string[]>>
+): Record<number, string[]> {
+  const result: Record<number, string[]> = {};
+  for (const [d, byStop] of Object.entries(servedBusesByDay)) result[Number(d)] = Object.keys(byStop);
+  return result;
+}
+
+/** `listBusRouteRows` 결과 1행 = (요일, 호차, 정류장) 노선 배정. */
+export type BusRouteRow = {
+  day_of_week: number;
+  bus_number_id: string;
+  bus_stop_id: string;
+  stop_name: string;
+  sort_order: number | null;
+};
+
+/**
+ * 호차 먼저 입력 UI 용 정류장 목록: 선택 호차가 선택 요일 **모두**에 운행하는 정류장만.
+ * 정렬 = 가장 이른 요일의 노선 순서(sort_order), 동순위는 정류장 이름순.
+ */
+export function busRouteStops(
+  rows: BusRouteRow[],
+  busId: string,
+  days: number[]
+): { id: string; name: string }[] {
+  const ds = [...new Set(days)];
+  if (!busId || ds.length === 0) return [];
+  const mine = rows.filter((r) => r.bus_number_id === busId);
+  const firstDay = Math.min(...ds);
+  return mine
+    .filter(
+      (r) =>
+        r.day_of_week === firstDay &&
+        ds.every((d) => mine.some((m) => m.day_of_week === d && m.bus_stop_id === r.bus_stop_id))
+    )
+    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0) || a.stop_name.localeCompare(b.stop_name, "ko"))
+    .map((r) => ({ id: r.bus_stop_id, name: r.stop_name }));
+}
+
+/**
+ * 호차 미지정(레거시: 정류장만 저장된 행) 일 때 정류장을 선택 요일 모두에 운행하는 호차가 1대면 그 호차로 간주.
+ * 호차가 지정돼 있거나 후보가 0·2대 이상이면 `busId` 그대로.
+ */
+export function inferRouteBus(rows: BusRouteRow[], busId: string, stopId: string, days: number[]): string {
+  if (busId || !stopId) return busId;
+  const ds = [...new Set(days)];
+  const buses = [...new Set(rows.filter((r) => r.bus_stop_id === stopId).map((r) => r.bus_number_id))].filter((b) =>
+    ds.every((d) => rows.some((r) => r.day_of_week === d && r.bus_number_id === b && r.bus_stop_id === stopId))
+  );
+  return buses.length === 1 ? buses[0] : busId;
+}
+
+/**
+ * 서버 mutation 용 호차 확정 (strict). `buses` = 그 요일·시간대에 정류장을 운행하는 호차들.
+ * - 운행 호차 없음 → 미배정 에러
+ * - 요청 호차가 있으면 운행 호차 중 하나여야 함
+ * - 요청 없고 1대면 자동 지정, 2대 이상이면 선택 요구
+ */
+export function pickServedBus(
+  buses: string[] | undefined,
+  requestedBusId?: string | null
+): { busId: string } | { error: string } {
+  if (!buses?.length) return { error: "선택한 정류장이 해당 요일·시간대에 배정되어 있지 않습니다." };
+  if (requestedBusId) {
+    return buses.includes(requestedBusId)
+      ? { busId: requestedBusId }
+      : { error: "선택한 호차가 해당 요일·시간대에 이 정류장을 운행하지 않습니다." };
+  }
+  if (buses.length === 1) return { busId: buses[0] };
+  return { error: "여러 호차가 운행하는 정류장입니다. 호차를 선택해 주세요." };
+}
