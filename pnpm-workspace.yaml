@@ -8,7 +8,7 @@ overrides:
 # Dependency build scripts left disabled (no native build needed for this
 # project). Set to true only if a package actually requires its postinstall.
 allowBuilds:
-  msw: set this to true or false
-  sharp: set this to true or false
+  msw: false
+  sharp: false
   supabase: true
-  unrs-resolver: set this to true or false
+  unrs-resolver: false
