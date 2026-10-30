@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SC Wonderland 페이지 흐름도</title>
+<style>
+  :root { --bg:#fafaf9; --fg:#1c1917; --muted:#78716c; --line:#e7e5e4; --card:#fff; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#1c1917; --fg:#f5f5f4; --muted:#a8a29e; --line:#44403c; --card:#292524; } }
+  body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.6 system-ui, "Pretendard", "Apple SD Gothic Neo", sans-serif; }
+  header { padding:24px 24px 8px; border-bottom:1px solid var(--line); }
+  header h1 { margin:0 0 4px; font-size:22px; font-weight:600; }
+  header p { margin:0; color:var(--muted); font-size:13px; }
+  nav { position:sticky; top:0; background:var(--bg); border-bottom:1px solid var(--line); padding:8px 24px; display:flex; gap:8px; flex-wrap:wrap; z-index:1; }
+  nav a { color:var(--fg); text-decoration:none; padding:4px 10px; border:1px solid var(--line); border-radius:999px; font-size:13px; }
+  nav a:hover { background:var(--card); }
+  section { padding:24px; border-bottom:1px solid var(--line); }
+  section h2 { margin:0 0 4px; font-size:18px; font-weight:600; }
+  section p.note { margin:0 0 12px; color:var(--muted); font-size:13px; }
+  .diagram { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:12px; overflow-x:auto; }
+  .legend { display:flex; gap:14px; flex-wrap:wrap; font-size:12px; color:var(--muted); margin:8px 0 0; }
+  .legend span::before { content:""; display:inline-block; width:12px; height:12px; border-radius:3px; margin-right:5px; vertical-align:-2px; border:1px solid #999; }
+  .l-admin::before { background:#ede9fe; border-color:#7c3aed !important; }
+  .l-teacher::before { background:#ccfbf1; border-color:#0f766e !important; }
+  .l-student::before { background:#dbeafe; border-color:#1d4ed8 !important; }
+  .l-public::before { background:#f3f4f6; border-color:#6b7280 !important; }
+  .l-gate::before { background:#fef3c7; border-color:#b45309 !important; }
+  .l-dead::before { background:#fee2e2; border-color:#b91c1c !important; border-style:dashed; }
+  ul.findings { margin:0; padding-left:20px; font-size:14px; }
+  ul.findings li { margin:4px 0; }
+  code { font-size:13px; background:var(--card); border:1px solid var(--line); border-radius:4px; padding:0 4px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>SC Wonderland 페이지 흐름도</h1>
+  <p>기준: <code>src/app</code> 라우트 56개 + 코드 안의 <code>&lt;Link&gt;</code>·<code>redirect()</code> · 2026-10-30 · 화면 이동 흐름(a)만. 저장 후 리다이렉트(server action)는 제외.</p>
+</header>
+<nav>
+  <a href="#entry">1. 진입·인증</a>
+  <a href="#admin">2. 관리자 /admin</a>
+  <a href="#teacher">3. 교사 /academy/teacher</a>
+  <a href="#student">4. 학생 /academy/student</a>
+  <a href="#mobile">5. 모바일 /m · 모니터</a>
+  <a href="#findings">6. 발견한 것</a>
+</nav>
+
+<section id="entry">
+  <h2>1. 진입·인증</h2>
+  <p class="note">모든 요청은 <code>src/proxy.ts</code>를 먼저 지나 쿠키 세션을 갱신한다. 역할 분기는 <code>/dashboard</code> 한 곳. 각 구역 <code>layout.tsx</code>가 다시 검사한다.</p>
+  <div class="diagram"><pre class="mermaid">
+flowchart TB
+  B([브라우저<br/>scwonderland.com]) --> P[proxy.ts<br/>쿠키로 세션 갱신]
+  P --> ROOT["/ (page.tsx)"]
+  ROOT -- redirect --> D{"/dashboard<br/>getUser → profiles.role"}
+  D -- 유저 없음 --> L["/login"]
+  L -- 로그인 성공<br/>?next 또는 /dashboard --> D
+  D -- admin --> A["/admin"]
+  D -- teacher --> T["/academy/teacher"]
+  D -- student --> S["/academy/student"]
+  D -- 역할 없음 --> NR[역할 미지정 화면<br/>로그아웃 버튼만]
+  P -- "/admin + 모바일 UA" --> M["/m"]
+  AL["/academy/login"] -- redirect --> L
+  BUS["/bus (비활성)"] -- redirect --> D
+  LO[로그아웃 버튼<br/>모든 구역] --> L
+  classDef gate fill:#fef3c7,stroke:#b45309,color:#1c1917
+  classDef admin fill:#ede9fe,stroke:#7c3aed,color:#1c1917
+  classDef teacher fill:#ccfbf1,stroke:#0f766e,color:#1c1917
+  classDef student fill:#dbeafe,stroke:#1d4ed8,color:#1c1917
+  classDef pub fill:#f3f4f6,stroke:#6b7280,color:#1c1917
+  classDef dead fill:#fee2e2,stroke:#b91c1c,stroke-dasharray:4 3,color:#1c1917
+  class P,D,L gate
+  class A,M admin
+  class T teacher
+  class S student
+  class ROOT,AL,B,LO,NR pub
+  class BUS dead
+  </pre></div>
+  <div class="legend"><span class="l-gate">검사·분기</span><span class="l-admin">관리자</span><span class="l-teacher">교사</span><span class="l-student">학생</span><span class="l-public">공개·단순</span><span class="l-dead">비활성·끊김</span></div>
+</section>
+
+<section id="admin">
+  <h2>2. 관리자 /admin</h2>
+  <p class="note">문지기: <code>(admin)/admin/layout.tsx</code> — 유저 없음 → <code>/login?next=/admin</code>, admin 아님 → <code>/login?error=admin_only</code>. 사이드바 메뉴는 <code>src/lib/navigation/admin-nav.ts</code>.</p>
+  <div class="diagram"><pre class="mermaid">
+flowchart LR
+  A["/admin 대시보드"]
+  subgraph 사람
+    ST["/admin/students<br/>학생 관리"]
+    STC["/admin/students/classes"]
+    TE["/admin/teachers<br/>교사 관리"]
+    CL["/admin/classes<br/>반 관리"]
+    AF["/admin/afterschool<br/>방과후"]
+  end
+  subgraph 수업
+    HW["/admin/homework<br/>숙제"]
+    RD["/admin/reading<br/>Raz 리딩"]
+    RDD["/admin/reading/[studentId]"]
+    TT["/admin/timetable<br/>시간표"]
+    CD["/admin/closed-days<br/>쉬는날"]
+    WS["/admin/weekly-sentences<br/>주간 문장"]
+  end
+  subgraph 일일 운영
+    TD["/admin/today<br/>오늘 수업"]
+    AT["/admin/attendance<br/>출결"]
+    BS["/admin/bus<br/>승하차"]
+    BSX["/admin/bus/export<br/>엑셀 (route)"]
+    RV["/admin/reservations<br/>예약 현황"]
+    RP["/admin/reports<br/>리포트카드"]
+  end
+  subgraph 공지
+    NT["/admin/notices<br/>공개 공지"]
+  end
+  subgraph 사이드바에 없음
+    LU["/admin/lunch<br/>급식"]
+    LUS["/admin/lunch/settings"]
+    LM["/lunch-monitor"]
+  end
+  A -- 사이드바 --> ST & TE & CL & AF & HW & RD & TT & CD & WS & TD & AT & BS & RV & RP & NT
+  A -- 카드 --> BS
+  ST --> STC --> ST
+  RD -. 링크 없음<br/>직접 URL .-> RDD
+  BS -- 다운로드 --> BSX
+  LU <--> LUS
+  classDef admin fill:#ede9fe,stroke:#7c3aed,color:#1c1917
+  classDef pub fill:#f3f4f6,stroke:#6b7280,color:#1c1917
+  classDef dead fill:#fee2e2,stroke:#b91c1c,stroke-dasharray:4 3,color:#1c1917
+  class A,ST,STC,TE,CL,AF,HW,RD,TT,CD,WS,TD,AT,BS,BSX,RV,RP,NT admin
+  class LM pub
+  class LU,LUS,RDD dead
+  </pre></div>
+</section>
+
+<section id="teacher">
+  <h2>3. 교사 /academy/teacher</h2>
+  <p class="note">문지기: <code>academy/teacher/layout.tsx</code>. 상단 탭은 <code>TeacherNav.tsx</code>(한/영 두 벌, 같은 경로). 헤더 로고 → 역할 홈.</p>
+  <div class="diagram"><pre class="mermaid">
+flowchart LR
+  T["/academy/teacher<br/>담당 반"]
+  subgraph 상단 탭
+    TTT["/academy/teacher/timetable<br/>시간표"]
+    TRP["/academy/teacher/reports<br/>리포트카드"]
+    TNT["/academy/teacher/notices<br/>공지사항"]
+    TCL["/academy/teacher/classes<br/>반 관리"]
+    THW["/academy/teacher/homework<br/>숙제"]
+    TRD["/academy/teacher/reading<br/>Raz 리딩"]
+    TAT["/academy/teacher/attendance<br/>출결"]
+  end
+  TRDD["/academy/teacher/reading/[studentId]"]
+  T -- 탭 --> TTT & TRP & TNT & TCL & THW & TRD & TAT
+  T -- "반 카드 ?class=" --> TRP & THW
+  TRD -. 링크 없음<br/>직접 URL .-> TRDD
+  classDef teacher fill:#ccfbf1,stroke:#0f766e,color:#1c1917
+  classDef dead fill:#fee2e2,stroke:#b91c1c,stroke-dasharray:4 3,color:#1c1917
+  class T,TTT,TRP,TCL,THW,TRD,TAT teacher
+  class TNT,TRDD dead
+  </pre></div>
+</section>
+
+<section id="student">
+  <h2>4. 학생 /academy/student</h2>
+  <p class="note">문지기: <code>academy/student/layout.tsx</code>. 상단 탭은 <code>StudentNav.tsx</code>.</p>
+  <div class="diagram"><pre class="mermaid">
+flowchart LR
+  S["/academy/student<br/>내 정보"]
+  subgraph 상단 탭
+    SRP["/academy/student/reports<br/>리포트카드"]
+    SNT["/academy/student/notices<br/>공지"]
+    SHW["/academy/student/homework<br/>숙제"]
+    SRD["/academy/student/reading<br/>Raz 리딩"]
+    STT["/academy/student/timetable<br/>시간표"]
+    SBS["/academy/student/bus<br/>승하차"]
+  end
+  S -- 탭 --> SRP & SNT & SHW & SRD & STT & SBS
+  classDef student fill:#dbeafe,stroke:#1d4ed8,color:#1c1917
+  classDef dead fill:#fee2e2,stroke:#b91c1c,stroke-dasharray:4 3,color:#1c1917
+  class S,SRP,SHW,SRD,STT,SBS student
+  class SNT dead
+  </pre></div>
+</section>
+
+<section id="mobile">
+  <h2>5. 모바일 관리자 /m · 모니터</h2>
+  <p class="note">문지기: <code>(admin)/m/layout.tsx</code>(admin 전용). 모바일 UA로 <code>/admin</code>에 오면 proxy가 <code>/m</code>으로 보낸다. 모니터 두 페이지는 로그인 검사 없음(학원 TV용).</p>
+  <div class="diagram"><pre class="mermaid">
+flowchart LR
+  M["/m 홈<br/>카드 7개"]
+  MTD["/m/today<br/>오늘 수업"]
+  MAT["/m/attendance<br/>출결"]
+  MHW["/m/homework<br/>숙제"]
+  MRD["/m/reading<br/>Raz 리딩"]
+  MRDD["/m/reading/[studentId]"]
+  MBC["/m/bus-change<br/>버스 당일변경"]
+  MBK["/m/bus-check<br/>승하차 관리"]
+  BM["/bus-monitor<br/>로그인 없음"]
+  LM["/lunch-monitor<br/>로그인 없음"]
+  M --> MTD & MAT & MHW & MRD & MBC & MBK & BM
+  MTD & MAT & MHW & MRD & MBC & MBK -- 뒤로 --> M
+  MRD --> MRDD --> MRD
+  BM -- 뒤로 --> M
+  classDef admin fill:#ede9fe,stroke:#7c3aed,color:#1c1917
+  classDef pub fill:#f3f4f6,stroke:#6b7280,color:#1c1917
+  class M,MTD,MAT,MHW,MRD,MRDD,MBC,MBK admin
+  class BM,LM pub
+  </pre></div>
+</section>
+
+<section id="findings">
+  <h2>6. 코드 긁으면서 발견한 것</h2>
+  <ul class="findings">
+    <li><b>끊긴 탭 2개</b>: 교사·학생 상단 탭에 <code>/academy/teacher/notices</code>, <code>/academy/student/notices</code>가 있는데 해당 폴더가 없어 404. 공지 페이지를 만들거나 탭을 빼야 함.</li>
+    <li><b>사이드바에 없는 페이지</b>: <code>/admin/lunch</code>, <code>/admin/lunch/settings</code>는 라우트는 있지만 어떤 메뉴에서도 못 감. 직접 URL로만 접근. <code>/lunch-monitor</code>도 링크 없음.</li>
+    <li><b>리딩 상세 링크 없음</b>: <code>/admin/reading/[studentId]</code>, <code>/academy/teacher/reading/[studentId]</code>로 가는 <code>&lt;Link&gt;</code>가 코드에 없음. 모바일 <code>/m/reading</code>만 학생별 링크가 있음.</li>
+    <li><b>비활성 구역</b>: <code>/bus</code>는 layout이 무조건 <code>/dashboard</code>로 보냄(버스 기사 역할 제거됨). <code>/academy/login</code>은 <code>/login</code>으로 넘기는 호환용.</li>
+    <li><b>공개 페이지</b>: <code>/bus-monitor</code>, <code>/lunch-monitor</code>는 인증 없음. URL을 아는 사람은 누구나 볼 수 있음. 의도라면 그대로, 아니면 토큰 쿼리 같은 가드 필요.</li>
+  </ul>
+</section>
+
+<script type="module">
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.esm.min.mjs";
+  const dark = matchMedia("(prefers-color-scheme: dark)").matches;
+  mermaid.initialize({ startOnLoad: true, theme: dark ? "dark" : "neutral", flowchart: { curve: "basis", nodeSpacing: 30, rankSpacing: 50 } });
+</script>
+</body>
+</html>
