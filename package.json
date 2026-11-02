@@ -11,6 +11,8 @@
     "type-check": "tsc --noEmit",
     "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./scripts/test-hooks.mjs --test",
     "check:admin-imports": "node scripts/check-admin-client-imports.mjs",
+    "check:action-auth": "node scripts/check-action-auth.mjs",
+    "check:migration-danger": "node scripts/check-migration-danger.mjs",
     "db:types": "supabase gen types typescript --project-id jxrzhonxnkjpjmzdhyoi > src/lib/types/database.generated.ts",
     "db:types:local": "supabase gen types typescript --local > src/lib/types/database.generated.ts",
     "db:sync": "bash scripts/sync-full.sh",

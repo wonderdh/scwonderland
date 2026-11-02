@@ -14,6 +14,7 @@ import type { Database } from "@/lib/types/database.generated";
 // ── Public (팝업용) ──
 
 /** 현재 활성 주차의 4개 레벨 문장 조회 (RLS public read) */
+// @auth-skip: 비로그인 팝업용 public read (anon select 허용 테이블)
 export async function getCurrentWeeklySentences(): Promise<{
   weekNumber: number;
   items: Array<{ level: number; english: string; korean: string; answer: string | null }>;

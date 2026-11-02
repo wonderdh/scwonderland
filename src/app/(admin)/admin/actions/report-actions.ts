@@ -10,7 +10,7 @@ import type {
   ClassReportSummary,
   TeacherClassWithStudents,
 } from "@/lib/types";
-import { verifyAdmin } from "./auth-helpers";
+import { verifyAdmin, verifyAuthenticated } from "./auth-helpers";
 import { getUserRoles } from "@/lib/auth/user-roles";
 import { getStudentRecordByProfileId, getStudentsByIds, getTeacherRecordByProfileId } from "@/lib/server/domain-helpers";
 import { translateText } from "@/lib/server/translate";
@@ -59,6 +59,8 @@ export async function getReportCard(
   year: number,
   month: number
 ): Promise<ReportCard | null> {
+  const auth = await verifyAuthenticated();
+  if ("error" in auth) return null;
   const supabase = await createClient();
   const admin = createAdminClient();
   const classStudentIds = await resolveClassStudentIds(admin, studentProfileId);
@@ -97,6 +99,8 @@ export async function getReportCard(
 export async function listReportCardsByStudent(
   studentProfileId: string
 ): Promise<ReportCardListItem[]> {
+  const auth = await verifyAuthenticated();
+  if ("error" in auth) return [];
   const supabase = await createClient();
   const admin = createAdminClient();
   const classStudentIds = await resolveClassStudentIds(admin, studentProfileId);

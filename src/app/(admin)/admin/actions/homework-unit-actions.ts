@@ -771,6 +771,7 @@ export async function listUnitProgressByStudent(
   return { textbooks };
 }
 
+// @auth-skip: 비활성 stub, DB 접근 없음
 export async function listUnitProgressByClass(
   _classId: string
 ): Promise<ClassUnitOverview> {

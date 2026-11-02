@@ -19,11 +19,11 @@ Next.js 16 App Router + React 19 + TypeScript + Tailwind v4 + Supabase.
 │   │   ├── bus/            — 버스 기사용 화면 (/bus, 현재 비활성)
 │   │   └── (monitor)/      — 버스/급식 모니터링 디스플레이 (TV)
 │   │  
-│   │   ※ 라우트 폴더 안 컴포넌트는 `_components/` (Next.js Private Folder) 컨벤션. 마케팅 사이트(`(site)`) 도 동일.
+│   │   ※ 라우트 폴더 안 컴포넌트는 `_components/` (Next.js Private Folder) 컨벤션.
 │   ├── components/         — 공용 UI (badges / forms / overlays / skeletons / ui …)
 │   └── lib/
 │       ├── supabase/       — admin / server / client 3 클라이언트  → AGENTS.md
-│       ├── auth/           — 인증 헬퍼 (verifyAdmin 등)
+│       ├── auth/           — 역할 조회(user-roles) · 이메일 정규화 · 한영 변환. (`verifyAdmin` 류는 `(admin)/admin/actions/auth-helpers.ts`)
 │       ├── bus/            — 버스 상태/realtime 유틸
 │       ├── constants/      — 도메인별 상수 (attendance / bus / class / timetable …)
 │       ├── hooks/          — React 훅
@@ -36,6 +36,5 @@ Next.js 16 App Router + React 19 + TypeScript + Tailwind v4 + Supabase.
 ├── archive/                — 비활성화된 라우트 보관소. `(site)/` 구 마케팅 사이트 전체 (tsconfig·eslint 제외 대상)
 ├── supabase/               — 마이그레이션 + config + 타입 생성  → AGENTS.md
 ├── public/                 — 정적 자산
-├── docs/                   — 패턴 가이드 (캐시·SSR·관찰성 …) + HARNESS.md
-└── .claude/                — SessionStart 훅 + settings.json (HARNESS.md 참고)
+└── docs/                   — data-model.md(스키마) · db-sync.md(운영→로컬 동기화) · page-flow.html(라우트 흐름) · 리뷰 기록(review/, 날짜 폴더)
 ```

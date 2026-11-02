@@ -425,6 +425,7 @@ export async function listChangeRequestsByDate(date: string): Promise<BusChangeR
   }) as BusChangeRequest[];
 }
 
+// @auth-skip: listAllChangeRequests() 안에서 verifyAdmin 검증
 export async function listPendingChangeRequests(): Promise<BusChangeRequest[]> {
   const all = await listAllChangeRequests();
   return all.filter((r) => r.status === "pending");

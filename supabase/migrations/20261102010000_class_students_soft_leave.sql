@@ -1,3 +1,4 @@
+-- reviewed-by: wonderdh 2026-11-02 (세션 리뷰 후 운영 DB 적용 완료)
 -- 2026-11-02
 -- class_students 를 "버리는 카드" 에서 "보관하는 이력" 으로 전환 (soft leave).
 --

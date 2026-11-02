@@ -429,6 +429,7 @@ export async function listStudentTextbooks(
 
 // 새 스키마: student_homework_books 는 class_homework_books 의 instance.
 // 개별 학생 직접 부여 flow 는 trigger 자동 시드로 대체되어 수동 assign 은 비활성.
+// @auth-skip: 비활성 stub, DB 접근 없음
 export async function assignStudentTextbook(
   _formData: FormData
 ): Promise<{ error?: string; id?: string }> {
@@ -489,6 +490,7 @@ export async function unassignStudentTextbook(id: string): Promise<{ error?: str
 
 import type { StudentDayUnits } from "@/lib/utils/homework-schedule";
 
+// @auth-skip: 비활성 stub, DB 접근 없음
 export async function listStudentScheduleByMonth(
   _studentId: string,
   _year: number,
