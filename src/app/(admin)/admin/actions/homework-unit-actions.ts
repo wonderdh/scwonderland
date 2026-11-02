@@ -500,7 +500,8 @@ export async function listSeriesLevelProgress(
     .select(
       "id, class_homework_book_id, class_students!inner(student_id, students!inner(id, korean_name, english_name)), student_homework_progress(unit_number, status)"
     )
-    .in("class_homework_book_id", chbIds);
+    .in("class_homework_book_id", chbIds)
+    .eq("class_students.is_active", true);
   if (shbErr) {
     logger.error("[listSeriesLevelProgress shb]", shbErr.message);
     return { students: [], byStudent: {}, error: shbErr.message };
@@ -614,7 +615,8 @@ export async function listUnitProgressByStudent(
     .select(
       "id, class_homework_book_id, class_student_id, class_students!inner(student_id, class_id), class_homework_books!inner(id, start_date, homework_days, skip_dates, start_unit, homework_books!inner(title, level, series_id, series_rel:series_id(name, total_units, cover_image_url))), student_homework_progress(unit_number, status)"
     )
-    .eq("class_students.student_id", studentId);
+    .eq("class_students.student_id", studentId)
+    .eq("class_students.is_active", true);
 
   if (shbErr) {
     logger.error("[listUnitProgressByStudent shb]", shbErr.message);
@@ -804,6 +806,7 @@ export async function markUnit(
     .select("id, class_students!inner(student_id)")
     .eq("class_homework_book_id", textbookId)
     .eq("class_students.student_id", studentId)
+    .eq("class_students.is_active", true)
     .maybeSingle();
 
   if (shbErr) {
@@ -889,7 +892,8 @@ export async function bulkMarkUnits(
   const { data: shbRows, error: shbErr } = await supabase
     .from("student_homework_books")
     .select("id, class_homework_book_id, class_students!inner(student_id)")
-    .in("class_homework_book_id", textbookIds);
+    .in("class_homework_book_id", textbookIds)
+    .eq("class_students.is_active", true);
   if (shbErr) {
     logger.error("[bulkMarkUnits lookup]", shbErr.message);
   } else {
@@ -972,6 +976,7 @@ export async function clearUnit(
     .select("id, class_students!inner(student_id)")
     .eq("class_homework_book_id", textbookId)
     .eq("class_students.student_id", studentId)
+    .eq("class_students.is_active", true)
     .maybeSingle();
 
   if (shbErr) return { error: shbErr.message };

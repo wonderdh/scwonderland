@@ -39,7 +39,8 @@ export async function listAllActiveStudentNames(): Promise<
     const { data: classLinks } = await supabase
       .from("class_students")
       .select("student_id, classes!inner(group_type)")
-      .in("student_id", studentIds);
+      .in("student_id", studentIds)
+      .eq("is_active", true);
     for (const link of classLinks ?? []) {
       const gt = (link.classes as unknown as { group_type: string | null })?.group_type;
       if (gt && !groupMap.has(link.student_id)) {

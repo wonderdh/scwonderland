@@ -70,6 +70,7 @@ export async function getAfterschoolEnrollments(
       .from("class_students")
       .select("student_id, classes(id, name, group_type)")
       .in("student_id", studentIds)
+      .eq("is_active", true)
       .neq("class_id", classId),
   ]);
 
@@ -129,8 +130,8 @@ export async function enrollStudent(
   const { error: csError } = await supabase
     .from("class_students")
     .upsert(
-      { class_id: classId, student_id: studentProfileId },
-      { onConflict: "class_id,student_id", ignoreDuplicates: true },
+      { class_id: classId, student_id: studentProfileId, is_active: true },
+      { onConflict: "class_id,student_id" },
     );
   if (csError && csError.code !== "23505") {
     logger.error("[enrollStudent:class_students]", csError.message);
@@ -163,7 +164,7 @@ export async function removeAfterschoolStudent(
 
   const { error: csError } = await supabase
     .from("class_students")
-    .delete()
+    .update({ is_active: false })
     .eq("class_id", classId)
     .eq("student_id", studentProfileId);
 
@@ -359,7 +360,7 @@ export async function bulkUpdateEnrollmentDays(
     if (u.days.length === 0) {
       await supabase
         .from("class_students")
-        .delete()
+        .update({ is_active: false })
         .eq("class_id", classId)
         .eq("student_id", u.studentProfileId);
     }

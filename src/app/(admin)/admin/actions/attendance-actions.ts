@@ -143,7 +143,8 @@ export async function getClassAttendanceByDate(
   const { data: members } = await supabase
     .from("class_students")
     .select("student_id")
-    .eq("class_id", classId);
+    .eq("class_id", classId)
+    .eq("is_active", true);
   if (!members?.length) return [];
 
   const studentIds = members.map((m) => m.student_id);
@@ -183,7 +184,8 @@ export async function getClassStudentsWithAttendance(
   const { data: membersData, error: membersError } = await supabase
     .from("class_students")
     .select("student_id")
-    .eq("class_id", classId);
+    .eq("class_id", classId)
+    .eq("is_active", true);
 
   if (membersError) {
     logger.error("[getClassStudentsWithAttendance] members:", membersError.message);

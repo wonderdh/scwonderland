@@ -25,5 +25,6 @@
 ## 주의
 
 - RLS 정책 변경은 마이그레이션으로만. 수동 SQL 패치 금지.
+- `class_students` 는 **삭제하지 않는다** (soft leave: `is_active=false`). `report_cards` 가 이 행을 FK(RESTRICT) 로 가리킴. 명단 조회는 `is_active = true` 필터 필수, 재배정은 `upsert … is_active: true` 로 기존 행 복구. (`20261102010000`)
 - `config.toml` 은 로컬 CLI 용. 시크릿 들어가면 안 됨.
 - `snippets/`, `.branches/` 는 CLI 가 관리. 직접 편집 X.

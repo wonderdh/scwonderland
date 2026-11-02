@@ -23,7 +23,8 @@ async function upsertAttendanceForBusAbsence(
   const { count } = await supabase
     .from("class_students")
     .select("id", { count: "exact", head: true })
-    .eq("student_id", studentId);
+    .eq("student_id", studentId)
+    .eq("is_active", true);
   if ((count ?? 0) > 0) {
     await supabase.from("attendance").upsert(
       [{

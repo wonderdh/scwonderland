@@ -40,14 +40,14 @@ async function resolveWriteClassStudentId(
 ): Promise<string | null> {
   const { data } = await supabase
     .from("class_students")
-    .select("id, is_active, joined_at, classes(group_type)")
-    .eq("student_id", studentProfileId);
+    .select("id, joined_at, classes(group_type)")
+    .eq("student_id", studentProfileId)
+    .eq("is_active", true);
   if (!data || data.length === 0) return null;
   const ranked = [...data].sort((a, b) => {
     const aAfter = (a.classes as unknown as { group_type: string } | null)?.group_type === "afterschool" ? 1 : 0;
     const bAfter = (b.classes as unknown as { group_type: string } | null)?.group_type === "afterschool" ? 1 : 0;
     if (aAfter !== bAfter) return aAfter - bAfter; // 정규반 우선
-    if (a.is_active !== b.is_active) return a.is_active ? -1 : 1; // active 우선
     return (b.joined_at ?? "").localeCompare(a.joined_at ?? ""); // 최근 합류 우선
   });
   return ranked[0].id;
@@ -169,6 +169,7 @@ export async function upsertReportCard(
       .select("id")
       .eq("student_id", student.id)
       .in("class_id", classIds)
+      .eq("is_active", true)
       .maybeSingle();
     if (!membership) {
       return { error: "담당 반 학생에게만 리포트카드를 작성할 수 있습니다." };
@@ -367,7 +368,7 @@ export async function listAllClassesReportStatus(
   const admin = createAdminClient();
   const [{ data: classes, error: classError }, { data: memberships, error: membershipError }, { data: cards, error: cardError }] = await Promise.all([
     admin.from("classes").select("id, name, group_type").neq("group_type", "afterschool").order("name"),
-    admin.from("class_students").select("id, class_id, student_id"),
+    admin.from("class_students").select("id, class_id, student_id").eq("is_active", true),
     admin.from("report_cards").select("class_student_id").eq("year", year).eq("month", month),
   ]);
   if (classError || membershipError || cardError) {
@@ -397,7 +398,7 @@ export async function listAllClassesWithStudents(): Promise<TeacherClassWithStud
   const admin = createAdminClient();
   const [{ data: classes, error: classError }, { data: members, error: memberError }] = await Promise.all([
     admin.from("classes").select("id, name").neq("group_type", "afterschool").order("name"),
-    admin.from("class_students").select("class_id, student_id"),
+    admin.from("class_students").select("class_id, student_id").eq("is_active", true),
   ]);
   if (classError || memberError || !classes?.length) {
     if (classError || memberError) {

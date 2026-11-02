@@ -397,7 +397,8 @@ export async function getStudentTimetable(
   const { data: memberships } = await supabase
     .from("class_students")
     .select("class_id")
-    .eq("student_id", studentProfileId);
+    .eq("student_id", studentProfileId)
+    .eq("is_active", true);
   const classIds = (memberships ?? []).map((m) => m.class_id);
 
   // 2. 반 이름

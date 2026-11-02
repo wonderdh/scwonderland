@@ -12,3 +12,4 @@
 
 - `(academy)` / `(bus)` 의 actions 는 별도. 거기서 admin 권한이 필요한 동작은 이 허브로 wrap 하지 말고, `verifyTeacherOrAdmin` 같은 적절한 가드 사용.
 - realtime 갱신이 걸린 도메인 (bus 위주) 은 `src/lib/bus/realtime-utils.ts` 와 동기 유지.
+- `class_students` 는 `.delete()` 금지 → `.update({ is_active: false })`. 명단·소속 조회는 `.eq("is_active", true)` (join 경유면 `"class_students.is_active"`). 이유는 `supabase/AGENTS.md`.

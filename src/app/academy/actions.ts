@@ -61,7 +61,8 @@ export async function getCurrentStudentClasses(): Promise<StudentClassItem[]> {
   const { data: members } = await admin
     .from("class_students")
     .select("class_id")
-    .eq("student_id", student.id);
+    .eq("student_id", student.id)
+    .eq("is_active", true);
   if (!members?.length) return [];
 
   const classIds = members.map((m) => m.class_id);
@@ -175,7 +176,8 @@ export async function getTeacherClasses(): Promise<TeacherClassWithStudents[]> {
   const { data: members } = await admin
     .from("class_students")
     .select("class_id, student_id")
-    .in("class_id", classIds);
+    .in("class_id", classIds)
+    .eq("is_active", true);
 
   const studentIds = [...new Set((members ?? []).map((m) => m.student_id))];
   let studentMap = new Map<string, { id: string; korean_name: string | null; english_name: string | null }>();
@@ -266,7 +268,8 @@ export async function getStudentMonthlyStats(
   const { data: hwRows } = await supabase
     .from("student_homework_progress")
     .select("status, student_homework_books!inner(class_student_id, class_students!inner(student_id))")
-    .eq("student_homework_books.class_students.student_id", studentId);
+    .eq("student_homework_books.class_students.student_id", studentId)
+    .eq("student_homework_books.class_students.is_active", true);
 
   const hw = hwRows ?? [];
   const hwCompleted = hw.filter((r) => r.status === "completed").length;
@@ -320,7 +323,8 @@ export async function getClassReportStatus(
   const { data: members } = await admin
     .from("class_students")
     .select("student_id")
-    .eq("class_id", classId);
+    .eq("class_id", classId)
+    .eq("is_active", true);
   if (!members?.length) return [];
 
   const studentIds = members.map((m) => m.student_id);
@@ -337,7 +341,8 @@ export async function getClassReportStatus(
     .from("class_students")
     .select("id, student_id")
     .in("student_id", studentIds)
-    .eq("class_id", classId);
+    .eq("class_id", classId)
+    .eq("is_active", true);
   const studentIdToClassStudentId = new Map(
     (classStudentRows ?? []).map((cs) => [cs.student_id, cs.id])
   );

@@ -388,6 +388,7 @@ export async function listStudentTextbooks(
       "id, class_student_id, class_homework_book_id, start_date, class_students!inner(student_id), class_homework_books(textbook_id, homework_books(title, level, publisher, series_rel:series_id(name, total_units, cover_image_url)))"
     )
     .eq("class_students.student_id", studentId)
+    .eq("class_students.is_active", true)
     .order("id", { ascending: true });
   if (error) {
     logger.error("[listStudentTextbooks]", error.message);

@@ -295,13 +295,13 @@ export async function deleteUserById(formData: FormData): Promise<{ error?: stri
 
   if (student) {
     await Promise.all([
-      supabase.from("class_students").delete().eq("student_id", student.id),
+      supabase.from("class_students").update({ is_active: false }).eq("student_id", student.id),
       supabase.from("afterschool_enrollments").delete().eq("student_id", student.id),
       supabase.from("student_bus_defaults").delete().eq("student_id", student.id),
       supabase.from("attendance").delete().eq("student_id", student.id),
       supabase.from("bus_change_requests").delete().eq("student_id", student.id),
       supabase.from("bus_check_records").delete().eq("student_id", student.id),
-      // report_cards: class_students CASCADE 로 자동 삭제됨
+      // class_students 는 soft delete(is_active=false) — report_cards 가 FK 로 묶여 있어 보존됨
     ]);
   }
 

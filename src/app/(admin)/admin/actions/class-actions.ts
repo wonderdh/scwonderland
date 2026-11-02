@@ -212,7 +212,7 @@ export async function listClassesWithDetails(): Promise<ClassWithDetails[]> {
   const classIds = classes.map((item) => item.id);
   const teachersByClass = await buildClassTeacherMap(supabase, classIds);
   const [{ data: members }, { data: schedules }] = await Promise.all([
-    supabase.from("class_students").select("class_id"),
+    supabase.from("class_students").select("class_id").eq("is_active", true),
     supabase.from("class_schedules").select("class_id"),
   ]);
 
@@ -271,12 +271,14 @@ export async function getClassWithStudents(
   const { count: studentCount } = await supabase
     .from("class_students")
     .select("*", { count: "exact", head: true })
-    .eq("class_id", classId);
+    .eq("class_id", classId)
+    .eq("is_active", true);
 
   const { data: rows } = await supabase
     .from("class_students")
     .select("id, student_id")
-    .eq("class_id", classId);
+    .eq("class_id", classId)
+    .eq("is_active", true);
   const studentIds = (rows ?? []).map((row) => row.student_id);
   const studentsById = await getStudentsByIds(supabase, studentIds);
 
@@ -330,7 +332,8 @@ export async function getStudentClasses(
   const { data: memberships, error } = await supabase
     .from("class_students")
     .select("class_id")
-    .eq("student_id", student.id);
+    .eq("student_id", student.id)
+    .eq("is_active", true);
   if (error) return { classes: [], error: error.message };
   if (!memberships?.length) return { classes: [] };
 
@@ -361,7 +364,7 @@ export async function getAllClassStudentsFlat(): Promise<
   if ("error" in auth) return [];
   const supabase = createAdminClient();
 
-  const { data: rows } = await supabase.from("class_students").select("id, class_id, student_id");
+  const { data: rows } = await supabase.from("class_students").select("id, class_id, student_id").eq("is_active", true);
   const studentsById = await getStudentsByIds(
     supabase,
     [...new Set((rows ?? []).map((row) => row.student_id))]
@@ -549,7 +552,8 @@ export async function getClassLinkedCounts(
   const { count: studentCount } = await supabase
     .from("class_students")
     .select("*", { count: "exact", head: true })
-    .eq("class_id", classId);
+    .eq("class_id", classId)
+    .eq("is_active", true);
   return { studentCount: studentCount ?? 0, homeworkCount: 0, noticeCount: 0 };
 }
 
@@ -560,10 +564,11 @@ export async function addStudentToClass(classId: string, studentProfileId: strin
   // ensureStudentRecord: orphan(profiles 만 있고 students 없음) 자동 복구
   const student = await ensureStudentRecord(supabase, studentProfileId);
   if (!student) return { error: "학생 정보를 찾을 수 없습니다." };
-  const { error } = await supabase.from("class_students").insert({
-    class_id: classId,
-    student_id: student.id,
-  });
+  // 소속은 soft delete(is_active) 라 재배정은 upsert 로 기존 행을 되살린다 (성적표 연결 유지)
+  const { error } = await supabase.from("class_students").upsert(
+    { class_id: classId, student_id: student.id, is_active: true },
+    { onConflict: "class_id,student_id" }
+  );
   if (error) return { error: error.message };
   revalidatePath("/admin/classes");
   return {};
@@ -588,7 +593,7 @@ export async function removeStudentFromClass(classStudentId: string): Promise<{ 
       .eq("student_id", classStudent.student_id);
   }
 
-  const { error } = await supabase.from("class_students").delete().eq("id", classStudentId);
+  const { error } = await supabase.from("class_students").update({ is_active: false }).eq("id", classStudentId);
   if (error) return { error: error.message };
   revalidatePath("/admin/classes");
   return {};
@@ -633,7 +638,8 @@ export async function listStudentsNotInClass(
   const { data: memberships } = await supabase
     .from("class_students")
     .select("student_id")
-    .eq("class_id", classId);
+    .eq("class_id", classId)
+    .eq("is_active", true);
   const assignedStudentIds = new Set((memberships ?? []).map((row) => row.student_id));
 
   const activeProfileIds = await getUserIdsByRole(supabase, "student");
@@ -685,7 +691,7 @@ export async function batchUpdateClassStudents(
         .eq("class_id", classStudent.class_id)
         .eq("student_id", classStudent.student_id);
     }
-    const { error } = await supabase.from("class_students").delete().in("id", removes);
+    const { error } = await supabase.from("class_students").update({ is_active: false }).in("id", removes);
     if (error) return { error: error.message };
   }
 
@@ -694,13 +700,15 @@ export async function batchUpdateClassStudents(
     const rows = await Promise.all(
       adds.map(async (item) => {
         const student = await ensureStudentRecord(supabase, item.profileId);
-        return student ? { class_id: item.classId, student_id: student.id } : null;
+        return student ? { class_id: item.classId, student_id: student.id, is_active: true } : null;
       })
     );
     const inserts = rows.filter((r): r is NonNullable<typeof r> => r !== null);
     const skipped = rows.length - inserts.length;
     if (inserts.length) {
-      const { error } = await supabase.from("class_students").insert(inserts);
+      const { error } = await supabase
+        .from("class_students")
+        .upsert(inserts, { onConflict: "class_id,student_id" });
       if (error) return { error: error.message };
     }
     if (skipped > 0) {
@@ -726,7 +734,7 @@ export async function listClassesWithStudentIds(): Promise<
     .order("name");
   if (!classes?.length) return [];
 
-  const { data: rows } = await supabase.from("class_students").select("class_id, student_id");
+  const { data: rows } = await supabase.from("class_students").select("class_id, student_id").eq("is_active", true);
   const studentsById = await getStudentsByIds(
     supabase,
     [...new Set((rows ?? []).map((row) => row.student_id))]
