@@ -22,7 +22,7 @@ export default async function MobileBusCheckPage() {
         <h1 className="text-base font-semibold text-foreground">승하차 관리</h1>
       </header>
       <div className="flex-1">
-        <BusStaffMonitor busNumberId={null} staffProfileId={user.id} />
+        <BusStaffMonitor busNumberId={null} />
       </div>
     </div>
   );

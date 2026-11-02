@@ -26,13 +26,6 @@ function formatCheckedTime(iso: string) {
   return `${h}:${m}`;
 }
 
-async function getAdminId(): Promise<string> {
-  const { createClient } = await import("@/lib/supabase/client");
-  const supabase = createClient();
-  const { data } = await supabase.auth.getUser();
-  return data.user?.id ?? "";
-}
-
 type PendingChange = {
   action: "board" | "unboard" | "check" | "uncheck";
   student: BusManifestEntry;
@@ -64,17 +57,12 @@ export function BusDashboard({ busTimeSlots }: { busTimeSlots: BusTimeSlot[] }) 
   const [noRides, setNoRides] = useState<NoRideEntry[]>([]);
   const [afterschoolStudents, setAfterSchoolStudents] = useState<AfterSchoolBusEntry[]>([]);
   const [loading, setLoading] = useState(false);
-  const [adminId, setAdminId] = useState("");
   const [isPending, startTransition] = useTransition();
   const [pendingChanges, setPendingChanges] = useState<Map<string, PendingChange>>(new Map());
   const [selectedSlotId, setSelectedSlotId] = useState<string>(() => {
     return busTimeSlots[0]?.id ?? "";
   });
   // showChangeModal removed — moved to BusChangeRequestsPanel
-
-  useEffect(() => {
-    getAdminId().then(setAdminId);
-  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -177,8 +165,7 @@ export function BusDashboard({ busTimeSlots }: { busTimeSlots: BusTimeSlot[] }) 
           busTimeSlotId: ch.busTimeSlotId,
           busNumberId: ch.busNumberId,
         })),
-        date,
-        adminId
+        date
       );
       if (result.error) {
         toast.error(`오류: ${result.error}`);
@@ -188,7 +175,7 @@ export function BusDashboard({ busTimeSlots }: { busTimeSlots: BusTimeSlot[] }) 
       // 성공/실패 무관하게 DB 최신 데이터로 동기화
       await load();
     });
-  }, [pendingChanges, date, adminId, load]);
+  }, [pendingChanges, date, load]);
 
   const clearAll = useCallback(() => {
     setPendingChanges(new Map());

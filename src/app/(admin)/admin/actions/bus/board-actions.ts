@@ -1,7 +1,7 @@
 "use server";
 
 import { createAdminClient } from "@/lib/supabase/admin";
-import { verifyAuthenticated } from "../auth-helpers";
+import { verifyTeacherOrAdmin } from "../auth-helpers";
 import { logger } from "@/lib/server/logger";
 import { getStudentRecordByProfileId } from "@/lib/server/domain-helpers";
 
@@ -13,7 +13,7 @@ export async function boardBusStudent(
   busTimeSlotId: string,
   busNumberId: string
 ): Promise<{ error?: string }> {
-  const auth = await verifyAuthenticated();
+  const auth = await verifyTeacherOrAdmin();
   if ("error" in auth) return { error: auth.error };
   const supabase = createAdminClient();
   const student = await getStudentRecordByProfileId(supabase, studentProfileId);
@@ -40,7 +40,7 @@ export async function unboardBusStudent(
   studentProfileId: string,
   checkDate: string
 ): Promise<{ error?: string }> {
-  const auth = await verifyAuthenticated();
+  const auth = await verifyTeacherOrAdmin();
   if ("error" in auth) return { error: auth.error };
   const supabase = createAdminClient();
   const student = await getStudentRecordByProfileId(supabase, studentProfileId);
@@ -87,10 +87,9 @@ export async function checkBusStudent(
   studentProfileId: string,
   checkDate: string,
   busTimeSlotId: string,
-  busNumberId: string,
-  checkedBy: string
+  busNumberId: string
 ): Promise<{ error?: string }> {
-  const auth = await verifyAuthenticated();
+  const auth = await verifyTeacherOrAdmin();
   if ("error" in auth) return { error: auth.error };
   const supabase = createAdminClient();
   const student = await getStudentRecordByProfileId(supabase, studentProfileId);
@@ -102,7 +101,7 @@ export async function checkBusStudent(
       bus_time_slot_id: busTimeSlotId,
       bus_number_id: busNumberId,
       checked_at: new Date().toISOString(),
-      checked_by: checkedBy,
+      checked_by: auth.userId,
     },
     { onConflict: "student_id,check_date" }
   );
@@ -118,7 +117,7 @@ export async function uncheckBusStudent(
   studentProfileId: string,
   checkDate: string
 ): Promise<{ error?: string }> {
-  const auth = await verifyAuthenticated();
+  const auth = await verifyTeacherOrAdmin();
   if ("error" in auth) return { error: auth.error };
   const supabase = createAdminClient();
   const student = await getStudentRecordByProfileId(supabase, studentProfileId);
@@ -167,10 +166,9 @@ export async function batchBusCheckRecord(
     busTimeSlotId: string;
     busNumberId: string;
   }[],
-  checkDate: string,
-  checkedBy: string
+  checkDate: string
 ): Promise<{ error?: string }> {
-  const auth = await verifyAuthenticated();
+  const auth = await verifyTeacherOrAdmin();
   if ("error" in auth) return { error: auth.error };
   const supabase = createAdminClient();
   const now = new Date().toISOString();
@@ -215,7 +213,7 @@ export async function batchBusCheckRecord(
         bus_time_slot_id: i.busTimeSlotId,
         bus_number_id: i.busNumberId,
         checked_at: now,
-        checked_by: checkedBy,
+        checked_by: auth.userId,
       })),
       { onConflict: "student_id,check_date" }
     );

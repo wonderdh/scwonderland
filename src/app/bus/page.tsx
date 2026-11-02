@@ -7,9 +7,6 @@ export default async function BusPage() {
   if (!staff) redirect("/login?next=/bus");
 
   return (
-    <BusStaffMonitor
-      busNumberId={staff.bus_number_id}
-      staffProfileId={staff.profile_id}
-    />
+    <BusStaffMonitor busNumberId={staff.bus_number_id} />
   );
 }

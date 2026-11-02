@@ -1,7 +1,7 @@
 "use server";
 
 import { createAdminClient } from "@/lib/supabase/admin";
-import { verifyAdmin, verifyAuthenticated } from "../auth-helpers";
+import { verifyAdmin, verifyAuthenticated, verifyTeacherOrAdmin } from "../auth-helpers";
 import { getUserRoles } from "@/lib/auth/user-roles";
 import { logger } from "@/lib/server/logger";
 import { buildStopToBusMaps, getServedStopBusesByDay, getServedStopIdsByDay } from "./_helpers";
@@ -18,7 +18,8 @@ import type { StopBusMaps } from "./_helpers";
 export async function listAllActiveStudentNames(): Promise<
   { profile_id: string; korean_name: string | null; english_name: string | null; age: number | null; group_type: string | null }[]
 > {
-  const auth = await verifyAuthenticated();
+  // 전교 학생 명단 — 학생 세션에 노출 금지 (docs/2026-11-02/03 R4)
+  const auth = await verifyTeacherOrAdmin();
   if ("error" in auth) return [];
   const supabase = createAdminClient();
   const { data, error } = await supabase

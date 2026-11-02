@@ -337,10 +337,8 @@ function StaffBusCard({
 /* ── 메인 컴포넌트 ── */
 export function BusStaffMonitor({
   busNumberId,
-  staffProfileId,
 }: {
   busNumberId: string | null;
-  staffProfileId: string;
 }) {
   const [date, setDate] = useState(todayKst);
   const [groups, setGroups] = useState<BusManifestGroup[]>([]);
@@ -492,8 +490,7 @@ export function BusStaffMonitor({
           busTimeSlotId: ch.busTimeSlotId,
           busNumberId: ch.busNumberId,
         })),
-        date,
-        staffProfileId
+        date
       );
 
       if (result.error) {
@@ -503,7 +500,7 @@ export function BusStaffMonitor({
       }
       await load();
     });
-  }, [pendingChanges, date, staffProfileId, load]);
+  }, [pendingChanges, date, load]);
 
   const clearAll = useCallback(() => {
     setPendingChanges(new Map());
