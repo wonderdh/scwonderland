@@ -188,7 +188,6 @@ export async function listBusStops(): Promise<BusStop[]> {
     .from("bus_stops")
     .select("*")
     .eq("is_active", true)
-    .order("sort_order")
     .order("name");
   if (error) {
     logger.error("[listBusStops]", error.message);
@@ -206,18 +205,9 @@ export async function createBusStop(
   const trimmed = name.trim();
   if (!trimmed) return { error: "정류장 이름을 입력해 주세요." };
 
-  // auto sort_order: max + 1 (globally)
-  const { data: existing } = await supabase
-    .from("bus_stops")
-    .select("sort_order")
-    .eq("is_active", true)
-    .order("sort_order", { ascending: false })
-    .limit(1);
-  const nextOrder = (existing?.[0]?.sort_order ?? -1) + 1;
-
   const { data, error } = await supabase
     .from("bus_stops")
-    .insert({ name: trimmed, sort_order: nextOrder })
+    .insert({ name: trimmed })
     .select("id")
     .single();
   if (error) {
@@ -229,8 +219,7 @@ export async function createBusStop(
 
 export async function updateBusStop(
   id: string,
-  name: string,
-  sortOrder?: number
+  name: string
 ): Promise<{ error?: string }> {
   const auth = await verifyAdmin();
   if ("error" in auth) return { error: auth.error };
@@ -238,10 +227,10 @@ export async function updateBusStop(
   const trimmed = name.trim();
   if (!trimmed) return { error: "정류장 이름을 입력해 주세요." };
 
-  const updateData: Database["public"]["Tables"]["bus_stops"]["Update"] = { name: trimmed, updated_at: new Date().toISOString() };
-  if (sortOrder !== undefined) updateData.sort_order = sortOrder;
-
-  const { error } = await supabase.from("bus_stops").update(updateData).eq("id", id);
+  const { error } = await supabase
+    .from("bus_stops")
+    .update({ name: trimmed, updated_at: new Date().toISOString() })
+    .eq("id", id);
   if (error) {
     logger.error("[updateBusStop]", error.message);
     return { error: error.message };

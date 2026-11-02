@@ -97,9 +97,7 @@ export type BusStopDayAssignment = {
 
 export type BusStop = {
   id: string;
-  bus_number_id: string | null;
   name: string;
-  sort_order: number;
   is_active: boolean;
   created_at: string;
   updated_at: string;

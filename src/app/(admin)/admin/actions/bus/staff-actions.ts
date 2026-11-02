@@ -112,14 +112,9 @@ export async function getWeeklyDropoffExportData(): Promise<
   // 4. 정류장 전체 조회
   const { data: stopsAll } = await supabase
     .from("bus_stops")
-    .select("id, name, sort_order")
+    .select("id, name")
     .eq("is_active", true);
-  const stopInfoMap = new Map(
-    (stopsAll ?? []).map((s) => [
-      s.id as string,
-      { name: s.name as string, sort_order: s.sort_order as number },
-    ])
-  );
+  const stopNameMap = new Map((stopsAll ?? []).map((s) => [s.id as string, s.name as string]));
 
   // 5. 슬롯 ID 목록 수집 후 student_bus_defaults 조회 + 요일별 stop→bus 매핑(호차 폴백·정류장 순서) 병렬
   const slotIds = slots.map((s) => s.id);
@@ -196,7 +191,9 @@ export async function getWeeklyDropoffExportData(): Promise<
         const stopId = d.bus_stop_id;
         // 호차: 저장값 우선, 없으면 정류장 단일 운행 호차
         const busId = stopBusMaps.resolveBus(d.bus_number_id, stopId, slot.id);
-        const stopInfo = stopId ? stopInfoMap.get(stopId) : undefined;
+        // 정류장 순서 = 그 호차의 노선 순서 (bus_stop_day_assignments.sort_order)
+        const stopSortOrder =
+          busId && stopId ? (stopBusMaps.getSortOrder(busId, stopId, slot.id) ?? 9999) : 9999;
 
         rows.push({
           day,
@@ -204,8 +201,8 @@ export async function getWeeklyDropoffExportData(): Promise<
           slotLabel: slot.label,
           slotTime: slot.time,
           busLabel: busId ? (busMap.get(busId) ?? "미지정") : "미지정",
-          stopName: stopInfo?.name ?? "",
-          stopSortOrder: stopInfo?.sort_order ?? 9999,
+          stopName: stopId ? (stopNameMap.get(stopId) ?? "") : "",
+          stopSortOrder,
           korean_name: stud?.korean_name ?? null,
           english_name: stud?.english_name ?? null,
           age: stud?.age ?? null,
