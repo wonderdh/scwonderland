@@ -9,6 +9,7 @@ Next.js 16 App Router + React 19 + TypeScript + Tailwind v4 + Supabase 기반 �
 - Supabase 마이그레이션은 `supabase/migrations/` 에 추가하고 `pnpm db:types` 로 타입 재생성. 정책·트리거·테이블·컬럼 삭제나 anon 권한 부여가 들어가면 파일 맨 위에 `-- reviewed-by: <이름> <날짜>` (CI `check:migration-danger` 가 검사).
 - **DB FK 컨벤션**: 학생 컬럼은 `students(id)`, 교사 컬럼은 `teachers(id)` 참조. `profiles(id)` 는 admin·teacher 가 섞이는 actor 컬럼 (`assigned_by`, `recorded_by`, `marked_by` 등) 에만. 상세는 `supabase/AGENTS.md` "FK 컨벤션".
 - **요청 범위 준수**: ① 질문/탐색 단계(가능?, 어떻게 돼있어? 등)엔 답만 하고 코드/DB 손 안 댐. ② 명령 단계(바꿔/해/없애 등)엔 DB + 그에 따라 깨지는 코드까지 한 번에 (tsc 통과). ③ **요청 안 한 리팩토·기능 삭제·"이왕 하는 김에" 식 정리 금지**. UI feature 를 stub 으로 만들거나 축소하는 건 사용자 동의 후에만.
+- **UI 중복 금지**: 같은 className 묶음이나 같은 JSX 구조가 한 파일에서 2번 이상 반복되면 그 파일 안에 작은 컴포넌트로 뽑는다 (예: `SectionTitle`). 3개 이상 파일에서 쓰이면 `src/components/` 로 올린다. 새 코드를 쓸 때 적용하고, 기존 코드는 요청 없이 건드리지 않는다.
 - 환경변수는 `.env*` 파일 사용. 민감값 커밋 금지.
 
 ## 자주 쓰는 명령

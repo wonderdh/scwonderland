@@ -16,6 +16,7 @@ import {
 } from "@/app/(admin)/admin/actions/homework-unit-actions";
 import { getUnitSchedule } from "@/lib/utils/homework-schedule";
 import { todayKst, KST_DAY_LABELS } from "@/lib/utils/date-kst";
+import { DayChips } from "@/components/badges/DayChips";
 import { ymdToKstWeekday } from "@/lib/utils/homework-schedule";
 import { ClassUnitProgressList } from "@/components/homework/ClassUnitProgressList";
 
@@ -151,22 +152,11 @@ function EditDaysModal({
             <label className="block text-sm font-medium text-slate-700 mb-1.5">
               숙제 요일 (관리자 지정)
             </label>
-            {homeworkDays.length === 0 ? (
-              <p className="text-xs text-amber-600">
-                요일이 지정되지 않았습니다. 관리자에게 요청하세요.
-              </p>
-            ) : (
-              <div className="flex flex-wrap gap-1.5">
-                {homeworkDays.map((d) => (
-                  <span
-                    key={d}
-                    className="inline-flex items-center justify-center rounded-full bg-orange-100 px-2.5 py-0.5 text-xs font-semibold text-orange-700"
-                  >
-                    {KST_DAY_LABELS[d]}
-                  </span>
-                ))}
-              </div>
-            )}
+            <DayChips
+              days={homeworkDays}
+              size="md"
+              empty="요일이 지정되지 않았습니다. 관리자에게 요청하세요."
+            />
           </div>
 
           <div>

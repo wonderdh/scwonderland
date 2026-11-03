@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useHomeworkBoard } from "@/components/homework/useHomeworkBoard";
 import { BoardStudentCard } from "@/components/homework/BoardStudentList";
+import { filterChip } from "@/lib/ui/filter-chip";
 
 export type BoardSeriesOption = { id: string; name: string };
 export type BoardLevelsBySeries = Record<string, string[]>; // seriesId → distinct levels (sorted)
@@ -40,11 +41,7 @@ export function HomeworkBoard({ seriesOptions, levelsBySeries, todayKst }: Props
               key={s.id}
               type="button"
               onClick={() => board.selectStpoint(active ? null : s.id, null)}
-              className={`px-3 py-1 rounded-full text-xs font-medium transition-colors border ${
-                active
-                  ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                  : "bg-white text-slate-700 border-slate-200 hover:border-primary/50 hover:text-primary"
-              }`}
+              className={filterChip(active)}
             >
               {s.name || "(이름 없음)"}
             </button>
@@ -61,11 +58,7 @@ export function HomeworkBoard({ seriesOptions, levelsBySeries, todayKst }: Props
                 key={lv}
                 type="button"
                 onClick={() => board.selectStpoint(board.seriesId, active ? null : lv)}
-                className={`px-3 py-1 rounded-full text-xs font-medium transition-colors border ${
-                  active
-                    ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                    : "bg-white text-slate-700 border-slate-200 hover:border-primary/50 hover:text-primary"
-                }`}
+                className={filterChip(active)}
               >
                 {lv}
               </button>

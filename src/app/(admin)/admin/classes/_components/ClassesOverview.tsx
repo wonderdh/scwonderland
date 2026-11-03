@@ -7,6 +7,7 @@ import { GROUP_ORDER, GROUP_TYPE_TO_LABEL, type GroupKey } from "@/lib/constants
 import { KST_DAY_LABELS } from "@/lib/utils/date-kst";
 import { ClassesExcelDownload } from "./ClassesExcelDownload";
 import { formatStudentName } from "@/lib/utils/student-name";
+import { filterChip } from "@/lib/ui/filter-chip";
 
 type FlatClassStudent = {
   class_id: string;
@@ -154,11 +155,7 @@ export function ClassesOverview({
             <button
               type="button"
               onClick={() => setGroupFilter("all")}
-              className={`px-3 py-1 rounded-full text-xs font-medium transition-colors border ${
-                groupFilter === "all"
-                  ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                  : "bg-white text-slate-700 border-slate-200 hover:border-primary/50 hover:text-primary"
-              }`}
+              className={filterChip(groupFilter === "all")}
             >
               전체 ({filteredOutClasses.length})
             </button>
@@ -172,11 +169,7 @@ export function ClassesOverview({
                   key={g}
                   type="button"
                   onClick={() => setGroupFilter(g)}
-                  className={`px-3 py-1 rounded-full text-xs font-medium transition-colors border ${
-                    active
-                      ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                      : "bg-white text-slate-700 border-slate-200 hover:border-primary/50 hover:text-primary"
-                  }`}
+                  className={filterChip(active)}
                 >
                   {GROUP_STYLE[g].icon} {GROUP_STYLE[g].label} ({count})
                 </button>
@@ -195,11 +188,7 @@ export function ClassesOverview({
                     key={t.id}
                     type="button"
                     onClick={() => setKoreanTeacherId(active ? null : t.id)}
-                    className={`px-3 py-1 rounded-full text-xs font-medium transition-colors border ${
-                      active
-                        ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                        : "bg-white text-slate-700 border-slate-200 hover:border-primary/50 hover:text-primary"
-                    }`}
+                    className={filterChip(active)}
                   >
                     {t.name}
                   </button>
@@ -219,11 +208,7 @@ export function ClassesOverview({
                     key={t.id}
                     type="button"
                     onClick={() => setNativeTeacherId(active ? null : t.id)}
-                    className={`px-3 py-1 rounded-full text-xs font-medium transition-colors border ${
-                      active
-                        ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                        : "bg-white text-slate-700 border-slate-200 hover:border-primary/50 hover:text-primary"
-                    }`}
+                    className={filterChip(active)}
                   >
                     {t.name}
                   </button>
@@ -243,11 +228,7 @@ export function ClassesOverview({
                     key={d}
                     type="button"
                     onClick={() => toggleDay(d)}
-                    className={`min-w-[36px] px-3 py-1 rounded-full text-xs font-medium transition-colors border ${
-                      active
-                        ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                        : "bg-white text-slate-700 border-slate-200 hover:border-primary/50 hover:text-primary"
-                    }`}
+                    className={filterChip(active, "min-w-[36px]")}
                   >
                     {KST_DAY_LABELS[d]}
                   </button>

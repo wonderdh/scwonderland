@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { ConfirmDialog } from "@/components/overlays/ConfirmDialog";
 import { Modal } from "@/components/overlays/Modal";
 import { SeriesLevelPicker } from "@/components/forms/SeriesLevelPicker";
-import { KST_DAY_LABELS } from "@/lib/utils/date-kst";
+import { DayChips } from "@/components/badges/DayChips";
 import {
   listStudentTextbooks,
   assignStudentTextbook,
@@ -26,26 +26,6 @@ import { BookOpen } from "lucide-react";
 type TextbookRow = Database["public"]["Tables"]["homework_books"]["Row"] & {
   series_name?: string | null;
 };
-
-function DayBadges({ days }: { days: number[] }) {
-  if (!days || days.length === 0) {
-    return <span className="text-xs text-slate-400">요일 미지정</span>;
-  }
-  return (
-    <div className="flex flex-wrap gap-1">
-      {[...days]
-        .sort((a, b) => a - b)
-        .map((d) => (
-          <span
-            key={d}
-            className="rounded-full bg-orange-100 px-2 py-0.5 text-xs font-semibold text-orange-700"
-          >
-            {KST_DAY_LABELS[d]}
-          </span>
-        ))}
-    </div>
-  );
-}
 
 // ── Assign Modal ─────────────────────────────────────────────────────────────
 
@@ -291,7 +271,7 @@ export function StudentTextbookTab({
                     )}
                   </div>
                   <div className="flex flex-wrap items-center gap-1">
-                    <DayBadges days={a.homework_days ?? []} />
+                    <DayChips days={a.homework_days ?? []} size="md" />
                     {a.skip_dates && a.skip_dates.length > 0 && (
                       <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
                         예외 {a.skip_dates.length}일

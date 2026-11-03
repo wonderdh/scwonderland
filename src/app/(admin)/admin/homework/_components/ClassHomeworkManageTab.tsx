@@ -33,6 +33,8 @@ import { KST_DAY_LABELS, todayDowKst } from "@/lib/utils/date-kst";
 import { GROUP_TYPE_TO_LABEL } from "@/lib/constants/class";
 import { AssignClassHomeworkModal } from "./AssignClassHomeworkModal";
 import { EditClassHomeworkModal } from "./EditClassHomeworkModal";
+import { filterChip } from "@/lib/ui/filter-chip";
+import { DayChips } from "@/components/badges/DayChips";
 
 const GROUP_FILTERS: { value: string; label: string }[] = [
   { value: "kindergarten", label: GROUP_TYPE_TO_LABEL.kindergarten },
@@ -58,26 +60,6 @@ function buildSearchHaystack(c: ClassOption): string {
     ...c.studentNames.flatMap((s) => [s.ko ?? "", s.en ?? ""]),
   ];
   return parts.join(" ").toLowerCase();
-}
-
-function DayChips({ days }: { days: number[] }) {
-  if (!days || days.length === 0) {
-    return <span className="text-xs text-amber-600">요일 미지정</span>;
-  }
-  return (
-    <div className="flex flex-wrap gap-1">
-      {[...days]
-        .sort((a, b) => a - b)
-        .map((d) => (
-          <span
-            key={d}
-            className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-orange-100 px-1.5 text-[11px] font-semibold text-orange-700"
-          >
-            {KST_DAY_LABELS[d]}
-          </span>
-        ))}
-    </div>
-  );
 }
 
 type Props = {
@@ -458,11 +440,7 @@ export function ClassHomeworkManageTab({
                     key={g.value}
                     type="button"
                     onClick={() => toggleGroup(g.value)}
-                    className={`px-3 py-1 rounded-full text-xs font-medium transition-colors border ${
-                      active
-                        ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                        : "bg-white text-slate-700 border-slate-200 hover:border-primary/50 hover:text-primary"
-                    }`}
+                    className={filterChip(active)}
                   >
                     {g.label}
                   </button>
@@ -483,11 +461,7 @@ export function ClassHomeworkManageTab({
                       onClick={() =>
                         setKoreanTeacherId(active ? null : t.id)
                       }
-                      className={`px-3 py-1 rounded-full text-xs font-medium transition-colors border ${
-                        active
-                          ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                          : "bg-white text-slate-700 border-slate-200 hover:border-primary/50 hover:text-primary"
-                      }`}
+                      className={filterChip(active)}
                     >
                       {t.name}
                     </button>
@@ -509,11 +483,7 @@ export function ClassHomeworkManageTab({
                       onClick={() =>
                         setNativeTeacherId(active ? null : t.id)
                       }
-                      className={`px-3 py-1 rounded-full text-xs font-medium transition-colors border ${
-                        active
-                          ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                          : "bg-white text-slate-700 border-slate-200 hover:border-primary/50 hover:text-primary"
-                      }`}
+                      className={filterChip(active)}
                     >
                       {t.name}
                     </button>
@@ -533,11 +503,7 @@ export function ClassHomeworkManageTab({
                       key={p.id}
                       type="button"
                       onClick={() => togglePeriod(p.id)}
-                      className={`px-3 py-1 rounded-full text-xs font-medium transition-colors border ${
-                        active
-                          ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                          : "bg-white text-slate-700 border-slate-200 hover:border-primary/50 hover:text-primary"
-                      }`}
+                      className={filterChip(active)}
                     >
                       {p.label}
                     </button>
@@ -566,11 +532,7 @@ export function ClassHomeworkManageTab({
                       key={d}
                       type="button"
                       onClick={() => toggleDay(d)}
-                      className={`min-w-[36px] px-3 py-1 rounded-full text-xs font-medium transition-colors border ${
-                        active
-                          ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                          : "bg-white text-slate-700 border-slate-200 hover:border-primary/50 hover:text-primary"
-                      }`}
+                      className={filterChip(active, "min-w-[36px]")}
                     >
                       {KST_DAY_LABELS[d]}
                     </button>
@@ -599,11 +561,7 @@ export function ClassHomeworkManageTab({
                       key={s.id}
                       type="button"
                       onClick={() => toggleSeries(s.id)}
-                      className={`px-3 py-1 rounded-full text-xs font-medium transition-colors border ${
-                        active
-                          ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                          : "bg-white text-slate-700 border-slate-200 hover:border-primary/50 hover:text-primary"
-                      }`}
+                      className={filterChip(active)}
                     >
                       {s.name || "(이름 없음)"}
                     </button>
@@ -635,11 +593,7 @@ export function ClassHomeworkManageTab({
                       key={lv}
                       type="button"
                       onClick={() => toggleLevel(lv)}
-                      className={`px-3 py-1 rounded-full text-xs font-medium transition-colors border ${
-                        active
-                          ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                          : "bg-white text-slate-700 border-slate-200 hover:border-primary/50 hover:text-primary"
-                      }`}
+                      className={filterChip(active)}
                     >
                       {lv}
                     </button>

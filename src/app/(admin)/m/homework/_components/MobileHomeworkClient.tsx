@@ -18,6 +18,7 @@ import { HomeworkBoard } from "@/components/homework/HomeworkBoard";
 import type { BoardSeriesOption, BoardLevelsBySeries } from "@/components/homework/HomeworkBoard";
 import { KST_DAY_LABELS, todayDowKst } from "@/lib/utils/date-kst";
 import { GROUP_TYPE_TO_LABEL } from "@/lib/constants/class";
+import { filterChip } from "@/lib/ui/filter-chip";
 
 type ClassOption = HomeworkClassPickerOption;
 
@@ -372,11 +373,7 @@ export function MobileHomeworkClient({
                     key={g.value}
                     type="button"
                     onClick={() => toggleGroup(g.value)}
-                    className={`px-3 py-1 rounded-full text-xs font-medium transition-colors border ${
-                      active
-                        ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                        : "bg-white text-slate-700 border-slate-200 hover:border-primary/50 hover:text-primary"
-                    }`}
+                    className={filterChip(active)}
                   >
                     {g.label}
                   </button>
@@ -396,11 +393,7 @@ export function MobileHomeworkClient({
                       key={t.id}
                       type="button"
                       onClick={() => setKoreanTeacherId(active ? null : t.id)}
-                      className={`px-3 py-1 rounded-full text-xs font-medium transition-colors border ${
-                        active
-                          ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                          : "bg-white text-slate-700 border-slate-200 hover:border-primary/50 hover:text-primary"
-                      }`}
+                      className={filterChip(active)}
                     >
                       {t.name}
                     </button>
@@ -421,11 +414,7 @@ export function MobileHomeworkClient({
                       key={t.id}
                       type="button"
                       onClick={() => setNativeTeacherId(active ? null : t.id)}
-                      className={`px-3 py-1 rounded-full text-xs font-medium transition-colors border ${
-                        active
-                          ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                          : "bg-white text-slate-700 border-slate-200 hover:border-primary/50 hover:text-primary"
-                      }`}
+                      className={filterChip(active)}
                     >
                       {t.name}
                     </button>
@@ -446,11 +435,7 @@ export function MobileHomeworkClient({
                       key={p.id}
                       type="button"
                       onClick={() => togglePeriod(p.id)}
-                      className={`px-3 py-1 rounded-full text-xs font-medium transition-colors border ${
-                        active
-                          ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                          : "bg-white text-slate-700 border-slate-200 hover:border-primary/50 hover:text-primary"
-                      }`}
+                      className={filterChip(active)}
                     >
                       {p.label}
                     </button>
@@ -480,11 +465,7 @@ export function MobileHomeworkClient({
                       key={d}
                       type="button"
                       onClick={() => toggleDay(d)}
-                      className={`min-w-[36px] px-3 py-1 rounded-full text-xs font-medium transition-colors border ${
-                        active
-                          ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                          : "bg-white text-slate-700 border-slate-200 hover:border-primary/50 hover:text-primary"
-                      }`}
+                      className={filterChip(active, "min-w-[36px]")}
                     >
                       {KST_DAY_LABELS[d]}
                     </button>
@@ -514,11 +495,7 @@ export function MobileHomeworkClient({
                       key={s.id}
                       type="button"
                       onClick={() => toggleSeries(s.id)}
-                      className={`px-3 py-1 rounded-full text-xs font-medium transition-colors border ${
-                        active
-                          ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                          : "bg-white text-slate-700 border-slate-200 hover:border-primary/50 hover:text-primary"
-                      }`}
+                      className={filterChip(active)}
                     >
                       {s.name || "(이름 없음)"}
                     </button>
@@ -551,11 +528,7 @@ export function MobileHomeworkClient({
                       key={lv}
                       type="button"
                       onClick={() => toggleLevel(lv)}
-                      className={`px-3 py-1 rounded-full text-xs font-medium transition-colors border ${
-                        active
-                          ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                          : "bg-white text-slate-700 border-slate-200 hover:border-primary/50 hover:text-primary"
-                      }`}
+                      className={filterChip(active)}
                     >
                       {lv}
                     </button>

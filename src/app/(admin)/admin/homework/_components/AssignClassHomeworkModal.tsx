@@ -9,6 +9,7 @@ import { SeriesLevelPicker } from "@/components/forms/SeriesLevelPicker";
 import { assignClassTextbook } from "@/app/(admin)/admin/actions/class-textbook-actions";
 import type { TextbookWithSeries } from "@/app/(admin)/admin/actions/textbook-actions";
 import { KST_DAY_LABELS } from "@/lib/utils/date-kst";
+import { DayChips } from "@/components/badges/DayChips";
 import {
   GRADING_DATE_ERROR_MESSAGES,
   isValidGradingDate,
@@ -131,20 +132,7 @@ export function AssignClassHomeworkModal({
         {/* 반 수업 요일 안내 */}
         <div className="mb-4 rounded-lg border border-slate-200 bg-slate-50/60 px-3 py-2 text-xs text-slate-600">
           <span className="font-semibold text-slate-700">이 반 수업</span>{" "}
-          {meetDays.length > 0 ? (
-            <span className="inline-flex flex-wrap gap-1 align-middle">
-              {[...meetDays].sort((a, b) => a - b).map((d) => (
-                <span
-                  key={d}
-                  className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-sky-100 px-1.5 text-[11px] font-semibold text-sky-700"
-                >
-                  {KST_DAY_LABELS[d]}
-                </span>
-              ))}
-            </span>
-          ) : (
-            <span className="text-amber-600">정보 없음</span>
-          )}
+          <DayChips days={meetDays} tone="sky" empty="정보 없음" />
           <p className="mt-1 text-[11px] text-slate-400">
             숙제는 부여 요일에 나가고, <b>검사는 부여 요일의 다음 수업일</b>에 합니다.
           </p>
