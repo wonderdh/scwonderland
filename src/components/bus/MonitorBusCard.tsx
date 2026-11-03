@@ -3,6 +3,13 @@ import { getAgeColor } from "@/lib/ui/student-age-colors";
 import { groupStudentsByStop, formatTime, formatCheckedTime, type StopGroup } from "@/lib/bus/utils";
 import { formatStudentName } from "@/lib/utils/student-name";
 
+/** 행 배경 우선순위: 승차확인 > 변경 > 탑승 > 기본 */
+function rowState(s: BusManifestEntry) {
+  return s.checked_at ? "checked" : s.is_changed ? "changed" : s.boarded_at ? "boarded" : "idle";
+}
+const ADMIN_ROW_BG = { checked: "bg-green-50/40", changed: "bg-amber-50", boarded: "bg-blue-50/30", idle: "" } as const;
+const MONITOR_ROW_BG = { checked: "bg-green-50/50", changed: "bg-amber-50", boarded: "bg-blue-50/40", idle: "" } as const;
+
 // 학생 있는 정류장 + 학생 없는 정류장(show_empty_stops) 을 한 리스트로 병합.
 // sort_order → estimated_time → stopName 순으로 정렬.
 function mergeStopGroups(
@@ -223,14 +230,7 @@ function AdminBusCard({ card, boardedCount, checkedCount, totalCount, allDone, s
             {group.students.map((student) => {
               const isBoarded = !!student.boarded_at;
               const isChecked = !!student.checked_at;
-
-              const rowBg = isChecked
-                ? "bg-green-50/40"
-                : student.is_changed
-                  ? "bg-amber-50"
-                  : isBoarded
-                    ? "bg-blue-50/30"
-                    : "";
+              const rowBg = ADMIN_ROW_BG[rowState(student)];
 
               return (
                 <div
@@ -288,14 +288,7 @@ type MonitorCardProps = CardInternals & { color: BusCardColor };
 function renderMonitorStudent(student: BusManifestEntry, card: BusManifestGroup) {
   const isBoarded = !!student.boarded_at;
   const isChecked = !!student.checked_at;
-
-  const rowBg = isChecked
-    ? "bg-green-50/50"
-    : student.is_changed
-      ? "bg-amber-50"
-      : isBoarded
-        ? "bg-blue-50/40"
-        : "";
+  const rowBg = MONITOR_ROW_BG[rowState(student)];
 
   return (
     <div

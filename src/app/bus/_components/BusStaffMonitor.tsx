@@ -67,6 +67,34 @@ function groupStudentsByStop(students: BusManifestEntry[]): StopGroup[] {
 }
 
 /* ── 학생 행 ── */
+type RowState = "board" | "unboard" | "check" | "uncheck" | "checked" | "boarded" | "changed" | "idle";
+
+// 행 상태별 스타일. 우선순위: 눌러둔 동작(pending) > 승차확인 > 탑승 > 변경 > 기본
+const ROW_BG: Record<RowState, string> = {
+  board: "bg-blue-50 ring-2 ring-blue-400 ring-inset",
+  unboard: "bg-slate-50 ring-2 ring-slate-300 ring-inset",
+  check: "bg-green-50 ring-2 ring-green-400 ring-inset",
+  uncheck: "bg-yellow-50 ring-2 ring-yellow-400 ring-inset",
+  checked: "bg-green-50/60",
+  boarded: "bg-blue-50/50",
+  changed: "bg-amber-50",
+  idle: "bg-white",
+};
+const CIRCLE: Record<RowState, string> = {
+  board: "bg-blue-500 text-white scale-110",
+  unboard: "bg-slate-200 text-slate-500 scale-110",
+  check: "bg-green-500 text-white scale-110",
+  uncheck: "bg-yellow-400 text-white scale-110",
+  checked: "bg-green-100 text-green-600",
+  boarded: "bg-blue-100 text-blue-600",
+  changed: "bg-amber-100 text-amber-600",
+  idle: "bg-slate-100 text-slate-400",
+};
+const SYMBOL: Record<RowState, string> = {
+  board: "●", unboard: "○", check: "✓", uncheck: "↩",
+  checked: "✓", boarded: "●", changed: "↗", idle: "○",
+};
+
 function StudentRow({
   student,
   isBoarded,
@@ -107,17 +135,11 @@ function StudentRow({
 
   const isSelected = pendingAction !== null;
 
-  let bgClass = "bg-white";
-  if (pendingAction === "board") bgClass = "bg-blue-50 ring-2 ring-blue-400 ring-inset";
-  else if (pendingAction === "unboard") bgClass = "bg-slate-50 ring-2 ring-slate-300 ring-inset";
-  else if (pendingAction === "check") bgClass = "bg-green-50 ring-2 ring-green-400 ring-inset";
-  else if (pendingAction === "uncheck") bgClass = "bg-yellow-50 ring-2 ring-yellow-400 ring-inset";
-  else if (isChecked) bgClass = "bg-green-50/60";
-  else if (isBoarded) bgClass = "bg-blue-50/50";
-  else if (student.is_changed) bgClass = "bg-amber-50";
+  const state: RowState =
+    pendingAction ?? (isChecked ? "checked" : isBoarded ? "boarded" : student.is_changed ? "changed" : "idle");
 
   return (
-    <div className={`flex items-center gap-3 px-4 py-3 transition-all ${bgClass} ${student.is_changed && !isChecked && !isBoarded && !isSelected ? "border-l-4 border-l-amber-400" : ""}`}>
+    <div className={`flex items-center gap-3 px-4 py-3 transition-all ${ROW_BG[state]} ${student.is_changed && !isChecked && !isBoarded && !isSelected ? "border-l-4 border-l-amber-400" : ""}`}>
       <button
         type="button"
         disabled={isChecked && pendingAction !== "uncheck"}
@@ -127,29 +149,9 @@ function StudentRow({
         }`}
       >
         <span
-          className={`size-11 rounded-full flex items-center justify-center text-base shrink-0 transition-all ${
-            pendingAction === "board"
-              ? "bg-blue-500 text-white scale-110"
-              : pendingAction === "unboard"
-                ? "bg-slate-200 text-slate-500 scale-110"
-                : pendingAction === "check"
-                  ? "bg-green-500 text-white scale-110"
-                  : pendingAction === "uncheck"
-                    ? "bg-yellow-400 text-white scale-110"
-                    : isChecked
-                      ? "bg-green-100 text-green-600"
-                      : isBoarded
-                        ? "bg-blue-100 text-blue-600"
-                        : student.is_changed
-                          ? "bg-amber-100 text-amber-600"
-                          : "bg-slate-100 text-slate-400"
-          }`}
+          className={`size-11 rounded-full flex items-center justify-center text-base shrink-0 transition-all ${CIRCLE[state]}`}
         >
-          {pendingAction === "board" ? "●" :
-           pendingAction === "unboard" ? "○" :
-           pendingAction === "check" ? "✓" :
-           pendingAction === "uncheck" ? "↩" :
-           isChecked ? "✓" : isBoarded ? "●" : student.is_changed ? "↗" : "○"}
+          {SYMBOL[state]}
         </span>
         <div className="flex-1 min-w-0">
           <span
