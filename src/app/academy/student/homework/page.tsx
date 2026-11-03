@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getCurrentStudentProfile } from "../../actions";
 import { listUnitProgressByStudent } from "@/app/(admin)/admin/actions/homework-unit-actions";
 import { UnitProgressGrid } from "@/components/homework/UnitProgressGrid";
+import { BookOpen } from "lucide-react";
 
 export default async function StudentHomeworkPage() {
   const profile = await getCurrentStudentProfile();
@@ -15,19 +16,7 @@ export default async function StudentHomeworkPage() {
 
       {data.textbooks.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 gap-4">
-          <svg
-            className="size-16 text-slate-200"
-            fill="none"
-            viewBox="0 0 24 24"
-            strokeWidth={1}
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25"
-            />
-          </svg>
+          <BookOpen className="size-16 text-slate-200" strokeWidth={1} />
           <div className="text-center">
             <p className="text-sm font-medium text-slate-700">
               아직 부여된 숙제가 없습니다.

@@ -18,6 +18,7 @@
 import Image from "next/image";
 import { todayKst } from "@/lib/utils/date-kst";
 import type { UnitStatus } from "@/app/(admin)/admin/actions/homework-unit-actions";
+import { BookOpen, Check } from "lucide-react";
 
 export type UnitGridUnit = {
   unitNumber: number;
@@ -117,19 +118,7 @@ export function UnitProgressGrid({
             />
           ) : (
             <div className="flex h-full w-full items-center justify-center">
-              <svg
-                className="h-5 w-5 text-slate-300"
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth={1.5}
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25"
-                />
-              </svg>
+              <BookOpen className="h-5 w-5 text-slate-300" strokeWidth={1.5} />
             </div>
           )}
         </div>
@@ -178,15 +167,7 @@ export function UnitProgressGrid({
                     {dateLabel}
                   </span>
                   {u.status === "completed" && (
-                    <svg
-                      className="absolute top-0.5 right-0.5 h-3 w-3"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      strokeWidth={3}
-                      stroke="currentColor"
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-                    </svg>
+                    <Check className="absolute top-0.5 right-0.5 h-3 w-3" strokeWidth={3} />
                   )}
                   {u.status === "missed" && (
                     <span className="absolute top-0.5 right-1 text-xs font-bold leading-none">✕</span>

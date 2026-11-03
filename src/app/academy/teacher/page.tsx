@@ -9,11 +9,10 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { dashboardLabels } from "@/lib/ui/teacher-labels";
+import { ArrowRight } from "lucide-react";
 
 const arrowIcon = (
-  <svg className="size-3" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
-  </svg>
+  <ArrowRight className="size-3" />
 );
 
 export default async function TeacherMainPage() {

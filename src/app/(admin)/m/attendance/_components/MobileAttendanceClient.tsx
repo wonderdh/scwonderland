@@ -10,6 +10,7 @@ import {
   ATTENDANCE_STATUS_CONFIG,
   ATTENDANCE_STATUSES,
 } from "@/lib/constants/attendance";
+import { ChevronLeft } from "lucide-react";
 
 type StudentItem = {
   id: string;
@@ -61,9 +62,7 @@ export function MobileAttendanceClient({
       <div className="flex flex-col min-h-screen">
         <div className="sticky top-0 z-10 bg-background border-b border-border px-4 py-3 flex items-center gap-3">
           <Link href="/m" className="flex items-center text-muted-foreground hover:text-foreground">
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
-            </svg>
+            <ChevronLeft className="w-4 h-4" />
           </Link>
           <h1 className="text-base font-semibold text-foreground flex-1">출결 관리</h1>
           <div className="flex gap-1 p-0.5 bg-muted rounded-lg">
@@ -96,9 +95,7 @@ export function MobileAttendanceClient({
             onClick={() => setSelectedClassId(null)}
             className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
           >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
-            </svg>
+            <ChevronLeft className="w-4 h-4" />
             {selectedClass?.name}
           </button>
           <div className="flex-1" />
@@ -199,9 +196,7 @@ export function MobileAttendanceClient({
     <div className="flex flex-col min-h-screen">
       <div className="sticky top-0 z-10 bg-background border-b border-border px-4 py-3 flex items-center gap-3">
         <Link href="/m" className="flex items-center text-muted-foreground hover:text-foreground">
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
-          </svg>
+          <ChevronLeft className="w-4 h-4" />
         </Link>
         <h1 className="text-base font-semibold text-foreground flex-1">출결 관리</h1>
         <div className="flex gap-1 p-0.5 bg-muted rounded-lg">

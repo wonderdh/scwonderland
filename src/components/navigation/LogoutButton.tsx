@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Modal } from "@/components/overlays/Modal";
+import { LogOut } from "lucide-react";
 
 type LogoutLabels = {
   button?: string;
@@ -62,9 +63,7 @@ export function LogoutButton({
         <div className="p-5">
           <div className="flex flex-col items-center gap-3 text-center">
             <div className="flex size-12 items-center justify-center rounded-full bg-red-100 text-red-600">
-              <svg className="size-6" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9" />
-              </svg>
+              <LogOut className="size-6" strokeWidth={1.5} />
             </div>
             <div>
               <h3 className="text-base font-semibold text-foreground">{L.title}</h3>

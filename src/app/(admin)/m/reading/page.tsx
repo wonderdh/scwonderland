@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getAllReadingStats } from "../../admin/actions/raz-actions";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 export default async function MobileReadingPage() {
   const stats = await getAllReadingStats();
@@ -8,9 +9,7 @@ export default async function MobileReadingPage() {
     <div className="flex min-h-screen flex-col">
       <header className="sticky top-0 z-10 flex items-center gap-3 border-b border-border bg-background px-4 py-3">
         <Link href="/m" className="text-muted-foreground">
-          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
-          </svg>
+          <ChevronLeft className="h-5 w-5" />
         </Link>
         <h1 className="text-base font-semibold text-foreground">리딩 관리</h1>
       </header>
@@ -36,9 +35,7 @@ export default async function MobileReadingPage() {
                       </span>
                       <span className="flex items-center gap-2 text-xs text-muted-foreground">
                         {s.readCount}권{s.topLevel ? ` · 최고 ${s.topLevel}` : ""}
-                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                        </svg>
+                        <ChevronRight className="h-4 w-4" />
                       </span>
                     </Link>
                   </li>

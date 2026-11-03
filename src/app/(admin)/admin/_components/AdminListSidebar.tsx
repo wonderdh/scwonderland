@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { useState, useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Trash2 } from "lucide-react";
 
 type Variant = "students" | "teachers";
 type GroupFilter = "all" | "유치부" | "오후반";
@@ -95,7 +96,7 @@ export function AdminListSidebar({
               : "text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
           }`}
         >
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+          <Trash2 size={16} />
           휴지통
         </Link>
       </div>

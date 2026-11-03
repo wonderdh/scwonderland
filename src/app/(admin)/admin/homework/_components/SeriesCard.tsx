@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, Ellipsis, BookOpen, ChevronDown } from "lucide-react";
 import type {
   SeriesWithPublisher,
   SeriesLevelRow,
@@ -41,11 +41,7 @@ export function SeriesCard({ series, levels, onEdit, onDelete }: Props) {
           className="flex h-6 w-6 items-center justify-center rounded-md bg-white/85 text-slate-500 hover:bg-slate-100 shadow-sm"
           aria-label="메뉴"
         >
-          <svg className="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 24 24">
-            <circle cx="12" cy="5" r="1.5" />
-            <circle cx="12" cy="12" r="1.5" />
-            <circle cx="12" cy="19" r="1.5" />
-          </svg>
+          <Ellipsis className="h-3.5 w-3.5" />
         </button>
         {menuOpen && (
           <>
@@ -90,19 +86,7 @@ export function SeriesCard({ series, levels, onEdit, onDelete }: Props) {
             className="object-cover"
           />
         ) : (
-          <svg
-            className="h-12 w-12 text-slate-300"
-            fill="none"
-            viewBox="0 0 24 24"
-            strokeWidth={1}
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25"
-            />
-          </svg>
+          <BookOpen className="h-12 w-12 text-slate-300" strokeWidth={1} />
         )}
       </div>
 
@@ -142,19 +126,9 @@ export function SeriesCard({ series, levels, onEdit, onDelete }: Props) {
             className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 hover:bg-emerald-200"
           >
             레벨 {activeLevels.length}
-            <svg
-              className={`h-3 w-3 transition-transform ${
+            <ChevronDown className={`h-3 w-3 transition-transform ${
                 levelOpen ? "rotate-180" : ""
-              }`}
-              viewBox="0 0 20 20"
-              fill="currentColor"
-            >
-              <path
-                fillRule="evenodd"
-                d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.06l3.71-3.83a.75.75 0 1 1 1.08 1.04l-4.25 4.4a.75.75 0 0 1-1.08 0L5.21 8.27a.75.75 0 0 1 .02-1.06Z"
-                clipRule="evenodd"
-              />
-            </svg>
+              }`} />
           </button>
           {levelOpen && (
             <>

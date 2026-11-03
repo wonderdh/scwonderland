@@ -21,6 +21,7 @@ import { getAgeColor } from "@/lib/ui/student-age-colors";
 import { TeacherBadges } from "@/components/badges/TeacherBadges";
 import { sortStudentsByAgeAndName } from "@/lib/utils/student-sort";
 import type { SubTab } from "./ClassesPageClient";
+import { GripVertical, CircleAlert, CircleCheck, Search, Users, User, X } from "lucide-react";
 
 type StudentInfo = {
   id: string;
@@ -52,11 +53,7 @@ function UnassignedStudentItem({ s, showAgeBadge }: { s: StudentInfo; showAgeBad
       }}
       className="flex items-center gap-2 text-sm cursor-grab active:cursor-grabbing rounded-lg px-2.5 py-1.5 hover:bg-muted/50 transition-colors"
     >
-      <svg className="w-3 h-3 text-muted-foreground/40 shrink-0" fill="currentColor" viewBox="0 0 24 24">
-        <circle cx="9" cy="5" r="1.5" /><circle cx="15" cy="5" r="1.5" />
-        <circle cx="9" cy="12" r="1.5" /><circle cx="15" cy="12" r="1.5" />
-        <circle cx="9" cy="19" r="1.5" /><circle cx="15" cy="19" r="1.5" />
-      </svg>
+      <GripVertical className="w-3 h-3 text-muted-foreground/40 shrink-0" />
       {ageColor && (
         <span className={`shrink-0 rounded px-1.5 py-0.5 text-xs font-bold ${ageColor.bg} ${ageColor.text}`}>
           {s.age}세
@@ -286,13 +283,9 @@ export function ClassesManager({
         >
           <div className="flex items-center gap-2">
             {notification.type === "error" ? (
-              <svg className="size-4 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
-              </svg>
+              <CircleAlert className="size-4 shrink-0" />
             ) : (
-              <svg className="size-4 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-              </svg>
+              <CircleCheck className="size-4 shrink-0" />
             )}
             {notification.message}
           </div>
@@ -340,9 +333,7 @@ export function ClassesManager({
         <div className="space-y-3">
           <div className="rounded-xl border bg-card p-3">
             <div className="flex items-center gap-2 mb-2">
-              <svg className="size-4 text-muted-foreground shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
-              </svg>
+              <Search className="size-4 text-muted-foreground shrink-0" strokeWidth={1.5} />
               <input
                 type="search"
                 placeholder="반 이름 · 학생 이름 검색"
@@ -424,9 +415,7 @@ export function ClassesManager({
         <div className="lg:sticky lg:top-6 self-start space-y-3">
           <div className="rounded-xl border-2 border-primary/30 bg-card overflow-hidden shadow-sm">
             <div className="bg-gradient-to-r from-emerald-500 to-teal-500 px-4 py-2.5 text-sm font-semibold text-white text-center flex items-center justify-center gap-1.5">
-              <svg className="size-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" />
-              </svg>
+              <Users className="size-4" />
               학생 관리
             </div>
 
@@ -473,9 +462,7 @@ export function ClassesManager({
               <div className="max-h-[calc(100vh-360px)] overflow-y-auto rounded-xl border border-muted p-1.5">
                 {filteredRightStudents.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-8 text-center">
-                    <svg className="size-8 text-muted-foreground/30 mb-2" fill="none" viewBox="0 0 24 24" strokeWidth={1} stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
-                    </svg>
+                    <User className="size-8 text-muted-foreground/30 mb-2" strokeWidth={1} />
                     <p className="text-sm text-muted-foreground">
                       {rightSearch.trim() ? "검색 결과가 없습니다." : "등록된 학생이 없습니다."}
                     </p>
@@ -1386,19 +1373,7 @@ function ClassModal({
             className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
             aria-label="닫기"
           >
-            <svg
-              className="h-5 w-5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
+            <X className="h-5 w-5" />
           </button>
         </div>
         {children}

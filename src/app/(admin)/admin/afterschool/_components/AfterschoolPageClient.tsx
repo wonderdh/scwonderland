@@ -6,6 +6,7 @@ import type { AfterschoolStudentEnrollment } from "@/lib/types";
 import { formatStudentName } from "@/lib/utils/student-name";
 
 import { WEEKDAY_NAMES_5 as DAY_LABELS } from "@/lib/constants/date";
+import { Printer } from "lucide-react";
 
 export function AfterschoolPageClient({
   initialEnrollments,
@@ -41,7 +42,7 @@ export function AfterschoolPageClient({
         <div className="px-4 py-2.5 border-b bg-muted/30 flex items-center justify-between">
           <h2 className="text-sm font-semibold">요일별 현황 — 나이별</h2>
           <button type="button" onClick={handlePrint} className="flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted/60 transition-colors">
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v8H6v-8z" /></svg>
+            <Printer className="w-3.5 h-3.5" />
             인쇄
           </button>
         </div>

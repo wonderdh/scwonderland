@@ -4,6 +4,7 @@ import { getAbsentStudentIds } from "@/app/(admin)/admin/actions/homework-unit-a
 import { listTextbooks } from "@/app/(admin)/admin/actions/textbook-actions";
 import { todayKst, todayDowKst } from "@/lib/utils/date-kst";
 import { TodayPageClient } from "@/app/(admin)/admin/today/_components/TodayPageClient";
+import { ChevronLeft } from "lucide-react";
 
 export default async function MobileTodayPage() {
   const today = todayKst();
@@ -22,19 +23,7 @@ export default async function MobileTodayPage() {
           className="rounded-md p-1.5 hover:bg-muted -ml-1 text-muted-foreground"
           aria-label="뒤로"
         >
-          <svg
-            className="w-5 h-5"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={2}
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M15.75 19.5 8.25 12l7.5-7.5"
-            />
-          </svg>
+          <ChevronLeft className="w-5 h-5" />
         </Link>
         <h1 className="text-base font-semibold text-foreground">오늘 수업</h1>
       </header>

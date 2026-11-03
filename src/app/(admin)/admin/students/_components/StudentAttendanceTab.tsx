@@ -20,6 +20,7 @@ import {
   ATTENDANCE_STATUSES,
   type AttendanceStatus,
 } from "@/lib/constants/attendance";
+import { ChevronLeft, ChevronRight, X } from "lucide-react";
 
 function getDaysInMonth(year: number, month: number) {
   return new Date(year, month, 0).getDate();
@@ -155,15 +156,11 @@ export function StudentAttendanceTab({ studentProfileId }: { studentProfileId: s
       {/* Month nav */}
       <div className="flex items-center justify-between">
         <button type="button" onClick={prevMonth} className="rounded-lg p-2 hover:bg-muted transition-colors">
-          <svg className="size-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
-          </svg>
+          <ChevronLeft className="size-5" strokeWidth={1.5} />
         </button>
         <h2 className="text-base font-semibold text-foreground">{year}년 {month}월</h2>
         <button type="button" onClick={nextMonth} className="rounded-lg p-2 hover:bg-muted transition-colors">
-          <svg className="size-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
-          </svg>
+          <ChevronRight className="size-5" strokeWidth={1.5} />
         </button>
       </div>
 
@@ -293,9 +290,7 @@ export function StudentAttendanceTab({ studentProfileId }: { studentProfileId: s
                     onClick={() => handleDelete(rec.id)}
                     className="shrink-0 rounded-md p-1 text-muted-foreground hover:text-destructive transition-colors"
                   >
-                    <svg className="size-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
-                    </svg>
+                    <X className="size-3.5" strokeWidth={1.5} />
                   </button>
                 </li>
               );

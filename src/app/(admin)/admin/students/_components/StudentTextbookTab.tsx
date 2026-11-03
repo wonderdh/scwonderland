@@ -21,6 +21,7 @@ import {
 } from "@/app/(admin)/admin/actions/textbook-actions";
 
 import type { Database } from "@/lib/types/database.generated";
+import { BookOpen } from "lucide-react";
 
 type TextbookRow = Database["public"]["Tables"]["homework_books"]["Row"] & {
   series_name?: string | null;
@@ -270,19 +271,7 @@ export function StudentTextbookTab({
                     />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center">
-                      <svg
-                        className="h-6 w-6 text-slate-300"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        strokeWidth={1.5}
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25"
-                        />
-                      </svg>
+                      <BookOpen className="h-6 w-6 text-slate-300" strokeWidth={1.5} />
                     </div>
                   )}
                 </div>

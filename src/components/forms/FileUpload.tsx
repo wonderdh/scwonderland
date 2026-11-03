@@ -2,6 +2,7 @@
 
 import { useRef, useState, useCallback } from "react";
 import { formatFileSize } from "@/lib/supabase/storage";
+import { Upload, X } from "lucide-react";
 
 type FileUploadProps = {
   /** 허용 MIME 타입 (예: "image/*", ".pdf,.docx") */
@@ -81,19 +82,7 @@ export function FileUpload({
           className="hidden"
           disabled={disabled}
         />
-        <svg
-          className="mx-auto size-8 text-muted-foreground"
-          fill="none"
-          viewBox="0 0 24 24"
-          strokeWidth={1.5}
-          stroke="currentColor"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"
-          />
-        </svg>
+        <Upload className="mx-auto size-8 text-muted-foreground" strokeWidth={1.5} />
         <p className="mt-1 text-sm text-muted-foreground">{label}</p>
         <p className="text-xs text-muted-foreground/70">
           드래그 & 드롭 또는 클릭
@@ -119,9 +108,7 @@ export function FileUpload({
                 className="shrink-0 rounded p-0.5 text-muted-foreground hover:text-destructive transition-colors"
                 disabled={disabled}
               >
-                <svg className="size-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
-                </svg>
+                <X className="size-4" strokeWidth={1.5} />
               </button>
             </li>
           ))}

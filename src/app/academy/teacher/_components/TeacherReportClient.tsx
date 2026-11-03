@@ -15,6 +15,7 @@ import { getAgeColor } from "@/lib/ui/student-age-colors";
 import { formatStudentName } from "@/lib/utils/student-name";
 import { LoadingState } from "@/components/feedback/LoadingState";
 import { Spinner } from "@/components/feedback/Spinner";
+import { Check, Copy } from "lucide-react";
 
 const MONTHS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
@@ -309,9 +310,7 @@ export function TeacherReportClient({
                       <div className="flex flex-col items-end gap-1 shrink-0">
                         {s.has_report ? (
                           <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700">
-                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                            </svg>
+                            <Check className="w-3 h-3" />
                             {L.written}
                           </span>
                         ) : (
@@ -322,9 +321,7 @@ export function TeacherReportClient({
                         {s.has_report && (
                           s.has_reply ? (
                             <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-medium text-blue-700">
-                              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                              </svg>
+                              <Check className="w-3 h-3" />
                               {L.reply}
                             </span>
                           ) : (
@@ -463,9 +460,7 @@ export function TeacherReportClient({
                               title={L.copyPrev}
                             >
                               {copying ? <Spinner size="sm" /> : (
-                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                                </svg>
+                                <Copy className="h-4 w-4" />
                               )}
                               {copying ? L.copying : L.copyPrev}
                             </button>

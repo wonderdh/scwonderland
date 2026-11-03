@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { DailyBusChanges } from "@/components/bus/DailyBusChanges";
+import { CalendarDays, CircleCheck, ClipboardList, BookOpen, Bus, BadgeCheck, Monitor, ChevronRight } from "lucide-react";
 
 const cards = [
   {
@@ -9,9 +10,7 @@ const cards = [
     title: "오늘 수업",
     subtitle: "당일 시간대별 반 — 출결·숙제 한 번에",
     icon: (
-      <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5m-9-6h.008v.008H12v-.008Z" />
-      </svg>
+      <CalendarDays className="w-8 h-8" strokeWidth={1.5} />
     ),
   },
   {
@@ -19,9 +18,7 @@ const cards = [
     title: "출결 관리",
     subtitle: "반별·학생별 출결 입력",
     icon: (
-      <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-      </svg>
+      <CircleCheck className="w-8 h-8" strokeWidth={1.5} />
     ),
   },
   {
@@ -29,10 +26,7 @@ const cards = [
     title: "숙제 관리",
     subtitle: "반별 학생 unit 진도 체크",
     icon: (
-      <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 3.75h3M3.375 3h17.25c.621 0 1.125.504 1.125 1.125v15.75c0 .621-.504 1.125-1.125 1.125H3.375A1.125 1.125 0 0 1 2.25 19.875V4.125C2.25 3.504 2.754 3 3.375 3Z" />
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9 8.25h6" />
-      </svg>
+      <ClipboardList className="w-8 h-8" strokeWidth={1.5} />
     ),
   },
   {
@@ -40,9 +34,7 @@ const cards = [
     title: "리딩 관리",
     subtitle: "Raz 책 학생별 읽음 체크",
     icon: (
-      <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
-      </svg>
+      <BookOpen className="w-8 h-8" strokeWidth={1.5} />
     ),
   },
   {
@@ -50,9 +42,7 @@ const cards = [
     title: "버스 당일변경",
     subtitle: "학생 버스 정류장 임시 변경",
     icon: (
-      <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 0 1-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 0 0-3.213-9.193 2.056 2.056 0 0 0-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 0 0-10.026 0 1.106 1.106 0 0 0-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" />
-      </svg>
+      <Bus className="w-8 h-8" strokeWidth={1.5} />
     ),
   },
   {
@@ -60,9 +50,7 @@ const cards = [
     title: "승하차 관리",
     subtitle: "전 호차 승하차 체크",
     icon: (
-      <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 0 1-1.043 3.296 3.745 3.745 0 0 1-3.296 1.043A3.745 3.745 0 0 1 12 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 0 1-3.296-1.043 3.745 3.745 0 0 1-1.043-3.296A3.745 3.745 0 0 1 3 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 0 1 1.043-3.296 3.746 3.746 0 0 1 3.296-1.043A3.746 3.746 0 0 1 12 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 0 1 3.296 1.043 3.745 3.745 0 0 1 1.043 3.296A3.745 3.745 0 0 1 21 12Z" />
-      </svg>
+      <BadgeCheck className="w-8 h-8" strokeWidth={1.5} />
     ),
   },
   {
@@ -70,9 +58,7 @@ const cards = [
     title: "버스 모니터",
     subtitle: "실시간 승하차 현황",
     icon: (
-      <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9 17.25v1.007a3 3 0 0 1-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0 1 15 18.257V17.25m6-12V15a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 15V5.25m18 0A2.25 2.25 0 0 0 18.75 3H5.25A2.25 2.25 0 0 0 3 5.25m18 0H3" />
-      </svg>
+      <Monitor className="w-8 h-8" strokeWidth={1.5} />
     ),
   },
 ];
@@ -119,9 +105,7 @@ export default async function MobileHomePage() {
               <div className="text-base font-semibold text-foreground">{card.title}</div>
               <div className="text-sm text-muted-foreground mt-0.5">{card.subtitle}</div>
             </div>
-            <svg className="w-5 h-5 text-muted-foreground shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-            </svg>
+            <ChevronRight className="w-5 h-5 text-muted-foreground shrink-0" />
           </Link>
         ))}
         <DailyBusChanges />

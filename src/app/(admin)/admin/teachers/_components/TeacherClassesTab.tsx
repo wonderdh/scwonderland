@@ -8,6 +8,7 @@ import { useCallback, useEffect, useState } from "react";
 import { LoadingState } from "@/components/feedback/LoadingState";
 import { TeacherBadges } from "@/components/badges/TeacherBadges";
 import { GROUP_ORDER, GROUP_TYPE_TO_LABEL, type GroupKey } from "@/lib/constants/class";
+import { ChevronRight } from "lucide-react";
 
 const GROUP_STYLE: Record<GroupKey, { icon: string; label: string; headerBg: string; headerText: string }> = {
   유치부: { icon: "🌅", label: "유치부", headerBg: "bg-amber-100", headerText: "text-amber-800" },
@@ -123,14 +124,7 @@ function ClassRow({
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <svg
-              className={`h-4 w-4 text-slate-400 transition-transform ${isExpanded ? "rotate-90" : ""}`}
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
+            <ChevronRight className={`h-4 w-4 text-slate-400 transition-transform ${isExpanded ? "rotate-90" : ""}`} />
             <span className="font-medium text-foreground">{cls.name}</span>
             <span className="rounded-full bg-violet-100 px-2 py-0.5 text-xs font-medium text-violet-700">
               {cls.student_count}명
