@@ -1,56 +1,24 @@
 "use client";
-import Link from "next/link";
-import { useEffect, useState } from "react";
 import { Users, BookOpen, Calendar, Bus, BookMarked } from "lucide-react";
+import { QueryTabNav } from "@/components/navigation/QueryTabNav";
 
 export type StudentTabId = "basic" | "learning" | "schedule" | "bus" | "homework";
 
 const TABS = [
-  { id: "basic", label: "기본 정보", Icon: Users },
-  { id: "learning", label: "학습 & 리포트", Icon: BookOpen },
-  { id: "schedule", label: "시간표 & 출결", Icon: Calendar },
-  { id: "bus", label: "승하차", Icon: Bus },
-  { id: "homework", label: "숙제", Icon: BookMarked },
-] as const satisfies { id: StudentTabId; label: string; Icon: typeof Users }[];
+  { id: "basic", label: "기본 정보", icon: Users },
+  { id: "learning", label: "학습 & 리포트", icon: BookOpen },
+  { id: "schedule", label: "시간표 & 출결", icon: Calendar },
+  { id: "bus", label: "승하차", icon: Bus },
+  { id: "homework", label: "숙제", icon: BookMarked },
+] as const satisfies { id: StudentTabId; label: string; icon: typeof Users }[];
 
-export function StudentTabNav({
-  selectedId,
-  currentTab,
-}: {
-  selectedId: string;
-  currentTab: StudentTabId;
-}) {
-  const base = `/admin/students?selected=${encodeURIComponent(selectedId)}`;
-  const [pendingTab, setPendingTab] = useState<StudentTabId | null>(null);
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setPendingTab(null);
-  }, [currentTab]);
-
-  const displayTab = pendingTab ?? currentTab;
-
+export function StudentTabNav({ selectedId, currentTab }: { selectedId: string; currentTab: StudentTabId }) {
   return (
-    <nav className="flex border-b bg-card rounded-t-xl overflow-x-auto">
-      {TABS.map((t) => {
-        const isActive = displayTab === t.id;
-        const Icon = t.Icon;
-        return (
-          <Link
-            key={t.id}
-            href={`${base}&tab=${t.id}`}
-            onClick={() => setPendingTab(t.id)}
-            className={`flex items-center gap-2 px-5 h-12 text-base font-medium transition-colors whitespace-nowrap border-b-[3px] ${
-              isActive
-                ? "bg-orange-50 text-orange-700 border-orange-500"
-                : "text-slate-600 border-transparent hover:text-slate-900 hover:bg-slate-50"
-            }`}
-          >
-            <Icon className="h-6 w-6 shrink-0" aria-hidden />
-            <span>{t.label}</span>
-          </Link>
-        );
-      })}
-    </nav>
+    <QueryTabNav
+      tabs={TABS}
+      currentTab={currentTab}
+      baseHref={`/admin/students?selected=${encodeURIComponent(selectedId)}`}
+      aria-label="학생 상세 탭"
+    />
   );
 }
