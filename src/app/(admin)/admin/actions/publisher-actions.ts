@@ -63,23 +63,6 @@ export async function listAllPublishers(): Promise<PublisherRow[]> {
   return data ?? [];
 }
 
-/** 단일 출판사 조회. */
-export async function getPublisher(id: string): Promise<PublisherRow | null> {
-  const auth = await verifyAuthenticated();
-  if ("error" in auth) return null;
-  const supabase = createAdminClient();
-  const { data, error } = await supabase
-    .from("publishers")
-    .select("*")
-    .eq("id", id)
-    .maybeSingle();
-  if (error) {
-    logger.error("[getPublisher]", error.message);
-    return null;
-  }
-  return data ?? null;
-}
-
 /** 출판사 생성 (admin 전용). */
 export async function createPublisher(
   formData: FormData

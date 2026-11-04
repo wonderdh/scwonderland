@@ -71,23 +71,6 @@ export async function listAllSeries(): Promise<SeriesWithPublisher[]> {
   return (data ?? []) as SeriesWithPublisher[];
 }
 
-/** 단일 시리즈 조회. */
-export async function getSeries(id: string): Promise<SeriesWithPublisher | null> {
-  const auth = await verifyAuthenticated();
-  if ("error" in auth) return null;
-  const supabase = createAdminClient();
-  const { data, error } = await supabase
-    .from("series")
-    .select("*, publisher:publisher_id(id, name, homepage_url)")
-    .eq("id", id)
-    .maybeSingle();
-  if (error) {
-    logger.error("[getSeries]", error.message);
-    return null;
-  }
-  return (data ?? null) as SeriesWithPublisher | null;
-}
-
 /** 시리즈별 레벨 (homework_books) 목록. 활성 우선 + sort_order. */
 export async function listSeriesLevels(
   seriesId: string

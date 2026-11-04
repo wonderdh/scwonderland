@@ -33,24 +33,6 @@ export async function listNotices(
   return (data ?? []) as Notice[];
 }
 
-export async function getNoticeWithAttachments(
-  noticeId: string
-): Promise<{ notice: Notice; images: never[]; attachments: never[] } | null> {
-  const auth = await verifyAuthenticated();
-  if ("error" in auth) return null;
-  const supabase = createAdminClient();
-  const { data, error } = await supabase
-    .from("notices")
-    .select("*")
-    .eq("id", noticeId)
-    .maybeSingle();
-  if (error || !data) {
-    if (error) logger.error("[getNoticeWithAttachments]", error.message);
-    return null;
-  }
-  return { notice: data as Notice, images: [], attachments: [] };
-}
-
 export async function createNotice(
   formData: FormData
 ): Promise<{ error?: string; id?: string }> {

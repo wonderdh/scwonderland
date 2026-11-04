@@ -13,9 +13,5 @@ export function toastError(message: string, opts?: { description?: string; durat
   });
 }
 
-export function toastInfo(message: string, opts?: { description?: string; duration?: number }) {
-  return toast(message, { duration: 5000, description: opts?.description, ...opts });
-}
-
 // re-export raw toast for special cases
 export { toast };

@@ -520,36 +520,6 @@ export async function resetUserPassword(userId: string, newPassword: string): Pr
   return {};
 }
 
-export async function bulkResetStudentPasswords(
-  students: { id: string; password: string }[]
-): Promise<{ success: number; failed: number; error?: string }> {
-  const auth = await verifyAdmin();
-  if ("error" in auth) return { success: 0, failed: 0, error: auth.error };
-  if (!students.length) return { success: 0, failed: 0 };
-
-  const invalid = students.filter((s) => !s.id || !s.password || s.password.length < MIN_PASSWORD_LENGTH);
-  if (invalid.length) {
-    return {
-      success: 0,
-      failed: 0,
-      error: `${invalid.length}건의 비밀번호가 누락되었거나 ${MIN_PASSWORD_LENGTH}자 미만입니다.`,
-    };
-  }
-
-  const supabase = createAdminClient();
-  let success = 0;
-  let failed = 0;
-
-  for (const { id, password } of students) {
-    const { error } = await supabase.auth.admin.updateUserById(id, { password });
-    if (error) failed++;
-    else success++;
-  }
-
-  if (success > 0) revalidatePath("/admin", "layout");
-  return { success, failed };
-}
-
 export async function listAllStudents(): Promise<
   { id: string; korean_name: string | null; english_name: string | null; age: number | null; group_type: string | null }[]
 > {

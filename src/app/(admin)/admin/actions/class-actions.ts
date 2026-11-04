@@ -574,31 +574,6 @@ export async function addStudentToClass(classId: string, studentProfileId: strin
   return {};
 }
 
-export async function removeStudentFromClass(classStudentId: string): Promise<{ error?: string }> {
-  const auth = await verifyAdmin();
-  if ("error" in auth) return { error: auth.error };
-  const supabase = createAdminClient();
-
-  const { data: classStudent } = await supabase
-    .from("class_students")
-    .select("class_id, student_id")
-    .eq("id", classStudentId)
-    .maybeSingle();
-
-  if (classStudent) {
-    await supabase
-      .from("afterschool_enrollments")
-      .delete()
-      .eq("class_id", classStudent.class_id)
-      .eq("student_id", classStudent.student_id);
-  }
-
-  const { error } = await supabase.from("class_students").update({ is_active: false }).eq("id", classStudentId);
-  if (error) return { error: error.message };
-  revalidatePath("/admin/classes");
-  return {};
-}
-
 export async function listTeachersForSelect(): Promise<
   { id: string; name: string; teacher_type: "korean" | "native" }[]
 > {
@@ -718,41 +693,4 @@ export async function batchUpdateClassStudents(
 
   revalidatePath("/admin/classes");
   return {};
-}
-
-export async function listClassesWithStudentIds(): Promise<
-  { id: string; name: string; colorIndex: number | null; studentProfileIds: string[] }[]
-> {
-  const auth = await verifyAdmin();
-  if ("error" in auth) return [];
-  const supabase = createAdminClient();
-
-  const { data: classes } = await supabase
-    .from("classes")
-    .select("id, name, group_type, color_index")
-    .neq("group_type", "afterschool")
-    .order("name");
-  if (!classes?.length) return [];
-
-  const { data: rows } = await supabase.from("class_students").select("class_id, student_id").eq("is_active", true);
-  const studentsById = await getStudentsByIds(
-    supabase,
-    [...new Set((rows ?? []).map((row) => row.student_id))]
-  );
-
-  const classStudentMap = new Map<string, string[]>();
-  for (const row of rows ?? []) {
-    const profileId = studentsById.get(row.student_id)?.profile_id;
-    if (!profileId) continue;
-    const list = classStudentMap.get(row.class_id) ?? [];
-    list.push(profileId);
-    classStudentMap.set(row.class_id, list);
-  }
-
-  return classes.map((item) => ({
-    id: item.id,
-    name: item.name,
-    colorIndex: item.color_index ?? null,
-    studentProfileIds: classStudentMap.get(item.id) ?? [],
-  }));
 }

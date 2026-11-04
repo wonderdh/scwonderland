@@ -130,48 +130,6 @@ export async function deleteAttendance(
   return {};
 }
 
-/** 반 학생들의 특정 날짜 출결 조회 (교사용) */
-export async function getClassAttendanceByDate(
-  classId: string,
-  date: string
-): Promise<{ studentProfileId: string; status: string | null; note: string | null }[]> {
-  const auth = await verifyAuthenticated();
-  if ("error" in auth) return [];
-  const supabase = createAdminClient();
-
-  // 반 학생 목록
-  const { data: members } = await supabase
-    .from("class_students")
-    .select("student_id")
-    .eq("class_id", classId)
-    .eq("is_active", true);
-  if (!members?.length) return [];
-
-  const studentIds = members.map((m) => m.student_id);
-  const studentMap = await getStudentsByIds(supabase, studentIds);
-
-  // 해당 날짜 출결 기록
-  const { data: records } = await supabase
-    .from("attendance")
-    .select("student_id, status, note")
-    .eq("attendance_date", date)
-    .in("student_id", studentIds);
-
-  const recordMap = new Map(
-    (records ?? []).map((r) => [r.student_id, r])
-  );
-
-  return studentIds.map((sid) => {
-    const r = recordMap.get(sid);
-    const student = studentMap.get(sid);
-    return {
-      studentProfileId: student?.profile_id ?? sid,
-      status: r?.status ?? null,
-      note: r?.note ?? null,
-    };
-  });
-}
-
 /** 반 학생 목록 + 특정 날짜 출결 상태 (관리자용 일괄 처리) */
 export async function getClassStudentsWithAttendance(
   classId: string,

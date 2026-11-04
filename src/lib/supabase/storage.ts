@@ -105,21 +105,6 @@ export function extractStoragePath(
   return publicUrl.substring(idx + marker.length);
 }
 
-/** 파일 크기를 사람이 읽기 쉬운 형식으로 */
-export function formatFileSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes}B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)}KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
-}
-
-/** MIME 타입으로 파일 카테고리 판별 */
-export function getFileCategory(mimeType: string): FileCategory | null {
-  if (ALLOWED_IMAGE_TYPES.includes(mimeType)) return "image";
-  if (ALLOWED_DOCUMENT_TYPES.includes(mimeType)) return "document";
-  if (ALLOWED_AUDIO_TYPES.includes(mimeType)) return "audio";
-  return null;
-}
-
 // ── 이미지 변환 (브라우저 전용) ──
 
 /**

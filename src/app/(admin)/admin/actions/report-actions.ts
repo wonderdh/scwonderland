@@ -494,41 +494,6 @@ export async function listUntranslatedReports(
   });
 }
 
-/** 번역된 JSON을 받아 content_ko / reply_en 일괄 저장. 관리자 전용. */
-export async function importTranslations(
-  records: { id: string; content_ko?: string; reply_en?: string }[]
-): Promise<{ error?: string; count: number }> {
-  const auth = await verifyAdmin();
-  if ("error" in auth) return { error: auth.error, count: 0 };
-
-  if (!Array.isArray(records) || records.length === 0) {
-    return { error: "가져올 데이터가 없습니다.", count: 0 };
-  }
-
-  const admin = createAdminClient();
-  let count = 0;
-
-  await Promise.all(
-    records.map(async (rec) => {
-      if (!rec.id) return;
-      const patch: { updated_at: string; content_ko?: string; reply_en?: string } = { updated_at: new Date().toISOString() };
-      if (rec.content_ko) patch.content_ko = rec.content_ko;
-      if (rec.reply_en) patch.reply_en = rec.reply_en;
-      if (Object.keys(patch).length === 1) return; // updated_at만이면 skip
-      const { error } = await admin
-        .from("report_cards")
-        .update(patch)
-        .eq("id", rec.id);
-      if (!error) count++;
-    })
-  );
-
-  revalidatePath("/admin/reports");
-  revalidatePath("/academy/student/reports");
-  revalidatePath("/academy/teacher/reports");
-  return { count };
-}
-
 /** 단건 번역 실행 — content → content_ko 또는 reply → reply_en. 관리자 전용. */
 export async function translateReportCard(
   reportCardId: string,

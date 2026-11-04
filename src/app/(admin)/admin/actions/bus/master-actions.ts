@@ -435,29 +435,6 @@ export async function listBusStopSchedulesBulk(
 
 // ── 정류장 시간표 (요일별 예상 시간) ──
 
-export async function listBusStopSchedules(
-  busStopId: string,
-  busTimeSlotId?: string
-): Promise<BusStopSchedule[]> {
-  const auth = await verifyAuthenticated();
-  if ("error" in auth) return [];
-  const supabase = createAdminClient();
-  let query = supabase
-    .from("bus_stop_schedules")
-    .select("*")
-    .eq("bus_stop_id", busStopId)
-    .order("day_of_week");
-  if (busTimeSlotId) {
-    query = query.eq("bus_time_slot_id", busTimeSlotId);
-  }
-  const { data, error } = await query;
-  if (error) {
-    logger.error("[listBusStopSchedules]", error.message);
-    return [];
-  }
-  return data as BusStopSchedule[];
-}
-
 // 도착 예정 시간 일괄 저장 — (정류장, 요일, 시간대, 호차) 단위.
 // estimated_time 이 있으면 upsert, null/빈 문자열이면 해당 행 삭제.
 export async function saveBusStopSchedules(

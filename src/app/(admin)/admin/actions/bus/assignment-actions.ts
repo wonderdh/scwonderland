@@ -243,26 +243,6 @@ function parseDefaultKey(key: string): {
   };
 }
 
-export async function deleteStudentBusDefault(id: string): Promise<{ error?: string }> {
-  const auth = await verifyAdmin();
-  if ("error" in auth) return { error: auth.error };
-  const parsed = parseDefaultKey(id);
-  if (!parsed) return { error: "잘못된 키 형식입니다." };
-  const supabase = createAdminClient();
-  const { error } = await supabase
-    .from("student_bus_defaults")
-    .delete()
-    .eq("student_id", parsed.student_id)
-    .eq("bus_time_slot_id", parsed.bus_time_slot_id)
-    .eq("direction", parsed.direction)
-    .eq("day_of_week", parsed.day_of_week);
-  if (error) {
-    logger.error("[deleteStudentBusDefault]", error.message);
-    return { error: error.message };
-  }
-  return {};
-}
-
 export async function deleteStudentBusDefaults(ids: string[]): Promise<{ error?: string }> {
   if (ids.length === 0) return {};
   const auth = await verifyAdmin();

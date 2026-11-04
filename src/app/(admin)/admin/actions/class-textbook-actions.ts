@@ -436,41 +436,6 @@ export async function assignStudentTextbook(
   return { error: "개별 부여 flow 재설계 중 — 학생이 반에 속하면 자동 부여됩니다." };
 }
 
-export async function updateStudentTextbookDays(
-  id: string,
-  payload: DaysPayload
-): Promise<{ error?: string }> {
-  const auth = await verifyTeacherOrAdmin();
-  if ("error" in auth) return { error: auth.error };
-
-  const guard = await assertKoreanTeacherOrAdmin(auth.userId, auth.role);
-  if (guard.error) return { error: guard.error };
-
-  const update: Database["public"]["Tables"]["student_homework_books"]["Update"] = {};
-  if (payload.startDate !== undefined) {
-    if (payload.startDate === null) {
-      update.start_date = null;
-    } else {
-      const v = validateStartDate(payload.startDate);
-      if (!v.ok) return { error: v.error };
-      update.start_date = v.value;
-    }
-  }
-  if (Object.keys(update).length === 0) return {};
-
-  const supabase = createAdminClient();
-  const { error } = await supabase
-    .from("student_homework_books")
-    .update(update)
-    .eq("id", id);
-  if (error) {
-    logger.error("[updateStudentTextbookDays]", error.message);
-    return { error: error.message };
-  }
-  revalidateAll();
-  return {};
-}
-
 export async function unassignStudentTextbook(id: string): Promise<{ error?: string }> {
   const auth = await verifyAdmin();
   if ("error" in auth) return { error: auth.error };
@@ -483,18 +448,4 @@ export async function unassignStudentTextbook(id: string): Promise<{ error?: str
   }
   revalidateAll();
   return {};
-}
-
-// ── Schedule (deprecated — homework_days/skip_dates 컬럼 제거됨)
-// 호출부 호환을 위해 빈 배열 반환. 재설계 후 별도 PR 로 복구 예정.
-
-import type { StudentDayUnits } from "@/lib/utils/homework-schedule";
-
-// @auth-skip: 비활성 stub, DB 접근 없음
-export async function listStudentScheduleByMonth(
-  _studentId: string,
-  _year: number,
-  _month: number
-): Promise<StudentDayUnits[]> {
-  return [];
 }

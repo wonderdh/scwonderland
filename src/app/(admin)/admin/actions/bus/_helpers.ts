@@ -120,30 +120,3 @@ export async function getServedStopIdsByDay(
 ): Promise<Record<number, string[]>> {
   return toServedStopIds(await getServedStopBusesByDay(supabase, daysOfWeek, slotId));
 }
-
-/**
- * 단일 (요일, 시간대, 정류장) strict 배정 여부. 서버 mutation 가드용.
- * slotId/stopId 미지정이면 판정 불가 → `true`(통과).
- */
-export async function isStopServed(
-  supabase: ReturnType<typeof createAdminClient>,
-  dayOfWeek: number,
-  slotId: string,
-  stopId: string
-): Promise<boolean> {
-  if (!slotId || !stopId) return true;
-  const served = await getServedStopIdsByDay(supabase, [dayOfWeek], slotId);
-  return (served[dayOfWeek] ?? []).includes(stopId);
-}
-
-/** 단일 (요일, 시간대, 정류장) 을 **그 호차가** 운행하는지 strict 판정. */
-export async function isStopServedByBus(
-  supabase: ReturnType<typeof createAdminClient>,
-  dayOfWeek: number,
-  slotId: string,
-  stopId: string,
-  busId: string
-): Promise<boolean> {
-  const served = await getServedStopBusesByDay(supabase, [dayOfWeek], slotId);
-  return (served[dayOfWeek]?.[stopId] ?? []).includes(busId);
-}

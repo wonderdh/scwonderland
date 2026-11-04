@@ -57,22 +57,6 @@ export async function listTextbooks(
   });
 }
 
-export async function getTextbook(id: string): Promise<TextbookRow | null> {
-  const auth = await verifyAuthenticated();
-  if ("error" in auth) return null;
-  const supabase = createAdminClient();
-  const { data, error } = await supabase
-    .from("homework_books")
-    .select("*")
-    .eq("id", id)
-    .maybeSingle();
-  if (error) {
-    logger.error("[getTextbook]", error.message);
-    return null;
-  }
-  return data ?? null;
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Series-level helpers — homework_books row 는 "시리즈 + 레벨" 인스턴스.
 // 표지 / total_units / 시리즈명은 series 에서 owner-managed.

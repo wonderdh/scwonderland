@@ -771,72 +771,7 @@ export async function listUnitProgressByStudent(
   return { textbooks };
 }
 
-// @auth-skip: 비활성 stub, DB 접근 없음
-export async function listUnitProgressByClass(
-  _classId: string
-): Promise<ClassUnitOverview> {
-  return { students: [], textbooks: [], progressMap: {} };
-}
-
 // ── Mutations ────────────────────────────────────────────────────────────────
-
-export async function markUnit(
-  formData: FormData
-): Promise<{ error?: string }> {
-  const auth = await verifyTeacherOrAdmin();
-  if ("error" in auth) return { error: auth.error };
-
-  const studentId = (formData.get("studentId") as string)?.trim();
-  const textbookId = (formData.get("textbookId") as string)?.trim();
-  const unitNumberRaw = (formData.get("unitNumber") as string)?.trim();
-  const statusRaw = (formData.get("status") as string)?.trim();
-
-  const unitNumber = Number.parseInt(unitNumberRaw, 10);
-  if (!studentId || !textbookId || !Number.isFinite(unitNumber) || unitNumber < 1) {
-    return { error: "잘못된 요청입니다." };
-  }
-  if (!isUnitStatus(statusRaw)) {
-    return { error: "잘못된 상태입니다." };
-  }
-
-  const supabase = createAdminClient();
-
-  // (studentId, class_homework_book_id) → student_homework_book.id
-  const { data: shb, error: shbErr } = await supabase
-    .from("student_homework_books")
-    .select("id, class_students!inner(student_id)")
-    .eq("class_homework_book_id", textbookId)
-    .eq("class_students.student_id", studentId)
-    .eq("class_students.is_active", true)
-    .maybeSingle();
-
-  if (shbErr) {
-    logger.error("[markUnit shb lookup]", shbErr.message);
-    return { error: shbErr.message };
-  }
-  if (!shb) {
-    return { error: "이 학생에게 부여되지 않은 책입니다." };
-  }
-
-  const { error: upErr } = await supabase
-    .from("student_homework_progress")
-    .upsert(
-      {
-        student_homework_book_id: shb.id,
-        unit_number: unitNumber,
-        status: statusRaw,
-      },
-      { onConflict: "student_homework_book_id,unit_number" }
-    );
-
-  if (upErr) {
-    logger.error("[markUnit upsert]", upErr.message);
-    return { error: upErr.message };
-  }
-
-  revalidateAll();
-  return {};
-}
 
 export async function bulkMarkUnits(
   records: Array<{
@@ -960,40 +895,4 @@ export async function getAbsentStudentIds(
   }
 
   return { studentIds: (data ?? []).map((r) => r.student_id as string) };
-}
-
-export async function clearUnit(
-  studentId: string,
-  textbookId: string,
-  unitNumber: number
-): Promise<{ error?: string }> {
-  const auth = await verifyTeacherOrAdmin();
-  if ("error" in auth) return { error: auth.error };
-
-  const supabase = createAdminClient();
-
-  const { data: shb, error: shbErr } = await supabase
-    .from("student_homework_books")
-    .select("id, class_students!inner(student_id)")
-    .eq("class_homework_book_id", textbookId)
-    .eq("class_students.student_id", studentId)
-    .eq("class_students.is_active", true)
-    .maybeSingle();
-
-  if (shbErr) return { error: shbErr.message };
-  if (!shb) return { error: "이 학생에게 부여되지 않은 책입니다." };
-
-  const { error } = await supabase
-    .from("student_homework_progress")
-    .update({ status: "pending" })
-    .eq("student_homework_book_id", shb.id)
-    .eq("unit_number", unitNumber);
-
-  if (error) {
-    logger.error("[clearUnit]", error.message);
-    return { error: error.message };
-  }
-
-  revalidateAll();
-  return {};
 }

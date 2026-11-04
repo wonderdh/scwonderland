@@ -12,8 +12,6 @@ import type {
   GroupTimetableData,
 } from "@/lib/types";
 
-const DAY_RANGE = [1, 2, 3, 4, 5];
-
 const GROUP_TYPE_MAP = {
   "유치부": "kindergarten",
   "오후반": "afternoon",
@@ -326,44 +324,6 @@ export async function listClassSchedules(
     });
 }
 
-// ── 여러 요일 일괄 추가 ──
-export async function addClassScheduleBatch(
-  classId: string,
-  academyPeriodId: string,
-  dayOfWeeks: number[],
-  teacherProfileId: string | null,
-  label: string | null,
-): Promise<{ error?: string }> {
-  const auth = await verifyAdmin();
-  if ("error" in auth) return { error: auth.error };
-
-  if (dayOfWeeks.length === 0) return { error: "요일을 하나 이상 선택해 주세요." };
-  if (!classId || !academyPeriodId) return { error: "반과 교시를 선택해 주세요." };
-  for (const d of dayOfWeeks) {
-    if (!DAY_RANGE.includes(d)) return { error: "요일이 올바르지 않습니다." };
-  }
-
-  const supabase = createAdminClient();
-  const rows = dayOfWeeks.map((dow) => ({
-    class_id: classId,
-    academy_period_id: academyPeriodId,
-    day_of_week: dow,
-    class_teacher_id: teacherProfileId || null,
-    label: label || null,
-  }));
-
-  const { error } = await supabase.from("class_schedules").insert(rows);
-  if (error) {
-    if (error.code === "23505") {
-      return { error: "선택한 요일 중 이미 배정된 교시가 있습니다." };
-    }
-    logger.error("[addClassScheduleBatch]", error.message);
-    return { error: error.message };
-  }
-  revalidatePath("/admin/timetable");
-  return {};
-}
-
 // ── 수업 배정 삭제 ──
 export async function deleteClassSchedule(
   scheduleId: string,
@@ -513,35 +473,4 @@ export async function getStudentTimetable(
       cells,
     };
   });
-}
-
-// ── 학생 개인 배정 편집 데이터 (신 스키마에서 폐지) ──
-type StudentTimetableEditData = {
-  periods: { id: string; name: string; start_time: string; end_time: string }[];
-  cells: Record<string, {
-    scheduleId: string;
-    label: string | null;
-    teacherId: string | null;
-    teacherName: string | null;
-    teacherType: "korean" | "native";
-    textbookId: string | null;
-  }>;
-  teachers: { id: string; name: string; teacher_type: "korean" | "native" }[];
-  textbooks: { id: string; title: string; series: string | null }[];
-};
-
-export async function getStudentTimetableEditable(
-  _studentProfileId: string,
-): Promise<StudentTimetableEditData> {
-  const auth = await verifyAuthenticated();
-  if ("error" in auth) return { periods: [], cells: {}, teachers: [], textbooks: [] };
-  return { periods: [], cells: {}, teachers: [], textbooks: [] };
-}
-
-export async function deleteStudentSchedule(
-  _scheduleId: string,
-): Promise<{ error?: string }> {
-  const auth = await verifyAdmin();
-  if ("error" in auth) return { error: auth.error };
-  return { error: "학생 개인 배정 기능은 현재 비활성화되어 있습니다." };
 }

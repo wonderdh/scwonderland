@@ -20,28 +20,11 @@ const YMD_FORMATTER = new Intl.DateTimeFormat("en-CA", {
   day: "2-digit",
 });
 
-const DATETIME_FORMATTER = new Intl.DateTimeFormat("ko-KR", {
-  timeZone: KST,
-  year: "numeric",
-  month: "2-digit",
-  day: "2-digit",
-  hour: "2-digit",
-  minute: "2-digit",
-  hour12: false,
-});
-
 const DATE_FORMATTER = new Intl.DateTimeFormat("ko-KR", {
   timeZone: KST,
   year: "numeric",
   month: "long",
   day: "numeric",
-});
-
-const TIME_FORMATTER = new Intl.DateTimeFormat("ko-KR", {
-  timeZone: KST,
-  hour: "2-digit",
-  minute: "2-digit",
-  hour12: false,
 });
 
 function toDate(input?: Date | string | number | null): Date {
@@ -67,24 +50,10 @@ export function formatDateYmdKst(input?: Date | string | number | null): string 
 }
 
 /**
- * KST 기준 사람이 읽기 좋은 날짜/시간 (`2026. 04. 09. 15:30`).
- */
-export function formatDateTimeKst(input?: Date | string | number | null): string {
-  return DATETIME_FORMATTER.format(toDate(input));
-}
-
-/**
  * KST 기준 사람이 읽기 좋은 날짜 (`2026년 4월 9일`).
  */
 export function formatDateKst(input?: Date | string | number | null): string {
   return DATE_FORMATTER.format(toDate(input));
-}
-
-/**
- * KST 기준 시분 (`15:30`).
- */
-export function formatTimeKst(input?: Date | string | number | null): string {
-  return TIME_FORMATTER.format(toDate(input));
 }
 
 /**

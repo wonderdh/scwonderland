@@ -1,26 +1,9 @@
 /**
- * (Deprecated) 학생별 "숙제 있는 날" / unit schedule 계산.
+ * unit schedule 계산 (순수 함수).
  *
- * 의존하던 컬럼 (`homework_days`, `skip_dates`, `start_unit`) 이
- * 20260515000000 마이그레이션에서 제거됨.
- *
- * 호출부 호환을 위해 함수 시그너처는 유지하지만, DB 쿼리 기반 함수들은
- * 항상 빈 배열을 반환한다. unit ↔ 날짜 매핑은 재설계 후 별도 PR 에서 복원.
- *
- * 순수 함수 `getUnitSchedule` 는 입력만 받으면 동작하므로 그대로 유지.
+ * 학생별 DB 조회 기반 함수들은 의존 컬럼 (`homework_days`, `skip_dates`, `start_unit`) 이
+ * 20260515000000 마이그레이션에서 제거되어 폐기됨. `getUnitSchedule` 는 입력만 받으면 동작.
  */
-
-import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "@/lib/types/database.generated";
-
-export type HomeworkDayInfo = {
-  /** YYYY-MM-DD (KST) */
-  date: string;
-  /** 0=일 ~ 6=토 (KST) */
-  weekday: number;
-  /** 그 날 숙제 있는 책 ID 들 (반·개인 합집합, 중복 제거) */
-  textbookIds: string[];
-};
 
 /** ISO YYYY-MM-DD 형식 검증용 정규식. 내부/외부 양쪽에서 재사용. */
 export const YMD_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -37,37 +20,6 @@ export function ymdToKstWeekday(ymd: string): number {
   }
   const [y, m, d] = ymd.split("-").map(Number);
   return new Date(Date.UTC(y, m - 1, d)).getUTCDay();
-}
-
-/** 해당 연/월의 일 수 (1~말일). */
-export function daysInMonth(year: number, month: number): number {
-  return new Date(year, month, 0).getDate();
-}
-
-/** YYYY, MM, DD → "YYYY-MM-DD" */
-function ymd(year: number, month: number, day: number): string {
-  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-}
-
-/**
- * @deprecated homework_days/skip_dates 컬럼 제거 — 항상 빈 배열 반환.
- */
-export async function getStudentHomeworkDays(
-  _supabase: SupabaseClient<Database>,
-  _studentId: string,
-  _year: number,
-  _month: number
-): Promise<HomeworkDayInfo[]> {
-  return [];
-}
-
-/** @deprecated 항상 false 반환. */
-export async function isHomeworkDayForStudent(
-  _supabase: SupabaseClient<Database>,
-  _studentId: string,
-  _date: string
-): Promise<boolean> {
-  return false;
 }
 
 export type UnitAssignment = {
@@ -298,31 +250,4 @@ export function getUnitSchedule(params: {
 
   result.sort((a, b) => a.unit - b.unit);
   return result;
-}
-
-export type StudentDayUnit = {
-  textbookId: string;
-  textbookTitle: string | null;
-  unit: number;
-};
-
-export type StudentDayUnits = {
-  /** YYYY-MM-DD (KST) */
-  date: string;
-  items: StudentDayUnit[];
-};
-
-/**
- * @deprecated homework_days/skip_dates/start_unit 컬럼 제거 — 항상 빈 배열 반환.
- */
-export async function getStudentMonthSchedule(
-  _supabase: SupabaseClient<Database>,
-  _studentId: string,
-  _year: number,
-  _month: number
-): Promise<StudentDayUnits[]> {
-  // 사용 ID 들이 unused warning 회피용
-  void ymd;
-  void daysInMonth;
-  return [];
 }

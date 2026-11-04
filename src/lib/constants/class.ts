@@ -23,9 +23,3 @@ export const CLASS_COLOR_PALETTE: { bg: string; text: string; border: string }[]
   { bg: "bg-orange-100",  text: "text-orange-800",   border: "border-orange-300"  },
   { bg: "bg-teal-100",    text: "text-teal-800",     border: "border-teal-300"    },
 ];
-
-/** color_index가 있으면 사용, 없으면 fallbackIndex 기준으로 팔레트 순환 */
-export function getClassColor(colorIndex: number | null, fallbackIndex: number) {
-  const idx = colorIndex ?? fallbackIndex;
-  return CLASS_COLOR_PALETTE[idx % CLASS_COLOR_PALETTE.length];
-}

@@ -63,16 +63,6 @@ export const ATTENDANCE_STATUS_CONFIG: Record<
   },
 };
 
-/** 교사 타입에 맞는 라벨 반환 */
-export function getStatusLabel(
-  status: string,
-  teacherType: "korean" | "native" = "korean",
-): string {
-  const cfg = ATTENDANCE_STATUS_CONFIG[status as AttendanceStatus];
-  if (!cfg) return status;
-  return teacherType === "native" ? cfg.labelEn : cfg.label;
-}
-
 /** 메모 입력을 보여줄 상태인지 (결석, 조퇴, 지각) */
 export function shouldShowNote(status: string | null): boolean {
   return (
