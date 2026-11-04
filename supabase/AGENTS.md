@@ -5,8 +5,10 @@
 ## 마이그레이션 흐름
 
 1. 새 SQL 파일을 `migrations/` 에 추가. 파일명 timestamp 규칙은 Supabase CLI 에 위임.
-2. `pnpm db:types:local` (로컬) 또는 `pnpm db:types` (원격) 으로 `src/lib/types/database.ts` 갱신.
+2. `pnpm db:types:local` (로컬) 또는 `pnpm db:types` (원격) 으로 `src/lib/types/database.generated.ts` 갱신. `src/lib/types/database.ts` 는 손으로 쓴 도메인 타입이라 덮어쓰면 안 된다.
 3. 타입 변경 PR 에 같이 commit.
+4. 운영 스키마 변경은 이 `migrations/` 파일로만. supabase MCP 의 `apply_migration` / `execute_sql` 로 운영 DB 를 직접 바꾸지 않는다 (MCP 는 조회 전용). 그래야 마이그레이션 파일과 실제 DB 가 어긋나지 않는다.
+5. 로컬 DB 를 운영 데이터로 맞추는 경로는 `pnpm db:sync` (`scripts/sync-full.sh`). 절차와 주의점은 `docs/db-sync.md`.
 
 ## FK 컨벤션 (중요)
 
@@ -28,4 +30,4 @@
 - 새 마이그레이션에 `drop policy` / `drop trigger` / `drop table` / `drop column` / `to anon` / `using (true)` / `with check (true)` / `disable row level security` 가 있으면 사람이 끝까지 읽고 맨 위에 `-- reviewed-by: <이름> <YYYY-MM-DD>` 를 적어야 한다. `pnpm check:migration-danger`(CI 포함) 가 없으면 실패시킨다. 2026-06 `remote_schema.sql`(db pull 덤프) 이 검토 없이 머지돼 보안 패치 6개가 되돌아간 사고의 재발 방지.
 - `class_students` 는 **삭제하지 않는다** (soft leave: `is_active=false`). `report_cards` 가 이 행을 FK(RESTRICT) 로 가리킴. 명단 조회는 `is_active = true` 필터 필수, 재배정은 `upsert … is_active: true` 로 기존 행 복구. (`20261102010000`)
 - `config.toml` 은 로컬 CLI 용. 시크릿 들어가면 안 됨.
-- `snippets/`, `.branches/` 는 CLI 가 관리. 직접 편집 X.
+- `snippets/` 는 CLI 가 관리. 직접 편집 X.
