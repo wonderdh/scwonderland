@@ -1,0 +1,358 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "DB 연결 구조 — Supabase 클라이언트 3종",
+    "quality_profile": "showcase",
+    "viewBox": [
+      1200,
+      630
+    ],
+    "repository": {
+      "url": "https://github.com/wonderdh/scwonderland",
+      "revision": "a9f96ef34c78718f8022a661371052534b6c858d"
+    },
+    "output": "docs/2026-11-04/diagrams/db-clients.html"
+  },
+  "components": [
+    {
+      "id": "browser",
+      "type": "external",
+      "label": "브라우저",
+      "sublabel": "사용자 세션",
+      "pos": [
+        40,
+        120
+      ],
+      "size": [
+        160,
+        64
+      ]
+    },
+    {
+      "id": "client",
+      "type": "frontend",
+      "label": "Client Components",
+      "sublabel": "lib/supabase/client.ts",
+      "tag": "anon key",
+      "pos": [
+        40,
+        250
+      ],
+      "size": [
+        200,
+        64
+      ],
+      "sources": [
+        {
+          "path": "src/lib/supabase/client.ts"
+        }
+      ]
+    },
+    {
+      "id": "proxy",
+      "type": "security",
+      "label": "proxy.ts",
+      "sublabel": "세션 쿠키 갱신",
+      "tag": "anon key",
+      "pos": [
+        400,
+        120
+      ],
+      "size": [
+        200,
+        64
+      ],
+      "sources": [
+        {
+          "path": "src/proxy.ts"
+        }
+      ]
+    },
+    {
+      "id": "server",
+      "type": "backend",
+      "label": "Server Components",
+      "sublabel": "lib/supabase/server.ts",
+      "tag": "쿠키 세션 · RLS 적용",
+      "pos": [
+        400,
+        250
+      ],
+      "size": [
+        200,
+        64
+      ],
+      "sources": [
+        {
+          "path": "src/lib/supabase/server.ts"
+        }
+      ]
+    },
+    {
+      "id": "actions",
+      "type": "backend",
+      "label": "Server Actions",
+      "sublabel": "(admin)/admin/actions/*",
+      "tag": "verifyAdmin 선행",
+      "pos": [
+        400,
+        380
+      ],
+      "size": [
+        200,
+        64
+      ],
+      "sources": [
+        {
+          "path": "src/app/(admin)/admin/actions/auth-helpers.ts"
+        }
+      ]
+    },
+    {
+      "id": "admin",
+      "type": "security",
+      "label": "createAdminClient",
+      "sublabel": "lib/supabase/admin.ts",
+      "tag": "service role · RLS 우회",
+      "pos": [
+        400,
+        510
+      ],
+      "size": [
+        200,
+        64
+      ],
+      "sources": [
+        {
+          "path": "src/lib/supabase/admin.ts"
+        }
+      ]
+    },
+    {
+      "id": "auth",
+      "type": "security",
+      "label": "Supabase Auth",
+      "sublabel": "비밀번호 · 세션",
+      "pos": [
+        820,
+        120
+      ],
+      "size": [
+        200,
+        64
+      ]
+    },
+    {
+      "id": "pg",
+      "type": "database",
+      "label": "Postgres + RLS",
+      "sublabel": "public 스키마",
+      "tag": "46 migrations",
+      "pos": [
+        820,
+        330
+      ],
+      "size": [
+        200,
+        64
+      ]
+    },
+    {
+      "id": "realtime",
+      "type": "messagebus",
+      "label": "Realtime",
+      "sublabel": "postgres_changes",
+      "pos": [
+        820,
+        510
+      ],
+      "size": [
+        200,
+        64
+      ],
+      "sources": [
+        {
+          "path": "src/lib/hooks/use-bus-realtime.ts"
+        }
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Next.js 16 (서버)",
+      "wraps": [
+        "proxy",
+        "server",
+        "actions",
+        "admin"
+      ],
+      "pad": 12
+    },
+    {
+      "kind": "region",
+      "label": "Supabase",
+      "wraps": [
+        "auth",
+        "pg",
+        "realtime"
+      ],
+      "pad": 12
+    }
+  ],
+  "connections": [
+    {
+      "id": "c-browser-proxy",
+      "from": "browser",
+      "to": "proxy",
+      "label": "모든 페이지 요청",
+      "variant": "emphasis"
+    },
+    {
+      "id": "c-browser-client",
+      "from": "browser",
+      "to": "client",
+      "label": "렌더 · 입력",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "c-proxy-auth",
+      "from": "proxy",
+      "to": "auth",
+      "label": "getUser() 쿠키 갱신",
+      "variant": "security"
+    },
+    {
+      "id": "c-proxy-server",
+      "from": "proxy",
+      "to": "server",
+      "label": "요청 통과",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelDy": 30
+    },
+    {
+      "id": "c-server-pg",
+      "from": "server",
+      "to": "pg",
+      "label": "RLS 적용 조회",
+      "variant": "emphasis"
+    },
+    {
+      "id": "c-client-auth",
+      "from": "client",
+      "to": "auth",
+      "label": "signInWithPassword",
+      "variant": "security",
+      "fromSide": "left",
+      "toSide": "top",
+      "via": [
+        [
+          12,
+          282
+        ],
+        [
+          12,
+          50
+        ],
+        [
+          920,
+          50
+        ]
+      ],
+      "labelAt": [
+        466,
+        50
+      ]
+    },
+    {
+      "id": "c-client-actions",
+      "from": "client",
+      "to": "actions",
+      "label": "\"use server\" 호출"
+    },
+    {
+      "id": "c-actions-server",
+      "from": "actions",
+      "to": "server",
+      "label": "verifyAdmin",
+      "variant": "security",
+      "fromSide": "top",
+      "toSide": "bottom"
+    },
+    {
+      "id": "c-actions-admin",
+      "from": "actions",
+      "to": "admin",
+      "label": "검증 통과 후",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelDy": 30
+    },
+    {
+      "id": "c-admin-pg",
+      "from": "admin",
+      "to": "pg",
+      "label": "service role 읽기 · 쓰기",
+      "variant": "emphasis"
+    },
+    {
+      "id": "c-client-realtime",
+      "from": "client",
+      "to": "realtime",
+      "label": "Realtime 구독",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "bottom",
+      "via": [
+        [
+          140,
+          600
+        ],
+        [
+          920,
+          600
+        ]
+      ]
+    },
+    {
+      "id": "c-pg-realtime",
+      "from": "pg",
+      "to": "realtime",
+      "label": "행 변경 이벤트",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelDy": 30
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "클라이언트 3종",
+      "items": [
+        "client.ts: 브라우저, anon key. 로그인(signInWithPassword)과 Realtime 구독만",
+        "server.ts: Server Component · verify 헬퍼. 쿠키 세션으로 RLS 적용 조회",
+        "admin.ts: Server Action 전용. service role 로 RLS 우회. 26개 액션 파일이 사용"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "보안 경계",
+      "items": [
+        "service role key 는 서버 환경변수에만. 브라우저에 절대 내려가지 않음",
+        "RLS 를 우회하므로 모든 Server Action 은 먼저 verifyAdmin 류(getUser + profiles.role)를 통과. CI check:action-auth 가 검사"
+      ]
+    },
+    {
+      "dot": "orange",
+      "title": "Realtime",
+      "items": [
+        "버스 승하차 화면만 사용. bus_check_records · bus_change_requests 행 변경 구독",
+        "채널은 날짜 + 사용자 ID 로 분리 (use-bus-realtime.ts)"
+      ]
+    }
+  ]
+}

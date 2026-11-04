@@ -1,0 +1,404 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "관리자 대표 기능 — 화면 · 서버 액션 · 테이블",
+    "quality_profile": "showcase",
+    "viewBox": [
+      1200,
+      580
+    ],
+    "repository": {
+      "url": "https://github.com/wonderdh/scwonderland",
+      "revision": "a9f96ef34c78718f8022a661371052534b6c858d"
+    },
+    "views": [
+      {
+        "id": "v-people",
+        "label": "학생·반 관리",
+        "focus": [
+          "ui-people",
+          "act-people",
+          "tbl-people"
+        ],
+        "note": "학생·교사 등록, 반 편성, 담당 교사 배정이 쓰는 테이블"
+      },
+      {
+        "id": "v-bus",
+        "label": "버스 승하차",
+        "focus": [
+          "ui-bus",
+          "act-bus",
+          "tbl-bus",
+          "tbl-people"
+        ],
+        "note": "노선·정류장 마스터부터 당일 명단, 승하차 기록, 변경요청까지"
+      },
+      {
+        "id": "v-attendance",
+        "label": "출결",
+        "focus": [
+          "ui-attendance",
+          "act-attendance",
+          "tbl-attendance",
+          "tbl-bus"
+        ],
+        "note": "출결 기록. 결석 처리 시 버스 변경요청 테이블도 함께 갱신"
+      },
+      {
+        "id": "v-homework",
+        "label": "숙제·교재",
+        "focus": [
+          "ui-homework",
+          "act-homework",
+          "tbl-homework",
+          "tbl-attendance"
+        ],
+        "note": "교재 시리즈 → 반 배정 → 학생별 진도. 휴일·출결을 참고해 일정 계산"
+      }
+    ],
+    "output": "docs/2026-11-04/diagrams/admin-features.html"
+  },
+  "components": [
+    {
+      "id": "ui-people",
+      "type": "frontend",
+      "label": "학생·반 관리",
+      "sublabel": "/admin/{students,classes,teachers}",
+      "pos": [
+        40,
+        60
+      ],
+      "size": [
+        220,
+        68
+      ]
+    },
+    {
+      "id": "ui-bus",
+      "type": "frontend",
+      "label": "버스 승하차 관리",
+      "sublabel": "/admin/bus · /bus (기사) · /bus-monitor",
+      "pos": [
+        40,
+        190
+      ],
+      "size": [
+        220,
+        68
+      ]
+    },
+    {
+      "id": "ui-attendance",
+      "type": "frontend",
+      "label": "출결 관리",
+      "sublabel": "/admin/attendance · /m/attendance",
+      "pos": [
+        40,
+        320
+      ],
+      "size": [
+        220,
+        68
+      ]
+    },
+    {
+      "id": "ui-homework",
+      "type": "frontend",
+      "label": "숙제·교재 관리",
+      "sublabel": "/admin/homework · /m/homework",
+      "pos": [
+        40,
+        450
+      ],
+      "size": [
+        220,
+        68
+      ]
+    },
+    {
+      "id": "act-people",
+      "type": "backend",
+      "label": "user-actions · class-actions",
+      "sublabel": "등록·수정·soft delete · 반 편성",
+      "pos": [
+        400,
+        60
+      ],
+      "size": [
+        250,
+        68
+      ],
+      "sources": [
+        {
+          "path": "src/app/(admin)/admin/actions/user-actions.ts"
+        },
+        {
+          "path": "src/app/(admin)/admin/actions/class-actions.ts"
+        }
+      ]
+    },
+    {
+      "id": "act-bus",
+      "type": "backend",
+      "label": "actions/bus/*",
+      "sublabel": "master · assignment · manifest · change",
+      "pos": [
+        400,
+        190
+      ],
+      "size": [
+        250,
+        68
+      ],
+      "sources": [
+        {
+          "path": "src/app/(admin)/admin/actions/bus/manifest-actions.ts"
+        },
+        {
+          "path": "src/app/(admin)/admin/actions/bus/change-actions.ts"
+        }
+      ]
+    },
+    {
+      "id": "act-attendance",
+      "type": "backend",
+      "label": "attendance-actions",
+      "sublabel": "일자별 출결 저장",
+      "pos": [
+        400,
+        320
+      ],
+      "size": [
+        250,
+        68
+      ],
+      "sources": [
+        {
+          "path": "src/app/(admin)/admin/actions/attendance-actions.ts"
+        }
+      ]
+    },
+    {
+      "id": "act-homework",
+      "type": "backend",
+      "label": "homework-unit · textbook-actions",
+      "sublabel": "교재·시리즈 등록 · 반 배정 · 진도 체크",
+      "pos": [
+        400,
+        450
+      ],
+      "size": [
+        250,
+        68
+      ],
+      "sources": [
+        {
+          "path": "src/app/(admin)/admin/actions/homework-unit-actions.ts"
+        },
+        {
+          "path": "src/app/(admin)/admin/actions/class-textbook-actions.ts"
+        }
+      ]
+    },
+    {
+      "id": "tbl-people",
+      "type": "database",
+      "label": "사람 · 반 (6 테이블)",
+      "sublabel": "profiles · students · teachers · classes + 반 편성 2 (카드 참고)",
+      "pos": [
+        850,
+        60
+      ],
+      "size": [
+        320,
+        68
+      ]
+    },
+    {
+      "id": "tbl-bus",
+      "type": "database",
+      "label": "버스 (7 테이블)",
+      "sublabel": "마스터 4 + 기본배정 · 승하차기록 · 변경요청 (카드 참고)",
+      "pos": [
+        850,
+        190
+      ],
+      "size": [
+        320,
+        68
+      ]
+    },
+    {
+      "id": "tbl-attendance",
+      "type": "database",
+      "label": "출결 · 휴일 (2 테이블)",
+      "sublabel": "attendance · academy_closed_days",
+      "pos": [
+        850,
+        320
+      ],
+      "size": [
+        320,
+        68
+      ]
+    },
+    {
+      "id": "tbl-homework",
+      "type": "database",
+      "label": "교재 · 숙제 (5 테이블)",
+      "sublabel": "시리즈 · 교재 · 반 배정 · 학생 배정 · 학생 진도",
+      "pos": [
+        850,
+        450
+      ],
+      "size": [
+        320,
+        68
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "security-group",
+      "label": "verifyAdmin 통과 후 createAdminClient (service role)",
+      "wraps": [
+        "act-people",
+        "act-bus",
+        "act-attendance",
+        "act-homework"
+      ]
+    },
+    {
+      "kind": "region",
+      "label": "Supabase Postgres (public)",
+      "wraps": [
+        "tbl-people",
+        "tbl-bus",
+        "tbl-attendance",
+        "tbl-homework"
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "e-ui-people",
+      "from": "ui-people",
+      "to": "act-people",
+      "label": "Server Action 호출",
+      "variant": "emphasis"
+    },
+    {
+      "id": "e-ui-bus",
+      "from": "ui-bus",
+      "to": "act-bus",
+      "label": "호출 + Realtime 구독",
+      "variant": "emphasis"
+    },
+    {
+      "id": "e-ui-attendance",
+      "from": "ui-attendance",
+      "to": "act-attendance",
+      "label": "Server Action 호출",
+      "variant": "emphasis"
+    },
+    {
+      "id": "e-ui-homework",
+      "from": "ui-homework",
+      "to": "act-homework",
+      "label": "Server Action 호출",
+      "variant": "emphasis"
+    },
+    {
+      "id": "e-act-people",
+      "from": "act-people",
+      "to": "tbl-people",
+      "label": "읽기 · 쓰기",
+      "variant": "emphasis",
+      "labelAt": [
+        700,
+        114
+      ]
+    },
+    {
+      "id": "e-act-bus",
+      "from": "act-bus",
+      "to": "tbl-bus",
+      "label": "읽기 · 쓰기",
+      "variant": "emphasis",
+      "labelAt": [
+        700,
+        244
+      ]
+    },
+    {
+      "id": "e-act-attendance",
+      "from": "act-attendance",
+      "to": "tbl-attendance",
+      "label": "읽기 · 쓰기",
+      "variant": "emphasis",
+      "labelAt": [
+        700,
+        374
+      ]
+    },
+    {
+      "id": "e-act-homework",
+      "from": "act-homework",
+      "to": "tbl-homework",
+      "label": "읽기 · 쓰기",
+      "variant": "emphasis",
+      "labelAt": [
+        700,
+        504
+      ]
+    },
+    {
+      "id": "x-bus-people",
+      "from": "act-bus",
+      "to": "tbl-people",
+      "label": "명단용 students · class_students 조회",
+      "variant": "dashed"
+    },
+    {
+      "id": "x-attendance-bus",
+      "from": "act-attendance",
+      "to": "tbl-bus",
+      "label": "결석 시 bus_change_requests 갱신",
+      "variant": "dashed"
+    },
+    {
+      "id": "x-homework-attendance",
+      "from": "act-homework",
+      "to": "tbl-attendance",
+      "label": "일정 계산용 조회",
+      "variant": "dashed"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "공통 구조",
+      "items": [
+        "화면은 DB 를 직접 만지지 않는다. 항상 Server Action → verifyAdmin → createAdminClient 순서. CI check:action-auth 가 강제",
+        "FK 컨벤션: 학생 컬럼은 students(id), 교사는 teachers(id), 작성자는 profiles(id)"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "학생·반 6 · 교재·숙제 5 테이블",
+      "items": [
+        "profiles · students · teachers (같은 id 공유) · classes · class_students(반-학생, soft leave) · class_teachers(반-교사)",
+        "series · homework_books(교재) · class_homework_books(반 배정) · student_homework_books(학생 배정) · student_homework_progress(진도)"
+      ]
+    },
+    {
+      "dot": "orange",
+      "title": "버스 7 테이블",
+      "items": [
+        "마스터: bus_numbers · bus_stops · bus_time_slots · bus_stop_day_assignments",
+        "운영: student_bus_defaults(기본 배정) · bus_check_records(승하차 기록) · bus_change_requests(변경요청). 기록·변경요청은 Realtime 으로 기사·TV 화면에 즉시 반영"
+      ]
+    }
+  ]
+}

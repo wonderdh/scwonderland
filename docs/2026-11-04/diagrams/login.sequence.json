@@ -1,0 +1,247 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "로그인 → 역할별 홈 분기",
+    "quality_profile": "showcase",
+    "column_fit": "spread",
+    "viewBox": [
+      1080,
+      620
+    ],
+    "output": "docs/2026-11-04/diagrams/login.html"
+  },
+  "participants": [
+    {
+      "id": "user",
+      "type": "external",
+      "label": "사용자",
+      "sublabel": "브라우저"
+    },
+    {
+      "id": "login",
+      "type": "frontend",
+      "label": "/login",
+      "sublabel": "LoginForm (client)"
+    },
+    {
+      "id": "proxy",
+      "type": "security",
+      "label": "proxy.ts",
+      "sublabel": "모든 요청 통과"
+    },
+    {
+      "id": "auth",
+      "type": "security",
+      "label": "Supabase Auth",
+      "sublabel": "세션 쿠키"
+    },
+    {
+      "id": "dashboard",
+      "type": "backend",
+      "label": "/dashboard",
+      "sublabel": "역할 디스패처 (server)"
+    },
+    {
+      "id": "db",
+      "type": "database",
+      "label": "profiles",
+      "sublabel": "role 컬럼"
+    },
+    {
+      "id": "home",
+      "type": "frontend",
+      "label": "역할 홈",
+      "sublabel": "/admin · /academy/*"
+    }
+  ],
+  "segments": [
+    {
+      "from": 158,
+      "to": 240,
+      "label": "1. 로그인"
+    },
+    {
+      "from": 250,
+      "to": 332,
+      "label": "2. 세션 갱신"
+    },
+    {
+      "from": 342,
+      "to": 516,
+      "label": "3. 역할 분기"
+    }
+  ],
+  "messages": [
+    {
+      "id": "m-input",
+      "from": "user",
+      "to": "login",
+      "y": 170,
+      "label": "이메일·비밀번호 입력"
+    },
+    {
+      "id": "m-signin",
+      "from": "login",
+      "to": "auth",
+      "y": 198,
+      "label": "signInWithPassword (anon key)",
+      "variant": "emphasis"
+    },
+    {
+      "id": "m-cookie",
+      "from": "auth",
+      "to": "login",
+      "y": 226,
+      "label": "세션 쿠키 발급 / 실패 시 오류 메시지",
+      "variant": "return"
+    },
+    {
+      "id": "m-push",
+      "from": "login",
+      "to": "proxy",
+      "y": 262,
+      "label": "router.push(next) → GET /dashboard",
+      "variant": "emphasis"
+    },
+    {
+      "id": "m-refresh",
+      "from": "proxy",
+      "to": "auth",
+      "y": 290,
+      "label": "auth.getUser() 세션 갱신",
+      "variant": "security"
+    },
+    {
+      "id": "m-pass",
+      "from": "proxy",
+      "to": "dashboard",
+      "y": 318,
+      "label": "요청 통과 (갱신된 쿠키 포함)"
+    },
+    {
+      "id": "m-getuser",
+      "from": "dashboard",
+      "to": "auth",
+      "y": 352,
+      "label": "auth.getUser()",
+      "variant": "security"
+    },
+    {
+      "id": "m-user",
+      "from": "auth",
+      "to": "dashboard",
+      "y": 380,
+      "label": "user (없으면 /login?next=/dashboard 로 redirect)",
+      "variant": "return"
+    },
+    {
+      "id": "m-role-q",
+      "from": "dashboard",
+      "to": "db",
+      "y": 412,
+      "label": "getUserRoles: profiles.role 조회",
+      "variant": "emphasis"
+    },
+    {
+      "id": "m-role",
+      "from": "db",
+      "to": "dashboard",
+      "y": 440,
+      "label": "admin | teacher | student | null",
+      "variant": "return"
+    },
+    {
+      "id": "m-redirect",
+      "from": "dashboard",
+      "to": "home",
+      "y": 474,
+      "label": "redirect: admin→/admin, teacher·student→/academy/*",
+      "variant": "emphasis"
+    },
+    {
+      "id": "m-render",
+      "from": "home",
+      "to": "user",
+      "y": 502,
+      "label": "역할 홈 렌더 (null 이면 '역할 미지정' 안내)",
+      "variant": "return"
+    }
+  ],
+  "activations": [
+    {
+      "participant": "login",
+      "from": 190,
+      "to": 268,
+      "type": "frontend"
+    },
+    {
+      "participant": "proxy",
+      "from": 258,
+      "to": 324,
+      "type": "security"
+    },
+    {
+      "participant": "auth",
+      "from": 192,
+      "to": 232,
+      "type": "security"
+    },
+    {
+      "participant": "auth",
+      "from": 286,
+      "to": 306,
+      "type": "security"
+    },
+    {
+      "participant": "auth",
+      "from": 348,
+      "to": 386,
+      "type": "security"
+    },
+    {
+      "participant": "dashboard",
+      "from": 318,
+      "to": 480,
+      "type": "backend"
+    },
+    {
+      "participant": "db",
+      "from": 408,
+      "to": 446,
+      "type": "database"
+    },
+    {
+      "participant": "home",
+      "from": 474,
+      "to": 508,
+      "type": "frontend"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "인증 주체",
+      "items": [
+        "비밀번호 검증은 Supabase Auth 가 수행. 브라우저는 anon key 만 가지고 세션은 쿠키로 유지",
+        "LoginForm 은 성공 시 next 쿼리 (기본 /dashboard) 로 이동"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "세션 유지",
+      "items": [
+        "proxy.ts 가 정적 파일 제외 모든 요청에서 auth.getUser() 로 쿠키 갱신. 실패해도 요청은 통과",
+        "/admin 루트를 모바일 UA 로 열면 /m 으로 보냄"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "역할 결정",
+      "items": [
+        "역할은 profiles.role 한 컬럼 (admin · teacher · student). /dashboard 가 유일한 분기점",
+        "이후 Server Action 은 호출마다 verifyAdmin 류로 같은 검사를 반복"
+      ]
+    }
+  ]
+}
